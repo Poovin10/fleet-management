@@ -72,7 +72,7 @@ STATUS_MAP = {
     "DRIVER_UNAVAILABLE": "🚫 Truck Without Driver / Driver on Leave"
 }
 
-# Cached queries (Zero Network Latency on Reruns)
+# Cached queries for high speed
 @st.cache_data(ttl=60)
 def get_vehicles():
     return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks, status_updated_at FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
@@ -197,10 +197,77 @@ if menu == "🚦 Live Fleet Status & Yard Board":
                 st.rerun()
 
 # ==============================================================================
-# 1. NEW TRIP ENTRY (Fast Instant Calculation)
+# 1. NEW TRIP ENTRY
 # ==============================================================================
 elif menu == "📝 New Trip Entry":
     st.subheader("Log New Trip (Live Instant Freight & Fuel Calculation)")
+
+    col_quick1, col_quick2 = st.columns(2)
+
+    with col_quick1:
+        with st.expander("➕ Quick Add New Driver (On the fly)", expanded=False):
+            auto_code = get_next_driver_code()
+            st.write(f"**Assigned Driver Code:** `{auto_code}`")
+            with st.form("inline_driver_form", clear_on_submit=True):
+                qd_name = st.text_input("Driver Full Name*")
+                qd_phone = st.text_input("Phone Number*", placeholder="98XXXXXXXX")
+                qd_col1, qd_col2 = st.columns(2)
+                with qd_col1:
+                    qd_license = st.text_input("License No*", placeholder="KL-07-XXXXXX")
+                with qd_col2:
+                    qd_expiry = st.date_input("License Expiry", date(2030, 1, 1))
+                
+                if st.form_submit_button("➕ Save Driver"):
+                    if not qd_name or not qd_phone or not qd_license:
+                        st.error("Please fill Name, Phone, and License.")
+                    else:
+                        try:
+                            run_query("""
+                                INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id)
+                                VALUES (%s, %s, %s, %s, %s, 1)
+                            """, (auto_code, qd_name, qd_phone, qd_license, qd_expiry), fetch=False)
+                            st.cache_data.clear()
+                            st.success(f"Driver '{qd_name}' added as {auto_code}!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+
+    with col_quick2:
+        with st.expander("➕ Quick Add Destination & Truck Slab Rate", expanded=False):
+            with st.form("inline_route_form", clear_on_submit=True):
+                qr_c1, qr_c2 = st.columns(2)
+                with qr_c1:
+                    qr_cargo = st.selectbox("Cargo Category*", ["BULK", "BAG"])
+                    qr_origin = st.text_input("Origin Hub*", "COCHIN")
+                    qr_dest = st.text_input("Destination Name*", placeholder="e.g. Sankari / Aluva")
+                with qr_c2:
+                    # Explicit 3-Slab logic mapping
+                    qr_slab_label = st.selectbox("Truck Slab Category*", ["25/30 MT Slab", "35 MT Slab"])
+                    qr_cap = 30.0 if "30" in qr_slab_label else 35.0
+                    
+                    qr_km = st.number_input("Standard Route KM", min_value=0.0, step=10.0, value=0.0)
+                    qr_rate = st.number_input("Freight Rate per Ton (₹)*", min_value=0.0, step=25.0, value=0.0)
+                
+                if st.form_submit_button("➕ Save Destination Rate"):
+                    if not qr_dest:
+                        st.error("Destination name is required.")
+                    elif qr_cargo == "BAG" and qr_cap == 35.0:
+                        st.error("BAG cargo is only applicable for the 25/30 MT Slab.")
+                    else:
+                        try:
+                            run_query("""
+                                INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) 
+                                DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;
+                            """, (qr_cargo, qr_origin, qr_dest, qr_cap, qr_rate, qr_km), fetch=False)
+                            st.cache_data.clear()
+                            st.success(f"Saved: {qr_dest} ({qr_cargo} - {qr_slab_label}) at ₹{qr_rate}/Ton!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+
+    st.markdown("---")
 
     vehicles = get_vehicles()
     drivers = get_drivers()
@@ -221,6 +288,8 @@ elif menu == "📝 New Trip Entry":
         selected_vehicle = vehicle_dict[chosen_truck_str]
         truck_class_tons = float(selected_vehicle['carrying_capacity_tons'])
     with top_c2:
+        # If BAG is selected, standard 35MT trucks will pull the 25/30MT BAG rate if forced, 
+        # but realistically BAG is only for 25/30MT trucks per your business logic.
         cargo_type_selected = st.radio("Cargo Category*", ["BULK", "BAG"], horizontal=True, key="cargo_sel")
     with top_c3:
         active_diesel_rate = st.number_input(
@@ -232,7 +301,15 @@ elif menu == "📝 New Trip Entry":
             key="fuel_rate_input"
         )
 
-    routes_list = get_routes(cargo_type=cargo_type_selected, capacity=truck_class_tons)
+    # 3-SLAB MAPPING LOGIC: 
+    # 25 & 30 MT trucks map to the 30.0 tier. 35 MT trucks map to the 35.0 tier.
+    # If BAG is selected, force it to the 30.0 tier regardless of truck size since 35 MT BAG doesn't exist.
+    if cargo_type_selected == "BAG":
+        rate_lookup_capacity = 30.0 
+    else:
+        rate_lookup_capacity = 30.0 if truck_class_tons <= 30.0 else 35.0
+    
+    routes_list = get_routes(cargo_type=cargo_type_selected, capacity=rate_lookup_capacity)
     
     route_options = {
         "-- Manual Route / Custom Entry --": {
@@ -245,7 +322,8 @@ elif menu == "📝 New Trip Entry":
     
     if routes_list:
         for r in routes_list:
-            label = f"{r['origin']} ➔ {r['destination_name']} [{truck_class_tons}T Truck Slab: ₹{r['freight_rate_per_ton']}/Ton | {r['standard_km']} KM]"
+            display_slab = "25/30 MT" if r['capacity_tons'] == 30.0 else "35 MT"
+            label = f"{r['origin']} ➔ {r['destination_name']} [{display_slab} {r['cargo_type']} Slab: ₹{r['freight_rate_per_ton']}/Ton | {r['standard_km']} KM]"
             route_options[label] = r
 
     selected_route_key = st.selectbox("Select Destination Route*", list(route_options.keys()), key="route_sel")
@@ -255,7 +333,7 @@ elif menu == "📝 New Trip Entry":
     def_km = float(active_route['standard_km'])
     applied_rate_per_ton = float(active_route['freight_rate_per_ton'])
 
-    # --- Single Reactive Form (No Lag on input typing) ---
+    # --- Single Reactive Form ---
     with st.form("dispatch_trip_form"):
         f_col1, f_col2, f_col3 = st.columns(3)
         
@@ -542,13 +620,16 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
         all_routes = run_query("SELECT * FROM destinations_freight_master WHERE is_active = TRUE ORDER BY cargo_type, destination_name, capacity_tons ASC")
         if all_routes:
             df_r = pd.DataFrame(all_routes)
-            st.dataframe(df_r[['destination_id', 'cargo_type', 'origin', 'destination_name', 'capacity_tons', 'freight_rate_per_ton', 'standard_km']], use_container_width=True)
+            # Label correctly in the table for exactly 3 distinct categories
+            df_r['slab_label'] = df_r.apply(lambda row: f"25/30 MT {row['cargo_type']} Slab" if float(row['capacity_tons']) == 30.0 else f"35 MT {row['cargo_type']} Slab", axis=1)
+            st.dataframe(df_r[['destination_id', 'cargo_type', 'origin', 'destination_name', 'slab_label', 'freight_rate_per_ton', 'standard_km']], use_container_width=True)
             
             st.divider()
             col_re1, col_re2 = st.columns(2)
             with col_re1:
                 st.write("### ✏️ Update Freight Rate for Slab")
-                rt_dict = {f"ID {r['destination_id']}: [{r['cargo_type']}] {r['origin']} ➔ {r['destination_name']} ({r['capacity_tons']} MT Slab @ ₹{r['freight_rate_per_ton']})": r for r in all_routes}
+                # Dropdown for updating specifically calls out the BAG vs BULK and Capacity
+                rt_dict = {f"ID {r['destination_id']}: {r['origin']} ➔ {r['destination_name']} ({'25/30 MT' if float(r['capacity_tons']) == 30.0 else '35 MT'} {r['cargo_type']} Slab @ ₹{r['freight_rate_per_ton']})": r for r in all_routes}
                 chosen_rt = st.selectbox("Select Route Slab", list(rt_dict.keys()))
                 new_rate = st.number_input("Updated Rate per Ton (₹)", value=float(rt_dict[chosen_rt]['freight_rate_per_ton']), step=25.0)
                 if st.button("Save New Slab Rate"):
