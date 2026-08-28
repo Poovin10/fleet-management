@@ -18,7 +18,7 @@ def get_db_credentials():
         "port": 6543,
         "dbname": "postgres",
         "user": "postgres.eobweyciqwoojwnsonor",
-        "password": "Poovin@2809"
+        "password": "YOUR_ACTUAL_SUPABASE_PASSWORD"
     }
 
 def get_connection():
@@ -41,20 +41,19 @@ def run_query(query, params=None, fetch=True):
             conn.commit()
 
 # --- Streamlit UI Config ---
-st.set_page_config(page_title="Fleet Operations & Status Board", layout="wide")
+st.set_page_config(page_title="Fleet Operations & Expense Manager", layout="wide")
 st.title("🚛 Fleet Operations & Trip Dispatch System")
 
 menu = st.sidebar.radio("Navigation", [
     "🚦 Live Fleet Status & Yard Board",
     "📝 New Trip Entry",
-    "📑 Settle POD & Shortage",
+    "💸 Trip Expenses & Claims",
     "💰 Driver Period Settlement (1-15 / 16-End)",
     "👨‍✈️ Driver Directory & Rates Master",
     "📊 Profitability Reports",
     "🔍 View & Delete Trips"
 ])
 
-# Status configuration map
 STATUS_MAP = {
     "AVAILABLE_FOR_LOAD": "🟢 Available / Ready for Load",
     "WAITING_FOR_LOAD": "🟡 Waiting for Load (At Plant/Hub)",
@@ -123,7 +122,6 @@ if menu == "🚦 Live Fleet Status & Yard Board":
     df_v = pd.DataFrame(vehicles_data)
     df_v['display_status'] = df_v['current_status'].map(lambda x: STATUS_MAP.get(x, x))
     
-    # Status KPI Cards
     k1, k2, k3, k4, k5, k6 = st.columns(6)
     k1.metric("🟢 Ready / Available", len(df_v[df_v['current_status'] == 'AVAILABLE_FOR_LOAD']))
     k2.metric("🟡 Waiting for Load", len(df_v[df_v['current_status'] == 'WAITING_FOR_LOAD']))
@@ -185,7 +183,7 @@ if menu == "🚦 Live Fleet Status & Yard Board":
                 st.rerun()
 
 # ==============================================================================
-# 1. NEW TRIP ENTRY
+# 1. NEW TRIP ENTRY (100% Automatic Fuel & Freight Math)
 # ==============================================================================
 elif menu == "📝 New Trip Entry":
     st.subheader("Log New Trip (Live Instant Freight & Fuel Calculation)")
@@ -275,7 +273,7 @@ elif menu == "📝 New Trip Entry":
         cargo_type_selected = st.radio("Cargo Category*", ["BULK", "BAG"], horizontal=True, key="cargo_sel")
     with top_c3:
         active_diesel_rate = st.number_input(
-            "Diesel Rate (₹/Litre) [Auto-Saved]*", 
+            "Current Diesel Rate (₹/Litre)*", 
             min_value=50.0, 
             max_value=150.0, 
             value=current_saved_diesel_rate, 
@@ -309,24 +307,24 @@ elif menu == "📝 New Trip Entry":
     def_km = float(active_route['standard_km'])
     applied_rate_per_ton = float(active_route['freight_rate_per_ton'])
 
-    st.markdown(f"> 📌 **Vehicle:** `{selected_vehicle['vehicle_number']}` | **Status:** `{STATUS_MAP.get(selected_vehicle['current_status'], selected_vehicle['current_status'])}` | **Rate:** `₹{applied_rate_per_ton}/Ton` | **Diesel Rate:** `₹{active_diesel_rate}/L`")
-
-    # --- Live Reactive Inputs ---
+    # --- Live Reactive Form ---
     f_col1, f_col2, f_col3 = st.columns(3)
     
     with f_col1:
+        st.markdown("#### 1️⃣ Trip & Route Info")
         trip_no = st.text_input("Trip / LR Number*", placeholder="TRIP-2026-001", key="trip_no_input")
         chosen_driver_key = st.selectbox("Select Assigned Driver*", list(driver_map.keys()), key="driver_sel")
         trip_origin = st.text_input("Origin Hub", value=def_origin, key="origin_input")
         trip_destination = st.text_input("Destination*", value=def_dest, placeholder="e.g. Sankari", key="dest_input")
+        km_run = st.number_input("Total KM Run*", min_value=0.0, step=10.0, value=def_km, key="km_run")
 
     with f_col2:
+        st.markdown("#### 2️⃣ Load & Revenue")
         start_d = st.date_input("Trip Start Date", date.today(), key="start_d")
         end_d = st.date_input("Trip End Date", date.today(), key="end_d")
-        km_run = st.number_input("Total KM Run*", min_value=0.0, step=10.0, value=def_km, key="km_run")
         
         actual_loaded_tonnage = st.number_input(
-            "Actual Weighbridge Loaded MT*", 
+            "Weighbridge Loaded Weight (MT)*", 
             min_value=0.0, 
             max_value=50.0, 
             step=0.05, 
@@ -334,26 +332,29 @@ elif menu == "📝 New Trip Entry":
             key="loaded_tonnage"
         )
         
+        # 100% AUTOMATIC FREIGHT CALCULATION
         calculated_freight = round(actual_loaded_tonnage * applied_rate_per_ton, 2)
-        freight_total = st.number_input(
-            f"Total Freight Revenue (₹)* [{actual_loaded_tonnage} MT × ₹{applied_rate_per_ton}/T]", 
-            value=calculated_freight, 
-            step=100.0,
-            key="freight_rev_input"
+        st.metric(
+            label=f"Total Freight Revenue (₹) [Rate: ₹{applied_rate_per_ton}/T]",
+            value=f"₹{calculated_freight:,.2f}",
+            help="Automatically calculated as: Loaded MT × Rate per Ton"
         )
 
     with f_col3:
-        fuel_qty = st.number_input("Diesel Litres Filled*", min_value=0.0, step=5.0, key="fuel_qty_input")
+        st.markdown("#### 3️⃣ Fuel & Direct Expenses")
+        fuel_qty = st.number_input("Diesel Litres Filled*", min_value=0.0, step=10.0, value=0.0, key="fuel_qty_input")
+        
+        # 100% AUTOMATIC DIESEL EXPENSE CALCULATION
         calculated_fuel_expense = round(fuel_qty * active_diesel_rate, 2)
-        fuel_cost = st.number_input(
-            f"Diesel Cost (₹)* [{fuel_qty} L × ₹{active_diesel_rate}/L]", 
-            value=calculated_fuel_expense, 
-            step=100.0,
-            key="fuel_cost_input"
+        st.metric(
+            label=f"Auto Diesel Expense (₹) [₹{active_diesel_rate}/L]",
+            value=f"₹{calculated_fuel_expense:,.2f}",
+            help="Automatically calculated as: Diesel Litres × Diesel Rate per Litre"
         )
+        
         driver_bata_val = st.number_input("Driver Bata (₹)*", min_value=0.0, step=100.0, value=3000.0, key="bata_input")
         toll_val = st.number_input("FASTag / Toll Expense (₹)", min_value=0.0, step=100.0, key="toll_input")
-        advance_val = st.number_input("Cash Advance Issued (₹)", min_value=0.0, step=500.0, key="advance_input")
+        advance_val = st.number_input("Cash Advance Issued to Driver (₹)", min_value=0.0, step=500.0, key="advance_input")
 
     st.write("")
     if st.button("🚀 Save & Dispatch Trip", type="primary", use_container_width=True):
@@ -361,7 +362,6 @@ elif menu == "📝 New Trip Entry":
             st.error("Please enter Trip Number and Destination.")
         else:
             try:
-                # 1. Insert Trip
                 run_query("""
                     INSERT INTO trips (
                         trip_number, branch_id, vehicle_id, primary_driver_id,
@@ -369,85 +369,119 @@ elif menu == "📝 New Trip Entry":
                         total_km_run, tonnage_loaded, loaded_weight_mt,
                         freight_revenue, fuel_litres, fuel_expense,
                         driver_bata, toll_fastag_expense, cash_advance_issued,
-                        trip_status, pod_status
-                    ) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'POD_PENDING', 'PENDING_SUBMISSION');
+                        trip_status
+                    ) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT');
                 """, (
                     trip_no, selected_vehicle['vehicle_id'], driver_map[chosen_driver_key],
                     start_d, end_d, trip_origin, trip_destination,
                     km_run, actual_loaded_tonnage, actual_loaded_tonnage,
-                    freight_total, fuel_qty, fuel_cost,
+                    calculated_freight, fuel_qty, calculated_fuel_expense,
                     driver_bata_val, toll_val, advance_val
                 ), fetch=False)
                 
-                # 2. Automatically set vehicle status to IN_TRANSIT
                 run_query("""
                     UPDATE vehicles 
                     SET current_status = 'IN_TRANSIT', status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP 
                     WHERE vehicle_id = %s
                 """, (f"Trip {trip_no}: {trip_origin} ➔ {trip_destination}", selected_vehicle['vehicle_id']), fetch=False)
 
-                st.success(f"Trip {trip_no} dispatched! Truck {selected_vehicle['vehicle_number']} is now IN TRANSIT.")
+                st.success(f"Trip {trip_no} dispatched! Freight: ₹{calculated_freight:,.2f} | Fuel Cost: ₹{calculated_fuel_expense:,.2f} ({fuel_qty}L @ ₹{active_diesel_rate}/L)")
             except Exception as e:
                 st.error(f"Error saving trip: {e}")
 
 # ==============================================================================
-# 2. SETTLE POD & SHORTAGE
+# 2. TRIP EXPENSES & CLAIMS
 # ==============================================================================
-elif menu == "📑 Settle POD & Shortage":
-    st.subheader("POD Verification & Shortage Settlement")
-    pending_trips = run_query("""
-        SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, d.full_name, t.loaded_weight_mt, t.driver_bata, t.cash_advance_issued
+elif menu == "💸 Trip Expenses & Claims":
+    st.subheader("Trip Expenses, Workshop Repairs & Driver Claims Management")
+
+    trips_list = run_query("""
+        SELECT 
+            t.trip_id, t.trip_number, v.vehicle_number, d.full_name,
+            t.origin, t.destination, t.trip_start_date, t.trip_end_date,
+            t.fuel_expense, t.driver_bata, t.toll_fastag_expense,
+            t.enroute_repairs_maintenance, t.loading_unloading_expense, t.misc_trip_expense,
+            t.cash_advance_issued, t.freight_revenue
         FROM trips t
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id
         JOIN drivers d ON t.primary_driver_id = d.driver_id
-        WHERE t.trip_status != 'COMPLETED'
-        ORDER BY t.trip_end_date DESC
+        ORDER BY t.trip_id DESC
+        LIMIT 50;
     """)
-    
-    if not pending_trips:
-        st.info("No pending trips waiting for POD settlement.")
+
+    if not trips_list:
+        st.info("No trips found. Create a trip first in 'New Trip Entry'.")
     else:
-        trip_options = {f"{t['trip_number']} | {t['vehicle_number']} | {t['full_name']} | Loaded: {t['loaded_weight_mt']} MT": t for t in pending_trips}
-        chosen_trip_str = st.selectbox("Select Pending Trip", list(trip_options.keys()))
-        selected_trip = trip_options[chosen_trip_str]
+        trip_options = {
+            f"Trip {t['trip_number']} | Truck: {t['vehicle_number']} | Driver: {t['full_name']} | Route: {t['origin']} ➔ {t['destination']}": t 
+            for t in trips_list
+        }
+        chosen_trip_str = st.selectbox("Select Trip to Add/Update Expenses", list(trip_options.keys()))
+        t = trip_options[chosen_trip_str]
 
-        with st.form("settle_pod_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"**Trip Number:** {selected_trip['trip_number']}")
-                st.write(f"**Loaded Weight:** {selected_trip['loaded_weight_mt']} MT")
-                st.write(f"**Driver Bata:** ₹{selected_trip['driver_bata']} | **Cash Advance Given:** ₹{selected_trip['cash_advance_issued']}")
-                
-                pod_no = st.text_input("POD / Challan Receipt No*", placeholder="POD-9981")
-                pod_date = st.date_input("POD Received Date", date.today())
-                received_weight = st.number_input("Customer Received Weight (MT)*", min_value=0.0, max_value=float(selected_trip['loaded_weight_mt'])+5.0, value=float(selected_trip['loaded_weight_mt']), step=0.01)
+        st.write("#### 📊 Current Trip Financial Snapshot")
+        sc1, sc2, sc3, sc4 = st.columns(4)
+        sc1.metric("Gross Freight Revenue", f"₹{float(t['freight_revenue']):,.2f}")
+        sc2.metric("Fuel Expense", f"₹{float(t['fuel_expense']):,.2f}")
+        sc3.metric("Driver Bata", f"₹{float(t['driver_bata']):,.2f}")
+        sc4.metric("Toll / FASTag", f"₹{float(t['toll_fastag_expense']):,.2f}")
 
-            with col2:
-                allowable_shortage = st.number_input("Allowable Shortage (MT)", min_value=0.0, value=0.050, step=0.01)
-                shortage_rate = st.number_input("Shortage Penalty Rate per MT (₹)", min_value=0.0, value=5500.0, step=100.0)
-                shortage_bearer = st.selectbox("Debited Penalty To", ["DRIVER", "TRANSPORTER", "CUSTOMER"])
-                remarks = st.text_area("Settlement Remarks", "Weighbridge verified")
+        st.divider()
 
-            settle_btn = st.form_submit_button("✅ Settle Shortage & Complete Trip")
-            if settle_btn:
+        with st.form("trip_expense_update_form"):
+            st.write("### ✍️ Enter Additional Trip Expenses & Claims")
+            ec1, ec2, ec3 = st.columns(3)
+            
+            with ec1:
+                e_repair = st.number_input(
+                    "En-route Repairs & Workshop Maintenance (₹)", 
+                    min_value=0.0, 
+                    value=float(t['enroute_repairs_maintenance'] or 0.0), 
+                    step=100.0,
+                    help="Tyre punctures, spare parts, emergency workshop repairs"
+                )
+            
+            with ec2:
+                e_loading = st.number_input(
+                    "Loading / Unloading & Hamali Expense (₹)", 
+                    min_value=0.0, 
+                    value=float(t['loading_unloading_expense'] or 0.0), 
+                    step=50.0,
+                    help="Plant loading charges, crane charges, weighbridge slips"
+                )
+
+            with ec3:
+                e_misc = st.number_input(
+                    "Misc Trip Expense / Out-of-Pocket Claims (₹)", 
+                    min_value=0.0, 
+                    value=float(t['misc_trip_expense'] or 0.0), 
+                    step=50.0,
+                    help="RTO/Checkpost entry fees, parking, driver incidental bills"
+                )
+
+            st.write("### 💵 Advance & FASTag Adjustments")
+            ac1, ac2 = st.columns(2)
+            with ac1:
+                e_toll = st.number_input("Updated FASTag / Toll Expense (₹)", min_value=0.0, value=float(t['toll_fastag_expense'] or 0.0), step=100.0)
+            with ac2:
+                e_advance = st.number_input("Total Cash Advance Issued to Driver (₹)", min_value=0.0, value=float(t['cash_advance_issued'] or 0.0), step=500.0)
+
+            expense_submit = st.form_submit_button("💾 Save Expenses to Trip", type="primary", use_container_width=True)
+            if expense_submit:
                 try:
-                    res = run_query("""
-                        SELECT settle_and_close_trip(%s, %s, %s, %s, %s, %s, %s, %s) AS result
-                    """, (
-                        selected_trip['trip_id'], received_weight, pod_no, pod_date,
-                        allowable_shortage, shortage_rate, shortage_bearer, remarks
-                    ))
-                    # Mark truck available for loading upon POD settlement
                     run_query("""
-                        UPDATE vehicles 
-                        SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = 'Completed Trip ' || %s, status_updated_at = CURRENT_TIMESTAMP 
-                        WHERE vehicle_id = %s
-                    """, (selected_trip['trip_number'], selected_trip['vehicle_id']), fetch=False)
-
-                    st.success("Trip marked COMPLETED and truck returned to Available status!")
-                    st.json(res[0]['result'])
+                        UPDATE trips
+                        SET enroute_repairs_maintenance = %s,
+                            loading_unloading_expense = %s,
+                            misc_trip_expense = %s,
+                            toll_fastag_expense = %s,
+                            cash_advance_issued = %s
+                        WHERE trip_id = %s;
+                    """, (e_repair, e_loading, e_misc, e_toll, e_advance, t['trip_id']), fetch=False)
+                    st.success(f"Expenses updated successfully for Trip {t['trip_number']}!")
+                    st.rerun()
                 except Exception as e:
-                    st.error(f"Error settling trip: {e}")
+                    st.error(f"Error updating expenses: {e}")
 
 # ==============================================================================
 # 3. DRIVER PERIOD SETTLEMENT (1-15 / 16-END)
@@ -490,7 +524,6 @@ elif menu == "💰 Driver Period Settlement (1-15 / 16-End)":
             t.driver_bata,
             t.cash_advance_issued,
             (t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense) AS out_of_pocket_claims,
-            CASE WHEN t.shortage_bearer = 'DRIVER' THEN t.shortage_penalty_deduction ELSE 0.00 END AS driver_shortage_deduction,
             t.trip_status, t.settlement_status
         FROM trips t
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id
@@ -509,16 +542,14 @@ elif menu == "💰 Driver Period Settlement (1-15 / 16-End)":
         total_bata = df_period['driver_bata'].sum()
         total_claims = df_period['out_of_pocket_claims'].sum()
         total_advances = df_period['cash_advance_issued'].sum()
-        total_shortages = df_period['driver_shortage_deduction'].sum()
-        net_payable = (total_bata + total_claims) - (total_advances + total_shortages)
+        net_payable = (total_bata + total_claims) - total_advances
 
         st.divider()
         st.write("### 💵 Settlement Calculation Summary")
-        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+        m_col1, m_col2, m_col3 = st.columns(3)
         m_col1.metric("Total Driver Bata Earned", f"₹{total_bata:,.2f}")
         m_col2.metric("Total Advances Issued", f"₹{total_advances:,.2f}", delta=f"-₹{total_advances:,.2f}", delta_color="inverse")
-        m_col3.metric("Shortage Penalties Debited", f"₹{total_shortages:,.2f}", delta=f"-₹{total_shortages:,.2f}", delta_color="inverse")
-        m_col4.metric("Total Out-of-Pocket Claims", f"₹{total_claims:,.2f}")
+        m_col3.metric("Total Out-of-Pocket Claims Claimed", f"₹{total_claims:,.2f}")
 
         st.markdown(f"""
         <div style="background-color:#0e1117; padding:15px; border-radius:10px; border: 1px solid #30363d; margin-top:10px;">
@@ -637,11 +668,11 @@ elif menu == "📊 Profitability Reports":
                 SUM(t.total_km_run) AS total_km,
                 SUM(t.tonnage_loaded) AS total_tonnage,
                 SUM(t.freight_revenue) AS gross_revenue,
-                SUM(t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance) AS direct_costs,
-                SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance)) AS retained_margin,
-                ROUND((SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance)) / NULLIF(SUM(t.freight_revenue), 0)) * 100.0, 2) AS margin_pct,
+                SUM(t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense) AS direct_costs,
+                SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)) AS retained_margin,
+                ROUND((SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)) / NULLIF(SUM(t.freight_revenue), 0)) * 100.0, 2) AS margin_pct,
                 ROUND(SUM(t.total_km_run) / NULLIF(SUM(t.fuel_litres), 0), 2) AS mileage_kmpl,
-                ROUND(SUM(t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance) / NULLIF(SUM(t.total_km_run), 0), 2) AS cost_per_km
+                ROUND(SUM(t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense) / NULLIF(SUM(t.total_km_run), 0), 2) AS cost_per_km
             FROM vehicles v
             LEFT JOIN trips t ON v.vehicle_id = t.vehicle_id
             GROUP BY v.vehicle_number, v.truck_type
@@ -662,8 +693,9 @@ elif menu == "📊 Profitability Reports":
                 SUM(fuel_expense) AS fuel_expense,
                 SUM(driver_bata) AS driver_bata,
                 SUM(toll_fastag_expense) AS toll_expense,
-                SUM(freight_revenue - (fuel_expense + driver_bata + toll_fastag_expense + enroute_repairs_maintenance)) AS gross_retained_profit,
-                ROUND((SUM(freight_revenue - (fuel_expense + driver_bata + toll_fastag_expense + enroute_repairs_maintenance)) / NULLIF(SUM(freight_revenue), 0)) * 100.0, 2) AS gross_margin_pct
+                SUM(enroute_repairs_maintenance + loading_unloading_expense + misc_trip_expense) AS other_trip_expenses,
+                SUM(freight_revenue - (fuel_expense + driver_bata + toll_fastag_expense + enroute_repairs_maintenance + loading_unloading_expense + misc_trip_expense)) AS gross_retained_profit,
+                ROUND((SUM(freight_revenue - (fuel_expense + driver_bata + toll_fastag_expense + enroute_repairs_maintenance + loading_unloading_expense + misc_trip_expense)) / NULLIF(SUM(freight_revenue), 0)) * 100.0, 2) AS gross_margin_pct
             FROM trips
             GROUP BY DATE_TRUNC('month', trip_end_date)
             ORDER BY DATE_TRUNC('month', trip_end_date) DESC;
@@ -680,8 +712,8 @@ elif menu == "📊 Profitability Reports":
                 COUNT(t.trip_id) AS total_trips,
                 SUM(t.cash_advance_issued) AS total_advances_drawn,
                 SUM(t.driver_bata) AS total_bata_earned,
-                SUM(t.shortage_penalty_deduction) AS total_shortage_penalties,
-                SUM((t.driver_bata) - (t.cash_advance_issued + CASE WHEN t.shortage_bearer = 'DRIVER' THEN t.shortage_penalty_deduction ELSE 0 END)) AS net_outstanding_balance
+                SUM(t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense) AS total_reimbursement_claims,
+                SUM((t.driver_bata + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense) - t.cash_advance_issued) AS net_outstanding_balance
             FROM drivers d
             LEFT JOIN trips t ON d.driver_id = t.primary_driver_id
             GROUP BY d.driver_code, d.full_name
@@ -699,7 +731,10 @@ elif menu == "🔍 View & Delete Trips":
     st.subheader("Manage Existing Trip Records")
     trips_data = run_query("""
         SELECT t.trip_id, t.trip_number, t.trip_end_date, v.vehicle_number, d.full_name AS driver,
-               t.origin, t.destination, t.tonnage_loaded, t.freight_revenue, t.trip_status, t.pod_status
+               t.origin, t.destination, t.tonnage_loaded, t.freight_revenue,
+               (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense) AS total_trip_cost,
+               (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)) AS net_profit,
+               t.trip_status
         FROM trips t
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id
         JOIN drivers d ON t.primary_driver_id = d.driver_id
