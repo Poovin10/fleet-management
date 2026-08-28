@@ -4,22 +4,21 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import date
 import calendar
+
 # --- 1. Cloud & Local Hybrid Database Connection ---
 def get_db_credentials():
-    # Primary: Reads from Streamlit Cloud Secrets
     try:
         if len(st.secrets) > 0 and "postgres" in st.secrets:
             return st.secrets["postgres"]
     except Exception:
         pass
         
-    # Fallback when running locally
     return {
         "host": "aws-0-ap-south-1.pooler.supabase.com",
         "port": 6543,
         "dbname": "postgres",
         "user": "postgres.eobweyciqwoojwnsonor",
-        "password": "Poovin@2809"
+        "password": "YOUR_ACTUAL_SUPABASE_PASSWORD"
     }
 
 def get_connection():
@@ -42,10 +41,11 @@ def run_query(query, params=None, fetch=True):
             conn.commit()
 
 # --- Streamlit UI Config ---
-st.set_page_config(page_title="Fleet Operations & Variable Dispatch", layout="wide")
+st.set_page_config(page_title="Fleet Operations & Status Board", layout="wide")
 st.title("🚛 Fleet Operations & Trip Dispatch System")
 
 menu = st.sidebar.radio("Navigation", [
+    "🚦 Live Fleet Status & Yard Board",
     "📝 New Trip Entry",
     "📑 Settle POD & Shortage",
     "💰 Driver Period Settlement (1-15 / 16-End)",
@@ -54,8 +54,18 @@ menu = st.sidebar.radio("Navigation", [
     "🔍 View & Delete Trips"
 ])
 
+# Status configuration map
+STATUS_MAP = {
+    "AVAILABLE_FOR_LOAD": "🟢 Available / Ready for Load",
+    "WAITING_FOR_LOAD": "🟡 Waiting for Load (At Plant/Hub)",
+    "IN_TRANSIT": "🚚 In Transit (On Highway)",
+    "WAITING_FOR_UNLOAD": "⏳ Waiting for Unloading (At Site/Customer)",
+    "WORKSHOP_MAINTENANCE": "🛠️ In Workshop / Under Repair",
+    "DRIVER_UNAVAILABLE": "🚫 Truck Without Driver / Driver on Leave"
+}
+
 def get_vehicles():
-    return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
+    return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks, status_updated_at FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
 
 def get_drivers():
     return run_query("SELECT driver_id, driver_code, full_name, phone_number, license_number, license_expiry_date FROM drivers WHERE is_active = TRUE ORDER BY driver_code")
@@ -100,14 +110,88 @@ def get_next_driver_code():
     return f"DRV-{len(get_drivers())+1:03d}"
 
 # ==============================================================================
-# 1. NEW TRIP ENTRY (Default Cochin, 0.00 KM, Rs.0.00 Rate)
+# 0. LIVE FLEET STATUS & YARD BOARD
 # ==============================================================================
-if menu == "📝 New Trip Entry":
+if menu == "🚦 Live Fleet Status & Yard Board":
+    st.subheader("Live Vehicle Operational Status & Yard Monitoring")
+    
+    vehicles_data = get_vehicles()
+    if not vehicles_data:
+        st.warning("No vehicles registered in database.")
+        st.stop()
+
+    df_v = pd.DataFrame(vehicles_data)
+    df_v['display_status'] = df_v['current_status'].map(lambda x: STATUS_MAP.get(x, x))
+    
+    # Status KPI Cards
+    k1, k2, k3, k4, k5, k6 = st.columns(6)
+    k1.metric("🟢 Ready / Available", len(df_v[df_v['current_status'] == 'AVAILABLE_FOR_LOAD']))
+    k2.metric("🟡 Waiting for Load", len(df_v[df_v['current_status'] == 'WAITING_FOR_LOAD']))
+    k3.metric("🚚 In Transit", len(df_v[df_v['current_status'] == 'IN_TRANSIT']))
+    k4.metric("⏳ Waiting Unload", len(df_v[df_v['current_status'] == 'WAITING_FOR_UNLOAD']))
+    k5.metric("🛠️ In Workshop", len(df_v[df_v['current_status'] == 'WORKSHOP_MAINTENANCE']))
+    k6.metric("🚫 No Driver / Leave", len(df_v[df_v['current_status'] == 'DRIVER_UNAVAILABLE']))
+    
+    st.divider()
+
+    col_board, col_update = st.columns([1.6, 1.0])
+
+    with col_board:
+        st.write("### 📋 Active Fleet Status Overview")
+        filter_status = st.selectbox("Filter by Status", ["All Statuses"] + list(STATUS_MAP.values()))
+        
+        display_df = df_v.copy()
+        if filter_status != "All Statuses":
+            display_df = display_df[display_df['display_status'] == filter_status]
+
+        st.dataframe(
+            display_df[['vehicle_number', 'truck_type', 'carrying_capacity_tons', 'display_status', 'status_remarks']],
+            column_config={
+                "vehicle_number": "Truck No",
+                "truck_type": "Body / Bulker",
+                "carrying_capacity_tons": "Class (MT)",
+                "display_status": "Current Status",
+                "status_remarks": "Remarks / Location"
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+
+    with col_update:
+        st.write("### ⚡ Quick Update Vehicle Status")
+        v_dict = {f"{v['vehicle_number']} ({v['truck_type']}) - [{STATUS_MAP.get(v['current_status'], v['current_status'])}]": v for v in vehicles_data}
+        selected_v_key = st.selectbox("Select Vehicle to Update", list(v_dict.keys()))
+        target_v = v_dict[selected_v_key]
+
+        with st.form("update_truck_status_form"):
+            status_options_keys = list(STATUS_MAP.keys())
+            current_idx = status_options_keys.index(target_v['current_status']) if target_v['current_status'] in status_options_keys else 0
+            
+            new_status_key = st.selectbox(
+                "New Operational Status*",
+                status_options_keys,
+                index=current_idx,
+                format_func=lambda x: STATUS_MAP[x]
+            )
+            new_remarks = st.text_input("Remarks / Current Location / Breakdown Details", value=target_v['status_remarks'] or "")
+
+            if st.form_submit_button("🔄 Update Vehicle Status", type="primary", use_container_width=True):
+                run_query("""
+                    UPDATE vehicles 
+                    SET current_status = %s, status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP 
+                    WHERE vehicle_id = %s
+                """, (new_status_key, new_remarks, target_v['vehicle_id']), fetch=False)
+                st.success(f"Status for {target_v['vehicle_number']} updated to: {STATUS_MAP[new_status_key]}")
+                st.rerun()
+
+# ==============================================================================
+# 1. NEW TRIP ENTRY
+# ==============================================================================
+elif menu == "📝 New Trip Entry":
     st.subheader("Log New Trip (Live Instant Freight & Fuel Calculation)")
 
     col_quick1, col_quick2 = st.columns(2)
 
-    # 1. Quick Add Driver
     with col_quick1:
         with st.expander("➕ Quick Add New Driver (On the fly)", expanded=False):
             auto_code = get_next_driver_code()
@@ -135,7 +219,6 @@ if menu == "📝 New Trip Entry":
                         except Exception as e:
                             st.error(f"Error: {e}")
 
-    # 2. Quick Add Destination Slab (Default Cochin, 0.00 KM, Rs. 0.00)
     with col_quick2:
         with st.expander("➕ Quick Add Destination & Truck Slab Rate", expanded=False):
             with st.form("inline_route_form", clear_on_submit=True):
@@ -175,10 +258,10 @@ if menu == "📝 New Trip Entry":
         st.stop()
 
     if not vehicles:
-        st.error("⚠️ No active vehicles found in database. Make sure your database tables are created.")
+        st.error("⚠️ No active vehicles found in database.")
         st.stop()
 
-    vehicle_dict = {f"{v['vehicle_number']}  |  {v['truck_type']}  |  Class: {v['carrying_capacity_tons']} MT": v for v in vehicles}
+    vehicle_dict = {f"{v['vehicle_number']} | {v['truck_type']} | {v['carrying_capacity_tons']} MT [{STATUS_MAP.get(v['current_status'], v['current_status'])}]": v for v in vehicles}
     driver_map = {f"{d['driver_code']} - {d['full_name']}": d['driver_id'] for d in drivers}
 
     current_saved_diesel_rate = get_saved_diesel_rate()
@@ -201,9 +284,8 @@ if menu == "📝 New Trip Entry":
         )
         if active_diesel_rate != current_saved_diesel_rate:
             set_saved_diesel_rate(active_diesel_rate)
-            st.toast(f"✅ Diesel rate updated to ₹{active_diesel_rate:.2f}/L (Saved for future trips)")
+            st.toast(f"✅ Diesel rate updated to ₹{active_diesel_rate:.2f}/L")
 
-    # Fetch applicable rate based on the selected truck's registered capacity slab
     routes_list = get_routes(cargo_type=cargo_type_selected, capacity=truck_class_tons)
     
     route_options = {
@@ -227,7 +309,7 @@ if menu == "📝 New Trip Entry":
     def_km = float(active_route['standard_km'])
     applied_rate_per_ton = float(active_route['freight_rate_per_ton'])
 
-    st.markdown(f"> 📌 **Vehicle:** `{selected_vehicle['vehicle_number']}` | **Category:** `{truck_class_tons} MT Class` | **Rate:** `₹{applied_rate_per_ton}/Ton` | **Diesel Rate:** `₹{active_diesel_rate}/L`")
+    st.markdown(f"> 📌 **Vehicle:** `{selected_vehicle['vehicle_number']}` | **Status:** `{STATUS_MAP.get(selected_vehicle['current_status'], selected_vehicle['current_status'])}` | **Rate:** `₹{applied_rate_per_ton}/Ton` | **Diesel Rate:** `₹{active_diesel_rate}/L`")
 
     # --- Live Reactive Inputs ---
     f_col1, f_col2, f_col3 = st.columns(3)
@@ -249,8 +331,7 @@ if menu == "📝 New Trip Entry":
             max_value=50.0, 
             step=0.05, 
             value=truck_class_tons,
-            key="loaded_tonnage",
-            help="Enter exact loaded weight from weighbridge (e.g. 33.500 MT, 34.200 MT)"
+            key="loaded_tonnage"
         )
         
         calculated_freight = round(actual_loaded_tonnage * applied_rate_per_ton, 2)
@@ -263,7 +344,6 @@ if menu == "📝 New Trip Entry":
 
     with f_col3:
         fuel_qty = st.number_input("Diesel Litres Filled*", min_value=0.0, step=5.0, key="fuel_qty_input")
-        
         calculated_fuel_expense = round(fuel_qty * active_diesel_rate, 2)
         fuel_cost = st.number_input(
             f"Diesel Cost (₹)* [{fuel_qty} L × ₹{active_diesel_rate}/L]", 
@@ -281,6 +361,7 @@ if menu == "📝 New Trip Entry":
             st.error("Please enter Trip Number and Destination.")
         else:
             try:
+                # 1. Insert Trip
                 run_query("""
                     INSERT INTO trips (
                         trip_number, branch_id, vehicle_id, primary_driver_id,
@@ -297,7 +378,15 @@ if menu == "📝 New Trip Entry":
                     freight_total, fuel_qty, fuel_cost,
                     driver_bata_val, toll_val, advance_val
                 ), fetch=False)
-                st.success(f"Trip {trip_no} logged for Truck {selected_vehicle['vehicle_number']}! Loaded: {actual_loaded_tonnage} MT | Total Freight: ₹{freight_total:,.2f} | Fuel Cost: ₹{fuel_cost:,.2f}")
+                
+                # 2. Automatically set vehicle status to IN_TRANSIT
+                run_query("""
+                    UPDATE vehicles 
+                    SET current_status = 'IN_TRANSIT', status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP 
+                    WHERE vehicle_id = %s
+                """, (f"Trip {trip_no}: {trip_origin} ➔ {trip_destination}", selected_vehicle['vehicle_id']), fetch=False)
+
+                st.success(f"Trip {trip_no} dispatched! Truck {selected_vehicle['vehicle_number']} is now IN TRANSIT.")
             except Exception as e:
                 st.error(f"Error saving trip: {e}")
 
@@ -307,7 +396,7 @@ if menu == "📝 New Trip Entry":
 elif menu == "📑 Settle POD & Shortage":
     st.subheader("POD Verification & Shortage Settlement")
     pending_trips = run_query("""
-        SELECT t.trip_id, t.trip_number, v.vehicle_number, d.full_name, t.loaded_weight_mt, t.driver_bata, t.cash_advance_issued
+        SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, d.full_name, t.loaded_weight_mt, t.driver_bata, t.cash_advance_issued
         FROM trips t
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id
         JOIN drivers d ON t.primary_driver_id = d.driver_id
@@ -348,7 +437,14 @@ elif menu == "📑 Settle POD & Shortage":
                         selected_trip['trip_id'], received_weight, pod_no, pod_date,
                         allowable_shortage, shortage_rate, shortage_bearer, remarks
                     ))
-                    st.success("Trip marked COMPLETED and shortage recorded!")
+                    # Mark truck available for loading upon POD settlement
+                    run_query("""
+                        UPDATE vehicles 
+                        SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = 'Completed Trip ' || %s, status_updated_at = CURRENT_TIMESTAMP 
+                        WHERE vehicle_id = %s
+                    """, (selected_trip['trip_number'], selected_trip['vehicle_id']), fetch=False)
+
+                    st.success("Trip marked COMPLETED and truck returned to Available status!")
                     st.json(res[0]['result'])
                 except Exception as e:
                     st.error(f"Error settling trip: {e}")
