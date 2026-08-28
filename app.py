@@ -18,7 +18,7 @@ def get_db_credentials():
         "port": 6543,
         "dbname": "postgres",
         "user": "postgres.eobweyciqwoojwnsonor",
-        "password": "YOUR_ACTUAL_SUPABASE_PASSWORD"
+        "password": "Poovin@2809"
     }
 
 def get_connection():
