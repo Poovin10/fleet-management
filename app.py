@@ -197,7 +197,7 @@ if menu == "🚦 Live Fleet Status & Yard Board":
                 st.rerun()
 
 # ==============================================================================
-# 1. NEW TRIP ENTRY
+# 1. NEW TRIP ENTRY (Auto Cargo Detection)
 # ==============================================================================
 elif menu == "📝 New Trip Entry":
     st.subheader("Log New Trip (Live Instant Freight & Fuel Calculation)")
@@ -241,7 +241,6 @@ elif menu == "📝 New Trip Entry":
                     qr_origin = st.text_input("Origin Hub*", "COCHIN")
                     qr_dest = st.text_input("Destination Name*", placeholder="e.g. Sankari / Aluva")
                 with qr_c2:
-                    # Explicit 3-Slab logic mapping
                     qr_slab_label = st.selectbox("Truck Slab Category*", ["25/30 MT Slab", "35 MT Slab"])
                     qr_cap = 30.0 if "30" in qr_slab_label else 35.0
                     
@@ -287,10 +286,17 @@ elif menu == "📝 New Trip Entry":
         chosen_truck_str = st.selectbox("Select Truck Number*", list(vehicle_dict.keys()), key="truck_sel")
         selected_vehicle = vehicle_dict[chosen_truck_str]
         truck_class_tons = float(selected_vehicle['carrying_capacity_tons'])
+        
+        # AUTO-DETECT CARGO TYPE BASED ON TRUCK PROFILE
+        if "bag" in selected_vehicle['truck_type'].lower():
+            cargo_type_selected = "BAG"
+        else:
+            cargo_type_selected = "BULK"
+
     with top_c2:
-        # If BAG is selected, standard 35MT trucks will pull the 25/30MT BAG rate if forced, 
-        # but realistically BAG is only for 25/30MT trucks per your business logic.
-        cargo_type_selected = st.radio("Cargo Category*", ["BULK", "BAG"], horizontal=True, key="cargo_sel")
+        # Display as a locked field instead of a manual radio button
+        st.text_input("Auto-Detected Cargo Profile", value=cargo_type_selected, disabled=True, help="Automatically assigned from Master Data based on truck type.")
+        
     with top_c3:
         active_diesel_rate = st.number_input(
             "Current Diesel Rate (₹/Litre)*", 
@@ -301,9 +307,7 @@ elif menu == "📝 New Trip Entry":
             key="fuel_rate_input"
         )
 
-    # 3-SLAB MAPPING LOGIC: 
-    # 25 & 30 MT trucks map to the 30.0 tier. 35 MT trucks map to the 35.0 tier.
-    # If BAG is selected, force it to the 30.0 tier regardless of truck size since 35 MT BAG doesn't exist.
+    # 3-SLAB MAPPING LOGIC
     if cargo_type_selected == "BAG":
         rate_lookup_capacity = 30.0 
     else:
@@ -620,7 +624,6 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
         all_routes = run_query("SELECT * FROM destinations_freight_master WHERE is_active = TRUE ORDER BY cargo_type, destination_name, capacity_tons ASC")
         if all_routes:
             df_r = pd.DataFrame(all_routes)
-            # Label correctly in the table for exactly 3 distinct categories
             df_r['slab_label'] = df_r.apply(lambda row: f"25/30 MT {row['cargo_type']} Slab" if float(row['capacity_tons']) == 30.0 else f"35 MT {row['cargo_type']} Slab", axis=1)
             st.dataframe(df_r[['destination_id', 'cargo_type', 'origin', 'destination_name', 'slab_label', 'freight_rate_per_ton', 'standard_km']], use_container_width=True)
             
@@ -628,7 +631,6 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
             col_re1, col_re2 = st.columns(2)
             with col_re1:
                 st.write("### ✏️ Update Freight Rate for Slab")
-                # Dropdown for updating specifically calls out the BAG vs BULK and Capacity
                 rt_dict = {f"ID {r['destination_id']}: {r['origin']} ➔ {r['destination_name']} ({'25/30 MT' if float(r['capacity_tons']) == 30.0 else '35 MT'} {r['cargo_type']} Slab @ ₹{r['freight_rate_per_ton']})": r for r in all_routes}
                 chosen_rt = st.selectbox("Select Route Slab", list(rt_dict.keys()))
                 new_rate = st.number_input("Updated Rate per Ton (₹)", value=float(rt_dict[chosen_rt]['freight_rate_per_ton']), step=25.0)
