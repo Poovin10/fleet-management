@@ -4,35 +4,33 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import date
 import calendar
-
-# --- 1. Cloud & Local Hybrid Database Connection ---
 # --- 1. Cloud & Local Hybrid Database Connection ---
 def get_db_credentials():
-    # Safely check for Streamlit Cloud Secrets
+    # Primary: Reads from Streamlit Cloud Secrets
     try:
         if len(st.secrets) > 0 and "postgres" in st.secrets:
             return st.secrets["postgres"]
     except Exception:
         pass
         
-    # Local fallback to Supabase Cloud Database
+    # Fallback when running locally
     return {
-        "host": "db.eobweyciqwoojwnsonor.supabase.co",
-        "port": 5432,
+        "host": "aws-0-ap-south-1.pooler.supabase.com",
+        "port": 6543,
         "dbname": "postgres",
-        "user": "postgres",
-        "password": "Poovin@2809"  # <-- Put your actual Supabase DB password here
+        "user": "postgres.eobweyciqwoojwnsonor",
+        "password": "Poovin@2809"
     }
 
 def get_connection():
     creds = get_db_credentials()
     return psycopg2.connect(
         host=creds["host"],
-        port=creds["port"],
+        port=int(creds["port"]),
         dbname=creds["dbname"],
         user=creds["user"],
         password=creds["password"],
-        sslmode="require" if "supabase" in str(creds.get("host", "")) else "prefer"
+        sslmode="require"
     )
 
 def run_query(query, params=None, fetch=True):
