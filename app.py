@@ -1,29 +1,35 @@
 import streamlit as st
 import pandas as pd
 import psycopg2
+from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 from datetime import date
 import calendar
 
-# --- 1. Cloud & Local Hybrid Database Connection ---
-def get_db_credentials():
-    try:
-        if len(st.secrets) > 0 and "postgres" in st.secrets:
-            return st.secrets["postgres"]
-    except Exception:
-        pass
-        
-    return {
+# --- Streamlit UI Config ---
+st.set_page_config(page_title="Fleet Operations System", layout="wide")
+st.title("🚛 Fleet Operations & Trip Dispatch System")
+
+# --- 1. Threaded Connection Pool with In-Memory Caching ---
+@st.cache_resource
+def init_connection_pool():
+    creds = {
         "host": "aws-0-ap-south-1.pooler.supabase.com",
         "port": 6543,
         "dbname": "postgres",
         "user": "postgres.eobweyciqwoojwnsonor",
         "password": "Poovin@2809"
     }
+    # Check Streamlit Cloud Secrets safely
+    try:
+        if len(st.secrets) > 0 and "postgres" in st.secrets:
+            creds = dict(st.secrets["postgres"])
+    except Exception:
+        pass
 
-def get_connection():
-    creds = get_db_credentials()
-    return psycopg2.connect(
+    return psycopg2.pool.ThreadedConnectionPool(
+        minconn=1,
+        maxconn=10,
         host=creds["host"],
         port=int(creds["port"]),
         dbname=creds["dbname"],
@@ -32,18 +38,72 @@ def get_connection():
         sslmode="require"
     )
 
+db_pool = init_connection_pool()
+
 def run_query(query, params=None, fetch=True):
-    with get_connection() as conn:
+    conn = db_pool.getconn()
+    try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(query, params or ())
             if fetch:
-                return cur.fetchall()
-            conn.commit()
+                result = cur.fetchall()
+            else:
+                conn.commit()
+                result = None
+        return result
+    finally:
+        db_pool.putconn(conn)
 
-# --- Streamlit UI Config ---
-st.set_page_config(page_title="Fleet Operations & Expense Manager", layout="wide")
-st.title("🚛 Fleet Operations & Trip Dispatch System")
+# --- 2. Fast In-Memory Cached Masters (TTL 60s) ---
+@st.cache_data(ttl=60)
+def get_cached_vehicles():
+    return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks, status_updated_at FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
 
+@st.cache_data(ttl=60)
+def get_cached_drivers(include_inactive=False):
+    if include_inactive:
+        return run_query("SELECT driver_id, driver_code, full_name, phone_number, license_number, license_expiry_date, is_active FROM drivers ORDER BY driver_code")
+    return run_query("SELECT driver_id, driver_code, full_name, phone_number, license_number, license_expiry_date FROM drivers WHERE is_active = TRUE ORDER BY driver_code")
+
+@st.cache_data(ttl=60)
+def get_cached_routes(cargo_type=None, capacity=None):
+    query = "SELECT * FROM destinations_freight_master WHERE is_active = TRUE"
+    params = []
+    if cargo_type:
+        query += " AND cargo_type = %s"
+        params.append(cargo_type)
+    if capacity:
+        query += " AND capacity_tons = %s"
+        params.append(capacity)
+    query += " ORDER BY destination_name, capacity_tons ASC"
+    return run_query(query, tuple(params))
+
+@st.cache_data(ttl=300)
+def get_cached_diesel_rate():
+    try:
+        res = run_query("SELECT setting_value FROM system_settings WHERE setting_key = 'diesel_rate_per_litre'")
+        if res:
+            return float(res[0]['setting_value'])
+    except Exception:
+        pass
+    return 95.00
+
+def set_saved_diesel_rate(new_rate):
+    run_query("""
+        INSERT INTO system_settings (setting_key, setting_value, updated_at)
+        VALUES ('diesel_rate_per_litre', %s, CURRENT_TIMESTAMP)
+        ON CONFLICT (setting_key) 
+        DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP;
+    """, (str(new_rate),), fetch=False)
+    get_cached_diesel_rate.clear()
+
+def clear_all_caches():
+    get_cached_vehicles.clear()
+    get_cached_drivers.clear()
+    get_cached_routes.clear()
+    get_cached_diesel_rate.clear()
+
+# --- Sidebar Navigation ---
 menu = st.sidebar.radio("Navigation", [
     "🚦 Live Fleet Status & Yard Board",
     "📝 New Trip Entry",
@@ -63,60 +123,13 @@ STATUS_MAP = {
     "DRIVER_UNAVAILABLE": "🚫 Truck Without Driver / Driver on Leave"
 }
 
-def get_vehicles():
-    return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks, status_updated_at FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
-
-def get_drivers(include_inactive=False):
-    if include_inactive:
-        return run_query("SELECT driver_id, driver_code, full_name, phone_number, license_number, license_expiry_date, is_active FROM drivers ORDER BY driver_code")
-    return run_query("SELECT driver_id, driver_code, full_name, phone_number, license_number, license_expiry_date FROM drivers WHERE is_active = TRUE ORDER BY driver_code")
-
-def get_routes(cargo_type=None, capacity=None):
-    query = "SELECT * FROM destinations_freight_master WHERE is_active = TRUE"
-    params = []
-    if cargo_type:
-        query += " AND cargo_type = %s"
-        params.append(cargo_type)
-    if capacity:
-        query += " AND capacity_tons = %s"
-        params.append(capacity)
-    query += " ORDER BY destination_name, capacity_tons ASC"
-    return run_query(query, tuple(params))
-
-def get_saved_diesel_rate():
-    try:
-        res = run_query("SELECT setting_value FROM system_settings WHERE setting_key = 'diesel_rate_per_litre'")
-        if res:
-            return float(res[0]['setting_value'])
-    except Exception:
-        pass
-    return 95.00
-
-def set_saved_diesel_rate(new_rate):
-    run_query("""
-        INSERT INTO system_settings (setting_key, setting_value, updated_at)
-        VALUES ('diesel_rate_per_litre', %s, CURRENT_TIMESTAMP)
-        ON CONFLICT (setting_key) 
-        DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP;
-    """, (str(new_rate),), fetch=False)
-
-def get_next_driver_code():
-    try:
-        last_drv = run_query("SELECT driver_code FROM drivers ORDER BY driver_id DESC LIMIT 1")
-        if last_drv and last_drv[0]['driver_code'].startswith("DRV-"):
-            next_num = int(last_drv[0]['driver_code'].split("-")[1]) + 1
-            return f"DRV-{next_num:03d}"
-    except Exception:
-        pass
-    return f"DRV-{len(get_drivers())+1:03d}"
-
 # ==============================================================================
 # 0. LIVE FLEET STATUS & YARD BOARD
 # ==============================================================================
 if menu == "🚦 Live Fleet Status & Yard Board":
     st.subheader("Live Vehicle Operational Status & Yard Monitoring")
     
-    vehicles_data = get_vehicles()
+    vehicles_data = get_cached_vehicles()
     if not vehicles_data:
         st.warning("No vehicles registered in database.")
         st.stop()
@@ -181,20 +194,28 @@ if menu == "🚦 Live Fleet Status & Yard Board":
                     SET current_status = %s, status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP 
                     WHERE vehicle_id = %s
                 """, (new_status_key, new_remarks, target_v['vehicle_id']), fetch=False)
-                st.success(f"Status for {target_v['vehicle_number']} updated to: {STATUS_MAP[new_status_key]}")
+                get_cached_vehicles.clear()
+                st.success(f"Status for {target_v['vehicle_number']} updated!")
                 st.rerun()
 
 # ==============================================================================
-# 1. NEW TRIP ENTRY (SEAMLESS ROUTE AUTO-FILL)
+# 1. NEW TRIP ENTRY
 # ==============================================================================
 elif menu == "📝 New Trip Entry":
     st.subheader("Log New Trip (Live Instant Freight & Fuel Calculation)")
 
+    vehicles = get_cached_vehicles()
+    drivers = get_cached_drivers()
+
+    if not drivers or not vehicles:
+        st.error("⚠️ Ensure drivers and vehicles exist in database.")
+        st.stop()
+
     col_quick1, col_quick2 = st.columns(2)
 
     with col_quick1:
-        with st.expander("➕ Quick Add New Driver (On the fly)", expanded=False):
-            auto_code = get_next_driver_code()
+        with st.expander("➕ Quick Add New Driver", expanded=False):
+            auto_code = f"DRV-{len(drivers)+1:03d}"
             st.write(f"**Assigned Driver Code:** `{auto_code}`")
             with st.form("inline_driver_form", clear_on_submit=True):
                 qd_name = st.text_input("Driver Full Name*")
@@ -209,18 +230,16 @@ elif menu == "📝 New Trip Entry":
                     if not qd_name or not qd_phone or not qd_license:
                         st.error("Please fill Name, Phone, and License.")
                     else:
-                        try:
-                            run_query("""
-                                INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id)
-                                VALUES (%s, %s, %s, %s, %s, 1)
-                            """, (auto_code, qd_name, qd_phone, qd_license, qd_expiry), fetch=False)
-                            st.success(f"Driver '{qd_name}' added as {auto_code}!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {e}")
+                        run_query("""
+                            INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id)
+                            VALUES (%s, %s, %s, %s, %s, 1)
+                        """, (auto_code, qd_name, qd_phone, qd_license, qd_expiry), fetch=False)
+                        get_cached_drivers.clear()
+                        st.success(f"Driver '{qd_name}' added!")
+                        st.rerun()
 
     with col_quick2:
-        with st.expander("➕ Quick Add Destination & Truck Slab Rate", expanded=False):
+        with st.expander("➕ Quick Add Destination & Rate Slab", expanded=False):
             with st.form("inline_route_form", clear_on_submit=True):
                 qr_c1, qr_c2 = st.columns(2)
                 with qr_c1:
@@ -236,35 +255,21 @@ elif menu == "📝 New Trip Entry":
                     if not qr_dest:
                         st.error("Destination name is required.")
                     else:
-                        try:
-                            run_query("""
-                                INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km)
-                                VALUES (%s, %s, %s, %s, %s, %s)
-                                ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) 
-                                DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;
-                            """, (qr_cargo, qr_origin, qr_dest, qr_cap, qr_rate, qr_km), fetch=False)
-                            st.success(f"Saved: {qr_dest} ({qr_cargo} - {qr_cap}T Truck Category) at ₹{qr_rate}/Ton!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {e}")
+                        run_query("""
+                            INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) 
+                            DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;
+                        """, (qr_cargo, qr_origin, qr_dest, qr_cap, qr_rate, qr_km), fetch=False)
+                        get_cached_routes.clear()
+                        st.success(f"Saved: {qr_dest} ({qr_cargo} - {qr_cap}T Slab) at ₹{qr_rate}/Ton!")
+                        st.rerun()
 
     st.markdown("---")
 
-    vehicles = get_vehicles()
-    drivers = get_drivers()
-
-    if not drivers:
-        st.error("⚠️ No active drivers available. Add one using the quick box above.")
-        st.stop()
-
-    if not vehicles:
-        st.error("⚠️ No active vehicles found in database.")
-        st.stop()
-
     vehicle_dict = {f"{v['vehicle_number']} | {v['truck_type']} | {v['carrying_capacity_tons']} MT [{STATUS_MAP.get(v['current_status'], v['current_status'])}]": v for v in vehicles}
     driver_map = {f"{d['driver_code']} - {d['full_name']}": d['driver_id'] for d in drivers}
-
-    current_saved_diesel_rate = get_saved_diesel_rate()
+    current_saved_diesel_rate = get_cached_diesel_rate()
 
     top_c1, top_c2, top_c3 = st.columns(3)
     with top_c1:
@@ -274,19 +279,12 @@ elif menu == "📝 New Trip Entry":
     with top_c2:
         cargo_type_selected = st.radio("Cargo Category*", ["BULK", "BAG"], horizontal=True, key="cargo_sel")
     with top_c3:
-        active_diesel_rate = st.number_input(
-            "Current Diesel Rate (₹/Litre)*", 
-            min_value=50.0, 
-            max_value=150.0, 
-            value=current_saved_diesel_rate, 
-            step=0.05,
-            key="fuel_rate_input"
-        )
+        active_diesel_rate = st.number_input("Current Diesel Rate (₹/Litre)*", min_value=50.0, max_value=150.0, value=current_saved_diesel_rate, step=0.05, key="fuel_rate_input")
         if active_diesel_rate != current_saved_diesel_rate:
             set_saved_diesel_rate(active_diesel_rate)
             st.toast(f"✅ Diesel rate updated to ₹{active_diesel_rate:.2f}/L")
 
-    routes_list = get_routes(cargo_type=cargo_type_selected, capacity=truck_class_tons)
+    routes_list = get_cached_routes(cargo_type=cargo_type_selected, capacity=truck_class_tons)
     
     route_options = {}
     if routes_list:
@@ -303,13 +301,12 @@ elif menu == "📝 New Trip Entry":
 
     selected_route_key = st.selectbox("Select Destination Route Slab*", list(route_options.keys()), key="route_sel")
     active_route = route_options[selected_route_key]
-    
-    is_custom = selected_route_key == "-- Manual Route / Custom Entry --"
+    is_custom = (selected_route_key == "-- Manual Route / Custom Entry --")
 
     f_col1, f_col2, f_col3 = st.columns(3)
     
     with f_col1:
-        st.markdown("#### 1️⃣ Trip & Assigned Driver")
+        st.markdown("#### 1️⃣ Trip & Driver")
         trip_no = st.text_input("Trip / LR Number*", placeholder="TRIP-2026-001", key="trip_no_input")
         chosen_driver_key = st.selectbox("Select Assigned Driver*", list(driver_map.keys()), key="driver_sel")
         
@@ -323,11 +320,10 @@ elif menu == "📝 New Trip Entry":
             trip_destination = active_route['destination_name']
             km_run = float(active_route['standard_km'])
             applied_rate_per_ton = float(active_route['freight_rate_per_ton'])
-            
             st.info(f"📍 **Route:** `{trip_origin}` ➔ `{trip_destination}`\n\n🛣️ **Distance:** `{km_run} KM` | 🏷️ **Rate:** `₹{applied_rate_per_ton}/Ton`")
 
     with f_col2:
-        st.markdown("#### 2️⃣ Load & Auto Freight")
+        st.markdown("#### 2️⃣ Load & Freight")
         start_d = st.date_input("Trip Start Date", date.today(), key="start_d")
         end_d = st.date_input("Trip End Date", date.today(), key="end_d")
         
@@ -340,7 +336,6 @@ elif menu == "📝 New Trip Entry":
             key="loaded_tonnage"
         )
         
-        # Automatic Freight Calculation
         calculated_freight = round(actual_loaded_tonnage * applied_rate_per_ton, 2)
         st.metric(
             label=f"Total Freight Revenue (₹) [{actual_loaded_tonnage} MT × ₹{applied_rate_per_ton}/T]",
@@ -348,10 +343,8 @@ elif menu == "📝 New Trip Entry":
         )
 
     with f_col3:
-        st.markdown("#### 3️⃣ Fuel & Direct Expenses")
+        st.markdown("#### 3️⃣ Fuel & Expenses")
         fuel_qty = st.number_input("Diesel Litres Filled*", min_value=0.0, step=10.0, value=0.0, key="fuel_qty_input")
-        
-        # Automatic Diesel Expense Calculation
         calculated_fuel_expense = round(fuel_qty * active_diesel_rate, 2)
         st.metric(
             label=f"Auto Diesel Expense (₹) [{fuel_qty}L × ₹{active_diesel_rate}/L]",
@@ -360,7 +353,7 @@ elif menu == "📝 New Trip Entry":
         
         driver_bata_val = st.number_input("Driver Bata (₹)*", min_value=0.0, step=100.0, value=3000.0, key="bata_input")
         toll_val = st.number_input("FASTag / Toll Expense (₹)", min_value=0.0, step=100.0, key="toll_input")
-        advance_val = st.number_input("Cash Advance Issued to Driver (₹)", min_value=0.0, step=500.0, key="advance_input")
+        advance_val = st.number_input("Cash Advance Issued (₹)", min_value=0.0, step=500.0, key="advance_input")
 
     st.write("")
     if st.button("🚀 Save & Dispatch Trip", type="primary", use_container_width=True):
@@ -390,8 +383,9 @@ elif menu == "📝 New Trip Entry":
                     SET current_status = 'IN_TRANSIT', status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP 
                     WHERE vehicle_id = %s
                 """, (f"Trip {trip_no}: {trip_origin} ➔ {trip_destination}", selected_vehicle['vehicle_id']), fetch=False)
-
-                st.success(f"Trip {trip_no} dispatched! Route: {trip_origin} ➔ {trip_destination} | Freight: ₹{calculated_freight:,.2f} | Fuel: ₹{calculated_fuel_expense:,.2f}")
+                
+                get_cached_vehicles.clear()
+                st.success(f"Trip {trip_no} dispatched! Route: {trip_origin} ➔ {trip_destination} | Freight: ₹{calculated_freight:,.2f}")
             except Exception as e:
                 st.error(f"Error saving trip: {e}")
 
@@ -404,8 +398,7 @@ elif menu == "💸 Trip Expenses & Claims":
     trips_list = run_query("""
         SELECT 
             t.trip_id, t.trip_number, v.vehicle_number, d.full_name,
-            t.origin, t.destination, t.trip_start_date, t.trip_end_date,
-            t.fuel_expense, t.driver_bata, t.toll_fastag_expense,
+            t.origin, t.destination, t.fuel_expense, t.driver_bata, t.toll_fastag_expense,
             t.enroute_repairs_maintenance, t.loading_unloading_expense, t.misc_trip_expense,
             t.cash_advance_issued, t.freight_revenue
         FROM trips t
@@ -437,64 +430,39 @@ elif menu == "💸 Trip Expenses & Claims":
         with st.form("trip_expense_update_form"):
             st.write("### ✍️ Enter Additional Trip Expenses & Claims")
             ec1, ec2, ec3 = st.columns(3)
-            
             with ec1:
-                e_repair = st.number_input(
-                    "En-route Repairs & Workshop Maintenance (₹)", 
-                    min_value=0.0, 
-                    value=float(t['enroute_repairs_maintenance'] or 0.0), 
-                    step=100.0,
-                    help="Tyre punctures, spare parts, emergency workshop repairs"
-                )
-            
+                e_repair = st.number_input("En-route Repairs / Workshop (₹)", min_value=0.0, value=float(t['enroute_repairs_maintenance'] or 0.0), step=100.0)
             with ec2:
-                e_loading = st.number_input(
-                    "Loading / Unloading & Hamali Expense (₹)", 
-                    min_value=0.0, 
-                    value=float(t['loading_unloading_expense'] or 0.0), 
-                    step=50.0,
-                    help="Plant loading charges, crane charges, weighbridge slips"
-                )
-
+                e_loading = st.number_input("Loading / Unloading (₹)", min_value=0.0, value=float(t['loading_unloading_expense'] or 0.0), step=50.0)
             with ec3:
-                e_misc = st.number_input(
-                    "Misc Trip Expense / Out-of-Pocket Claims (₹)", 
-                    min_value=0.0, 
-                    value=float(t['misc_trip_expense'] or 0.0), 
-                    step=50.0,
-                    help="RTO/Checkpost entry fees, parking, driver incidental bills"
-                )
+                e_misc = st.number_input("Misc Trip Claims / Entry Fees (₹)", min_value=0.0, value=float(t['misc_trip_expense'] or 0.0), step=50.0)
 
             st.write("### 💵 Advance & FASTag Adjustments")
             ac1, ac2 = st.columns(2)
             with ac1:
-                e_toll = st.number_input("Updated FASTag / Toll Expense (₹)", min_value=0.0, value=float(t['toll_fastag_expense'] or 0.0), step=100.0)
+                e_toll = st.number_input("FASTag / Toll (₹)", min_value=0.0, value=float(t['toll_fastag_expense'] or 0.0), step=100.0)
             with ac2:
-                e_advance = st.number_input("Total Cash Advance Issued to Driver (₹)", min_value=0.0, value=float(t['cash_advance_issued'] or 0.0), step=500.0)
+                e_advance = st.number_input("Total Cash Advance (₹)", min_value=0.0, value=float(t['cash_advance_issued'] or 0.0), step=500.0)
 
-            expense_submit = st.form_submit_button("💾 Save Expenses to Trip", type="primary", use_container_width=True)
-            if expense_submit:
-                try:
-                    run_query("""
-                        UPDATE trips
-                        SET enroute_repairs_maintenance = %s,
-                            loading_unloading_expense = %s,
-                            misc_trip_expense = %s,
-                            toll_fastag_expense = %s,
-                            cash_advance_issued = %s
-                        WHERE trip_id = %s;
-                    """, (e_repair, e_loading, e_misc, e_toll, e_advance, t['trip_id']), fetch=False)
-                    st.success(f"Expenses updated successfully for Trip {t['trip_number']}!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error updating expenses: {e}")
+            if st.form_submit_button("💾 Save Expenses to Trip", type="primary", use_container_width=True):
+                run_query("""
+                    UPDATE trips
+                    SET enroute_repairs_maintenance = %s,
+                        loading_unloading_expense = %s,
+                        misc_trip_expense = %s,
+                        toll_fastag_expense = %s,
+                        cash_advance_issued = %s
+                    WHERE trip_id = %s;
+                """, (e_repair, e_loading, e_misc, e_toll, e_advance, t['trip_id']), fetch=False)
+                st.success(f"Expenses updated for Trip {t['trip_number']}!")
+                st.rerun()
 
 # ==============================================================================
 # 3. DRIVER PERIOD SETTLEMENT (1-15 / 16-END)
 # ==============================================================================
 elif menu == "💰 Driver Period Settlement (1-15 / 16-End)":
     st.subheader("Driver Bi-Monthly Settlement Sheet")
-    drivers = get_drivers()
+    drivers = get_cached_drivers()
     if not drivers:
         st.warning("No drivers available.")
         st.stop()
@@ -596,7 +564,7 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
     tab_drv, tab_rt = st.tabs(["👨‍✈️ Drivers Directory", "📍 Destinations & Capacity Rate Slabs"])
 
     with tab_drv:
-        drivers_list = get_drivers(include_inactive=True)
+        drivers_list = get_cached_drivers(include_inactive=True)
         if drivers_list:
             df_d = pd.DataFrame(drivers_list)
             st.dataframe(df_d[['driver_id', 'driver_code', 'full_name', 'phone_number', 'license_number', 'license_expiry_date', 'is_active']], use_container_width=True)
@@ -623,7 +591,8 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
                             SET full_name = %s, phone_number = %s, license_number = %s, license_expiry_date = %s, is_active = %s
                             WHERE driver_id = %s
                         """, (e_name, e_phone, e_lic, e_exp, e_active, d_val['driver_id']), fetch=False)
-                        st.success(f"Driver '{e_name}' updated successfully!")
+                        get_cached_drivers.clear()
+                        st.success(f"Driver '{e_name}' updated!")
                         st.rerun()
 
             with col_de2:
@@ -631,20 +600,18 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
                 del_drv = st.selectbox("Select Driver to Remove", list(drv_map.keys()), key="del_drv_sel")
                 target_del = drv_map[del_drv]
                 
-                st.info("💡 If this driver has existing trips, they will be archived (deactivated) so past trip records remain intact.")
-                
                 if st.button("🗑️ Delete / Archive Driver", type="primary"):
                     try:
                         run_query("DELETE FROM drivers WHERE driver_id = %s", (target_del['driver_id'],), fetch=False)
-                        st.success(f"Driver {target_del['full_name']} permanently deleted.")
-                        st.rerun()
+                        st.success(f"Driver {target_del['full_name']} deleted.")
                     except Exception:
                         run_query("UPDATE drivers SET is_active = FALSE WHERE driver_id = %s", (target_del['driver_id'],), fetch=False)
-                        st.warning(f"Driver {target_del['full_name']} has existing trip history. Marked as INACTIVE (Archived).")
-                        st.rerun()
+                        st.warning(f"Driver {target_del['full_name']} archived as INACTIVE (historical trips preserved).")
+                    get_cached_drivers.clear()
+                    st.rerun()
 
     with tab_rt:
-        all_routes = run_query("SELECT * FROM destinations_freight_master WHERE is_active = TRUE ORDER BY cargo_type, origin, destination_name, capacity_tons ASC")
+        all_routes = get_cached_routes()
         if all_routes:
             df_r = pd.DataFrame(all_routes)
             st.dataframe(df_r[['destination_id', 'cargo_type', 'origin', 'destination_name', 'capacity_tons', 'freight_rate_per_ton', 'standard_km']], use_container_width=True)
@@ -668,7 +635,8 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
                             SET freight_rate_per_ton = %s, standard_km = %s 
                             WHERE destination_id = %s
                         """, (er_rate, er_km, r_val['destination_id']), fetch=False)
-                        st.success(f"Route slab updated to ₹{er_rate}/Ton ({er_km} KM)!")
+                        get_cached_routes.clear()
+                        st.success(f"Route slab updated!")
                         st.rerun()
 
             with col_re2:
@@ -678,10 +646,11 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
                 
                 if st.button("🗑️ Delete Route Slab", type="primary"):
                     run_query("DELETE FROM destinations_freight_master WHERE destination_id = %s", (target_del_rt['destination_id'],), fetch=False)
-                    st.success(f"Route slab {target_del_rt['destination_name']} removed successfully.")
+                    get_cached_routes.clear()
+                    st.success(f"Route slab removed.")
                     st.rerun()
         else:
-            st.info("No routes found. You can add them from 'New Trip Entry'.")
+            st.info("No routes found.")
 
 # ==============================================================================
 # 5. PROFITABILITY REPORTS
@@ -783,7 +752,7 @@ elif menu == "🔍 View & Delete Trips":
         delete_id = st.selectbox("Select Trip ID to Delete", df_trips['trip_id'].tolist())
         if st.button("Delete Selected Trip", type="primary"):
             run_query("DELETE FROM trips WHERE trip_id = %s", (delete_id,), fetch=False)
-            st.success(f"Trip ID {delete_id} deleted successfully.")
+            st.success(f"Trip ID {delete_id} deleted.")
             st.rerun()
     else:
         st.info("No trips found in database.")
