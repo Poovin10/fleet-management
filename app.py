@@ -185,7 +185,7 @@ if menu == "🚦 Live Fleet Status & Yard Board":
                 st.rerun()
 
 # ==============================================================================
-# 1. NEW TRIP ENTRY
+# 1. NEW TRIP ENTRY (SEAMLESS ROUTE AUTO-FILL)
 # ==============================================================================
 elif menu == "📝 New Trip Entry":
     st.subheader("Log New Trip (Live Instant Freight & Fuel Calculation)")
@@ -288,39 +288,46 @@ elif menu == "📝 New Trip Entry":
 
     routes_list = get_routes(cargo_type=cargo_type_selected, capacity=truck_class_tons)
     
-    route_options = {
-        "-- Manual Route / Custom Entry --": {
-            "origin": "COCHIN",
-            "destination_name": "",
-            "standard_km": 0.0,
-            "freight_rate_per_ton": 0.0
-        }
-    }
-    
+    route_options = {}
     if routes_list:
         for r in routes_list:
             label = f"{r['origin']} ➔ {r['destination_name']} [{truck_class_tons}T Truck Slab: ₹{r['freight_rate_per_ton']}/Ton | {r['standard_km']} KM]"
             route_options[label] = r
+            
+    route_options["-- Manual Route / Custom Entry --"] = {
+        "origin": "COCHIN",
+        "destination_name": "",
+        "standard_km": 0.0,
+        "freight_rate_per_ton": 0.0
+    }
 
-    selected_route_key = st.selectbox("Select Destination Route*", list(route_options.keys()), key="route_sel")
+    selected_route_key = st.selectbox("Select Destination Route Slab*", list(route_options.keys()), key="route_sel")
     active_route = route_options[selected_route_key]
-    def_origin = active_route['origin']
-    def_dest = active_route['destination_name']
-    def_km = float(active_route['standard_km'])
-    applied_rate_per_ton = float(active_route['freight_rate_per_ton'])
+    
+    is_custom = selected_route_key == "-- Manual Route / Custom Entry --"
 
     f_col1, f_col2, f_col3 = st.columns(3)
     
     with f_col1:
-        st.markdown("#### 1️⃣ Trip & Route Info")
+        st.markdown("#### 1️⃣ Trip & Assigned Driver")
         trip_no = st.text_input("Trip / LR Number*", placeholder="TRIP-2026-001", key="trip_no_input")
         chosen_driver_key = st.selectbox("Select Assigned Driver*", list(driver_map.keys()), key="driver_sel")
-        trip_origin = st.text_input("Origin Hub", value=def_origin, key="origin_input")
-        trip_destination = st.text_input("Destination*", value=def_dest, placeholder="e.g. Sankari", key="dest_input")
-        km_run = st.number_input("Total KM Run*", min_value=0.0, step=10.0, value=def_km, key="km_run")
+        
+        if is_custom:
+            trip_origin = st.text_input("Origin Hub*", value=active_route['origin'], key="origin_input")
+            trip_destination = st.text_input("Destination*", value=active_route['destination_name'], placeholder="e.g. Sankari", key="dest_input")
+            km_run = st.number_input("Total KM Run*", min_value=0.0, step=10.0, value=float(active_route['standard_km']), key="km_run")
+            applied_rate_per_ton = st.number_input("Custom Freight Rate per Ton (₹)*", min_value=0.0, step=25.0, value=float(active_route['freight_rate_per_ton']))
+        else:
+            trip_origin = active_route['origin']
+            trip_destination = active_route['destination_name']
+            km_run = float(active_route['standard_km'])
+            applied_rate_per_ton = float(active_route['freight_rate_per_ton'])
+            
+            st.info(f"📍 **Route:** `{trip_origin}` ➔ `{trip_destination}`\n\n🛣️ **Distance:** `{km_run} KM` | 🏷️ **Rate:** `₹{applied_rate_per_ton}/Ton`")
 
     with f_col2:
-        st.markdown("#### 2️⃣ Load & Revenue")
+        st.markdown("#### 2️⃣ Load & Auto Freight")
         start_d = st.date_input("Trip Start Date", date.today(), key="start_d")
         end_d = st.date_input("Trip End Date", date.today(), key="end_d")
         
@@ -333,22 +340,22 @@ elif menu == "📝 New Trip Entry":
             key="loaded_tonnage"
         )
         
+        # Automatic Freight Calculation
         calculated_freight = round(actual_loaded_tonnage * applied_rate_per_ton, 2)
         st.metric(
-            label=f"Total Freight Revenue (₹) [Rate: ₹{applied_rate_per_ton}/T]",
-            value=f"₹{calculated_freight:,.2f}",
-            help="Automatically calculated as: Loaded MT × Rate per Ton"
+            label=f"Total Freight Revenue (₹) [{actual_loaded_tonnage} MT × ₹{applied_rate_per_ton}/T]",
+            value=f"₹{calculated_freight:,.2f}"
         )
 
     with f_col3:
         st.markdown("#### 3️⃣ Fuel & Direct Expenses")
         fuel_qty = st.number_input("Diesel Litres Filled*", min_value=0.0, step=10.0, value=0.0, key="fuel_qty_input")
         
+        # Automatic Diesel Expense Calculation
         calculated_fuel_expense = round(fuel_qty * active_diesel_rate, 2)
         st.metric(
-            label=f"Auto Diesel Expense (₹) [₹{active_diesel_rate}/L]",
-            value=f"₹{calculated_fuel_expense:,.2f}",
-            help="Automatically calculated as: Diesel Litres × Diesel Rate per Litre"
+            label=f"Auto Diesel Expense (₹) [{fuel_qty}L × ₹{active_diesel_rate}/L]",
+            value=f"₹{calculated_fuel_expense:,.2f}"
         )
         
         driver_bata_val = st.number_input("Driver Bata (₹)*", min_value=0.0, step=100.0, value=3000.0, key="bata_input")
@@ -358,7 +365,7 @@ elif menu == "📝 New Trip Entry":
     st.write("")
     if st.button("🚀 Save & Dispatch Trip", type="primary", use_container_width=True):
         if not trip_no or not trip_destination:
-            st.error("Please enter Trip Number and Destination.")
+            st.error("Please enter a valid Trip Number and Destination.")
         else:
             try:
                 run_query("""
@@ -384,7 +391,7 @@ elif menu == "📝 New Trip Entry":
                     WHERE vehicle_id = %s
                 """, (f"Trip {trip_no}: {trip_origin} ➔ {trip_destination}", selected_vehicle['vehicle_id']), fetch=False)
 
-                st.success(f"Trip {trip_no} dispatched! Freight: ₹{calculated_freight:,.2f} | Fuel Cost: ₹{calculated_fuel_expense:,.2f} ({fuel_qty}L @ ₹{active_diesel_rate}/L)")
+                st.success(f"Trip {trip_no} dispatched! Route: {trip_origin} ➔ {trip_destination} | Freight: ₹{calculated_freight:,.2f} | Fuel: ₹{calculated_fuel_expense:,.2f}")
             except Exception as e:
                 st.error(f"Error saving trip: {e}")
 
@@ -581,7 +588,7 @@ elif menu == "💰 Driver Period Settlement (1-15 / 16-End)":
                 st.rerun()
 
 # ==============================================================================
-# 4. DRIVER DIRECTORY & RATES MASTER (UPDATED WITH SAFE EDIT & DELETE)
+# 4. DRIVER DIRECTORY & RATES MASTER
 # ==============================================================================
 elif menu == "👨‍✈️ Driver Directory & Rates Master":
     st.subheader("Manage Drivers, Routes, and Capacity Rate Cards")
@@ -597,7 +604,6 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
             st.divider()
             col_de1, col_de2 = st.columns(2)
             
-            # --- 1. EDIT DRIVER ---
             with col_de1:
                 st.write("### ✏️ Edit Driver Details")
                 drv_map = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers_list}
@@ -620,7 +626,6 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
                         st.success(f"Driver '{e_name}' updated successfully!")
                         st.rerun()
 
-            # --- 2. DELETE / DEACTIVATE DRIVER ---
             with col_de2:
                 st.write("### 🗑️ Remove / Deactivate Driver")
                 del_drv = st.selectbox("Select Driver to Remove", list(drv_map.keys()), key="del_drv_sel")
@@ -630,14 +635,12 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
                 
                 if st.button("🗑️ Delete / Archive Driver", type="primary"):
                     try:
-                        # Attempt hard delete if no trips exist
                         run_query("DELETE FROM drivers WHERE driver_id = %s", (target_del['driver_id'],), fetch=False)
                         st.success(f"Driver {target_del['full_name']} permanently deleted.")
                         st.rerun()
                     except Exception:
-                        # Fallback to soft deactivate if trips exist
                         run_query("UPDATE drivers SET is_active = FALSE WHERE driver_id = %s", (target_del['driver_id'],), fetch=False)
-                        st.warning(f"Driver {target_del['full_name']} has existing trip history. Marked as INACTIVE (Archived) to protect data integrity.")
+                        st.warning(f"Driver {target_del['full_name']} has existing trip history. Marked as INACTIVE (Archived).")
                         st.rerun()
 
     with tab_rt:
@@ -649,7 +652,6 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
             st.divider()
             col_re1, col_re2 = st.columns(2)
             
-            # --- 1. EDIT FREIGHT RATE & ROUTE ---
             with col_re1:
                 st.write("### ✏️ Edit Route Slab & Freight Rate")
                 rt_dict = {f"ID {r['destination_id']}: [{r['cargo_type']}] {r['origin']} ➔ {r['destination_name']} ({r['capacity_tons']}T Slab @ ₹{r['freight_rate_per_ton']})": r for r in all_routes}
@@ -669,7 +671,6 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
                         st.success(f"Route slab updated to ₹{er_rate}/Ton ({er_km} KM)!")
                         st.rerun()
 
-            # --- 2. DELETE ROUTE SLAB ---
             with col_re2:
                 st.write("### 🗑️ Delete Route Slab")
                 del_rt_sel = st.selectbox("Select Route Slab to Remove", list(rt_dict.keys()), key="del_rt_sel")
