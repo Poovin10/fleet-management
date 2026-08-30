@@ -18,9 +18,9 @@ def init_connection_pool():
         "port": 6543,
         "dbname": "postgres",
         "user": "postgres.eobweyciqwoojwnsonor",
-        "password": "Poovin@2809"
+        "password": "YOUR_ACTUAL_SUPABASE_PASSWORD"
     }
-    # Check Streamlit Cloud Secrets safely
+    # Safely load from Streamlit Cloud Secrets if available
     try:
         if len(st.secrets) > 0 and "postgres" in st.secrets:
             creds = dict(st.secrets["postgres"])
@@ -54,7 +54,7 @@ def run_query(query, params=None, fetch=True):
     finally:
         db_pool.putconn(conn)
 
-# --- 2. Fast In-Memory Cached Masters (TTL 60s) ---
+# --- 2. Fast In-Memory Cached Masters ---
 @st.cache_data(ttl=60)
 def get_cached_vehicles():
     return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks, status_updated_at FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
@@ -97,11 +97,20 @@ def set_saved_diesel_rate(new_rate):
     """, (str(new_rate),), fetch=False)
     get_cached_diesel_rate.clear()
 
-def clear_all_caches():
-    get_cached_vehicles.clear()
-    get_cached_drivers.clear()
-    get_cached_routes.clear()
-    get_cached_diesel_rate.clear()
+def get_next_driver_code():
+    try:
+        res = run_query("SELECT driver_code FROM drivers ORDER BY driver_id DESC LIMIT 1")
+        if res and res[0]['driver_code']:
+            code_str = res[0]['driver_code']
+            if "-" in code_str:
+                num_part = int(code_str.split("-")[1])
+                return f"DRV-{num_part + 1:03d}"
+    except Exception:
+        pass
+    
+    total_count = run_query("SELECT COUNT(*) AS cnt FROM drivers")
+    cnt = total_count[0]['cnt'] if total_count else 0
+    return f"DRV-{cnt + 1:03d}"
 
 # --- Sidebar Navigation ---
 menu = st.sidebar.radio("Navigation", [
@@ -215,7 +224,7 @@ elif menu == "📝 New Trip Entry":
 
     with col_quick1:
         with st.expander("➕ Quick Add New Driver", expanded=False):
-            auto_code = f"DRV-{len(drivers)+1:03d}"
+            auto_code = get_next_driver_code()
             st.write(f"**Assigned Driver Code:** `{auto_code}`")
             with st.form("inline_driver_form", clear_on_submit=True):
                 qd_name = st.text_input("Driver Full Name*")
@@ -230,13 +239,23 @@ elif menu == "📝 New Trip Entry":
                     if not qd_name or not qd_phone or not qd_license:
                         st.error("Please fill Name, Phone, and License.")
                     else:
-                        run_query("""
-                            INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id)
-                            VALUES (%s, %s, %s, %s, %s, 1)
-                        """, (auto_code, qd_name, qd_phone, qd_license, qd_expiry), fetch=False)
-                        get_cached_drivers.clear()
-                        st.success(f"Driver '{qd_name}' added!")
-                        st.rerun()
+                        try:
+                            final_code = get_next_driver_code()
+                            run_query("""
+                                INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id)
+                                VALUES (%s, %s, %s, %s, %s, 1)
+                                ON CONFLICT (driver_code) DO UPDATE 
+                                SET full_name = EXCLUDED.full_name,
+                                    phone_number = EXCLUDED.phone_number,
+                                    license_number = EXCLUDED.license_number,
+                                    license_expiry_date = EXCLUDED.license_expiry_date,
+                                    is_active = TRUE;
+                            """, (final_code, qd_name, qd_phone, qd_license, qd_expiry), fetch=False)
+                            get_cached_drivers.clear()
+                            st.success(f"Driver '{qd_name}' saved as {final_code}!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error saving driver: {e}")
 
     with col_quick2:
         with st.expander("➕ Quick Add Destination & Rate Slab", expanded=False):
@@ -636,7 +655,7 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
                             WHERE destination_id = %s
                         """, (er_rate, er_km, r_val['destination_id']), fetch=False)
                         get_cached_routes.clear()
-                        st.success(f"Route slab updated!")
+                        st.success("Route slab updated!")
                         st.rerun()
 
             with col_re2:
@@ -647,7 +666,7 @@ elif menu == "👨‍✈️ Driver Directory & Rates Master":
                 if st.button("🗑️ Delete Route Slab", type="primary"):
                     run_query("DELETE FROM destinations_freight_master WHERE destination_id = %s", (target_del_rt['destination_id'],), fetch=False)
                     get_cached_routes.clear()
-                    st.success(f"Route slab removed.")
+                    st.success("Route slab removed.")
                     st.rerun()
         else:
             st.info("No routes found.")
