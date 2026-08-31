@@ -1413,12 +1413,11 @@ elif menu == "Master Data Management":
                         st.rerun()
 
 # ==============================================================================
-# 8. EXECUTIVE RETENTION & YIELD ANALYTICS (CORPORATE PERFORMANCE METRICS)
+# 8. EXECUTIVE RETENTION & YIELD ANALYTICS (TYPE-SAFE CORPORATE ENGINE)
 # ==============================================================================
 elif menu == "Executive Retention & Yield Analytics":
     st.subheader("Executive Corporate Fleet Retention & Operational Yield Dashboard")
 
-    # Timeframe Selector
     tfc1, tfc2, tfc3 = st.columns(3)
     with tfc1:
         report_period_type = st.selectbox("Analysis Window", [
@@ -1447,7 +1446,6 @@ elif menu == "Executive Retention & Yield Analytics":
         "4. Month-on-Month Retention Trajectory"
     ])
 
-    # Dynamic SQL Builder for Fleet Performance Metrics
     base_where = "WHERE v.is_active = TRUE"
     date_params = []
     if start_filter_date and end_filter_date:
@@ -1518,14 +1516,14 @@ elif menu == "Executive Retention & Yield Analytics":
         if df_analytics.empty or df_analytics['total_trips'].sum() == 0:
             st.info("No trip records available within the chosen analytics timeframe.")
         else:
-            tot_rev = df_analytics['gross_freight_revenue_inr'].sum()
-            tot_costs = df_analytics['total_direct_operating_costs_inr'].sum()
-            tot_profit = df_analytics['net_retained_profit_inr'].sum()
-            avg_margin = round((tot_profit / max(1.0, tot_rev)) * 100.0, 2)
-            tot_kms = df_analytics['total_km_run'].sum()
-            tot_fuel = df_analytics['total_fuel_litres'].sum()
-            fleet_kmpl = round(tot_kms / max(1.0, tot_fuel), 2)
-            tot_tonnage = df_analytics['total_delivered_mt'].sum()
+            tot_rev = float(df_analytics['gross_freight_revenue_inr'].sum() or 0.0)
+            tot_costs = float(df_analytics['total_direct_operating_costs_inr'].sum() or 0.0)
+            tot_profit = float(df_analytics['net_retained_profit_inr'].sum() or 0.0)
+            avg_margin = round((tot_profit / max(1.0, tot_rev)) * 100.0, 2) if tot_rev > 0 else 0.00
+            tot_kms = float(df_analytics['total_km_run'].sum() or 0.0)
+            tot_fuel = float(df_analytics['total_fuel_litres'].sum() or 0.0)
+            fleet_kmpl = round(tot_kms / max(1.0, tot_fuel), 2) if tot_fuel > 0 else 0.00
+            tot_tonnage = float(df_analytics['total_delivered_mt'].sum() or 0.0)
 
             kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns(6)
             kpi1.metric("Gross Freight Revenue", f"INR {tot_rev:,.2f}")
@@ -1569,7 +1567,7 @@ elif menu == "Executive Retention & Yield Analytics":
                 use_container_width=True
             )
 
-    # --- 2. VARIANT PEER BENCHMARKING (30 MT vs 30 MT / 35 MT vs 35 MT) ---
+    # --- 2. VARIANT PEER BENCHMARKING ---
     with tab_variant_peer:
         st.markdown('<div class="section-header">Variant Peer Benchmarking & Like-for-Like Analysis</div>', unsafe_allow_html=True)
         
@@ -1592,10 +1590,10 @@ elif menu == "Executive Retention & Yield Analytics":
         if filtered_peer_df.empty:
             st.info("No vehicles match the selected peer group parameters.")
         else:
-            avg_peer_margin = filtered_peer_df['retention_margin_pct'].mean()
-            avg_peer_kmpl = filtered_peer_df['average_mileage_kmpl'].mean()
-            avg_peer_cost_km = filtered_peer_df['operating_cost_per_km_inr'].mean()
-            avg_peer_rev_km = filtered_peer_df['revenue_per_km_inr'].mean()
+            avg_peer_margin = float(filtered_peer_df['retention_margin_pct'].mean() or 0.0)
+            avg_peer_kmpl = float(filtered_peer_df['average_mileage_kmpl'].mean() or 0.0)
+            avg_peer_cost_km = float(filtered_peer_df['operating_cost_per_km_inr'].mean() or 0.0)
+            avg_peer_rev_km = float(filtered_peer_df['revenue_per_km_inr'].mean() or 0.0)
 
             pm1, pm2, pm3, pm4 = st.columns(4)
             pm1.metric("Peer Group Avg Margin", f"{avg_peer_margin:.2f} %")
