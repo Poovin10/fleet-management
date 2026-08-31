@@ -9,16 +9,15 @@ import io
 # --- Page Configuration ---
 st.set_page_config(
     page_title="Fleet Operational Management System",
-    page_icon="🚚",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # --- Corporate Custom CSS Styling ---
 st.markdown("""
 <style>
     .reportview-container .main .block-container {
-        padding-top: 1.5rem;
+        padding-top: 1rem;
         padding-bottom: 2rem;
     }
     header {visibility: hidden;}
@@ -36,13 +35,6 @@ st.markdown("""
         color: #475569;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-    }
-    .status-card {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 6px;
-        padding: 12px 16px;
-        margin-bottom: 12px;
     }
     .section-header {
         font-size: 1.05rem;
@@ -74,7 +66,7 @@ def init_connection_pool():
         "port": 6543,
         "dbname": "postgres",
         "user": "postgres.eobweyciqwoojwnsonor",
-        "password": "YOUR_ACTUAL_SUPABASE_PASSWORD"
+        "password": "Poovin@2809"
     }
     try:
         if len(st.secrets) > 0 and "postgres" in st.secrets:
@@ -177,9 +169,10 @@ STATUS_OPTIONS = {
     "DRIVER_UNAVAILABLE": "Driver Unavailable / Leave"
 }
 
-# --- Navigation Bar ---
-st.sidebar.title("Fleet Operations")
-menu = st.sidebar.radio("Module Navigation", [
+# --- Top Navigation Bar (Mobile & Desktop Friendly) ---
+st.title("Fleet Operational Management System")
+
+MODULE_LIST = [
     "Fleet Status Board",
     "Trip Dispatch Entry",
     "Trip Modification & Expenses",
@@ -187,7 +180,16 @@ menu = st.sidebar.radio("Module Navigation", [
     "Master Data Management",
     "Variance & Performance Reports",
     "Trip Records Registry"
-])
+]
+
+menu = st.selectbox(
+    "Select System Module",
+    MODULE_LIST,
+    index=0,
+    label_visibility="collapsed"
+)
+
+st.markdown("---")
 
 # ==============================================================================
 # 0. FLEET STATUS BOARD
@@ -258,7 +260,7 @@ if menu == "Fleet Status Board":
                 st.rerun()
 
 # ==============================================================================
-# 1. TRIP DISPATCH ENTRY (WITH MEMORY & RESET TO 0.00)
+# 1. TRIP DISPATCH ENTRY
 # ==============================================================================
 elif menu == "Trip Dispatch Entry":
     st.subheader("Trip Dispatch Registration")
@@ -270,13 +272,11 @@ elif menu == "Trip Dispatch Entry":
         st.error("Please configure vehicles and drivers before logging trips.")
         st.stop()
 
-    # Session State tracking for continuous logging
     if "form_reset_counter" not in st.session_state:
         st.session_state.form_reset_counter = 0
 
     cnt = st.session_state.form_reset_counter
 
-    # Quick Master Registrations
     exp_c1, exp_c2 = st.columns(2)
     with exp_c1:
         with st.expander("Register New Driver Profile", expanded=False):
@@ -330,7 +330,6 @@ elif menu == "Trip Dispatch Entry":
 
     st.markdown("---")
 
-    # Header parameters
     top1, top2, top3 = st.columns(3)
     vehicle_map = {f"{v['vehicle_number']} | {v['truck_type']} | {v['carrying_capacity_tons']} MT": v for v in vehicles}
     
@@ -338,8 +337,6 @@ elif menu == "Trip Dispatch Entry":
         sel_veh_label = st.selectbox("Assigned Vehicle*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
         active_veh = vehicle_map[sel_veh_label]
         v_class_mt = float(active_veh['carrying_capacity_tons'])
-        
-        # Memory recall for last assigned driver
         last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
     with top2:
         cargo_category = st.radio("Cargo Category", ["BULK", "BAG"], horizontal=True, key=f"cargo_sel_{cnt}")
@@ -349,7 +346,6 @@ elif menu == "Trip Dispatch Entry":
         if active_diesel_rate != saved_d_rate:
             set_saved_diesel_rate(active_diesel_rate)
 
-    # Driver selector with memory default
     driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
     driver_labels = list(driver_dict.keys())
     
@@ -377,13 +373,11 @@ elif menu == "Trip Dispatch Entry":
     active_route = route_opts[sel_route_label]
     is_custom_route = (sel_route_label == "-- MANUAL / SPOT ROUTE ENTRY --")
 
-    # Form Fields
     f1, f2, f3 = st.columns(3)
     with f1:
         st.markdown('<div class="section-header">1. Manifest & Driver Assignment</div>', unsafe_allow_html=True)
         lr_no = st.text_input("Trip / LR Number*", placeholder="LR-XXXXXX", key=f"lr_{cnt}")
         
-        # Real-time duplicate check
         if lr_no.strip() and check_lr_exists(lr_no):
             st.error("DUPLICATE WARNING: This Trip/LR Number is already registered in the system.")
 
@@ -408,13 +402,11 @@ elif menu == "Trip Dispatch Entry":
         start_km = st.number_input("Load Start Odometer (KM)*", min_value=0.0, step=10.0, value=0.0, key=f"skm_{cnt}")
         end_km = st.number_input("Unload End Odometer (KM)*", min_value=0.0, step=10.0, value=0.0, key=f"ekm_{cnt}")
         
-        # Auto compute KM run
         computed_km = max(0.0, end_km - start_km) if end_km >= start_km and end_km > 0 else float(active_route['standard_km'])
         total_km_run = st.number_input("Total Trip KM Run*", min_value=0.0, step=10.0, value=computed_km, key=f"tkm_{cnt}")
 
         weighbridge_mt = st.number_input("Weighbridge Loaded Weight (MT)*", min_value=0.0, max_value=60.0, step=0.05, value=0.0, key=f"wmt_{cnt}")
         
-        # Auto calculation
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Total Freight Revenue (INR)", f"INR {gross_freight:,.2f}")
 
@@ -423,7 +415,6 @@ elif menu == "Trip Dispatch Entry":
         fuel_qty = st.number_input("Diesel Quantity Issued (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
         filling_km = st.number_input("Diesel Filling Odometer (KM)", min_value=0.0, step=10.0, value=0.0, key=f"fkm_{cnt}")
         
-        # Auto Diesel calculation
         gross_fuel_cost = round(fuel_qty * active_diesel_rate, 2)
         st.metric(f"Auto Diesel Expense (INR {active_diesel_rate}/L)", f"INR {gross_fuel_cost:,.2f}")
 
@@ -474,7 +465,7 @@ elif menu == "Trip Dispatch Entry":
                 st.error(f"Database Execution Error: {e}")
 
 # ==============================================================================
-# 2. TRIP MODIFICATION & EXPENSES (FULL EDIT CAPABILITY)
+# 2. TRIP MODIFICATION & EXPENSES
 # ==============================================================================
 elif menu == "Trip Modification & Expenses":
     st.subheader("Trip Audit, Modification & Expense Claims")
@@ -659,7 +650,6 @@ elif menu == "Driver Period Settlement":
         st.write("")
         act1, act2 = st.columns(2)
         with act1:
-            # Excel export compatible
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                 df_period.to_excel(writer, index=False, sheet_name='Settlement')
@@ -682,7 +672,7 @@ elif menu == "Driver Period Settlement":
                 st.rerun()
 
 # ==============================================================================
-# 4. MASTER DATA MANAGEMENT (WITH DUPLICATE WARNINGS)
+# 4. MASTER DATA MANAGEMENT
 # ==============================================================================
 elif menu == "Master Data Management":
     st.subheader("Master Data Registries")
@@ -758,12 +748,11 @@ elif menu == "Master Data Management":
             st.dataframe(pd.DataFrame(r_list), use_container_width=True)
 
 # ==============================================================================
-# 5. VARIANCE & PERFORMANCE REPORTS (PEER COMPARISON BY VARIANT)
+# 5. VARIANCE & PERFORMANCE REPORTS
 # ==============================================================================
 elif menu == "Variance & Performance Reports":
     st.subheader("Operational & Variant Peer Comparison Analytics")
 
-    # Variant & Class Filter
     vehicles = get_cached_vehicles()
     variants = sorted(list(set(v['truck_type'] for v in vehicles)))
     capacities = sorted(list(set(float(v['carrying_capacity_tons']) for v in vehicles)))
@@ -774,7 +763,6 @@ elif menu == "Variance & Performance Reports":
     with rc2:
         sel_capacity = st.selectbox("Filter by Capacity Class (MT)", ["All Capacity Classes"] + capacities)
 
-    # Base Report Query
     query = """
         SELECT 
             v.vehicle_number,
@@ -840,7 +828,6 @@ elif menu == "Variance & Performance Reports":
             use_container_width=True
         )
 
-        # Excel Export
         buf = io.BytesIO()
         with pd.ExcelWriter(buf, engine='openpyxl') as writer:
             df_rep.to_excel(writer, index=False, sheet_name='Peer Variance Report')
