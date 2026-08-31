@@ -8,7 +8,7 @@ import io
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="Fleet Operational Management System",
+    page_title="Fleet Operations & Accounts System",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -66,7 +66,7 @@ def init_connection_pool():
         "port": 6543,
         "dbname": "postgres",
         "user": "postgres.eobweyciqwoojwnsonor",
-        "password": "Poovin@2809"
+        "password": "YOUR_ACTUAL_SUPABASE_PASSWORD"
     }
     try:
         if len(st.secrets) > 0 and "postgres" in st.secrets:
@@ -125,6 +125,15 @@ def get_cached_routes(cargo_type=None, capacity=None):
     query += " ORDER BY destination_name, capacity_tons ASC"
     return run_query(query, tuple(params))
 
+@st.cache_data(ttl=60)
+def get_cached_bata_rules():
+    return run_query("""
+        SELECT b.bata_rule_id, b.destination_name, b.cargo_type, b.vehicle_id, v.vehicle_number, b.capacity_tons, b.standard_bata_inr
+        FROM driver_bata_master b
+        LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+        ORDER BY b.destination_name, v.vehicle_number ASC
+    """)
+
 @st.cache_data(ttl=300)
 def get_cached_diesel_rate():
     try:
@@ -160,6 +169,22 @@ def check_lr_exists(trip_no, exclude_trip_id=None):
         res = run_query("SELECT trip_id FROM trips WHERE LOWER(trip_number) = LOWER(%s)", (trip_no.strip(),))
     return len(res) > 0
 
+def lookup_driver_bata(dest_name, cargo_type, vehicle_id):
+    try:
+        res = run_query("""
+            SELECT standard_bata_inr 
+            FROM driver_bata_master 
+            WHERE LOWER(destination_name) = LOWER(%s) 
+              AND cargo_type = %s 
+              AND vehicle_id = %s 
+            LIMIT 1
+        """, (dest_name.strip(), cargo_type, vehicle_id))
+        if res:
+            return float(res[0]['standard_bata_inr'])
+    except Exception:
+        pass
+    return 0.00
+
 STATUS_OPTIONS = {
     "AVAILABLE_FOR_LOAD": "Available for Loading",
     "WAITING_FOR_LOAD": "Waiting for Loading",
@@ -169,12 +194,14 @@ STATUS_OPTIONS = {
     "DRIVER_UNAVAILABLE": "Driver Unavailable / Leave"
 }
 
-# --- Top Navigation Bar (Mobile & Desktop Friendly) ---
+# --- Top Navigation Bar ---
 st.title("Fleet Operational Management System")
 
 MODULE_LIST = [
     "Fleet Status Board",
     "Trip Dispatch Entry",
+    "Trip & Sundry Diesel Logs",
+    "Direct Driver Advances",
     "Trip Modification & Expenses",
     "Driver Period Settlement",
     "Master Data Management",
@@ -260,7 +287,7 @@ if menu == "Fleet Status Board":
                 st.rerun()
 
 # ==============================================================================
-# 1. TRIP DISPATCH ENTRY
+# 1. TRIP DISPATCH ENTRY (WITH AUTOMATIC DRIVER BATA MATRIX LOOKUP)
 # ==============================================================================
 elif menu == "Trip Dispatch Entry":
     st.subheader("Trip Dispatch Registration")
@@ -276,59 +303,6 @@ elif menu == "Trip Dispatch Entry":
         st.session_state.form_reset_counter = 0
 
     cnt = st.session_state.form_reset_counter
-
-    exp_c1, exp_c2 = st.columns(2)
-    with exp_c1:
-        with st.expander("Register New Driver Profile", expanded=False):
-            with st.form(f"quick_driver_{cnt}", clear_on_submit=True):
-                qd_code = st.text_input("Driver Code*", placeholder="e.g. DRV-050")
-                qd_name = st.text_input("Driver Full Name*")
-                qd_phone = st.text_input("Contact Number*", placeholder="10-digit mobile")
-                qd_lic = st.text_input("License Number*")
-                qd_exp = st.date_input("License Expiry Date", date(2030, 1, 1))
-
-                if st.form_submit_button("Save Driver Master"):
-                    if not qd_name or not qd_phone or not qd_lic or not qd_code:
-                        st.error("All mandatory driver fields must be completed.")
-                    elif run_query("SELECT driver_id FROM drivers WHERE LOWER(driver_code) = LOWER(%s) OR license_number = %s", (qd_code.strip(), qd_lic.strip())):
-                        st.warning("Warning: A driver with this Code or License Number already exists.")
-                    else:
-                        run_query("""
-                            INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id)
-                            VALUES (%s, %s, %s, %s, %s, 1)
-                        """, (qd_code.strip().upper(), qd_name.strip(), qd_phone.strip(), qd_lic.strip().upper(), qd_exp), fetch=False)
-                        get_cached_drivers.clear()
-                        st.success(f"Driver '{qd_name}' registered.")
-                        st.rerun()
-
-    with exp_c2:
-        with st.expander("Register Destination Freight Slab", expanded=False):
-            with st.form(f"quick_route_{cnt}", clear_on_submit=True):
-                qr_c1, qr_c2 = st.columns(2)
-                with qr_c1:
-                    qr_cargo = st.selectbox("Cargo Classification", ["BULK", "BAG"])
-                    qr_origin = st.text_input("Origin Terminal*", value="COCHIN")
-                    qr_dest = st.text_input("Destination Terminal*")
-                with qr_c2:
-                    qr_cap = st.selectbox("Vehicle Category (MT)", [25.0, 30.0, 35.0], index=2)
-                    qr_km = st.number_input("Standard Transit KM", min_value=0.0, step=10.0, value=0.0)
-                    qr_rate = st.number_input("Agreed Rate per MT (INR)", min_value=0.0, step=25.0, value=0.0)
-
-                if st.form_submit_button("Save Freight Slab"):
-                    if not qr_dest:
-                        st.error("Destination name is required.")
-                    else:
-                        run_query("""
-                            INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km)
-                            VALUES (%s, %s, %s, %s, %s, %s)
-                            ON CONFLICT (cargo_type, origin, destination_name, capacity_tons)
-                            DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;
-                        """, (qr_cargo, qr_origin.strip().upper(), qr_dest.strip().upper(), qr_cap, qr_rate, qr_km), fetch=False)
-                        get_cached_routes.clear()
-                        st.success("Destination freight slab recorded.")
-                        st.rerun()
-
-    st.markdown("---")
 
     top1, top2, top3 = st.columns(3)
     vehicle_map = {f"{v['vehicle_number']} | {v['truck_type']} | {v['carrying_capacity_tons']} MT": v for v in vehicles}
@@ -373,6 +347,10 @@ elif menu == "Trip Dispatch Entry":
     active_route = route_opts[sel_route_label]
     is_custom_route = (sel_route_label == "-- MANUAL / SPOT ROUTE ENTRY --")
 
+    # Automatic Bata Lookup from Master
+    default_dest = active_route['destination_name']
+    master_bata_val = lookup_driver_bata(default_dest, cargo_category, active_veh['vehicle_id'])
+
     f1, f2, f3 = st.columns(3)
     with f1:
         st.markdown('<div class="section-header">1. Manifest & Driver Assignment</div>', unsafe_allow_html=True)
@@ -392,7 +370,7 @@ elif menu == "Trip Dispatch Entry":
             origin_terminal = active_route['origin']
             dest_terminal = active_route['destination_name']
             agreed_rate_mt = float(active_route['freight_rate_per_ton'])
-            st.info(f"Origin: **{origin_terminal}** | Destination: **{dest_terminal}**\nRate: **INR {agreed_rate_mt:,.2f} / MT**")
+            st.info(f"Origin: **{origin_terminal}** | Destination: **{dest_terminal}**\nRate: **INR {agreed_rate_mt:,.2f} / MT** | Master Bata: **INR {master_bata_val:,.2f}**")
 
     with f2:
         st.markdown('<div class="section-header">2. Odometer & Payload Metrics</div>', unsafe_allow_html=True)
@@ -406,21 +384,20 @@ elif menu == "Trip Dispatch Entry":
         total_km_run = st.number_input("Total Trip KM Run*", min_value=0.0, step=10.0, value=computed_km, key=f"tkm_{cnt}")
 
         weighbridge_mt = st.number_input("Weighbridge Loaded Weight (MT)*", min_value=0.0, max_value=60.0, step=0.05, value=0.0, key=f"wmt_{cnt}")
-        
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Total Freight Revenue (INR)", f"INR {gross_freight:,.2f}")
 
     with f3:
         st.markdown('<div class="section-header">3. Fuel Logistics & Disbursements</div>', unsafe_allow_html=True)
-        fuel_qty = st.number_input("Diesel Quantity Issued (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
+        fuel_qty = st.number_input("Initial Diesel Quantity Issued (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
         filling_km = st.number_input("Diesel Filling Odometer (KM)", min_value=0.0, step=10.0, value=0.0, key=f"fkm_{cnt}")
         
         gross_fuel_cost = round(fuel_qty * active_diesel_rate, 2)
         st.metric(f"Auto Diesel Expense (INR {active_diesel_rate}/L)", f"INR {gross_fuel_cost:,.2f}")
 
-        driver_bata = st.number_input("Driver Bata Allowance (INR)*", min_value=0.0, step=100.0, value=0.0, key=f"bata_{cnt}")
+        driver_bata = st.number_input("Driver Bata Allowance (INR)* [Auto-Filled]", min_value=0.0, step=100.0, value=master_bata_val, key=f"bata_{cnt}")
         fastag_toll = st.number_input("FASTag / Toll Disbursement (INR)", min_value=0.0, step=100.0, value=0.0, key=f"toll_{cnt}")
-        cash_advance = st.number_input("Cash Advance Issued (INR)", min_value=0.0, step=500.0, value=0.0, key=f"adv_{cnt}")
+        cash_advance = st.number_input("Trip Cash Advance Issued to Driver (INR)", min_value=0.0, step=500.0, value=0.0, key=f"adv_{cnt}")
 
     st.write("")
     if st.button("Save and Dispatch Trip Record", type="primary", use_container_width=True):
@@ -430,7 +407,8 @@ elif menu == "Trip Dispatch Entry":
             st.error("Integrity Error: Cannot dispatch trip. LR Number already exists.")
         else:
             try:
-                run_query("""
+                # 1. Insert Trip
+                new_t = run_query("""
                     INSERT INTO trips (
                         trip_number, branch_id, vehicle_id, primary_driver_id,
                         trip_start_date, trip_end_date, origin, destination,
@@ -439,7 +417,8 @@ elif menu == "Trip Dispatch Entry":
                         freight_revenue, fuel_litres, fuel_expense,
                         driver_bata, toll_fastag_expense, cash_advance_issued,
                         trip_status
-                    ) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT');
+                    ) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT')
+                    RETURNING trip_id;
                 """, (
                     lr_no.strip().upper(), active_veh['vehicle_id'], sel_driver_obj['driver_id'],
                     start_date, end_date, origin_terminal.strip().upper(), dest_terminal.strip().upper(),
@@ -447,7 +426,18 @@ elif menu == "Trip Dispatch Entry":
                     weighbridge_mt, weighbridge_mt,
                     gross_freight, fuel_qty, gross_fuel_cost,
                     driver_bata, fastag_toll, cash_advance
-                ), fetch=False)
+                ))
+
+                trip_id_created = new_t[0]['trip_id']
+
+                # 2. Log Initial Fuel to Fuel Master
+                if fuel_qty > 0:
+                    run_query("""
+                        INSERT INTO diesel_fuel_logs (
+                            fuel_date, vehicle_id, trip_id, lr_number, diesel_category,
+                            litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, remarks
+                        ) VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s, 'Initial Dispatch Fuel');
+                    """, (start_date, active_veh['vehicle_id'], trip_id_created, lr_no.strip().upper(), fuel_qty, active_diesel_rate, gross_fuel_cost, filling_km), fetch=False)
 
                 run_query("""
                     UPDATE vehicles 
@@ -465,14 +455,192 @@ elif menu == "Trip Dispatch Entry":
                 st.error(f"Database Execution Error: {e}")
 
 # ==============================================================================
-# 2. TRIP MODIFICATION & EXPENSES
+# 2. TRIP & SUNDRY DIESEL LOGS (ADD FUEL ANYTIME WITH DATE & LR NO)
+# ==============================================================================
+elif menu == "Trip & Sundry Diesel Logs":
+    st.subheader("Diesel & Fuel Issue Management (Trip & Sundry)")
+
+    tab_add_fuel, tab_view_fuel = st.tabs(["Add Diesel Entry", "Diesel Audit Ledger"])
+
+    vehicles = get_cached_vehicles()
+    v_dict = {f"{v['vehicle_number']} ({v['truck_type']})": v for v in vehicles}
+    current_d_rate = get_cached_diesel_rate()
+
+    with tab_add_fuel:
+        st.markdown('<div class="section-header">Issue Diesel / Record Fuel Bill</div>', unsafe_allow_html=True)
+        with st.form("diesel_entry_form", clear_on_submit=True):
+            df1, df2, df3 = st.columns(3)
+            with df1:
+                fuel_entry_date = st.date_input("Fuel Issue Date*", date.today())
+                chosen_veh_fuel = st.selectbox("Vehicle Number*", list(v_dict.keys()))
+                target_veh = v_dict[chosen_veh_fuel]
+                fuel_cat = st.selectbox("Diesel Category*", ["TRIP_DIESEL", "SUNDRY_DIESEL"], help="Sundry diesel covers local yard movements, empty runs, and maintenance")
+            with df2:
+                fuel_lr_no = st.text_input("Trip / LR Number (Optional for Sundry)", placeholder="e.g. LR-2026-001").strip().upper()
+                filling_odo = st.number_input("Odometer at Filling (KM)", min_value=0.0, step=10.0, value=0.0)
+                fuel_station = st.text_input("Fuel Station / Vendor Name", placeholder="e.g. BPCL COCHIN HUB")
+            with df3:
+                f_litres = st.number_input("Litres Filled*", min_value=0.0, step=10.0, value=0.0)
+                f_rate = st.number_input("Diesel Rate (INR/Litre)*", min_value=50.0, max_value=150.0, value=current_d_rate, step=0.05)
+                f_total_calc = round(f_litres * f_rate, 2)
+                st.metric("Total Fuel Cost", f"INR {f_total_calc:,.2f}")
+                fuel_remarks = st.text_input("Remarks / Bill Number", placeholder="e.g. Pump Slip #4891")
+
+            if st.form_submit_button("Record Diesel Entry", type="primary", use_container_width=True):
+                if f_litres <= 0:
+                    st.error("Please enter a valid fuel quantity.")
+                else:
+                    # Match LR to trip if present
+                    matched_trip_id = None
+                    if fuel_lr_no:
+                        t_match = run_query("SELECT trip_id FROM trips WHERE LOWER(trip_number) = LOWER(%s)", (fuel_lr_no,))
+                        if t_match:
+                            matched_trip_id = t_match[0]['trip_id']
+
+                    run_query("""
+                        INSERT INTO diesel_fuel_logs (
+                            fuel_date, vehicle_id, trip_id, lr_number, diesel_category,
+                            litres_filled, diesel_rate_per_litre, total_fuel_cost,
+                            filling_odometer_km, fuel_station_vendor, remarks
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                    """, (
+                        fuel_entry_date, target_veh['vehicle_id'], matched_trip_id,
+                        fuel_lr_no or "SUNDRY", fuel_cat,
+                        f_litres, f_rate, f_total_calc,
+                        filling_odo, fuel_station, fuel_remarks
+                    ), fetch=False)
+
+                    # Update trip fuel total if linked to an active trip
+                    if matched_trip_id:
+                        run_query("""
+                            UPDATE trips
+                            SET fuel_litres = fuel_litres + %s,
+                                fuel_expense = fuel_expense + %s
+                            WHERE trip_id = %s;
+                        """, (f_litres, f_total_calc, matched_trip_id), fetch=False)
+
+                    st.success(f"Diesel log recorded: {f_litres} Litres (INR {f_total_calc:,.2f}) for {target_veh['vehicle_number']}.")
+                    st.rerun()
+
+    with tab_view_fuel:
+        fuel_logs = run_query("""
+            SELECT 
+                f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category,
+                f.lr_number, f.litres_filled, f.diesel_rate_per_litre, f.total_fuel_cost,
+                f.filling_odometer_km, f.fuel_station_vendor, f.remarks
+            FROM diesel_fuel_logs f
+            JOIN vehicles v ON f.vehicle_id = v.vehicle_id
+            ORDER BY f.fuel_date DESC, f.fuel_log_id DESC
+            LIMIT 150;
+        """)
+        if fuel_logs:
+            df_fuel = pd.DataFrame(fuel_logs)
+            st.dataframe(df_fuel, use_container_width=True)
+
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+                df_fuel.to_excel(writer, index=False, sheet_name='Diesel Logs')
+            st.download_button(
+                "Export Diesel Ledger (Excel)",
+                data=buf.getvalue(),
+                file_name=f"diesel_ledger_{date.today()}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+            st.markdown("---")
+            st.markdown('<div class="section-header">Delete Fuel Log</div>', unsafe_allow_html=True)
+            del_fuel_id = st.selectbox("Select Fuel Entry ID to Remove", df_fuel['fuel_log_id'].tolist())
+            if st.button("Delete Fuel Entry", type="primary"):
+                run_query("DELETE FROM diesel_fuel_logs WHERE fuel_log_id = %s", (del_fuel_id,), fetch=False)
+                st.success("Fuel log purged.")
+                st.rerun()
+
+# ==============================================================================
+# 3. DIRECT DRIVER ADVANCES (NON-TRIP / GENERAL ADVANCES)
+# ==============================================================================
+elif menu == "Direct Driver Advances":
+    st.subheader("Direct Driver Cash Advance & Loan Ledger")
+
+    tab_give_adv, tab_view_adv = st.tabs(["Issue Direct Advance", "Advances Ledger"])
+
+    drivers = get_cached_drivers()
+    d_map = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
+
+    with tab_give_adv:
+        st.markdown('<div class="section-header">Issue Direct Advance to Driver Account</div>', unsafe_allow_html=True)
+        with st.form("direct_adv_form", clear_on_submit=True):
+            da1, da2, da3 = st.columns(3)
+            with da1:
+                adv_date = st.date_input("Advance Date*", date.today())
+                chosen_drv = st.selectbox("Driver Account*", list(d_map.keys()))
+                target_drv = d_map[chosen_drv]
+            with da2:
+                adv_amount = st.number_input("Advance Amount (INR)*", min_value=0.0, step=500.0, value=0.0)
+                adv_category = st.selectbox("Advance Category", [
+                    "BATA_ADVANCE",
+                    "GENERAL_ADVANCE",
+                    "EMERGENCY_MEDICAL",
+                    "SALARY_ADVANCE",
+                    "MAINTENANCE_LOAN"
+                ])
+            with da3:
+                pay_mode = st.selectbox("Payment Mode", ["CASH", "UPI / GPAY", "BANK_TRANSFER", "BRANCH_PETTY_CASH"])
+                adv_ref = st.text_input("Reference / Voucher / UPI Txn ID", placeholder="e.g. UPI Ref #90218")
+
+            if st.form_submit_button("Issue & Save Advance", type="primary", use_container_width=True):
+                if adv_amount <= 0:
+                    st.error("Please enter a valid advance amount.")
+                else:
+                    run_query("""
+                        INSERT INTO driver_direct_advances (
+                            advance_date, driver_id, amount_inr, advance_type, payment_mode, reference_remarks
+                        ) VALUES (%s, %s, %s, %s, %s, %s);
+                    """, (adv_date, target_drv['driver_id'], adv_amount, adv_category, pay_mode, adv_ref), fetch=False)
+                    st.success(f"Advance of INR {adv_amount:,.2f} recorded for {target_drv['full_name']}.")
+                    st.rerun()
+
+    with tab_view_adv:
+        adv_records = run_query("""
+            SELECT 
+                a.advance_id, a.advance_date, d.driver_code, d.full_name AS driver_name,
+                a.amount_inr, a.advance_type, a.payment_mode, a.reference_remarks,
+                a.is_settled
+            FROM driver_direct_advances a
+            JOIN drivers d ON a.driver_id = d.driver_id
+            ORDER BY a.advance_date DESC, a.advance_id DESC
+            LIMIT 150;
+        """)
+        if adv_records:
+            df_adv = pd.DataFrame(adv_records)
+            st.dataframe(df_adv, use_container_width=True)
+
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+                df_adv.to_excel(writer, index=False, sheet_name='Direct Advances')
+            st.download_button(
+                "Export Advances Ledger (Excel)",
+                data=buf.getvalue(),
+                file_name=f"driver_advances_ledger_{date.today()}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+            st.markdown("---")
+            st.markdown('<div class="section-header">Delete Advance Entry</div>', unsafe_allow_html=True)
+            del_adv_id = st.selectbox("Select Advance ID to Delete", df_adv['advance_id'].tolist())
+            if st.button("Delete Advance Record", type="primary"):
+                run_query("DELETE FROM driver_direct_advances WHERE advance_id = %s", (del_adv_id,), fetch=False)
+                st.success("Advance record deleted.")
+                st.rerun()
+
+# ==============================================================================
+# 4. TRIP MODIFICATION & EXPENSES
 # ==============================================================================
 elif menu == "Trip Modification & Expenses":
     st.subheader("Trip Audit, Modification & Expense Claims")
 
     trips = run_query("""
         SELECT 
-            t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, d.full_name, d.driver_id,
+            t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, v.carrying_capacity_tons, d.full_name, d.driver_id,
             t.origin, t.destination, t.trip_start_date, t.trip_end_date,
             t.start_km, t.end_km, t.total_km_run, t.diesel_filling_km,
             t.tonnage_loaded, t.freight_revenue, t.fuel_litres, t.fuel_expense,
@@ -490,7 +658,7 @@ elif menu == "Trip Modification & Expenses":
         st.stop()
 
     trip_map = {f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} -> {t['destination']} | {t['full_name']}": t for t in trips}
-    sel_t_label = st.selectbox("Select Trip Record for Complete Modification", list(trip_map.keys()))
+    sel_t_label = st.selectbox("Select Trip Record for Modification", list(trip_map.keys()))
     t = trip_map[sel_t_label]
 
     all_drivers = get_cached_drivers()
@@ -502,92 +670,114 @@ elif menu == "Trip Modification & Expenses":
             curr_drv_idx = idx
             break
 
-    with st.form("complete_trip_edit_form"):
-        st.markdown('<div class="section-header">Trip Manifest & Routing Details</div>', unsafe_allow_html=True)
-        e1, e2, e3 = st.columns(3)
-        with e1:
-            m_lr = st.text_input("Trip / LR Number*", value=t['trip_number'])
-            m_driver = st.selectbox("Assigned Driver*", list(all_driver_map.keys()), index=curr_drv_idx)
-        with e2:
-            m_orig = st.text_input("Origin*", value=t['origin'])
-            m_dest = st.text_input("Destination*", value=t['destination'])
-        with e3:
-            m_sdate = st.date_input("Start Date", t['trip_start_date'])
-            m_edate = st.date_input("End Date", t['trip_end_date'])
+    known_rate = run_query("""
+        SELECT freight_rate_per_ton 
+        FROM destinations_freight_master 
+        WHERE LOWER(origin) = LOWER(%s) 
+          AND LOWER(destination_name) = LOWER(%s) 
+          AND capacity_tons = %s 
+        LIMIT 1
+    """, (t['origin'], t['destination'], t['carrying_capacity_tons']))
 
-        st.markdown('<div class="section-header">Odometer & Freight Financials</div>', unsafe_allow_html=True)
-        e4, e5, e6 = st.columns(3)
-        with e4:
-            m_skm = st.number_input("Start KM", min_value=0.0, value=float(t['start_km'] or 0.0), step=10.0)
-            m_ekm = st.number_input("End KM", min_value=0.0, value=float(t['end_km'] or 0.0), step=10.0)
-            m_tkm = st.number_input("Total Trip KM", min_value=0.0, value=float(t['total_km_run'] or 0.0), step=10.0)
-        with e5:
-            m_ton = st.number_input("Weighbridge Tonnage (MT)", min_value=0.0, value=float(t['tonnage_loaded'] or 0.0), step=0.05)
-            m_freight = st.number_input("Gross Freight Revenue (INR)", min_value=0.0, value=float(t['freight_revenue'] or 0.0), step=100.0)
-        with e6:
-            m_fqty = st.number_input("Fuel Litres", min_value=0.0, value=float(t['fuel_litres'] or 0.0), step=5.0)
-            m_fexp = st.number_input("Fuel Cost (INR)", min_value=0.0, value=float(t['fuel_expense'] or 0.0), step=100.0)
-            m_fkm = st.number_input("Diesel Filling KM", min_value=0.0, value=float(t['diesel_filling_km'] or 0.0), step=10.0)
+    if known_rate and known_rate[0]['freight_rate_per_ton']:
+        base_rate_per_ton = float(known_rate[0]['freight_rate_per_ton'])
+    else:
+        base_rate_per_ton = round(float(t['freight_revenue'] or 0.0) / max(0.01, float(t['tonnage_loaded'] or 1.0)), 2)
 
-        st.markdown('<div class="section-header">Disbursements, Advances & Workshop Claims</div>', unsafe_allow_html=True)
-        e7, e8, e9 = st.columns(3)
-        with e7:
-            m_bata = st.number_input("Driver Bata Allowance (INR)", min_value=0.0, value=float(t['driver_bata'] or 0.0), step=100.0)
-            m_toll = st.number_input("FASTag / Toll (INR)", min_value=0.0, value=float(t['toll_fastag_expense'] or 0.0), step=100.0)
-            m_adv = st.number_input("Cash Advance Drawn (INR)", min_value=0.0, value=float(t['cash_advance_issued'] or 0.0), step=500.0)
-        with e8:
-            m_rep = st.number_input("En-route Repair & Workshop Maintenance (INR)", min_value=0.0, value=float(t['enroute_repairs_maintenance'] or 0.0), step=100.0)
-            m_load = st.number_input("Loading / Unloading Handling Charges (INR)", min_value=0.0, value=float(t['loading_unloading_expense'] or 0.0), step=50.0)
-        with e9:
-            m_misc = st.number_input("Miscellaneous / Toll Claims (INR)", min_value=0.0, value=float(t['misc_trip_expense'] or 0.0), step=50.0)
+    current_d_rate = get_cached_diesel_rate()
 
-        if st.form_submit_button("Commit All Trip Changes", type="primary", use_container_width=True):
-            if check_lr_exists(m_lr, exclude_trip_id=t['trip_id']):
-                st.error("Duplicate Violation: Another trip already utilizes this LR Number.")
-            else:
-                run_query("""
-                    UPDATE trips
-                    SET trip_number = %s,
-                        primary_driver_id = %s,
-                        origin = %s,
-                        destination = %s,
-                        trip_start_date = %s,
-                        trip_end_date = %s,
-                        start_km = %s,
-                        end_km = %s,
-                        total_km_run = %s,
-                        diesel_filling_km = %s,
-                        tonnage_loaded = %s,
-                        loaded_weight_mt = %s,
-                        freight_revenue = %s,
-                        fuel_litres = %s,
-                        fuel_expense = %s,
-                        driver_bata = %s,
-                        toll_fastag_expense = %s,
-                        cash_advance_issued = %s,
-                        enroute_repairs_maintenance = %s,
-                        loading_unloading_expense = %s,
-                        misc_trip_expense = %s
-                    WHERE trip_id = %s;
-                """, (
-                    m_lr.strip().upper(), all_driver_map[m_driver],
-                    m_orig.strip().upper(), m_dest.strip().upper(),
-                    m_sdate, m_edate,
-                    m_skm, m_ekm, m_tkm, m_fkm,
-                    m_ton, m_ton, m_freight,
-                    m_fqty, m_fexp,
-                    m_bata, m_toll, m_adv,
-                    m_rep, m_load, m_misc,
-                    t['trip_id']
-                ), fetch=False)
-                st.success(f"Trip record {m_lr} successfully revised.")
-                st.rerun()
+    st.markdown('<div class="section-header">Trip Manifest & Routing Details</div>', unsafe_allow_html=True)
+    e1, e2, e3 = st.columns(3)
+    with e1:
+        m_lr = st.text_input("Trip / LR Number*", value=t['trip_number'], key="edit_lr")
+        m_driver = st.selectbox("Assigned Driver*", list(all_driver_map.keys()), index=curr_drv_idx, key="edit_driver")
+    with e2:
+        m_orig = st.text_input("Origin*", value=t['origin'], key="edit_orig")
+        m_dest = st.text_input("Destination*", value=t['destination'], key="edit_dest")
+    with e3:
+        m_sdate = st.date_input("Start Date", t['trip_start_date'], key="edit_sdate")
+        m_edate = st.date_input("End Date", t['trip_end_date'], key="edit_edate")
+
+    st.markdown('<div class="section-header">Odometer & Automatic Payload / Fuel Recalculations</div>', unsafe_allow_html=True)
+    e4, e5, e6 = st.columns(3)
+    with e4:
+        m_skm = st.number_input("Start KM", min_value=0.0, value=float(t['start_km'] or 0.0), step=10.0, key="edit_skm")
+        m_ekm = st.number_input("End KM", min_value=0.0, value=float(t['end_km'] or 0.0), step=10.0, key="edit_ekm")
+        calc_edit_km = max(0.0, m_ekm - m_skm) if m_ekm >= m_skm and m_ekm > 0 else float(t['total_km_run'] or 0.0)
+        m_tkm = st.number_input("Total Trip KM", min_value=0.0, value=calc_edit_km, step=10.0, key="edit_tkm")
+    with e5:
+        m_ton = st.number_input("Weighbridge Tonnage (MT)", min_value=0.0, value=float(t['tonnage_loaded'] or 0.0), step=0.05, key="edit_ton")
+        m_rate_applied = st.number_input("Contract Rate / MT (INR)", min_value=0.0, value=base_rate_per_ton, step=25.0, key="edit_rate_applied")
+        recalc_freight = round(m_ton * m_rate_applied, 2)
+        st.metric("Auto Freight Revenue (INR)", f"INR {recalc_freight:,.2f}")
+    with e6:
+        m_fqty = st.number_input("Fuel Litres", min_value=0.0, value=float(t['fuel_litres'] or 0.0), step=5.0, key="edit_fqty")
+        m_drate_applied = st.number_input("Diesel Rate / L (INR)", min_value=50.0, max_value=150.0, value=current_d_rate, step=0.05, key="edit_drate_applied")
+        recalc_fuel_cost = round(m_fqty * m_drate_applied, 2)
+        st.metric("Auto Diesel Expense (INR)", f"INR {recalc_fuel_cost:,.2f}")
+        m_fkm = st.number_input("Diesel Filling KM", min_value=0.0, value=float(t['diesel_filling_km'] or 0.0), step=10.0, key="edit_fkm")
+
+    st.markdown('<div class="section-header">Disbursements, Advances & Workshop Claims</div>', unsafe_allow_html=True)
+    e7, e8, e9 = st.columns(3)
+    with e7:
+        m_bata = st.number_input("Driver Bata Allowance (INR)", min_value=0.0, value=float(t['driver_bata'] or 0.0), step=100.0, key="edit_bata")
+        m_toll = st.number_input("FASTag / Toll (INR)", min_value=0.0, value=float(t['toll_fastag_expense'] or 0.0), step=100.0, key="edit_toll")
+        m_adv = st.number_input("Trip Cash Advance Drawn (INR)", min_value=0.0, value=float(t['cash_advance_issued'] or 0.0), step=500.0, key="edit_adv")
+    with e8:
+        m_rep = st.number_input("En-route Repair & Workshop (INR)", min_value=0.0, value=float(t['enroute_repairs_maintenance'] or 0.0), step=100.0, key="edit_rep")
+        m_load = st.number_input("Loading / Handling Charges (INR)", min_value=0.0, value=float(t['loading_unloading_expense'] or 0.0), step=50.0, key="edit_load")
+    with e9:
+        m_misc = st.number_input("Miscellaneous Claims (INR)", min_value=0.0, value=float(t['misc_trip_expense'] or 0.0), step=50.0, key="edit_misc")
+
+    st.write("")
+    if st.button("Commit All Trip Changes", type="primary", use_container_width=True):
+        if check_lr_exists(m_lr, exclude_trip_id=t['trip_id']):
+            st.error("Duplicate Violation: Another trip already utilizes this LR Number.")
+        else:
+            run_query("""
+                UPDATE trips
+                SET trip_number = %s,
+                    primary_driver_id = %s,
+                    origin = %s,
+                    destination = %s,
+                    trip_start_date = %s,
+                    trip_end_date = %s,
+                    start_km = %s,
+                    end_km = %s,
+                    total_km_run = %s,
+                    diesel_filling_km = %s,
+                    tonnage_loaded = %s,
+                    loaded_weight_mt = %s,
+                    freight_revenue = %s,
+                    fuel_litres = %s,
+                    fuel_expense = %s,
+                    driver_bata = %s,
+                    toll_fastag_expense = %s,
+                    cash_advance_issued = %s,
+                    enroute_repairs_maintenance = %s,
+                    loading_unloading_expense = %s,
+                    misc_trip_expense = %s
+                WHERE trip_id = %s;
+            """, (
+                m_lr.strip().upper(), all_driver_map[m_driver],
+                m_orig.strip().upper(), m_dest.strip().upper(),
+                m_sdate, m_edate,
+                m_skm, m_ekm, m_tkm, m_fkm,
+                m_ton, m_ton, recalc_freight,
+                m_fqty, recalc_fuel_cost,
+                m_bata, m_toll, m_adv,
+                m_rep, m_load, m_misc,
+                t['trip_id']
+            ), fetch=False)
+            st.success(f"Trip record {m_lr} successfully updated.")
+            st.rerun()
 
 # ==============================================================================
-# 3. DRIVER PERIOD SETTLEMENT
+# 5. DRIVER PERIOD SETTLEMENT (INCLUDES TRIP + DIRECT ADVANCES)
 # ==============================================================================
 elif menu == "Driver Period Settlement":
-    st.subheader("Driver Bi-Monthly Settlement Ledger")
+    st.subheader("Driver Bi-Monthly Settlement Ledger (Trip Bata + Direct Advances)")
+
     drivers = get_cached_drivers()
     if not drivers:
         st.warning("No registered drivers found.")
@@ -613,14 +803,15 @@ elif menu == "Driver Period Settlement":
         start_period_date = date(target_year, target_month, 16)
         end_period_date = date(target_year, target_month, last_day)
 
+    # 1. Fetch Trip Ledger for Period
     period_trips = run_query("""
         SELECT 
             t.trip_id, t.trip_number, t.trip_end_date, v.vehicle_number,
             t.origin, t.destination, t.total_km_run, t.tonnage_loaded,
             t.driver_bata,
-            t.cash_advance_issued,
+            t.cash_advance_issued AS trip_advance_issued,
             (t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense) AS out_of_pocket_claims,
-            t.trip_status, t.settlement_status
+            t.settlement_status
         FROM trips t
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id
         WHERE t.primary_driver_id = %s
@@ -629,54 +820,95 @@ elif menu == "Driver Period Settlement":
         ORDER BY t.trip_end_date ASC
     """, (selected_driver_id, start_period_date, end_period_date))
 
-    if not period_trips:
-        st.warning("No logged trips found for the driver in this cycle.")
-    else:
+    # 2. Fetch Direct Non-Trip Advances for Period
+    direct_advances = run_query("""
+        SELECT advance_id, advance_date, amount_inr, advance_type, payment_mode, reference_remarks, is_settled
+        FROM driver_direct_advances
+        WHERE driver_id = %s
+          AND advance_date >= %s
+          AND advance_date <= %s
+        ORDER BY advance_date ASC
+    """, (selected_driver_id, start_period_date, end_period_date))
+
+    st.markdown('<div class="section-header">1. Trips Performed in Cycle</div>', unsafe_allow_html=True)
+    if period_trips:
         df_period = pd.DataFrame(period_trips)
         st.dataframe(df_period, use_container_width=True)
-
         total_bata = df_period['driver_bata'].sum()
         total_claims = df_period['out_of_pocket_claims'].sum()
-        total_advances = df_period['cash_advance_issued'].sum()
-        net_payable = (total_bata + total_claims) - total_advances
+        total_trip_advances = df_period['trip_advance_issued'].sum()
+    else:
+        st.info("No trips logged for this driver during the selected cycle.")
+        total_bata = 0.00
+        total_claims = 0.00
+        total_trip_advances = 0.00
 
-        st.markdown("---")
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Earned Driver Bata", f"INR {total_bata:,.2f}")
-        m2.metric("Out-of-Pocket Claims", f"INR {total_claims:,.2f}")
-        m3.metric("Advances Deducted", f"INR {total_advances:,.2f}")
-        m4.metric("Net Settlement Balance", f"INR {net_payable:,.2f}")
+    st.markdown('<div class="section-header">2. Direct Advances / Loans Drawn</div>', unsafe_allow_html=True)
+    if direct_advances:
+        df_dir_adv = pd.DataFrame(direct_advances)
+        st.dataframe(df_dir_adv, use_container_width=True)
+        total_direct_advances = df_dir_adv['amount_inr'].sum()
+    else:
+        st.info("No direct cash advances issued during this cycle.")
+        total_direct_advances = 0.00
 
-        st.write("")
-        act1, act2 = st.columns(2)
-        with act1:
-            buffer = io.BytesIO()
-            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                df_period.to_excel(writer, index=False, sheet_name='Settlement')
-            st.download_button(
-                "Export Settlement Sheet (Excel)",
-                data=buffer.getvalue(),
-                file_name=f"settlement_{chosen_driver.split('-')[0].strip()}_{start_period_date}_{end_period_date}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-        with act2:
-            if st.button("Mark Period Trips as SETTLED", type="primary"):
-                run_query("""
-                    UPDATE trips 
-                    SET settlement_status = 'SETTLED', settled_at = CURRENT_TIMESTAMP 
-                    WHERE primary_driver_id = %s 
-                      AND trip_end_date >= %s 
-                      AND trip_end_date <= %s
-                """, (selected_driver_id, start_period_date, end_period_date), fetch=False)
-                st.success("Trips reconciled and marked as SETTLED.")
-                st.rerun()
+    total_advances_combined = total_trip_advances + total_direct_advances
+    net_payable = (total_bata + total_claims) - total_advances_combined
+
+    st.markdown("---")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Earned Driver Bata", f"INR {total_bata:,.2f}")
+    m2.metric("Out-of-Pocket Claims", f"INR {total_claims:,.2f}")
+    m3.metric("Total Advances (Trip + Direct)", f"INR {total_advances_combined:,.2f}")
+    m4.metric("Net Settlement Balance", f"INR {net_payable:,.2f}")
+
+    st.write("")
+    act1, act2 = st.columns(2)
+    with act1:
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            if period_trips:
+                pd.DataFrame(period_trips).to_excel(writer, index=False, sheet_name='Trips')
+            if direct_advances:
+                pd.DataFrame(direct_advances).to_excel(writer, index=False, sheet_name='Direct Advances')
+        st.download_button(
+            "Export Comprehensive Settlement Sheet (Excel)",
+            data=buffer.getvalue(),
+            file_name=f"settlement_{chosen_driver.split('-')[0].strip()}_{start_period_date}_{end_period_date}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    with act2:
+        if st.button("Mark All Trips and Advances as SETTLED", type="primary"):
+            run_query("""
+                UPDATE trips 
+                SET settlement_status = 'SETTLED', settled_at = CURRENT_TIMESTAMP 
+                WHERE primary_driver_id = %s 
+                  AND trip_end_date >= %s 
+                  AND trip_end_date <= %s
+            """, (selected_driver_id, start_period_date, end_period_date), fetch=False)
+
+            run_query("""
+                UPDATE driver_direct_advances
+                SET is_settled = TRUE, settled_at = CURRENT_TIMESTAMP
+                WHERE driver_id = %s
+                  AND advance_date >= %s
+                  AND advance_date <= %s
+            """, (selected_driver_id, start_period_date, end_period_date), fetch=False)
+
+            st.success("Trips and Direct Advances marked as SETTLED.")
+            st.rerun()
 
 # ==============================================================================
-# 4. MASTER DATA MANAGEMENT
+# 6. MASTER DATA MANAGEMENT (WITH DRIVER BATA MASTER)
 # ==============================================================================
 elif menu == "Master Data Management":
     st.subheader("Master Data Registries")
-    tab_v, tab_d, tab_r = st.tabs(["Vehicle Registry", "Driver Directory", "Freight Slabs Master"])
+    tab_v, tab_d, tab_bata, tab_r = st.tabs([
+        "Vehicle Registry", 
+        "Driver Directory", 
+        "Driver Bata Master (Destination & Truck)", 
+        "Freight Slabs Master"
+    ])
 
     with tab_v:
         v_list = get_cached_vehicles()
@@ -742,13 +974,48 @@ elif menu == "Master Data Management":
                 st.success("Driver master updated.")
                 st.rerun()
 
+    with tab_bata:
+        st.markdown('<div class="section-header">Driver Bata Master by Destination & Vehicle</div>', unsafe_allow_html=True)
+        bata_rules = get_cached_bata_rules()
+        if bata_rules:
+            st.dataframe(pd.DataFrame(bata_rules), use_container_width=True)
+
+        st.markdown('<div class="section-header">Create / Update Destination Bata Rule</div>', unsafe_allow_html=True)
+        vehicles = get_cached_vehicles()
+        veh_bata_map = {f"{v['vehicle_number']} ({v['truck_type']} - {v['carrying_capacity_tons']} MT)": v for v in vehicles}
+
+        with st.form("bata_rule_form", clear_on_submit=True):
+            bc1, bc2, bc3 = st.columns(3)
+            with bc1:
+                b_dest = st.text_input("Destination Terminal*", placeholder="e.g. SANKARI / ALUVA").strip().upper()
+                b_cargo = st.selectbox("Cargo Category", ["BULK", "BAG"])
+            with bc2:
+                b_veh = st.selectbox("Target Vehicle*", list(veh_bata_map.keys()))
+                target_b_veh = veh_bata_map[b_veh]
+            with bc3:
+                b_amount = st.number_input("Standard Driver Bata (INR)*", min_value=0.0, step=100.0, value=3000.0)
+
+            if st.form_submit_button("Save Driver Bata Rule", type="primary"):
+                if not b_dest:
+                    st.error("Destination terminal is required.")
+                else:
+                    run_query("""
+                        INSERT INTO driver_bata_master (destination_name, cargo_type, vehicle_id, capacity_tons, standard_bata_inr)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT (destination_name, cargo_type, vehicle_id)
+                        DO UPDATE SET standard_bata_inr = EXCLUDED.standard_bata_inr;
+                    """, (b_dest, b_cargo, target_b_veh['vehicle_id'], target_b_veh['carrying_capacity_tons'], b_amount), fetch=False)
+                    get_cached_bata_rules.clear()
+                    st.success(f"Driver Bata saved: INR {b_amount:,.2f} for {target_b_veh['vehicle_number']} to {b_dest}.")
+                    st.rerun()
+
     with tab_r:
         r_list = get_cached_routes()
         if r_list:
             st.dataframe(pd.DataFrame(r_list), use_container_width=True)
 
 # ==============================================================================
-# 5. VARIANCE & PERFORMANCE REPORTS
+# 7. VARIANCE & PERFORMANCE REPORTS
 # ==============================================================================
 elif menu == "Variance & Performance Reports":
     st.subheader("Operational & Variant Peer Comparison Analytics")
@@ -840,7 +1107,7 @@ elif menu == "Variance & Performance Reports":
         )
 
 # ==============================================================================
-# 6. TRIP RECORDS REGISTRY
+# 8. TRIP RECORDS REGISTRY
 # ==============================================================================
 elif menu == "Trip Records Registry":
     st.subheader("Master Trip Audit Log")
