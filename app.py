@@ -25,12 +25,12 @@ st.markdown("""
     footer {visibility: hidden;}
     
     div[data-testid="stMetricValue"] {
-        font-size: 1.35rem;
+        font-size: 1.30rem;
         font-weight: 700;
-        color: #1E293B;
+        color: #0F172A;
     }
     div[data-testid="stMetricLabel"] {
-        font-size: 0.82rem;
+        font-size: 0.80rem;
         font-weight: 600;
         color: #475569;
         text-transform: uppercase;
@@ -215,7 +215,7 @@ MODULE_LIST = [
     "Trip Modification & Expenses",
     "Driver Period Settlement",
     "Master Data Management",
-    "Variance & Performance Reports",
+    "Executive Retention & Yield Analytics",
     "Trip Records Registry"
 ]
 
@@ -297,7 +297,7 @@ if menu == "Fleet Status Board":
                 st.rerun()
 
 # ==============================================================================
-# 1. TRIP DISPATCH ENTRY (DATE FIRST + EXACT FIELD ORDER)
+# 1. TRIP DISPATCH ENTRY
 # ==============================================================================
 elif menu == "Trip Dispatch Entry":
     st.subheader("Trip Dispatch Registration")
@@ -325,7 +325,6 @@ elif menu == "Trip Dispatch Entry":
 
     st.markdown('<div class="section-header">Primary Trip Entry Parameters</div>', unsafe_allow_html=True)
 
-    # 1. DATE (Start Date First)
     col_date1, col_date2 = st.columns(2)
     with col_date1:
         start_date = st.date_input("1. Trip Start Date*", date.today(), key=f"sdate_{cnt}")
@@ -333,14 +332,11 @@ elif menu == "Trip Dispatch Entry":
         end_date = st.date_input("1b. Expected End Date*", date.today(), key=f"edate_{cnt}")
 
     col_a, col_b = st.columns(2)
-
-    # 2. LR NUMBER
     with col_a:
         lr_no = st.text_input("2. LR Number / Trip Number*", placeholder="e.g. LR-9081", key=f"lr_{cnt}").strip().upper()
         if lr_no and check_lr_exists(lr_no):
-            st.error(f"⚠️ DUPLICATE WARNING: LR Number '{lr_no}' is ALREADY REGISTERED in the system.")
+            st.error(f"DUPLICATE WARNING: LR Number '{lr_no}' is already registered in the system.")
 
-    # 3. TRUCK NUMBER
     vehicle_map = {f"{v['vehicle_number']}  ➔  [{v['truck_type']} | {v['carrying_capacity_tons']} MT Class]": v for v in vehicles}
     with col_b:
         sel_veh_label = st.selectbox("3. Truck Number*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
@@ -349,8 +345,6 @@ elif menu == "Trip Dispatch Entry":
         last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
 
     col_c, col_d = st.columns(2)
-
-    # 4. SOURCE
     with col_c:
         chosen_source_opt = st.selectbox("4. Source (Origin Hub)*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
         if chosen_source_opt == "OTHER / CUSTOM SOURCE":
@@ -358,7 +352,6 @@ elif menu == "Trip Dispatch Entry":
         else:
             origin_terminal = chosen_source_opt
 
-    # 5. DESTINATION
     routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
     dest_options = {}
     if routes_from_source:
@@ -387,8 +380,6 @@ elif menu == "Trip Dispatch Entry":
             standard_route_km = float(active_route['standard_km'])
 
     col_e, col_f = st.columns(2)
-
-    # 6. DRIVER
     driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
     driver_labels = list(driver_dict.keys())
     default_driver_index = 0
@@ -402,44 +393,36 @@ elif menu == "Trip Dispatch Entry":
         chosen_driver_str = st.selectbox("6. Driver Name*", driver_labels, index=default_driver_index, key=f"drv_{cnt}")
         sel_driver_obj = driver_dict[chosen_driver_str]
 
-    # 7. LOADED WEIGHT (MT)
     with col_f:
         weighbridge_mt = st.number_input("7. Loaded Weight (MT)*", min_value=0.0, max_value=60.0, step=0.05, value=v_class_mt, key=f"wmt_{cnt}")
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.info(f"Auto Gross Freight: **INR {gross_freight:,.2f}** ({weighbridge_mt} MT × INR {agreed_rate_mt:,.2f}/MT)")
 
     col_g, col_h = st.columns(2)
-
-    # 8. DRIVER BATA
     master_bata_val = lookup_driver_bata(dest_terminal, cargo_category, active_veh['vehicle_id'])
     with col_g:
         driver_bata = st.number_input(f"8. Driver Bata (INR)* [Master: INR {master_bata_val:,.2f}]", min_value=0.0, step=100.0, value=master_bata_val, key=f"bata_{cnt}")
 
-    # 9. DIESEL LITRES
     with col_h:
         fuel_qty = st.number_input("9. Diesel Quantity Issued (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
         gross_fuel_cost = round(fuel_qty * active_diesel_rate, 2)
         st.info(f"Auto Diesel Cost: **INR {gross_fuel_cost:,.2f}** ({fuel_qty} L × INR {active_diesel_rate:.2f}/L)")
 
-    # Secondary Logistics
     st.markdown('<div class="section-header">Secondary Trip Logistics & Odometers</div>', unsafe_allow_html=True)
     sec1, sec2, sec3 = st.columns(3)
-    
     with sec1:
         start_km = st.number_input("Load Start Odometer (KM)", min_value=0.0, step=10.0, value=0.0, key=f"skm_{cnt}")
         end_km = st.number_input("Expected End Odometer (KM)", min_value=0.0, step=10.0, value=0.0, key=f"ekm_{cnt}")
-    
     with sec2:
         computed_km = max(0.0, end_km - start_km) if (end_km >= start_km and end_km > 0) else standard_route_km
         total_km_run = st.number_input("Total Trip KM Run", min_value=0.0, step=10.0, value=computed_km, key=f"tkm_{cnt}")
         filling_km = st.number_input("Diesel Filling Odometer (KM)", min_value=0.0, step=10.0, value=0.0, key=f"fkm_{cnt}")
-
     with sec3:
         fastag_toll = st.number_input("FASTag / Toll Disbursement (INR)", min_value=0.0, step=100.0, value=0.0, key=f"toll_{cnt}")
         cash_advance = st.number_input("Trip Cash Advance Issued to Driver (INR)", min_value=0.0, step=500.0, value=0.0, key=f"adv_{cnt}")
 
     st.write("")
-    if st.button("🚀 Save and Dispatch Trip Record", type="primary", use_container_width=True):
+    if st.button("Save and Dispatch Trip Record", type="primary", use_container_width=True):
         if not lr_no.strip() or not dest_terminal.strip() or not origin_terminal.strip():
             st.error("Validation Failure: LR Number, Source, and Destination are required.")
         elif check_lr_exists(lr_no):
@@ -492,7 +475,7 @@ elif menu == "Trip Dispatch Entry":
                 st.error(f"Database Execution Error: {e}")
 
 # ==============================================================================
-# 2. POD RECEIVE & TRIP CLOSURE (NEW MODULE)
+# 2. POD RECEIVE & TRIP CLOSURE
 # ==============================================================================
 elif menu == "POD Receive & Trip Closure":
     st.subheader("POD Receive, Actual Unloading Verification & Trip Closure")
@@ -521,7 +504,6 @@ elif menu == "POD Receive & Trip Closure":
         chosen_lr_str = st.selectbox("Select Active Trip to Close with POD", list(trip_options.keys()))
         t_cur = trip_options[chosen_lr_str]
 
-        # Determine rate per MT
         known_rate = run_query("""
             SELECT freight_rate_per_ton 
             FROM destinations_freight_master 
@@ -584,17 +566,15 @@ elif menu == "POD Receive & Trip Closure":
                 handling_charges = st.number_input("Hamali / Unloading Charges (INR)", min_value=0.0, value=0.0, step=50.0)
                 misc_claims = st.number_input("Misc Toll / Entry Claims (INR)", min_value=0.0, value=0.0, step=50.0)
 
-            # Billable Freight calculation
             final_freight_revenue = round(unloaded_wt * applied_rate_mt, 2)
             pod_remarks = st.text_input("Trip Closure & POD Remarks", value="POD Verified & Weighed at Customer Site")
 
             st.write("")
-            if st.form_submit_button("✅ Settle POD, Close Trip & Release Truck", type="primary", use_container_width=True):
+            if st.form_submit_button("Settle POD, Close Trip & Release Truck", type="primary", use_container_width=True):
                 if not pod_no:
                     st.error("POD Receipt Number is required to close trip.")
                 else:
                     try:
-                        # 1. Update Trip Record to COMPLETED
                         run_query("""
                             UPDATE trips
                             SET pod_number = %s,
@@ -624,7 +604,6 @@ elif menu == "POD Receive & Trip Closure":
                             pod_remarks, t_cur['trip_id']
                         ), fetch=False)
 
-                        # 2. Release Vehicle back to Available Status
                         run_query("""
                             UPDATE vehicles
                             SET current_status = 'AVAILABLE_FOR_LOAD',
@@ -646,7 +625,6 @@ elif menu == "Trip & Sundry Diesel Logs":
     st.subheader("Diesel & Fuel Issue Management (Trip & Sundry)")
 
     tab_add_fuel, tab_view_fuel = st.tabs(["Add Diesel Entry", "Diesel Audit Ledger"])
-
     vehicles = get_cached_vehicles()
     v_dict = {f"{v['vehicle_number']} ({v['truck_type']})": v for v in vehicles}
     current_d_rate = get_cached_diesel_rate()
@@ -745,7 +723,6 @@ elif menu == "Direct Driver Advances":
     st.subheader("Direct Driver Cash Advance & Loan Ledger")
 
     tab_give_adv, tab_view_adv = st.tabs(["Issue Direct Advance", "Advances Ledger"])
-
     drivers = get_cached_drivers()
     d_map = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
 
@@ -958,7 +935,7 @@ elif menu == "Trip Modification & Expenses":
             st.rerun()
 
 # ==============================================================================
-# 6. DRIVER PERIOD SETTLEMENT (CUSTOM DATES + SAFE EXCEL)
+# 6. DRIVER PERIOD SETTLEMENT
 # ==============================================================================
 elif menu == "Driver Period Settlement":
     st.subheader("Driver Settlement Ledger (Trip Bata + Direct Advances)")
@@ -1000,7 +977,6 @@ elif menu == "Driver Period Settlement":
 
     st.info(f"Settlement Window: **{start_period_date.strftime('%d-%b-%Y')}** to **{end_period_date.strftime('%d-%b-%Y')}**")
 
-    # 1. Fetch Trip Ledger for Period
     period_trips = run_query("""
         SELECT 
             t.trip_id, t.trip_number, t.trip_end_date, v.vehicle_number,
@@ -1017,7 +993,6 @@ elif menu == "Driver Period Settlement":
         ORDER BY t.trip_end_date ASC
     """, (selected_driver_id, start_period_date, end_period_date))
 
-    # 2. Fetch Direct Non-Trip Advances for Period
     direct_advances = run_query("""
         SELECT advance_id, advance_date, amount_inr, advance_type, payment_mode, reference_remarks, is_settled
         FROM driver_direct_advances
@@ -1123,10 +1098,10 @@ elif menu == "Master Data Management":
     st.subheader("Master Data Configuration & Registries")
 
     tab_a, tab_b, tab_c, tab_d = st.tabs([
-        "🚛 A) Vehicle Master",
-        "👨‍✈️ B) Driver Master",
-        "📍 C) Freight Rates Master (Source & Destination)",
-        "💰 D) Driver Bata Master"
+        "A) Vehicle Master",
+        "B) Driver Master",
+        "C) Freight Rates Master (Source & Destination)",
+        "D) Driver Bata Master"
     ])
 
     # TAB A: VEHICLES MASTER
@@ -1150,7 +1125,7 @@ elif menu == "Master Data Management":
 
         col_va, col_vb = st.columns(2)
         with col_va:
-            st.markdown('<div class="section-header">➕ Create New Truck</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Create New Truck</div>', unsafe_allow_html=True)
             with st.form("create_veh_form", clear_on_submit=True):
                 nv_num = st.text_input("Vehicle Number*", placeholder="e.g. KL43Q3608").upper().strip()
                 nv_type = st.selectbox("Truck Variant", [
@@ -1177,7 +1152,7 @@ elif menu == "Master Data Management":
                         st.rerun()
 
         with col_vb:
-            st.markdown('<div class="section-header">✏️ Edit Existing Truck</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Edit Existing Truck</div>', unsafe_allow_html=True)
             if v_list:
                 v_edit_map = {f"{v['vehicle_number']} ({v['truck_type']} - {v['carrying_capacity_tons']} MT)": v for v in v_list}
                 sel_v_edit = st.selectbox("Select Truck to Edit", list(v_edit_map.keys()), key="sel_v_edit")
@@ -1228,7 +1203,7 @@ elif menu == "Master Data Management":
 
         col_da, col_db = st.columns(2)
         with col_da:
-            st.markdown('<div class="section-header">➕ Create New Driver</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Create New Driver</div>', unsafe_allow_html=True)
             auto_drv_code = f"DRV-{len(d_list)+1:03d}"
             with st.form("create_driver_form", clear_on_submit=True):
                 nd_code = st.text_input("Driver Code*", value=auto_drv_code).strip().upper()
@@ -1252,7 +1227,7 @@ elif menu == "Master Data Management":
                         st.rerun()
 
         with col_db:
-            st.markdown('<div class="section-header">✏️ Edit Existing Driver</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Edit Existing Driver</div>', unsafe_allow_html=True)
             if d_list:
                 d_edit_map = {f"{d['driver_code']} - {d['full_name']}": d for d in d_list}
                 sel_d_edit = st.selectbox("Select Driver to Edit", list(d_edit_map.keys()), key="sel_d_edit")
@@ -1297,7 +1272,7 @@ elif menu == "Master Data Management":
 
         col_ca, col_cb = st.columns(2)
         with col_ca:
-            st.markdown('<div class="section-header">➕ Create Freight Slab</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Create Freight Slab</div>', unsafe_allow_html=True)
             with st.form("create_route_form", clear_on_submit=True):
                 rc_cargo = st.selectbox("Cargo Category", ["BULK", "BAG"])
                 rc_origin = st.selectbox("Source (Origin Hub)*", ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"])
@@ -1326,7 +1301,7 @@ elif menu == "Master Data Management":
                         st.rerun()
 
         with col_cb:
-            st.markdown('<div class="section-header">✏️ Edit / Delete Freight Slab</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Edit / Delete Freight Slab</div>', unsafe_allow_html=True)
             if r_list:
                 r_edit_map = {f"[{r['cargo_type']}] {r['origin']} ➔ {r['destination_name']} ({r['capacity_tons']} MT Class @ INR {r['freight_rate_per_ton']}/MT)": r for r in r_list}
                 sel_r_edit = st.selectbox("Select Route Slab to Edit", list(r_edit_map.keys()), key="sel_r_edit")
@@ -1383,7 +1358,7 @@ elif menu == "Master Data Management":
         veh_bata_map = {f"{v['vehicle_number']} ({v['truck_type']} - {v['carrying_capacity_tons']} MT Class)": v for v in vehicles} if vehicles else {}
 
         with col_ba:
-            st.markdown('<div class="section-header">➕ Create Destination Driver Bata</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Create Destination Driver Bata</div>', unsafe_allow_html=True)
             with st.form("create_bata_form", clear_on_submit=True):
                 nb_dest = st.text_input("Destination Terminal Name*", placeholder="e.g. SANKARI / COIMBATORE").strip().upper()
                 nb_cargo = st.selectbox("Cargo Category", ["BULK", "BAG"])
@@ -1406,7 +1381,7 @@ elif menu == "Master Data Management":
                         st.rerun()
 
         with col_bb:
-            st.markdown('<div class="section-header">✏️ Edit / Delete Driver Bata Rule</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Edit / Delete Driver Bata Rule</div>', unsafe_allow_html=True)
             if bata_rules:
                 b_edit_map = {f"{b['destination_name']} | Truck: {b['vehicle_number']} ({b['capacity_tons']} MT) ➔ INR {b['standard_bata_inr']}": b for b in bata_rules}
                 sel_b_edit = st.selectbox("Select Bata Rule to Edit", list(b_edit_map.keys()), key="sel_b_edit")
@@ -1438,163 +1413,319 @@ elif menu == "Master Data Management":
                         st.rerun()
 
 # ==============================================================================
-# 8. VARIANCE & ADVANCED REVENUE ANALYTICS (REVENUE / DAY / TRUCK)
+# 8. EXECUTIVE RETENTION & YIELD ANALYTICS (CORPORATE PERFORMANCE METRICS)
 # ==============================================================================
-elif menu == "Variance & Performance Reports":
-    st.subheader("Operational Analytics & Peer Variance Performance")
+elif menu == "Executive Retention & Yield Analytics":
+    st.subheader("Executive Corporate Fleet Retention & Operational Yield Dashboard")
 
-    tab_peer, tab_rev_day = st.tabs([
-        "📊 Variant Peer Comparison",
-        "📈 Revenue & Profit Per Day Analytics"
+    # Timeframe Selector
+    tfc1, tfc2, tfc3 = st.columns(3)
+    with tfc1:
+        report_period_type = st.selectbox("Analysis Window", [
+            "Lifetime Fleet Analytics",
+            "Current Fiscal Month",
+            "Custom Operating Period"
+        ])
+
+    today = date.today()
+    if report_period_type == "Current Fiscal Month":
+        start_filter_date = today.replace(day=1)
+        end_filter_date = today
+    elif report_period_type == "Custom Operating Period":
+        with tfc2:
+            start_filter_date = st.date_input("Period From*", today.replace(day=1))
+        with tfc3:
+            end_filter_date = st.date_input("Period To*", today)
+    else:
+        start_filter_date = None
+        end_filter_date = None
+
+    tab_overview, tab_variant_peer, tab_daily_yield, tab_branch_mom = st.tabs([
+        "1. Executive Fleet Yield Summary",
+        "2. Variant Peer Benchmarking (30 MT vs 30 MT / 35 MT vs 35 MT)",
+        "3. Asset Turnover & Yield Per Day",
+        "4. Month-on-Month Retention Trajectory"
     ])
 
-    with tab_peer:
-        vehicles = get_cached_vehicles()
-        variants = sorted(list(set(v['truck_type'] for v in vehicles)))
-        capacities = sorted(list(set(float(v['carrying_capacity_tons']) for v in vehicles)))
+    # Dynamic SQL Builder for Fleet Performance Metrics
+    base_where = "WHERE v.is_active = TRUE"
+    date_params = []
+    if start_filter_date and end_filter_date:
+        base_where += " AND t.trip_end_date >= %s AND t.trip_end_date <= %s"
+        date_params.extend([start_filter_date, end_filter_date])
 
-        rc1, rc2 = st.columns(2)
-        with rc1:
-            sel_variant = st.selectbox("Select Vehicle Variant for Peer Analysis", ["All Variants"] + variants)
-        with rc2:
-            sel_capacity = st.selectbox("Filter by Capacity Class (MT)", ["All Capacity Classes"] + capacities)
+    comprehensive_query = f"""
+        SELECT 
+            v.vehicle_number,
+            v.truck_type,
+            v.carrying_capacity_tons,
+            COUNT(t.trip_id) AS total_trips,
+            COUNT(CASE WHEN t.trip_status = 'COMPLETED' THEN 1 END) AS closed_trips,
+            COALESCE(SUM(GREATEST(1, (t.trip_end_date - t.trip_start_date) + 1)), 0) AS operational_days,
+            COALESCE(SUM(t.total_km_run), 0.00) AS total_km_run,
+            COALESCE(SUM(t.loaded_weight_mt), 0.00) AS total_loaded_mt,
+            COALESCE(SUM(COALESCE(t.unloaded_weight_mt, t.loaded_weight_mt)), 0.00) AS total_delivered_mt,
+            COALESCE(SUM(t.shortage_mt), 0.00) AS total_shortage_mt,
+            COALESCE(SUM(t.shortage_penalty_deduction), 0.00) AS total_shortage_deductions_inr,
+            COALESCE(SUM(t.freight_revenue), 0.00) AS gross_freight_revenue_inr,
+            COALESCE(SUM(t.fuel_litres), 0.00) AS total_fuel_litres,
+            COALESCE(SUM(t.fuel_expense), 0.00) AS total_fuel_cost_inr,
+            COALESCE(SUM(t.driver_bata), 0.00) AS total_driver_bata_inr,
+            COALESCE(SUM(t.toll_fastag_expense), 0.00) AS total_toll_expense_inr,
+            COALESCE(SUM(t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense), 0.00) AS adhoc_repairs_claims_inr,
+            COALESCE(SUM(t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense), 0.00) AS total_direct_operating_costs_inr,
+            COALESCE(SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)), 0.00) AS net_retained_profit_inr,
+            ROUND(
+                (COALESCE(SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)), 0.00) / 
+                NULLIF(SUM(t.freight_revenue), 0.00)) * 100.0, 2
+            ) AS retention_margin_pct,
+            ROUND(SUM(t.total_km_run) / NULLIF(SUM(t.fuel_litres), 0.00), 2) AS average_mileage_kmpl,
+            ROUND(
+                SUM(t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense) / 
+                NULLIF(SUM(t.total_km_run), 0.00), 2
+            ) AS operating_cost_per_km_inr,
+            ROUND(
+                SUM(t.freight_revenue) / 
+                NULLIF(SUM(t.total_km_run), 0.00), 2
+            ) AS revenue_per_km_inr,
+            ROUND(
+                SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)) / 
+                NULLIF(SUM(t.total_km_run), 0.00), 2
+            ) AS net_yield_per_km_inr,
+            ROUND(
+                SUM(t.freight_revenue) / 
+                NULLIF(SUM(GREATEST(1, (t.trip_end_date - t.trip_start_date) + 1)), 0), 2
+            ) AS revenue_per_day_inr,
+            ROUND(
+                SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)) / 
+                NULLIF(SUM(GREATEST(1, (t.trip_end_date - t.trip_start_date) + 1)), 0), 2
+            ) AS profit_per_day_inr,
+            ROUND(
+                SUM(t.total_km_run) / 
+                NULLIF(SUM(GREATEST(1, (t.trip_end_date - t.trip_start_date) + 1)), 0), 2
+            ) AS km_run_per_day
+        FROM vehicles v
+        LEFT JOIN trips t ON v.vehicle_id = t.vehicle_id
+        {base_where}
+        GROUP BY v.vehicle_number, v.truck_type, v.carrying_capacity_tons
+        ORDER BY net_retained_profit_inr DESC;
+    """
 
-        query = """
-            SELECT 
-                v.vehicle_number,
-                v.truck_type,
-                v.carrying_capacity_tons,
-                COUNT(t.trip_id) AS total_trips,
-                COALESCE(SUM(t.total_km_run), 0.00) AS total_km_run,
-                COALESCE(SUM(t.unloaded_weight_mt), 0.00) AS total_tonnage_delivered,
-                COALESCE(SUM(t.freight_revenue), 0.00) AS gross_revenue_inr,
-                COALESCE(SUM(t.fuel_expense), 0.00) AS total_fuel_expense,
-                COALESCE(SUM(t.driver_bata), 0.00) AS total_driver_bata,
-                COALESCE(SUM(t.toll_fastag_expense), 0.00) AS total_toll_expense,
-                COALESCE(SUM(t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense), 0.00) AS other_operating_expenses,
-                COALESCE(SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)), 0.00) AS net_retained_profit_inr,
-                ROUND(
-                    (COALESCE(SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)), 0.00) / 
-                    NULLIF(SUM(t.freight_revenue), 0.00)) * 100.0, 2
-                ) AS profit_margin_pct,
-                ROUND(SUM(t.total_km_run) / NULLIF(SUM(t.fuel_litres), 0.00), 2) AS average_mileage_kmpl,
-                ROUND(
-                    SUM(t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense) / 
-                    NULLIF(SUM(t.total_km_run), 0.00), 2
-                ) AS cost_per_km_inr
-            FROM vehicles v
-            LEFT JOIN trips t ON v.vehicle_id = t.vehicle_id
-            WHERE v.is_active = TRUE
-        """
-        params = []
-        if sel_variant != "All Variants":
-            query += " AND v.truck_type = %s"
-            params.append(sel_variant)
-        if sel_capacity != "All Capacity Classes":
-            query += " AND v.carrying_capacity_tons = %s"
-            params.append(float(sel_capacity))
+    df_analytics = pd.DataFrame(run_query(comprehensive_query, tuple(date_params) if date_params else None))
 
-        query += " GROUP BY v.vehicle_number, v.truck_type, v.carrying_capacity_tons ORDER BY net_retained_profit_inr DESC;"
-
-        report_data = run_query(query, tuple(params))
-        if not report_data:
-            st.info("No comparative metrics available for the selected vehicle parameters.")
+    # --- 1. EXECUTIVE FLEET YIELD SUMMARY ---
+    with tab_overview:
+        if df_analytics.empty or df_analytics['total_trips'].sum() == 0:
+            st.info("No trip records available within the chosen analytics timeframe.")
         else:
-            df_rep = pd.DataFrame(report_data)
+            tot_rev = df_analytics['gross_freight_revenue_inr'].sum()
+            tot_costs = df_analytics['total_direct_operating_costs_inr'].sum()
+            tot_profit = df_analytics['net_retained_profit_inr'].sum()
+            avg_margin = round((tot_profit / max(1.0, tot_rev)) * 100.0, 2)
+            tot_kms = df_analytics['total_km_run'].sum()
+            tot_fuel = df_analytics['total_fuel_litres'].sum()
+            fleet_kmpl = round(tot_kms / max(1.0, tot_fuel), 2)
+            tot_tonnage = df_analytics['total_delivered_mt'].sum()
+
+            kpi1, kpi2, kpi3, kpi4, kpi5, kpi6 = st.columns(6)
+            kpi1.metric("Gross Freight Revenue", f"INR {tot_rev:,.2f}")
+            kpi2.metric("Total Direct Trip Costs", f"INR {tot_costs:,.2f}")
+            kpi3.metric("Net Retained Margin", f"INR {tot_profit:,.2f}")
+            kpi4.metric("Retention Yield Margin", f"{avg_margin:.2f} %")
+            kpi5.metric("Average Fleet Mileage", f"{fleet_kmpl:.2f} KMPL")
+            kpi6.metric("Total MT Delivered", f"{tot_tonnage:,.2f} MT")
+
+            st.markdown('<div class="section-header">Corporate Fleet Unit Economics & Cost Audit</div>', unsafe_allow_html=True)
             st.dataframe(
-                df_rep,
+                df_analytics[[
+                    'vehicle_number', 'truck_type', 'carrying_capacity_tons', 'total_trips', 'closed_trips',
+                    'total_km_run', 'total_delivered_mt', 'gross_freight_revenue_inr', 'total_fuel_cost_inr',
+                    'total_driver_bata_inr', 'total_toll_expense_inr', 'adhoc_repairs_claims_inr',
+                    'total_direct_operating_costs_inr', 'net_retained_profit_inr', 'retention_margin_pct',
+                    'average_mileage_kmpl', 'operating_cost_per_km_inr', 'revenue_per_km_inr', 'net_yield_per_km_inr'
+                ]],
                 column_config={
                     "vehicle_number": "Vehicle Number",
                     "truck_type": "Variant",
-                    "carrying_capacity_tons": "Capacity Class (MT)",
+                    "carrying_capacity_tons": "Class (MT)",
                     "total_trips": "Trips",
-                    "total_km_run": "Total KM",
-                    "total_tonnage_delivered": "Delivered MT",
-                    "gross_revenue_inr": "Gross Revenue (INR)",
-                    "total_fuel_expense": "Fuel Cost (INR)",
-                    "total_driver_bata": "Bata (INR)",
-                    "total_toll_expense": "Toll (INR)",
-                    "other_operating_expenses": "Repairs & Handling (INR)",
+                    "closed_trips": "Closed",
+                    "total_km_run": "KM Run",
+                    "total_delivered_mt": "Delivered MT",
+                    "gross_freight_revenue_inr": "Gross Revenue (INR)",
+                    "total_fuel_cost_inr": "Fuel Cost (INR)",
+                    "total_driver_bata_inr": "Bata (INR)",
+                    "total_toll_expense_inr": "FASTag (INR)",
+                    "adhoc_repairs_claims_inr": "Repairs & Claims (INR)",
+                    "total_direct_operating_costs_inr": "Total Direct Costs (INR)",
                     "net_retained_profit_inr": "Net Retained Profit (INR)",
-                    "profit_margin_pct": "Margin %",
+                    "retention_margin_pct": "Margin %",
                     "average_mileage_kmpl": "Mileage (KMPL)",
-                    "cost_per_km_inr": "Cost / KM (INR)"
+                    "operating_cost_per_km_inr": "Cost / KM (INR)",
+                    "revenue_per_km_inr": "Revenue / KM (INR)",
+                    "net_yield_per_km_inr": "Net Profit / KM (INR)"
                 },
                 hide_index=True,
                 use_container_width=True
             )
 
-            buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine='openpyxl') as writer:
-                df_rep.to_excel(writer, index=False, sheet_name='Peer Variance Report')
+    # --- 2. VARIANT PEER BENCHMARKING (30 MT vs 30 MT / 35 MT vs 35 MT) ---
+    with tab_variant_peer:
+        st.markdown('<div class="section-header">Variant Peer Benchmarking & Like-for-Like Analysis</div>', unsafe_allow_html=True)
+        
+        col_vp1, col_vp2 = st.columns(2)
+        all_variants = sorted(list(set(df_analytics['truck_type'].tolist()))) if not df_analytics.empty else []
+        all_classes = sorted(list(set(df_analytics['carrying_capacity_tons'].tolist()))) if not df_analytics.empty else []
 
-            st.download_button(
-                "Download Variance Analytics Sheet (Excel)",
-                data=buf.getvalue(),
-                file_name=f"peer_performance_report_{sel_variant}_{date.today()}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+        with col_vp1:
+            sel_var_benchmark = st.selectbox("Benchmark Vehicle Variant", ["All Fleet Configurations"] + all_variants)
+        with col_vp2:
+            sel_class_benchmark = st.selectbox("Benchmark Payload Capacity Class (MT)", ["All Capacity Classes"] + [f"{float(c):.1f} MT" for c in all_classes])
 
-    with tab_rev_day:
-        st.markdown('<div class="section-header">Truck Revenue & Profit Per Day Performance</div>', unsafe_allow_html=True)
-        rev_day_data = run_query("""
-            SELECT 
-                v.vehicle_number,
-                v.truck_type,
-                COUNT(t.trip_id) AS total_completed_trips,
-                COALESCE(SUM(GREATEST(1, (t.trip_end_date - t.trip_start_date) + 1)), 0) AS total_operational_days,
-                COALESCE(SUM(t.freight_revenue), 0.00) AS total_revenue_inr,
-                COALESCE(SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)), 0.00) AS total_profit_inr,
-                ROUND(
-                    COALESCE(SUM(t.freight_revenue), 0.00) / 
-                    NULLIF(SUM(GREATEST(1, (t.trip_end_date - t.trip_start_date) + 1)), 0), 2
-                ) AS revenue_per_day_inr,
-                ROUND(
-                    COALESCE(SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)), 0.00) / 
-                    NULLIF(SUM(GREATEST(1, (t.trip_end_date - t.trip_start_date) + 1)), 0), 2
-                ) AS profit_per_day_inr,
-                ROUND(
-                    COALESCE(SUM(t.total_km_run), 0.00) / 
-                    NULLIF(SUM(GREATEST(1, (t.trip_end_date - t.trip_start_date) + 1)), 0), 2
-                ) AS km_per_day
-            FROM vehicles v
-            JOIN trips t ON v.vehicle_id = t.vehicle_id
-            WHERE t.trip_status = 'COMPLETED'
-            GROUP BY v.vehicle_number, v.truck_type
-            ORDER BY profit_per_day_inr DESC;
-        """)
+        filtered_peer_df = df_analytics.copy()
+        if sel_var_benchmark != "All Fleet Configurations":
+            filtered_peer_df = filtered_peer_df[filtered_peer_df['truck_type'] == sel_var_benchmark]
+        if sel_class_benchmark != "All Capacity Classes":
+            c_val = float(sel_class_benchmark.replace(" MT", ""))
+            filtered_peer_df = filtered_peer_df[filtered_peer_df['carrying_capacity_tons'] == c_val]
 
-        if rev_day_data:
-            df_rev_day = pd.DataFrame(rev_day_data)
-            st.dataframe(
-                df_rev_day,
-                column_config={
-                    "vehicle_number": "Truck Number",
-                    "truck_type": "Variant",
-                    "total_completed_trips": "Closed Trips",
-                    "total_operational_days": "Operating Days",
-                    "total_revenue_inr": "Total Revenue (INR)",
-                    "total_profit_inr": "Net Retained Profit (INR)",
-                    "revenue_per_day_inr": "Revenue / Day (INR)",
-                    "profit_per_day_inr": "Profit / Day (INR)",
-                    "km_per_day": "KM / Day"
-                },
-                hide_index=True,
-                use_container_width=True
-            )
-
-            buf_r = io.BytesIO()
-            with pd.ExcelWriter(buf_r, engine='openpyxl') as writer:
-                df_rev_day.to_excel(writer, index=False, sheet_name='Revenue Per Day')
-
-            st.download_button(
-                "Export Revenue Per Day Analytics (Excel)",
-                data=buf_r.getvalue(),
-                file_name=f"revenue_per_day_analytics_{date.today()}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+        if filtered_peer_df.empty:
+            st.info("No vehicles match the selected peer group parameters.")
         else:
-            st.info("No completed trips with verified POD closing dates available yet for daily analytics.")
+            avg_peer_margin = filtered_peer_df['retention_margin_pct'].mean()
+            avg_peer_kmpl = filtered_peer_df['average_mileage_kmpl'].mean()
+            avg_peer_cost_km = filtered_peer_df['operating_cost_per_km_inr'].mean()
+            avg_peer_rev_km = filtered_peer_df['revenue_per_km_inr'].mean()
+
+            pm1, pm2, pm3, pm4 = st.columns(4)
+            pm1.metric("Peer Group Avg Margin", f"{avg_peer_margin:.2f} %")
+            pm2.metric("Peer Group Avg Mileage", f"{avg_peer_kmpl:.2f} KMPL")
+            pm3.metric("Peer Cost / KM", f"INR {avg_peer_cost_km:.2f} / KM")
+            pm4.metric("Peer Revenue / KM", f"INR {avg_peer_rev_km:.2f} / KM")
+
+            st.dataframe(
+                filtered_peer_df[[
+                    'vehicle_number', 'truck_type', 'carrying_capacity_tons', 'total_trips', 'total_km_run',
+                    'gross_freight_revenue_inr', 'total_direct_operating_costs_inr', 'net_retained_profit_inr',
+                    'retention_margin_pct', 'average_mileage_kmpl', 'operating_cost_per_km_inr',
+                    'revenue_per_km_inr', 'net_yield_per_km_inr'
+                ]],
+                column_config={
+                    "vehicle_number": "Vehicle Number",
+                    "truck_type": "Variant",
+                    "carrying_capacity_tons": "Capacity Class",
+                    "total_trips": "Trips",
+                    "total_km_run": "KM Run",
+                    "gross_freight_revenue_inr": "Gross Revenue (INR)",
+                    "total_direct_operating_costs_inr": "Direct Costs (INR)",
+                    "net_retained_profit_inr": "Retained Profit (INR)",
+                    "retention_margin_pct": "Margin %",
+                    "average_mileage_kmpl": "Mileage (KMPL)",
+                    "operating_cost_per_km_inr": "Cost / KM (INR)",
+                    "revenue_per_km_inr": "Rev / KM (INR)",
+                    "net_yield_per_km_inr": "Net / KM (INR)"
+                },
+                hide_index=True,
+                use_container_width=True
+            )
+
+    # --- 3. ASSET TURNOVER & YIELD PER DAY ---
+    with tab_daily_yield:
+        st.markdown('<div class="section-header">Asset Turnover & Velocity Metrics (Per Operating Day)</div>', unsafe_allow_html=True)
+        if df_analytics.empty:
+            st.info("No asset performance data available.")
+        else:
+            st.dataframe(
+                df_analytics[[
+                    'vehicle_number', 'truck_type', 'carrying_capacity_tons', 'closed_trips', 'operational_days',
+                    'gross_freight_revenue_inr', 'net_retained_profit_inr',
+                    'revenue_per_day_inr', 'profit_per_day_inr', 'km_run_per_day'
+                ]],
+                column_config={
+                    "vehicle_number": "Vehicle Number",
+                    "truck_type": "Variant",
+                    "carrying_capacity_tons": "Class (MT)",
+                    "closed_trips": "POD Closed Trips",
+                    "operational_days": "Active Operating Days",
+                    "gross_freight_revenue_inr": "Total Revenue (INR)",
+                    "net_retained_profit_inr": "Total Profit (INR)",
+                    "revenue_per_day_inr": "Revenue / Day (INR)",
+                    "profit_per_day_inr": "Net Retained Profit / Day (INR)",
+                    "km_run_per_day": "Distance / Day (KM)"
+                },
+                hide_index=True,
+                use_container_width=True
+            )
+
+    # --- 4. MONTH-ON-MONTH RETENTION TRAJECTORY ---
+    with tab_branch_mom:
+        st.markdown('<div class="section-header">Month-on-Month Branch Profitability & Yield Matrix</div>', unsafe_allow_html=True)
+        mom_query = """
+            SELECT 
+                TO_CHAR(DATE_TRUNC('month', trip_end_date), 'Mon YYYY') AS operational_month,
+                COUNT(trip_id) AS total_trips_logged,
+                COUNT(CASE WHEN trip_status = 'COMPLETED' THEN 1 END) AS closed_trips,
+                COALESCE(SUM(total_km_run), 0.00) AS total_kms,
+                COALESCE(SUM(COALESCE(unloaded_weight_mt, loaded_weight_mt)), 0.00) AS total_mt_delivered,
+                COALESCE(SUM(freight_revenue), 0.00) AS gross_freight_revenue_inr,
+                COALESCE(SUM(fuel_expense), 0.00) AS total_fuel_expense_inr,
+                COALESCE(SUM(driver_bata), 0.00) AS total_driver_bata_inr,
+                COALESCE(SUM(toll_fastag_expense), 0.00) AS total_toll_expense_inr,
+                COALESCE(SUM(enroute_repairs_maintenance + loading_unloading_expense + misc_trip_expense), 0.00) AS total_repairs_claims_inr,
+                COALESCE(SUM(freight_revenue - (fuel_expense + driver_bata + toll_fastag_expense + enroute_repairs_maintenance + loading_unloading_expense + misc_trip_expense)), 0.00) AS gross_retained_profit_inr,
+                ROUND(
+                    (COALESCE(SUM(freight_revenue - (fuel_expense + driver_bata + toll_fastag_expense + enroute_repairs_maintenance + loading_unloading_expense + misc_trip_expense)), 0.00) / 
+                    NULLIF(SUM(freight_revenue), 0.00)) * 100.0, 2
+                ) AS retention_margin_pct,
+                ROUND(SUM(total_km_run) / NULLIF(SUM(fuel_litres), 0.00), 2) AS fleet_average_kmpl,
+                ROUND(
+                    SUM(freight_revenue - (fuel_expense + driver_bata + toll_fastag_expense + enroute_repairs_maintenance + loading_unloading_expense + misc_trip_expense)) / 
+                    NULLIF(SUM(total_km_run), 0.00), 2
+                ) AS net_profit_per_km_inr
+            FROM trips
+            GROUP BY DATE_TRUNC('month', trip_end_date), TO_CHAR(DATE_TRUNC('month', trip_end_date), 'Mon YYYY')
+            ORDER BY DATE_TRUNC('month', trip_end_date) DESC;
+        """
+        mom_data = run_query(mom_query)
+        if mom_data:
+            df_mom = pd.DataFrame(mom_data)
+            st.dataframe(
+                df_mom,
+                column_config={
+                    "operational_month": "Month",
+                    "total_trips_logged": "Total Trips",
+                    "closed_trips": "POD Closed",
+                    "total_kms": "KM Run",
+                    "total_mt_delivered": "MT Delivered",
+                    "gross_freight_revenue_inr": "Gross Revenue (INR)",
+                    "total_fuel_expense_inr": "Diesel Cost (INR)",
+                    "total_driver_bata_inr": "Driver Bata (INR)",
+                    "total_toll_expense_inr": "FASTag (INR)",
+                    "total_repairs_claims_inr": "Repairs & Claims (INR)",
+                    "gross_retained_profit_inr": "Net Retained Profit (INR)",
+                    "retention_margin_pct": "Retention Margin %",
+                    "fleet_average_kmpl": "Fleet KMPL",
+                    "net_profit_per_km_inr": "Profit / KM (INR)"
+                },
+                hide_index=True,
+                use_container_width=True
+            )
+
+    # Master Multi-Sheet Corporate Excel Export
+    if not df_analytics.empty:
+        st.write("")
+        buf_exec = io.BytesIO()
+        with pd.ExcelWriter(buf_exec, engine='openpyxl') as writer:
+            df_analytics.to_excel(writer, index=False, sheet_name='Fleet Unit Economics')
+            if 'df_mom' in locals() and not df_mom.empty:
+                df_mom.to_excel(writer, index=False, sheet_name='Month-on-Month Trends')
+
+        st.download_button(
+            "Download Corporate Retention & Yield Workbook (Excel)",
+            data=buf_exec.getvalue(),
+            file_name=f"corporate_fleet_retention_report_{date.today()}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
 # ==============================================================================
 # 9. TRIP RECORDS REGISTRY
