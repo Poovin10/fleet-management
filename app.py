@@ -66,7 +66,7 @@ def init_connection_pool():
         "port": 6543,
         "dbname": "postgres",
         "user": "postgres.eobweyciqwoojwnsonor",
-        "password": "Poovin@2809"
+        "password":"Poovin@2809"
     }
     try:
         if len(st.secrets) > 0 and "postgres" in st.secrets:
@@ -1413,7 +1413,7 @@ elif menu == "Master Data Management":
                         st.rerun()
 
 # ==============================================================================
-# 8. EXECUTIVE RETENTION & YIELD ANALYTICS (TYPE-SAFE CORPORATE ENGINE)
+# 8. EXECUTIVE RETENTION & DRIVER PERFORMANCE ANALYTICS
 # ==============================================================================
 elif menu == "Executive Retention & Yield Analytics":
     st.subheader("Executive Corporate Fleet Retention & Operational Yield Dashboard")
@@ -1439,11 +1439,12 @@ elif menu == "Executive Retention & Yield Analytics":
         start_filter_date = None
         end_filter_date = None
 
-    tab_overview, tab_variant_peer, tab_daily_yield, tab_branch_mom = st.tabs([
+    tab_overview, tab_driver_perf, tab_variant_peer, tab_daily_yield, tab_branch_mom = st.tabs([
         "1. Executive Fleet Yield Summary",
-        "2. Variant Peer Benchmarking (30 MT vs 30 MT / 35 MT vs 35 MT)",
-        "3. Asset Turnover & Yield Per Day",
-        "4. Month-on-Month Retention Trajectory"
+        "2. Driver Performance & Safety Audit",
+        "3. Variant Peer Benchmarking (30 MT vs 30 MT / 35 MT vs 35 MT)",
+        "4. Asset Turnover & Yield Per Day",
+        "5. Month-on-Month Retention Trajectory"
     ])
 
     base_where = "WHERE v.is_active = TRUE"
@@ -1567,7 +1568,96 @@ elif menu == "Executive Retention & Yield Analytics":
                 use_container_width=True
             )
 
-    # --- 2. VARIANT PEER BENCHMARKING ---
+    # --- 2. DRIVER PERFORMANCE & SAFETY AUDIT (NEW TAB) ---
+    with tab_driver_perf:
+        st.markdown('<div class="section-header">Driver Operational Efficiency, Mileage & Shortage Audit</div>', unsafe_allow_html=True)
+
+        driver_where = "WHERE d.is_active = TRUE"
+        driver_params = []
+        if start_filter_date and end_filter_date:
+            driver_where += " AND t.trip_end_date >= %s AND t.trip_end_date <= %s"
+            driver_params.extend([start_filter_date, end_filter_date])
+
+        driver_perf_query = f"""
+            SELECT 
+                d.driver_code,
+                d.full_name AS driver_name,
+                d.phone_number,
+                COUNT(t.trip_id) AS total_trips_logged,
+                COUNT(CASE WHEN t.trip_status = 'COMPLETED' THEN 1 END) AS closed_trips,
+                COALESCE(SUM(t.total_km_run), 0.00) AS total_kms_driven,
+                COALESCE(SUM(COALESCE(t.unloaded_weight_mt, t.loaded_weight_mt)), 0.00) AS total_mt_delivered,
+                COALESCE(SUM(t.fuel_litres), 0.00) AS total_fuel_consumed_litres,
+                ROUND(SUM(t.total_km_run) / NULLIF(SUM(t.fuel_litres), 0.00), 2) AS average_driver_mileage_kmpl,
+                COALESCE(SUM(t.shortage_mt), 0.00) AS total_shortage_mt,
+                COUNT(CASE WHEN COALESCE(t.shortage_mt, 0.00) > 0.00 THEN 1 END) AS shortage_incident_count,
+                COALESCE(SUM(t.shortage_penalty_deduction), 0.00) AS total_shortage_penalties_inr,
+                COALESCE(SUM(t.freight_revenue), 0.00) AS gross_freight_generated_inr,
+                COALESCE(SUM(t.driver_bata), 0.00) AS total_bata_earned_inr,
+                COALESCE(SUM(t.cash_advance_issued), 0.00) AS total_trip_advances_drawn_inr,
+                COALESCE(SUM(t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense), 0.00) AS out_of_pocket_claims_inr,
+                COALESCE(SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)), 0.00) AS net_profit_contribution_inr,
+                ROUND(
+                    (COALESCE(SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.toll_fastag_expense + t.enroute_repairs_maintenance + t.loading_unloading_expense + t.misc_trip_expense)), 0.00) / 
+                    NULLIF(SUM(t.freight_revenue), 0.00)) * 100.0, 2
+                ) AS driver_retention_margin_pct
+            FROM drivers d
+            LEFT JOIN trips t ON d.driver_id = t.primary_driver_id
+            {driver_where}
+            GROUP BY d.driver_id, d.driver_code, d.full_name, d.phone_number
+            ORDER BY gross_freight_generated_inr DESC;
+        """
+
+        df_drivers = pd.DataFrame(run_query(driver_perf_query, tuple(driver_params) if driver_params else None))
+
+        if df_drivers.empty or df_drivers['total_trips_logged'].sum() == 0:
+            st.info("No driver trip records available in the selected window.")
+        else:
+            d_tot_trips = df_drivers['total_trips_logged'].sum()
+            d_tot_kms = float(df_drivers['total_kms_driven'].sum() or 0.0)
+            d_tot_fuel = float(df_drivers['total_fuel_consumed_litres'].sum() or 0.0)
+            d_avg_kmpl = round(d_tot_kms / max(1.0, d_tot_fuel), 2) if d_tot_fuel > 0 else 0.00
+            d_tot_bata = float(df_drivers['total_bata_earned_inr'].sum() or 0.0)
+            d_tot_shortage = float(df_drivers['total_shortage_mt'].sum() or 0.0)
+
+            dk1, dk2, dk3, dk4, dk5 = st.columns(5)
+            dk1.metric("Active Drivers Tracked", len(df_drivers))
+            dk2.metric("Total Trips Steered", int(d_tot_trips))
+            dk3.metric("Fleet Average Driver KMPL", f"{d_avg_kmpl:.2f} KMPL")
+            dk4.metric("Total Driver Bata Earned", f"INR {d_tot_bata:,.2f}")
+            dk5.metric("Total Shortage Detected", f"{d_tot_shortage:.2f} MT")
+
+            st.dataframe(
+                df_drivers[[
+                    'driver_code', 'driver_name', 'phone_number', 'total_trips_logged', 'closed_trips',
+                    'total_kms_driven', 'total_mt_delivered', 'average_driver_mileage_kmpl',
+                    'total_shortage_mt', 'shortage_incident_count', 'total_shortage_penalties_inr',
+                    'gross_freight_generated_inr', 'total_bata_earned_inr', 'total_trip_advances_drawn_inr',
+                    'net_profit_contribution_inr', 'driver_retention_margin_pct'
+                ]],
+                column_config={
+                    "driver_code": "Code",
+                    "driver_name": "Driver Name",
+                    "phone_number": "Phone",
+                    "total_trips_logged": "Total Trips",
+                    "closed_trips": "Closed",
+                    "total_kms_driven": "Total KM",
+                    "total_mt_delivered": "Delivered MT",
+                    "average_driver_mileage_kmpl": "Driver KMPL",
+                    "total_shortage_mt": "Shortage (MT)",
+                    "shortage_incident_count": "Shortage Trips",
+                    "total_shortage_penalties_inr": "Penalty (INR)",
+                    "gross_freight_generated_inr": "Gross Revenue (INR)",
+                    "total_bata_earned_inr": "Bata Earned (INR)",
+                    "total_trip_advances_drawn_inr": "Advances Drawn (INR)",
+                    "net_profit_contribution_inr": "Net Retained Margin (INR)",
+                    "driver_retention_margin_pct": "Margin %"
+                },
+                hide_index=True,
+                use_container_width=True
+            )
+
+    # --- 3. VARIANT PEER BENCHMARKING ---
     with tab_variant_peer:
         st.markdown('<div class="section-header">Variant Peer Benchmarking & Like-for-Like Analysis</div>', unsafe_allow_html=True)
         
@@ -1627,7 +1717,7 @@ elif menu == "Executive Retention & Yield Analytics":
                 use_container_width=True
             )
 
-    # --- 3. ASSET TURNOVER & YIELD PER DAY ---
+    # --- 4. ASSET TURNOVER & YIELD PER DAY ---
     with tab_daily_yield:
         st.markdown('<div class="section-header">Asset Turnover & Velocity Metrics (Per Operating Day)</div>', unsafe_allow_html=True)
         if df_analytics.empty:
@@ -1655,7 +1745,7 @@ elif menu == "Executive Retention & Yield Analytics":
                 use_container_width=True
             )
 
-    # --- 4. MONTH-ON-MONTH RETENTION TRAJECTORY ---
+    # --- 5. MONTH-ON-MONTH RETENTION TRAJECTORY ---
     with tab_branch_mom:
         st.markdown('<div class="section-header">Month-on-Month Branch Profitability & Yield Matrix</div>', unsafe_allow_html=True)
         mom_query = """
@@ -1715,6 +1805,8 @@ elif menu == "Executive Retention & Yield Analytics":
         buf_exec = io.BytesIO()
         with pd.ExcelWriter(buf_exec, engine='openpyxl') as writer:
             df_analytics.to_excel(writer, index=False, sheet_name='Fleet Unit Economics')
+            if 'df_drivers' in locals() and not df_drivers.empty:
+                df_drivers.to_excel(writer, index=False, sheet_name='Driver Performance Audit')
             if 'df_mom' in locals() and not df_mom.empty:
                 df_mom.to_excel(writer, index=False, sheet_name='Month-on-Month Trends')
 
