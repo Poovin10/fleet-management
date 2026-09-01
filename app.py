@@ -73,7 +73,6 @@ st.markdown("""
         width: 100% !important;
     }
     
-    /* Right Bottom Toast Notification Custom Styling */
     div[data-testid="stToast"] {
         font-size: 0.90rem !important;
         font-weight: 600 !important;
@@ -150,7 +149,7 @@ def run_query(query, params=None, fetch=True):
     finally:
         db_pool.putconn(conn)
 
-# --- Fast Caching with Unified 25MT/30MT Bag Slab Logic ---
+# --- In-Memory Caching ---
 @st.cache_data(ttl=60)
 def get_cached_vehicles():
     return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
@@ -223,9 +222,15 @@ def set_saved_diesel_rate(new_rate):
 
 def get_last_driver_for_vehicle(vehicle_id):
     try:
-        res = run_query("SELECT primary_driver_id FROM trips WHERE vehicle_id = %s ORDER BY trip_id DESC LIMIT 1", (vehicle_id,))
-        if res:
-            return res[0]['primary_driver_id']
+        res = run_query("""
+            SELECT primary_driver_id 
+            FROM trips 
+            WHERE vehicle_id = %s AND primary_driver_id IS NOT NULL 
+            ORDER BY trip_id DESC 
+            LIMIT 1;
+        """, (vehicle_id,))
+        if res and res[0]['primary_driver_id']:
+            return int(res[0]['primary_driver_id'])
     except Exception:
         pass
     return None
@@ -295,7 +300,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. FULL-WIDTH TRIP DISPATCH ENTRY
+# 1. FULL-WIDTH TRIP DISPATCH ENTRY (AUTO DEFAULT DRIVER MATCH + BATA & ADVANCE TOGETHER)
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -312,6 +317,7 @@ if menu == "Trip Dispatch Entry":
 
     st.markdown('<div class="section-header">Primary Manifest & Routing Assignment</div>', unsafe_allow_html=True)
     
+    # Row 1: Date, LR No, Cargo Category, Filtered Truck, Source Hub
     r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.4, 1.3, 2.6, 1.5])
     
     with r1_c1:
@@ -325,9 +331,10 @@ if menu == "Trip Dispatch Entry":
     with r1_c3:
         cargo_category = st.selectbox("3. Cargo Category*", ["BULK", "BAG"], key=f"cargo_sel_{cnt}")
 
+    # Dynamically filter trucks based on cargo category
     if cargo_category == "BULK":
         filtered_vehicles = [v for v in vehicles if "BULK" in str(v.get('truck_type', '')).upper()]
-    else:
+    else:  # BAG
         filtered_vehicles = [v for v in vehicles if any(k in str(v.get('truck_type', '')).upper() for k in ["BAG", "BODY"])]
 
     if not filtered_vehicles:
@@ -342,12 +349,14 @@ if menu == "Trip Dispatch Entry":
         sel_veh_label = st.selectbox(f"4. Assigned Truck ({cargo_category} Only)*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
         active_veh = vehicle_map[sel_veh_label]
         v_class_mt = float(active_veh['carrying_capacity_tons'])
+        # Look up previous driver who drove this specific truck
         last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
 
     with r1_c5:
         chosen_source_opt = st.selectbox("5. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
         origin_terminal = st.text_input("Custom Source", placeholder="Enter Source").strip().upper() if chosen_source_opt == "CUSTOM" else chosen_source_opt
 
+    # Row 2: Destination, Driver (Defaulted to Last Driver for this Truck), Loaded Weight & Auto Freight
     routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
     dest_options = {}
     if routes_from_source:
@@ -355,6 +364,16 @@ if menu == "Trip Dispatch Entry":
             lbl = f"{r['destination_name']} ➔ [Rate: ₹{r['freight_rate_per_ton']}/MT | {r['standard_km']} KM]"
             dest_options[lbl] = r
     dest_options["-- MANUAL / SPOT DESTINATION --"] = {"origin": origin_terminal, "destination_name": "", "standard_km": 0.0, "freight_rate_per_ton": 0.0}
+
+    # Match driver default index dynamically based on selected vehicle
+    driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
+    driver_keys_list = list(driver_dict.keys())
+    default_driver_index = 0
+    if last_drv_id:
+        for idx, d_obj in enumerate(driver_dict.values()):
+            if int(d_obj['driver_id']) == int(last_drv_id):
+                default_driver_index = idx
+                break
 
     r2_c1, r2_c2, r2_c3, r2_c4 = st.columns([2.8, 2.2, 1.5, 1.5])
     with r2_c1:
@@ -370,45 +389,46 @@ if menu == "Trip Dispatch Entry":
             agreed_rate_mt = float(active_route['freight_rate_per_ton'])
             standard_route_km = float(active_route['standard_km'])
 
-    driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
-    default_driver_index = 0
-    if last_drv_id:
-        for idx, d_obj in enumerate(driver_dict.values()):
-            if d_obj['driver_id'] == last_drv_id:
-                default_driver_index = idx
-                break
-
     with r2_c2:
-        chosen_driver_str = st.selectbox("7. Designated Driver*", list(driver_dict.keys()), index=default_driver_index, key=f"drv_{cnt}")
+        # Defaults to the previous driver for this truck, but user can change it
+        chosen_driver_str = st.selectbox(
+            "7. Designated Driver (Auto-Mapped to Truck)*", 
+            driver_keys_list, 
+            index=default_driver_index, 
+            key=f"drv_sel_for_veh_{active_veh['vehicle_id']}_{cnt}"
+        )
         sel_driver_obj = driver_dict[chosen_driver_str]
+
     with r2_c3:
         weighbridge_mt = st.number_input("8. Loaded Weight (MT)*", min_value=0.0, max_value=60.0, step=0.05, value=v_class_mt, key=f"wmt_{cnt}")
     with r2_c4:
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
+    # Row 3: Driver Bata, Cash Advance (Placed next to Bata), Diesel Litres, Fuel Expense & Odometers
     master_bata_val = lookup_driver_bata(dest_terminal, cargo_category, active_veh['vehicle_id'])
-    st.markdown('<div class="section-header">Fuel, Allowances & Odometer Tracking</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Allowances, Fuel & Odometer Tracking</div>', unsafe_allow_html=True)
     r3_c1, r3_c2, r3_c3, r3_c4, r3_c5, r3_c6 = st.columns(6)
     with r3_c1:
         driver_bata = st.number_input("9. Driver Bata (₹)*", min_value=0.0, step=100.0, value=master_bata_val, key=f"bata_{cnt}")
     with r3_c2:
-        fuel_qty = st.number_input("10. Diesel (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
+        # Cash Advance is now placed directly next to Driver Bata
+        cash_advance = st.number_input("10. Cash Advance (₹)", min_value=0.0, step=500.0, value=0.0, key=f"adv_{cnt}")
     with r3_c3:
+        fuel_qty = st.number_input("11. Diesel (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
+    with r3_c4:
         gross_fuel_cost = round(fuel_qty * d_rate_fast, 2)
         st.metric("Auto Fuel Expense", f"₹{gross_fuel_cost:,.2f}")
-    with r3_c4:
-        start_km = st.number_input("Start Odometer KM", min_value=0.0, step=10.0, value=0.0, key=f"skm_{cnt}")
     with r3_c5:
+        start_km = st.number_input("Start Odometer KM", min_value=0.0, step=10.0, value=0.0, key=f"skm_{cnt}")
+    with r3_c6:
         end_km = st.number_input("Expected End KM", min_value=0.0, step=10.0, value=0.0, key=f"ekm_{cnt}")
         computed_km = max(0.0, end_km - start_km) if (end_km >= start_km and end_km > 0) else standard_route_km
-    with r3_c6:
-        cash_advance = st.number_input("Cash Advance (₹)", min_value=0.0, step=500.0, value=0.0, key=f"adv_{cnt}")
 
     st.write("")
     if st.button("🚀 Save & Dispatch Trip Record", type="primary", use_container_width=True):
         if not lr_no or not dest_terminal or not origin_terminal:
-            show_error_toast("LR Number, Source, and Destination are required.")
+            show_error_toast("Validation Failure: LR Number, Source, and Destination are required.")
         elif check_lr_exists(lr_no):
             show_error_toast(f"Cannot dispatch trip. LR Number '{lr_no}' already exists.")
         else:
@@ -502,7 +522,7 @@ elif menu == "POD Receive & Close":
                             WHERE trip_id = %s;
                         """, (pod_no, close_d, close_d, final_km, tot_km, unloaded_wt, shortage, final_freight, tot_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
                         run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
-                                  (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
+                              (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
                         get_cached_vehicles.clear()
                         trigger_toast_and_rerun("SUCCESS", f"Trip {t_cur['trip_number']} closed and Truck {t_cur['vehicle_number']} released.")
                     except Exception as e:
