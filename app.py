@@ -5,6 +5,7 @@ from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 from datetime import date
 import io
+import time
 
 # --- Full Widescreen Page Configuration ---
 st.set_page_config(
@@ -71,8 +72,37 @@ st.markdown("""
     div[data-testid="stDataFrame"] {
         width: 100% !important;
     }
+    
+    /* Right Bottom Toast Notification Custom Styling */
+    div[data-testid="stToast"] {
+        font-size: 0.90rem !important;
+        font-weight: 600 !important;
+        border-radius: 6px !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# --- Bottom-Right Toast Helper Functions ---
+def show_success_toast(msg: str):
+    st.toast(f"✅ {msg}", icon="✅")
+
+def show_error_toast(msg: str):
+    st.toast(f"❌ {msg}", icon="❌")
+
+# --- Check Session Toast Queue on Rerun ---
+if "pending_toast" in st.session_state and st.session_state.pending_toast:
+    t_type, t_msg = st.session_state.pending_toast
+    if t_type == "SUCCESS":
+        show_success_toast(t_msg)
+    else:
+        show_error_toast(t_msg)
+    st.session_state.pending_toast = None
+
+def trigger_toast_and_rerun(toast_type: str, message: str, delay_sec: float = 1.0):
+    st.session_state.pending_toast = (toast_type, message)
+    time.sleep(delay_sec)
+    st.rerun()
 
 # --- Database Connection Pool ---
 @st.cache_resource
@@ -112,7 +142,6 @@ def run_query(query, params=None, fetch=True):
                 result = cur.fetchall()
             else:
                 result = None
-            # Explicitly commit write operations on every execution
             conn.commit()
         return result
     except Exception as e:
@@ -273,7 +302,7 @@ if menu == "Trip Dispatch Entry":
     drivers = get_cached_drivers()
 
     if not vehicles or not drivers:
-        st.error("Please configure vehicles and drivers in Master Configuration first.")
+        show_error_toast("Configure vehicles and drivers in Master Configuration first.")
         st.stop()
 
     if "form_reset_counter" not in st.session_state:
@@ -283,27 +312,22 @@ if menu == "Trip Dispatch Entry":
 
     st.markdown('<div class="section-header">Primary Manifest & Routing Assignment</div>', unsafe_allow_html=True)
     
-    # Row 1: Date, LR No, Cargo Category, Filtered Truck, Source Hub
     r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.4, 1.3, 2.6, 1.5])
     
-    # 1. DATE (Past dates selectable)
     with r1_c1:
         start_date = st.date_input("1. Trip Start Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key=f"sdate_{cnt}")
         
-    # 2. LR NO
     with r1_c2:
         lr_no = st.text_input("2. LR Number*", placeholder="LR-XXXX", key=f"lr_{cnt}").strip().upper()
         if lr_no and check_lr_exists(lr_no):
-            st.error(f"Duplicate LR: {lr_no}")
+            show_error_toast(f"Duplicate Alert: LR Number '{lr_no}' already exists!")
 
-    # 3. CARGO CATEGORY (BULK / BAG)
     with r1_c3:
         cargo_category = st.selectbox("3. Cargo Category*", ["BULK", "BAG"], key=f"cargo_sel_{cnt}")
 
-    # Filter trucks based on cargo category
     if cargo_category == "BULK":
         filtered_vehicles = [v for v in vehicles if "BULK" in str(v.get('truck_type', '')).upper()]
-    else:  # BAG
+    else:
         filtered_vehicles = [v for v in vehicles if any(k in str(v.get('truck_type', '')).upper() for k in ["BAG", "BODY"])]
 
     if not filtered_vehicles:
@@ -314,19 +338,16 @@ if menu == "Trip Dispatch Entry":
         for v in filtered_vehicles
     }
 
-    # 4. ASSIGNED TRUCK
     with r1_c4:
         sel_veh_label = st.selectbox(f"4. Assigned Truck ({cargo_category} Only)*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
         active_veh = vehicle_map[sel_veh_label]
         v_class_mt = float(active_veh['carrying_capacity_tons'])
         last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
 
-    # 5. SOURCE HUB
     with r1_c5:
         chosen_source_opt = st.selectbox("5. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
         origin_terminal = st.text_input("Custom Source", placeholder="Enter Source").strip().upper() if chosen_source_opt == "CUSTOM" else chosen_source_opt
 
-    # Row 2: Destination, Driver, Loaded Weight & Auto Freight
     routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
     dest_options = {}
     if routes_from_source:
@@ -366,7 +387,6 @@ if menu == "Trip Dispatch Entry":
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
-    # Row 3: Driver Bata, Diesel Litres, Odometers & Advance
     master_bata_val = lookup_driver_bata(dest_terminal, cargo_category, active_veh['vehicle_id'])
     st.markdown('<div class="section-header">Fuel, Allowances & Odometer Tracking</div>', unsafe_allow_html=True)
     r3_c1, r3_c2, r3_c3, r3_c4, r3_c5, r3_c6 = st.columns(6)
@@ -388,9 +408,9 @@ if menu == "Trip Dispatch Entry":
     st.write("")
     if st.button("🚀 Save & Dispatch Trip Record", type="primary", use_container_width=True):
         if not lr_no or not dest_terminal or not origin_terminal:
-            st.error("Validation Failure: LR Number, Source, and Destination are required.")
+            show_error_toast("LR Number, Source, and Destination are required.")
         elif check_lr_exists(lr_no):
-            st.error(f"Cannot dispatch trip. LR Number '{lr_no}' already exists.")
+            show_error_toast(f"Cannot dispatch trip. LR Number '{lr_no}' already exists.")
         else:
             try:
                 new_t = run_query("""
@@ -419,10 +439,9 @@ if menu == "Trip Dispatch Entry":
                           (f"Trip {lr_no}: {origin_terminal} ➔ {dest_terminal}", active_veh['vehicle_id']), fetch=False)
                 get_cached_vehicles.clear()
                 st.session_state.form_reset_counter += 1
-                st.success(f"Trip {lr_no} dispatched successfully.")
-                st.rerun()
+                trigger_toast_and_rerun("SUCCESS", f"Trip {lr_no} dispatched successfully.")
             except Exception as e:
-                st.error(f"Database Error: {e}")
+                show_error_toast(f"Database Error: {e}")
 
 # ==============================================================================
 # 2. POD RECEIVE & TRIP CLOSURE
@@ -472,20 +491,22 @@ elif menu == "POD Receive & Close":
             st.write("")
             if st.form_submit_button("✅ Settle POD, Close Trip & Release Truck", type="primary", use_container_width=True):
                 if not pod_no:
-                    st.error("POD Number is required.")
+                    show_error_toast("POD Number is required.")
                 else:
-                    run_query("""
-                        UPDATE trips
-                        SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, end_km = %s, total_km_run = %s,
-                            unloaded_weight_mt = %s, shortage_mt = %s, freight_revenue = %s, driver_bata = %s, halt_bata = %s,
-                            enroute_repairs_maintenance = %s, trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
-                        WHERE trip_id = %s;
-                    """, (pod_no, close_d, close_d, final_km, tot_km, unloaded_wt, shortage, final_freight, tot_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
-                    run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
-                              (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
-                    get_cached_vehicles.clear()
-                    st.success(f"Trip {t_cur['trip_number']} closed. Truck {t_cur['vehicle_number']} is now AVAILABLE.")
-                    st.rerun()
+                    try:
+                        run_query("""
+                            UPDATE trips
+                            SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, end_km = %s, total_km_run = %s,
+                                unloaded_weight_mt = %s, shortage_mt = %s, freight_revenue = %s, driver_bata = %s, halt_bata = %s,
+                                enroute_repairs_maintenance = %s, trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
+                            WHERE trip_id = %s;
+                        """, (pod_no, close_d, close_d, final_km, tot_km, unloaded_wt, shortage, final_freight, tot_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
+                        run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
+                                  (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
+                        get_cached_vehicles.clear()
+                        trigger_toast_and_rerun("SUCCESS", f"Trip {t_cur['trip_number']} closed and Truck {t_cur['vehicle_number']} released.")
+                    except Exception as e:
+                        show_error_toast(f"Error closing trip: {e}")
 
 # ==============================================================================
 # 3. FULL-WIDTH FLEET STATUS BOARD
@@ -521,8 +542,7 @@ elif menu == "Fleet Status Board":
                 if st.form_submit_button("Update Status", type="primary", use_container_width=True):
                     run_query("UPDATE vehicles SET current_status = %s, status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP WHERE vehicle_id = %s", (new_st, new_rem, target_v['vehicle_id']), fetch=False)
                     get_cached_vehicles.clear()
-                    st.success(f"Status for {target_v['vehicle_number']} updated.")
-                    st.rerun()
+                    trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
 # 4. FULL-WIDTH DIESEL LOGS
@@ -547,8 +567,9 @@ elif menu == "Diesel Logs":
                 if f_l > 0:
                     run_query("INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                               (f_date, v_dict[f_veh]['vehicle_id'], f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, f_cost), fetch=False)
-                    st.success(f"Logged {f_l}L for {f_veh}.")
-                    st.rerun()
+                    trigger_toast_and_rerun("SUCCESS", f"Recorded {f_l}L fuel for {f_veh}.")
+                else:
+                    show_error_toast("Fuel quantity must be greater than zero.")
     with col_d2:
         st.markdown('<div class="section-header">Recent Diesel Disbursements</div>', unsafe_allow_html=True)
         d_logs = run_query("SELECT f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, f.litres_filled, f.total_fuel_cost FROM diesel_fuel_logs f JOIN vehicles v ON f.vehicle_id = v.vehicle_id ORDER BY f.fuel_date DESC LIMIT 50")
@@ -576,8 +597,9 @@ elif menu == "Driver Advances":
                 if ad_amt > 0:
                     run_query("INSERT INTO driver_direct_advances (advance_date, driver_id, amount_inr, advance_type, reference_remarks) VALUES (%s, %s, %s, %s, %s)",
                               (ad_date, d_map[ad_drv]['driver_id'], ad_amt, ad_cat, ad_ref), fetch=False)
-                    st.success(f"Advance of ₹{ad_amt:,.2f} recorded.")
-                    st.rerun()
+                    trigger_toast_and_rerun("SUCCESS", f"Advance of ₹{ad_amt:,.2f} recorded.")
+                else:
+                    show_error_toast("Advance amount must be greater than zero.")
     with col_a2:
         st.markdown('<div class="section-header">Direct Advance History</div>', unsafe_allow_html=True)
         adv_recs = run_query("SELECT a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 50")
@@ -615,13 +637,15 @@ elif menu == "Modify Trips & Claims":
 
             st.write("")
             if st.form_submit_button("Commit Changes to Trip Record", type="primary", use_container_width=True):
-                run_query("""
-                    UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s, unloaded_weight_mt=%s, freight_revenue=%s,
-                                     fuel_litres=%s, fuel_expense=%s, driver_bata=%s, cash_advance_issued=%s
-                    WHERE trip_id=%s
-                """, (e_sdate, e_edate, e_lr, e_orig, e_dest, e_ton, e_freight, e_fuel_l, round(e_fuel_l * d_rate_fast, 2), e_bata, e_adv, t_data['trip_id']), fetch=False)
-                st.success("Trip record updated.")
-                st.rerun()
+                try:
+                    run_query("""
+                        UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s, unloaded_weight_mt=%s, freight_revenue=%s,
+                                         fuel_litres=%s, fuel_expense=%s, driver_bata=%s, cash_advance_issued=%s
+                        WHERE trip_id=%s
+                    """, (e_sdate, e_edate, e_lr, e_orig, e_dest, e_ton, e_freight, e_fuel_l, round(e_fuel_l * d_rate_fast, 2), e_bata, e_adv, t_data['trip_id']), fetch=False)
+                    trigger_toast_and_rerun("SUCCESS", f"Trip record {e_lr} updated.")
+                except Exception as e:
+                    show_error_toast(f"Update failed: {e}")
 
 # ==============================================================================
 # 7. FULL-WIDTH DRIVER SETTLEMENT
@@ -665,10 +689,12 @@ elif menu == "Driver Settlement":
             st.dataframe(pd.DataFrame(trips_drv), hide_index=True, use_container_width=True, height=220)
 
         if btn_settle:
-            run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_end_date>=%s AND trip_end_date<=%s", (d_id, s_from, s_to), fetch=False)
-            run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date>=%s AND advance_date<=%s", (d_id, s_from, s_to), fetch=False)
-            st.success("Reconciled & Settled.")
-            st.rerun()
+            try:
+                run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_end_date>=%s AND trip_end_date<=%s", (d_id, s_from, s_to), fetch=False)
+                run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date>=%s AND advance_date<=%s", (d_id, s_from, s_to), fetch=False)
+                trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {sel_d_name}.")
+            except Exception as e:
+                show_error_toast(f"Settlement failed: {e}")
 
 # ==============================================================================
 # 8. FULL-WIDTH MASTER CONFIGURATION
@@ -687,9 +713,14 @@ elif menu == "Master Configuration":
                 st.write("")
                 if st.form_submit_button("Save Truck Master", type="primary", use_container_width=True):
                     if nv:
-                        run_query("INSERT INTO vehicles (vehicle_number, truck_type, carrying_capacity_tons, current_status) VALUES (%s, %s, %s, 'AVAILABLE_FOR_LOAD')", (nv, vt, vc), fetch=False)
-                        get_cached_vehicles.clear()
-                        st.rerun()
+                        try:
+                            run_query("INSERT INTO vehicles (vehicle_number, truck_type, carrying_capacity_tons, current_status) VALUES (%s, %s, %s, 'AVAILABLE_FOR_LOAD')", (nv, vt, vc), fetch=False)
+                            get_cached_vehicles.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Truck {nv} added to registry.")
+                        except Exception as e:
+                            show_error_toast(f"Truck insert failed: {e}")
+                    else:
+                        show_error_toast("Truck registration number is mandatory.")
         with c2:
             st.markdown('<div class="section-header">Registered Fleet Registry</div>', unsafe_allow_html=True)
             v_recs = get_cached_vehicles()
@@ -711,7 +742,7 @@ elif menu == "Master Configuration":
                 st.write("")
                 if st.form_submit_button("Save Driver Master", type="primary", use_container_width=True):
                     if not nd_n or not nd_p:
-                        st.error("Driver Name and Phone Number are mandatory.")
+                        show_error_toast("Driver Name and Phone Number are mandatory.")
                     else:
                         try:
                             final_code = nd_c
@@ -732,10 +763,9 @@ elif menu == "Master Configuration":
                                     is_active = TRUE;
                             """, (final_code, nd_n, nd_p, nd_l, nd_exp), fetch=False)
                             get_cached_drivers.clear()
-                            st.success(f"Driver '{nd_n}' saved successfully as {final_code}.")
-                            st.rerun()
+                            trigger_toast_and_rerun("SUCCESS", f"Driver '{nd_n}' saved as {final_code}.")
                         except Exception as e:
-                            st.error(f"Error saving driver: {e}")
+                            show_error_toast(f"Error saving driver: {e}")
         with c2:
             st.markdown('<div class="section-header">Active Driver Directory</div>', unsafe_allow_html=True)
             d_recs = get_cached_drivers(True)
@@ -758,17 +788,21 @@ elif menu == "Master Configuration":
                 st.write("")
                 if st.form_submit_button("Save Freight Slab", type="primary", use_container_width=True):
                     if dt and rt > 0:
-                        target_capacities = [25.0, 30.0] if cg == "BAG" else [cl]
-                        for c_val in target_capacities:
-                            run_query("""
-                                INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km) 
-                                VALUES (%s, %s, %s, %s, %s, %s) 
-                                ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) 
-                                DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;
-                            """, (cg, so, dt, c_val, rt, km), fetch=False)
-                        get_cached_routes.clear()
-                        st.success(f"Saved {cg} slab: {so} ➔ {dt} at ₹{rt}/MT.")
-                        st.rerun()
+                        try:
+                            target_capacities = [25.0, 30.0] if cg == "BAG" else [cl]
+                            for c_val in target_capacities:
+                                run_query("""
+                                    INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km) 
+                                    VALUES (%s, %s, %s, %s, %s, %s) 
+                                    ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) 
+                                    DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;
+                                """, (cg, so, dt, c_val, rt, km), fetch=False)
+                            get_cached_routes.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
+                        except Exception as e:
+                            show_error_toast(f"Route slab save failed: {e}")
+                    else:
+                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
@@ -791,10 +825,15 @@ elif menu == "Master Configuration":
                 st.write("")
                 if st.form_submit_button("Save Bata Rule", type="primary", use_container_width=True):
                     if bd and ba > 0 and bv:
-                        t_obj = v_map[bv]
-                        run_query("INSERT INTO driver_bata_master (destination_name, cargo_type, vehicle_id, capacity_tons, standard_bata_inr) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (destination_name, cargo_type, vehicle_id) DO UPDATE SET standard_bata_inr=EXCLUDED.standard_bata_inr;", (bd, bc, t_obj['vehicle_id'], t_obj['carrying_capacity_tons'], ba), fetch=False)
-                        get_cached_bata_rules.clear()
-                        st.rerun()
+                        try:
+                            t_obj = v_map[bv]
+                            run_query("INSERT INTO driver_bata_master (destination_name, cargo_type, vehicle_id, capacity_tons, standard_bata_inr) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (destination_name, cargo_type, vehicle_id) DO UPDATE SET standard_bata_inr=EXCLUDED.standard_bata_inr;", (bd, bc, t_obj['vehicle_id'], t_obj['carrying_capacity_tons'], ba), fetch=False)
+                            get_cached_bata_rules.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Bata rule for {bd} saved.")
+                        except Exception as e:
+                            show_error_toast(f"Bata save failed: {e}")
+                    else:
+                        show_error_toast("Destination, Truck, and Bata Amount are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Driver Bata Master</div>', unsafe_allow_html=True)
             bata_list = get_cached_bata_rules()
