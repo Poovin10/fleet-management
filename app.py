@@ -149,7 +149,7 @@ def run_query(query, params=None, fetch=True):
     finally:
         db_pool.putconn(conn)
 
-# --- Fast Caching with Unified 25MT/30MT Bag Slab Logic ---
+# --- Fast Caching ---
 @st.cache_data(ttl=60)
 def get_cached_vehicles():
     return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
@@ -578,7 +578,7 @@ elif menu == "Fleet Status Board":
                     trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
-# 4. FULL-WIDTH DIESEL LOGS (FILLING KM + DUPLICATE ENTRY CHECK)
+# 4. FULL-WIDTH DIESEL LOGS
 # ==============================================================================
 elif menu == "Diesel Logs":
     vehicles = get_cached_vehicles()
@@ -678,7 +678,7 @@ elif menu == "Driver Advances":
                     show_error_toast("Advance amount must be greater than zero.")
     with col_a2:
         st.markdown('<div class="section-header">Direct Advance History</div>', unsafe_allow_html=True)
-        adv_recs = run_query("SELECT a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
+        adv_recs = run_query("SELECT a.advance_id, a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
         if adv_recs:
             df_adv_recs = pd.DataFrame(adv_recs)
             st.dataframe(df_adv_recs, hide_index=True, use_container_width=True, height=280)
@@ -693,10 +693,10 @@ elif menu == "Driver Advances":
                     trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. FULL-WIDTH MODIFY & DELETE TRIPS (WITH AUTOMATIC DIESEL LOG SYNCHRONIZATION)
+# 6. FULL-WIDTH MODIFY TRIPS & CLAIMS (WITH POD EDIT & REOPEN TRIP OPTION)
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
-    st.markdown('<div class="section-header">Search, Edit & Delete Master Trip Records</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Search, Edit POD Details & Manage Master Trip Records</div>', unsafe_allow_html=True)
     
     f_c1, f_c2 = st.columns([2, 2])
     with f_c1:
@@ -708,7 +708,8 @@ elif menu == "Modify Trips & Claims":
         SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, d.full_name, t.origin, t.destination, 
                t.trip_start_date, t.trip_end_date, t.start_km, t.end_km, t.total_km_run, 
                t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, 
-               t.fuel_expense, t.driver_bata, t.cash_advance_issued, t.enroute_repairs_maintenance, t.trip_status 
+               t.fuel_expense, t.driver_bata, t.halt_bata, t.cash_advance_issued, 
+               t.enroute_repairs_maintenance, t.pod_number, t.pod_received_date, t.trip_status 
         FROM trips t 
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
         JOIN drivers d ON t.primary_driver_id = d.driver_id 
@@ -732,69 +733,120 @@ elif menu == "Modify Trips & Claims":
             f"Trip ID #{t['trip_id']} | LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | {t['full_name']} [{t['trip_status']}]": t 
             for t in all_matched_trips
         }
-        sel_t_key = st.selectbox("Select Target Trip Record", list(trip_map.keys()))
+        sel_t_key = st.selectbox("Select Target Trip Record to Edit", list(trip_map.keys()))
         t_data = trip_map[sel_t_key]
 
         with st.form("mod_full_form"):
-            st.markdown('<div class="section-header">Trip Manifest, Tonnage & Direct Expense Values</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">1. Trip Routing, Dates & Status</div>', unsafe_allow_html=True)
             m1, m2, m3, m4, m5 = st.columns(5)
             with m1:
-                e_sdate = st.date_input("Start Date", t_data['trip_start_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
-                e_edate = st.date_input("End Date", t_data['trip_end_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
+                e_sdate = st.date_input("Trip Start Date", t_data['trip_start_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
             with m2:
-                e_lr = st.text_input("Trip LR No", value=t_data['trip_number']).strip().upper()
-                e_orig = st.text_input("Origin Hub", value=t_data['origin'])
+                e_edate = st.date_input("Trip Closing Date", t_data['trip_end_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
             with m3:
-                e_dest = st.text_input("Destination", value=t_data['destination'])
-                e_ton = st.number_input("Loaded MT*", value=float(t_data['loaded_weight_mt'] or 0.0), step=0.05)
+                e_lr = st.text_input("Trip LR No", value=t_data['trip_number']).strip().upper()
             with m4:
-                e_freight = st.number_input("Freight Revenue (₹)", value=float(t_data['freight_revenue'] or 0.0), step=100.0)
-                e_fuel_l = st.number_input("Fuel Litres", value=float(t_data['fuel_litres'] or 0.0), step=5.0)
+                e_orig = st.text_input("Origin Hub", value=t_data['origin'])
             with m5:
+                e_dest = st.text_input("Destination", value=t_data['destination'])
+
+            st.markdown('<div class="section-header">2. Tonnage, Freight, Allowances & Fuel</div>', unsafe_allow_html=True)
+            f1, f2, f3, f4, f5 = st.columns(5)
+            with f1:
+                e_ton = st.number_input("Loaded MT*", value=float(t_data['loaded_weight_mt'] or 0.0), step=0.05)
+            with f2:
+                e_freight = st.number_input("Freight Revenue (₹)", value=float(t_data['freight_revenue'] or 0.0), step=100.0)
+            with f3:
                 e_bata = st.number_input("Driver Bata (₹)", value=float(t_data['driver_bata'] or 0.0), step=100.0)
+            with f4:
                 e_adv = st.number_input("Advance (₹)", value=float(t_data['cash_advance_issued'] or 0.0), step=500.0)
+            with f5:
+                e_fuel_l = st.number_input("Fuel Litres", value=float(t_data['fuel_litres'] or 0.0), step=5.0)
+
+            st.markdown('<div class="section-header">3. POD Reference & Closing Parameters (Editable)</div>', unsafe_allow_html=True)
+            p1, p2, p3, p4, p5 = st.columns(5)
+            with p1:
+                e_pod_no = st.text_input("POD / Challan No", value=t_data['pod_number'] or "")
+            with p2:
+                e_unloaded_mt = st.number_input("Unloaded MT", value=float(t_data['unloaded_weight_mt'] or t_data['loaded_weight_mt'] or 0.0), step=0.01)
+            with p3:
+                e_halt_bata = st.number_input("Halt Bata (₹)", value=float(t_data['halt_bata'] or 0.0), step=100.0)
+            with p4:
+                e_claims = st.number_input("Claims (₹)", value=float(t_data['enroute_repairs_maintenance'] or 0.0), step=50.0)
+            with p5:
+                status_choices = ["IN_TRANSIT", "COMPLETED"]
+                curr_st_idx = status_choices.index(t_data['trip_status']) if t_data['trip_status'] in status_choices else 0
+                e_trip_status = st.selectbox("Trip Status", status_choices, index=curr_st_idx)
 
             st.write("")
-            if st.form_submit_button("💾 Commit Updates to Trip Record", type="primary", use_container_width=True):
+            if st.form_submit_button("💾 Commit Updates to Trip & POD Record", type="primary", use_container_width=True):
                 try:
                     recalculated_fuel_cost = round(e_fuel_l * d_rate_fast, 2)
+                    shortage_val = max(0.0, e_ton - e_unloaded_mt)
                     
-                    # 1. Update the Trip Record
+                    # 1. Update Trip Record including POD details
                     run_query("""
                         UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s,
-                                         loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, freight_revenue=%s,
-                                         fuel_litres=%s, fuel_expense=%s, driver_bata=%s, cash_advance_issued=%s
+                                         loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, shortage_mt=%s,
+                                         freight_revenue=%s, fuel_litres=%s, fuel_expense=%s, driver_bata=%s, 
+                                         halt_bata=%s, cash_advance_issued=%s, enroute_repairs_maintenance=%s,
+                                         pod_number=%s, trip_status=%s
                         WHERE trip_id=%s;
-                    """, (e_sdate, e_edate, e_lr, e_orig, e_dest, e_ton, e_ton, e_ton, e_freight, e_fuel_l, recalculated_fuel_cost, e_bata, e_adv, t_data['trip_id']), fetch=False)
+                    """, (
+                        e_sdate, e_edate, e_lr, e_orig, e_dest, 
+                        e_ton, e_unloaded_mt, e_ton, shortage_val,
+                        e_freight, e_fuel_l, recalculated_fuel_cost, e_bata, 
+                        e_halt_bata, e_adv, e_claims,
+                        e_pod_no or None, e_trip_status, t_data['trip_id']
+                    ), fetch=False)
                     
-                    # 2. Automatically Cascade and Synchronize the Linked Diesel Fuel Log
+                    # 2. Synchronize vehicle state based on trip status
+                    if e_trip_status == "COMPLETED":
+                        run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
+                                  (f"Completed Trip {e_lr}", t_data['vehicle_id']), fetch=False)
+                    else:
+                        run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s",
+                                  (f"Trip {e_lr}: {e_orig} ➔ {e_dest}", t_data['vehicle_id']), fetch=False)
+
+                    # 3. Synchronize Diesel Logs
                     existing_fuel_log = run_query("SELECT fuel_log_id FROM diesel_fuel_logs WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s)", (t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id']))
                     if existing_fuel_log:
                         run_query("""
                             UPDATE diesel_fuel_logs 
-                            SET fuel_date = %s,
-                                lr_number = %s,
-                                litres_filled = %s,
-                                total_fuel_cost = %s,
-                                trip_id = %s
+                            SET fuel_date = %s, lr_number = %s, litres_filled = %s, total_fuel_cost = %s, trip_id = %s
                             WHERE fuel_log_id = %s;
                         """, (e_sdate, e_lr, e_fuel_l, recalculated_fuel_cost, t_data['trip_id'], existing_fuel_log[0]['fuel_log_id']), fetch=False)
-                    elif e_fuel_l > 0:
-                        run_query("""
-                            INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost)
-                            VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s);
-                        """, (e_sdate, t_data['vehicle_id'], t_data['trip_id'], e_lr, e_fuel_l, d_rate_fast, recalculated_fuel_cost), fetch=False)
 
-                    trigger_toast_and_rerun("SUCCESS", f"Trip record {e_lr} & linked diesel logs synchronized to {e_sdate}.")
+                    get_cached_vehicles.clear()
+                    trigger_toast_and_rerun("SUCCESS", f"Trip #{e_lr} & POD records successfully updated.")
                 except Exception as e:
                     show_error_toast(f"Update failed: {e}")
 
+        # Quick Actions: Reopen Trip or Delete Trip
         st.markdown("<hr style='margin: 10px 0;' />", unsafe_allow_html=True)
-        del_col1, del_col2 = st.columns([3.5, 1.5])
-        with del_col1:
-            st.warning(f"⚠️ Permanently delete Trip Record **{t_data['trip_number']}** for Truck **{t_data['vehicle_number']}**?")
-        with del_col2:
-            if st.button("🗑️ Delete Trip Record", type="secondary", use_container_width=True):
+        act1, act2 = st.columns(2)
+        
+        with act1:
+            if t_data['trip_status'] == 'COMPLETED':
+                if st.button("🔓 Reopen Trip (Set back to IN_TRANSIT)", use_container_width=True):
+                    try:
+                        run_query("""
+                            UPDATE trips 
+                            SET trip_status = 'IN_TRANSIT', pod_number = NULL, trip_closed_at = NULL 
+                            WHERE trip_id = %s;
+                        """, (t_data['trip_id'],), fetch=False)
+                        run_query("""
+                            UPDATE vehicles 
+                            SET current_status = 'IN_TRANSIT', status_remarks = %s 
+                            WHERE vehicle_id = %s;
+                        """, (f"Reopened Trip {t_data['trip_number']}", t_data['vehicle_id']), fetch=False)
+                        get_cached_vehicles.clear()
+                        trigger_toast_and_rerun("SUCCESS", f"Trip {t_data['trip_number']} reopened! Truck is now IN_TRANSIT.")
+                    except Exception as e:
+                        show_error_toast(f"Reopen failed: {e}")
+
+        with act2:
+            if st.button(f"🗑️ Delete Trip {t_data['trip_number']}", type="secondary", use_container_width=True):
                 try:
                     run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
                     run_query("DELETE FROM trips WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
@@ -1179,7 +1231,7 @@ elif menu == "Audit Log":
                (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.enroute_repairs_maintenance)) AS net_profit, t.trip_status
         FROM trips t 
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
-        JOIN drivers d ON t.primary_driver_id = d.driver_id
+        JOIN drivers d ON t.primary_driver_id = d.driver_id 
         ORDER BY t.trip_id DESC;
     """)
     
