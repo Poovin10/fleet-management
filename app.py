@@ -149,7 +149,7 @@ def run_query(query, params=None, fetch=True):
     finally:
         db_pool.putconn(conn)
 
-# --- In-Memory Caching ---
+# --- Fast Caching with Unified 25MT/30MT Bag Slab Logic ---
 @st.cache_data(ttl=60)
 def get_cached_vehicles():
     return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
@@ -300,7 +300,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. FULL-WIDTH TRIP DISPATCH ENTRY (AUTO DEFAULT DRIVER MATCH + BATA & ADVANCE TOGETHER)
+# 1. FULL-WIDTH TRIP DISPATCH ENTRY (AUTO DEFAULT CAPACITY + FREE EDIT TON)
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -331,7 +331,6 @@ if menu == "Trip Dispatch Entry":
     with r1_c3:
         cargo_category = st.selectbox("3. Cargo Category*", ["BULK", "BAG"], key=f"cargo_sel_{cnt}")
 
-    # Dynamically filter trucks based on cargo category
     if cargo_category == "BULK":
         filtered_vehicles = [v for v in vehicles if "BULK" in str(v.get('truck_type', '')).upper()]
     else:  # BAG
@@ -349,14 +348,13 @@ if menu == "Trip Dispatch Entry":
         sel_veh_label = st.selectbox(f"4. Assigned Truck ({cargo_category} Only)*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
         active_veh = vehicle_map[sel_veh_label]
         v_class_mt = float(active_veh['carrying_capacity_tons'])
-        # Look up previous driver who drove this specific truck
         last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
 
     with r1_c5:
         chosen_source_opt = st.selectbox("5. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
         origin_terminal = st.text_input("Custom Source", placeholder="Enter Source").strip().upper() if chosen_source_opt == "CUSTOM" else chosen_source_opt
 
-    # Row 2: Destination, Driver (Defaulted to Last Driver for this Truck), Loaded Weight & Auto Freight
+    # Row 2: Destination, Driver, Loaded Weight (Defaults to truck class, then freely editable), Auto Freight
     routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
     dest_options = {}
     if routes_from_source:
@@ -365,7 +363,6 @@ if menu == "Trip Dispatch Entry":
             dest_options[lbl] = r
     dest_options["-- MANUAL / SPOT DESTINATION --"] = {"origin": origin_terminal, "destination_name": "", "standard_km": 0.0, "freight_rate_per_ton": 0.0}
 
-    # Match driver default index dynamically based on selected vehicle
     driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
     driver_keys_list = list(driver_dict.keys())
     default_driver_index = 0
@@ -390,7 +387,6 @@ if menu == "Trip Dispatch Entry":
             standard_route_km = float(active_route['standard_km'])
 
     with r2_c2:
-        # Defaults to the previous driver for this truck, but user can change it
         chosen_driver_str = st.selectbox(
             "7. Designated Driver (Auto-Mapped to Truck)*", 
             driver_keys_list, 
@@ -400,19 +396,26 @@ if menu == "Trip Dispatch Entry":
         sel_driver_obj = driver_dict[chosen_driver_str]
 
     with r2_c3:
-        weighbridge_mt = st.number_input("8. Loaded Weight (MT)*", min_value=0.0, max_value=60.0, step=0.05, value=v_class_mt, key=f"wmt_{cnt}")
+        # Dynamic default capacity per selected truck, fully editable by the user
+        weighbridge_mt = st.number_input(
+            "8. Loaded Weight (MT)*", 
+            min_value=0.0, 
+            max_value=65.0, 
+            step=0.05, 
+            value=v_class_mt, 
+            key=f"wmt_veh_{active_veh['vehicle_id']}_{cnt}"
+        )
     with r2_c4:
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
-    # Row 3: Driver Bata, Cash Advance (Placed next to Bata), Diesel Litres, Fuel Expense & Odometers
+    # Row 3: Driver Bata, Cash Advance (Next to Bata), Diesel Litres, Fuel Expense & Odometers
     master_bata_val = lookup_driver_bata(dest_terminal, cargo_category, active_veh['vehicle_id'])
     st.markdown('<div class="section-header">Allowances, Fuel & Odometer Tracking</div>', unsafe_allow_html=True)
     r3_c1, r3_c2, r3_c3, r3_c4, r3_c5, r3_c6 = st.columns(6)
     with r3_c1:
         driver_bata = st.number_input("9. Driver Bata (₹)*", min_value=0.0, step=100.0, value=master_bata_val, key=f"bata_{cnt}")
     with r3_c2:
-        # Cash Advance is now placed directly next to Driver Bata
         cash_advance = st.number_input("10. Cash Advance (₹)", min_value=0.0, step=500.0, value=0.0, key=f"adv_{cnt}")
     with r3_c3:
         fuel_qty = st.number_input("11. Diesel (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
@@ -464,7 +467,7 @@ if menu == "Trip Dispatch Entry":
                 show_error_toast(f"Database Error: {e}")
 
 # ==============================================================================
-# 2. POD RECEIVE & TRIP CLOSURE
+# 2. POD RECEIVE & TRIP CLOSURE (REFERENCE ONLY)
 # ==============================================================================
 elif menu == "POD Receive & Close":
     active_trips = run_query("""
@@ -479,52 +482,48 @@ elif menu == "POD Receive & Close":
     """)
 
     if not active_trips:
-        st.info("No active trips awaiting POD closure.")
+        st.info("No active trips awaiting POD reference closure.")
     else:
         trip_opts = {f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | Driver: {t['driver_name']}": t for t in active_trips}
-        chosen_lr = st.selectbox("Select Active Trip to Close with POD", list(trip_opts.keys()))
+        chosen_lr = st.selectbox("Select Active Trip to Close with POD Reference", list(trip_opts.keys()))
         t_cur = trip_opts[chosen_lr]
 
-        known_rate = run_query("SELECT freight_rate_per_ton FROM destinations_freight_master WHERE LOWER(origin)=LOWER(%s) AND LOWER(destination_name)=LOWER(%s) AND capacity_tons=%s LIMIT 1",
-                               (t_cur['origin'], t_cur['destination'], t_cur['carrying_capacity_tons']))
-        applied_rate = float(known_rate[0]['freight_rate_per_ton']) if known_rate else round(float(t_cur['freight_revenue'] or 0.0)/max(0.01, float(t_cur['loaded_weight_mt'] or 1.0)), 2)
-
         with st.form("pod_closure_form"):
-            st.markdown('<div class="section-header">POD Verification, Weighment & Final Settlements</div>', unsafe_allow_html=True)
-            p1, p2, p3, p4, p5 = st.columns([1.5, 1.2, 1.2, 1.2, 1.5])
+            st.markdown('<div class="section-header">Record Closing Reference & Release Vehicle</div>', unsafe_allow_html=True)
+            p1, p2, p3, p4 = st.columns([1.5, 1.5, 1.5, 1.5])
             with p1:
                 pod_no = st.text_input("POD / Challan No*", placeholder="POD-XXXX").strip().upper()
                 close_d = st.date_input("Closing Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
             with p2:
-                unloaded_wt = st.number_input("Unloaded MT*", min_value=0.0, max_value=60.0, value=float(t_cur['loaded_weight_mt']), step=0.01)
+                unloaded_wt = st.number_input("Customer Unloaded Weight (MT)", min_value=0.0, max_value=60.0, value=float(t_cur['loaded_weight_mt'] or 0.0), step=0.01)
                 shortage = max(0.0, float(t_cur['loaded_weight_mt']) - unloaded_wt)
             with p3:
-                final_km = st.number_input("Closing Odometer KM*", min_value=float(t_cur['start_km'] or 0.0), value=float(t_cur['end_km'] or (float(t_cur['start_km'] or 0.0) + float(t_cur['total_km_run'] or 0.0))), step=10.0)
+                final_km = st.number_input("Closing Odometer KM", min_value=float(t_cur['start_km'] or 0.0), value=float(t_cur['end_km'] or (float(t_cur['start_km'] or 0.0) + float(t_cur['total_km_run'] or 0.0))), step=10.0)
                 tot_km = max(0.0, final_km - float(t_cur['start_km'] or 0.0))
             with p4:
-                halt_bata = st.number_input("Halt / Detention Bata (₹)", min_value=0.0, value=0.0, step=100.0)
-                tot_bata = float(t_cur['driver_bata'] or 0.0) + halt_bata
-            with p5:
+                halt_bata = st.number_input("Halt Bata (₹)", min_value=0.0, value=0.0, step=100.0)
                 claims = st.number_input("En-route Claims (₹)", min_value=0.0, value=0.0, step=50.0)
-                final_freight = round(unloaded_wt * applied_rate, 2)
 
             st.write("")
-            if st.form_submit_button("✅ Settle POD, Close Trip & Release Truck", type="primary", use_container_width=True):
+            if st.form_submit_button("✅ Settle POD Reference & Release Truck", type="primary", use_container_width=True):
                 if not pod_no:
                     show_error_toast("POD Number is required.")
                 else:
                     try:
                         run_query("""
                             UPDATE trips
-                            SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, end_km = %s, total_km_run = %s,
-                                unloaded_weight_mt = %s, shortage_mt = %s, freight_revenue = %s, driver_bata = %s, halt_bata = %s,
-                                enroute_repairs_maintenance = %s, trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
+                            SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, end_km = %s,
+                                total_km_run = CASE WHEN %s > 0 THEN %s ELSE total_km_run END,
+                                unloaded_weight_mt = %s, shortage_mt = %s, halt_bata = %s,
+                                driver_bata = driver_bata + %s,
+                                enroute_repairs_maintenance = enroute_repairs_maintenance + %s,
+                                trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
                             WHERE trip_id = %s;
-                        """, (pod_no, close_d, close_d, final_km, tot_km, unloaded_wt, shortage, final_freight, tot_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
+                        """, (pod_no, close_d, close_d, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
                         run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
-                              (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
+                                  (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
                         get_cached_vehicles.clear()
-                        trigger_toast_and_rerun("SUCCESS", f"Trip {t_cur['trip_number']} closed and Truck {t_cur['vehicle_number']} released.")
+                        trigger_toast_and_rerun("SUCCESS", f"Trip {t_cur['trip_number']} closed. Truck {t_cur['vehicle_number']} is now AVAILABLE.")
                     except Exception as e:
                         show_error_toast(f"Error closing trip: {e}")
 
@@ -565,7 +564,7 @@ elif menu == "Fleet Status Board":
                     trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
-# 4. FULL-WIDTH DIESEL LOGS
+# 4. FULL-WIDTH DIESEL LOGS (WITH DELETE OPTION)
 # ==============================================================================
 elif menu == "Diesel Logs":
     vehicles = get_cached_vehicles()
@@ -592,12 +591,22 @@ elif menu == "Diesel Logs":
                     show_error_toast("Fuel quantity must be greater than zero.")
     with col_d2:
         st.markdown('<div class="section-header">Recent Diesel Disbursements</div>', unsafe_allow_html=True)
-        d_logs = run_query("SELECT f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, f.litres_filled, f.total_fuel_cost FROM diesel_fuel_logs f JOIN vehicles v ON f.vehicle_id = v.vehicle_id ORDER BY f.fuel_date DESC LIMIT 50")
+        d_logs = run_query("SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, f.litres_filled, f.total_fuel_cost FROM diesel_fuel_logs f JOIN vehicles v ON f.vehicle_id = v.vehicle_id ORDER BY f.fuel_date DESC LIMIT 100")
         if d_logs:
-            st.dataframe(pd.DataFrame(d_logs), hide_index=True, use_container_width=True, height=350)
+            df_d_logs = pd.DataFrame(d_logs)
+            st.dataframe(df_d_logs, hide_index=True, use_container_width=True, height=280)
+            
+            del_c1, del_c2 = st.columns([3, 1])
+            with del_c1:
+                del_fuel_id = st.selectbox("Select Fuel Entry to Remove", df_d_logs['fuel_log_id'].tolist(), format_func=lambda x: f"Fuel Log #{x}")
+            with del_c2:
+                st.write("")
+                if st.button("🗑️ Delete Fuel Log", type="secondary", use_container_width=True):
+                    run_query("DELETE FROM diesel_fuel_logs WHERE fuel_log_id = %s", (del_fuel_id,), fetch=False)
+                    trigger_toast_and_rerun("SUCCESS", f"Fuel log #{del_fuel_id} deleted.")
 
 # ==============================================================================
-# 5. FULL-WIDTH DRIVER ADVANCES
+# 5. FULL-WIDTH DRIVER ADVANCES (WITH DELETE OPTION)
 # ==============================================================================
 elif menu == "Driver Advances":
     drivers = get_cached_drivers()
@@ -622,22 +631,66 @@ elif menu == "Driver Advances":
                     show_error_toast("Advance amount must be greater than zero.")
     with col_a2:
         st.markdown('<div class="section-header">Direct Advance History</div>', unsafe_allow_html=True)
-        adv_recs = run_query("SELECT a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 50")
+        adv_recs = run_query("SELECT a.advance_id, a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
         if adv_recs:
-            st.dataframe(pd.DataFrame(adv_recs), hide_index=True, use_container_width=True, height=350)
+            df_adv_recs = pd.DataFrame(adv_recs)
+            st.dataframe(df_adv_recs, hide_index=True, use_container_width=True, height=280)
+            
+            del_a1, del_a2 = st.columns([3, 1])
+            with del_a1:
+                del_adv_id = st.selectbox("Select Advance Entry to Remove", df_adv_recs['advance_id'].tolist(), format_func=lambda x: f"Advance Record #{x}")
+            with del_a2:
+                st.write("")
+                if st.button("🗑️ Delete Advance Record", type="secondary", use_container_width=True):
+                    run_query("DELETE FROM driver_direct_advances WHERE advance_id = %s", (del_adv_id,), fetch=False)
+                    trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. FULL-WIDTH MODIFY TRIPS & EXPENSES
+# 6. FULL-WIDTH MODIFY & DELETE TRIPS (SEARCH ALL TRIPS WITHOUT LIMIT)
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
-    trips = run_query("SELECT t.trip_id, t.trip_number, v.vehicle_number, d.full_name, t.origin, t.destination, t.trip_start_date, t.trip_end_date, t.start_km, t.end_km, t.total_km_run, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, t.fuel_expense, t.driver_bata, t.cash_advance_issued, t.enroute_repairs_maintenance, t.trip_status FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id ORDER BY t.trip_id DESC LIMIT 50")
-    if trips:
-        t_opts = {f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | Driver: {t['full_name']}": t for t in trips}
-        sel_t = st.selectbox("Select Trip Record to Edit", list(t_opts.keys()))
-        t_data = t_opts[sel_t]
+    st.markdown('<div class="section-header">Search, Edit & Delete Master Trip Records</div>', unsafe_allow_html=True)
+    
+    # Live Search Filter across ALL database trips
+    f_c1, f_c2 = st.columns([2, 2])
+    with f_c1:
+        search_query = st.text_input("🔍 Quick Search by LR Number or Truck Number", placeholder="e.g. 4312 or LR-9081").strip().upper()
+    with f_c2:
+        status_filter = st.selectbox("Filter by Trip Status", ["All Statuses", "IN_TRANSIT", "COMPLETED"])
 
-        with st.form("mod_compact_form"):
-            st.markdown('<div class="section-header">Edit Manifest, Freight & Direct Trip Costs</div>', unsafe_allow_html=True)
+    trip_sql = """
+        SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, d.full_name, t.origin, t.destination, 
+               t.trip_start_date, t.trip_end_date, t.start_km, t.end_km, t.total_km_run, 
+               t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, 
+               t.fuel_expense, t.driver_bata, t.cash_advance_issued, t.enroute_repairs_maintenance, t.trip_status 
+        FROM trips t 
+        JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
+        JOIN drivers d ON t.primary_driver_id = d.driver_id 
+        WHERE 1=1
+    """
+    params = []
+    if search_query:
+        trip_sql += " AND (UPPER(t.trip_number) LIKE %s OR UPPER(v.vehicle_number) LIKE %s)"
+        params.extend([f"%{search_query}%", f"%{search_query}%"])
+    if status_filter != "All Statuses":
+        trip_sql += " AND t.trip_status = %s"
+        params.append(status_filter)
+        
+    trip_sql += " ORDER BY t.trip_id DESC"
+    all_matched_trips = run_query(trip_sql, tuple(params) if params else None)
+
+    if not all_matched_trips:
+        st.info("No trips found matching your search query.")
+    else:
+        trip_map = {
+            f"Trip ID #{t['trip_id']} | LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | {t['full_name']} [{t['trip_status']}]": t 
+            for t in all_matched_trips
+        }
+        sel_t_key = st.selectbox("Select Target Trip Record", list(trip_map.keys()))
+        t_data = trip_map[sel_t_key]
+
+        with st.form("mod_full_form"):
+            st.markdown('<div class="section-header">Trip Manifest, Tonnage & Direct Expense Values</div>', unsafe_allow_html=True)
             m1, m2, m3, m4, m5 = st.columns(5)
             with m1:
                 e_sdate = st.date_input("Start Date", t_data['trip_start_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
@@ -647,7 +700,7 @@ elif menu == "Modify Trips & Claims":
                 e_orig = st.text_input("Origin Hub", value=t_data['origin'])
             with m3:
                 e_dest = st.text_input("Destination", value=t_data['destination'])
-                e_ton = st.number_input("Billable MT", value=float(t_data['unloaded_weight_mt'] or 0.0), step=0.05)
+                e_ton = st.number_input("Loaded MT*", value=float(t_data['loaded_weight_mt'] or 0.0), step=0.05)
             with m4:
                 e_freight = st.number_input("Freight Revenue (₹)", value=float(t_data['freight_revenue'] or 0.0), step=100.0)
                 e_fuel_l = st.number_input("Fuel Litres", value=float(t_data['fuel_litres'] or 0.0), step=5.0)
@@ -656,16 +709,34 @@ elif menu == "Modify Trips & Claims":
                 e_adv = st.number_input("Advance (₹)", value=float(t_data['cash_advance_issued'] or 0.0), step=500.0)
 
             st.write("")
-            if st.form_submit_button("Commit Changes to Trip Record", type="primary", use_container_width=True):
+            if st.form_submit_button("💾 Commit Updates to Trip Record", type="primary", use_container_width=True):
                 try:
                     run_query("""
-                        UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s, unloaded_weight_mt=%s, freight_revenue=%s,
+                        UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s,
+                                         loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, freight_revenue=%s,
                                          fuel_litres=%s, fuel_expense=%s, driver_bata=%s, cash_advance_issued=%s
                         WHERE trip_id=%s
-                    """, (e_sdate, e_edate, e_lr, e_orig, e_dest, e_ton, e_freight, e_fuel_l, round(e_fuel_l * d_rate_fast, 2), e_bata, e_adv, t_data['trip_id']), fetch=False)
-                    trigger_toast_and_rerun("SUCCESS", f"Trip record {e_lr} updated.")
+                    """, (e_sdate, e_edate, e_lr, e_orig, e_dest, e_ton, e_ton, e_ton, e_freight, e_fuel_l, round(e_fuel_l * d_rate_fast, 2), e_bata, e_adv, t_data['trip_id']), fetch=False)
+                    trigger_toast_and_rerun("SUCCESS", f"Trip record {e_lr} updated successfully.")
                 except Exception as e:
                     show_error_toast(f"Update failed: {e}")
+
+        st.markdown("<hr style='margin: 10px 0;' />", unsafe_allow_html=True)
+        del_col1, del_col2 = st.columns([3.5, 1.5])
+        with del_col1:
+            st.warning(f"⚠️ Permanently delete Trip Record **{t_data['trip_number']}** for Truck **{t_data['vehicle_number']}**?")
+        with del_col2:
+            if st.button("🗑️ Delete Trip Record", type="secondary", use_container_width=True):
+                try:
+                    # Dissociate linked fuel logs and delete trip
+                    run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
+                    run_query("DELETE FROM trips WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
+                    # Reset vehicle status if it was in transit for this trip
+                    run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = 'Available' WHERE vehicle_id = %s AND current_status = 'IN_TRANSIT'", (t_data['vehicle_id'],), fetch=False)
+                    get_cached_vehicles.clear()
+                    trigger_toast_and_rerun("SUCCESS", f"Trip {t_data['trip_number']} permanently deleted.")
+                except Exception as e:
+                    show_error_toast(f"Delete failed: {e}")
 
 # ==============================================================================
 # 7. FULL-WIDTH DRIVER SETTLEMENT
@@ -687,7 +758,7 @@ elif menu == "Driver Settlement":
             st.write("")
             btn_settle = st.button("Mark Period Settled", type="primary", use_container_width=True)
 
-        trips_drv = run_query("SELECT trip_number, trip_end_date, origin, destination, total_km_run, driver_bata, cash_advance_issued, enroute_repairs_maintenance FROM trips WHERE primary_driver_id=%s AND trip_end_date>=%s AND trip_end_date<=%s", (d_id, s_from, s_to))
+        trips_drv = run_query("SELECT trip_number, trip_start_date, origin, destination, total_km_run, driver_bata, cash_advance_issued, enroute_repairs_maintenance FROM trips WHERE primary_driver_id=%s AND trip_start_date>=%s AND trip_start_date<=%s", (d_id, s_from, s_to))
         adv_drv = run_query("SELECT advance_date, amount_inr, advance_type, reference_remarks FROM driver_direct_advances WHERE driver_id=%s AND advance_date>=%s AND advance_date<=%s", (d_id, s_from, s_to))
 
         df_t = pd.DataFrame(trips_drv) if trips_drv else pd.DataFrame(columns=["driver_bata", "cash_advance_issued", "enroute_repairs_maintenance"])
@@ -698,7 +769,7 @@ elif menu == "Driver Settlement":
         tot_adv = (float(df_t['cash_advance_issued'].sum() or 0.0) if not df_t.empty else 0.0) + (float(df_a['amount_inr'].sum() or 0.0) if not df_a.empty else 0.0)
         net_pay = (tot_b + tot_c) - tot_adv
 
-        st.markdown('<div class="section-header">Cycle Settlement Position</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">Cycle Settlement Position (Based on Trip Start Date)</div>', unsafe_allow_html=True)
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Earned Bata (₹)", f"₹{tot_b:,.2f}")
         m2.metric("Out-of-Pocket Claims (₹)", f"₹{tot_c:,.2f}")
@@ -710,7 +781,7 @@ elif menu == "Driver Settlement":
 
         if btn_settle:
             try:
-                run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_end_date>=%s AND trip_end_date<=%s", (d_id, s_from, s_to), fetch=False)
+                run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date>=%s AND trip_start_date<=%s", (d_id, s_from, s_to), fetch=False)
                 run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date>=%s AND advance_date<=%s", (d_id, s_from, s_to), fetch=False)
                 trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {sel_d_name}.")
             except Exception as e:
@@ -865,7 +936,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS
+# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS (BASED ON TRIP START & LOADED MT)
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -891,61 +962,129 @@ elif menu == "Executive Retention Analytics":
 
     tab_f, tab_d, tab_v = st.tabs(["📊 Fleet Unit Retention & Margins", "👨‍✈️ Driver Performance Scorecard", "⚖️ Variant Peer Benchmarks"])
     
-    base_where = "WHERE v.is_active = TRUE"
-    date_params = []
+    # Strictly join on trip_start_date
+    join_date_condition = ""
+    params = []
     if start_filter_date and end_filter_date:
-        base_where += " AND t.trip_end_date >= %s AND t.trip_end_date <= %s"
-        date_params.extend([start_filter_date, end_filter_date])
+        join_date_condition = "AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
+        params.extend([start_filter_date, end_filter_date])
 
     with tab_f:
         fleet_data = run_query(f"""
-            SELECT v.vehicle_number, v.truck_type, v.carrying_capacity_tons,
-                   COUNT(t.trip_id) AS trips,
-                   COALESCE(SUM(t.total_km_run), 0.00) AS total_km,
-                   COALESCE(SUM(COALESCE(t.unloaded_weight_mt, t.loaded_weight_mt)), 0.00) AS total_mt,
-                   COALESCE(SUM(t.freight_revenue), 0.00) AS revenue,
-                   COALESCE(SUM(t.fuel_expense + t.driver_bata + t.enroute_repairs_maintenance), 0.00) AS direct_costs,
-                   COALESCE(SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.enroute_repairs_maintenance)), 0.00) AS net_profit,
-                   ROUND((COALESCE(SUM(t.freight_revenue - (t.fuel_expense + t.driver_bata + t.enroute_repairs_maintenance)), 0.00) / NULLIF(SUM(t.freight_revenue), 0.00)) * 100.0, 2) AS margin_pct,
-                   ROUND(SUM(t.total_km_run) / NULLIF(SUM(t.fuel_litres), 0.00), 2) AS kmpl
-            FROM vehicles v LEFT JOIN trips t ON v.vehicle_id = t.vehicle_id
-            {base_where} GROUP BY v.vehicle_number, v.truck_type, v.carrying_capacity_tons ORDER BY net_profit DESC;
-        """, tuple(date_params) if date_params else None)
+            SELECT 
+                v.vehicle_number, 
+                v.truck_type, 
+                v.carrying_capacity_tons,
+                COUNT(t.trip_id) AS trips,
+                COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km,
+                COALESCE(SUM(
+                    COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), v.carrying_capacity_tons, 0.00)
+                ), 0.00) AS total_mt,
+                COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS revenue,
+                COALESCE(SUM(
+                    COALESCE(t.fuel_expense, 0.00) + 
+                    COALESCE(t.driver_bata, 0.00) + 
+                    COALESCE(t.toll_fastag_expense, 0.00) + 
+                    COALESCE(t.enroute_repairs_maintenance, 0.00) + 
+                    COALESCE(t.loading_unloading_expense, 0.00) + 
+                    COALESCE(t.misc_trip_expense, 0.00)
+                ), 0.00) AS direct_costs,
+                COALESCE(SUM(
+                    COALESCE(t.freight_revenue, 0.00) - (
+                        COALESCE(t.fuel_expense, 0.00) + 
+                        COALESCE(t.driver_bata, 0.00) + 
+                        COALESCE(t.toll_fastag_expense, 0.00) + 
+                        COALESCE(t.enroute_repairs_maintenance, 0.00) + 
+                        COALESCE(t.loading_unloading_expense, 0.00) + 
+                        COALESCE(t.misc_trip_expense, 0.00)
+                    )
+                ), 0.00) AS net_profit,
+                ROUND(
+                    (COALESCE(SUM(
+                        COALESCE(t.freight_revenue, 0.00) - (
+                            COALESCE(t.fuel_expense, 0.00) + 
+                            COALESCE(t.driver_bata, 0.00) + 
+                            COALESCE(t.toll_fastag_expense, 0.00) + 
+                            COALESCE(t.enroute_repairs_maintenance, 0.00) + 
+                            COALESCE(t.loading_unloading_expense, 0.00) + 
+                            COALESCE(t.misc_trip_expense, 0.00)
+                        )
+                    ), 0.00) / NULLIF(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00)) * 100.0, 2
+                ) AS margin_pct,
+                ROUND(
+                    SUM(COALESCE(t.total_km_run, 0.00)) / NULLIF(SUM(COALESCE(t.fuel_litres, 0.00)), 0.00), 2
+                ) AS kmpl
+            FROM vehicles v 
+            LEFT JOIN trips t ON v.vehicle_id = t.vehicle_id {join_date_condition}
+            WHERE v.is_active = TRUE
+            GROUP BY v.vehicle_number, v.truck_type, v.carrying_capacity_tons 
+            ORDER BY net_profit DESC;
+        """, tuple(params) if params else None)
         
         if fleet_data:
             df_fl = pd.DataFrame(fleet_data)
             tot_r = float(df_fl['revenue'].sum() or 0.0)
             tot_p = float(df_fl['net_profit'].sum() or 0.0)
             tot_km = float(df_fl['total_km'].sum() or 0.0)
+            tot_delivered_mt = float(df_fl['total_mt'].sum() or 0.0)
             avg_m = round((tot_p / max(1.0, tot_r)) * 100.0, 2) if tot_r > 0 else 0.0
 
-            k1, k2, k3, k4 = st.columns(4)
+            k1, k2, k3, k4, k5 = st.columns(5)
             k1.metric("Gross Fleet Revenue", f"₹{tot_r:,.2f}")
             k2.metric("Net Retained Margin", f"₹{tot_p:,.2f}")
             k3.metric("Fleet Margin %", f"{avg_m:.2f}%")
-            k4.metric("Total Kilometres Run", f"{tot_km:,.0f} KM")
-            st.dataframe(df_fl, hide_index=True, use_container_width=True, height=350)
+            k4.metric("Total Kilometres", f"{tot_km:,.0f} KM")
+            k5.metric("Total Tonnage", f"{tot_delivered_mt:,.2f} MT")
+            
+            st.dataframe(
+                df_fl, 
+                column_config={
+                    "vehicle_number": "Truck No",
+                    "truck_type": "Variant",
+                    "carrying_capacity_tons": "Capacity Class",
+                    "trips": "Trips",
+                    "total_km": "Total KM",
+                    "total_mt": "Total MT (Loaded)",
+                    "revenue": "Revenue (₹)",
+                    "direct_costs": "Direct Costs (₹)",
+                    "net_profit": "Net Retained (₹)",
+                    "margin_pct": "Margin %",
+                    "kmpl": "KMPL"
+                },
+                hide_index=True, 
+                use_container_width=True, 
+                height=380
+            )
 
     with tab_d:
         drv_where = "WHERE d.is_active = TRUE"
         drv_params = []
         if start_filter_date and end_filter_date:
-            drv_where += " AND t.trip_end_date >= %s AND t.trip_end_date <= %s"
+            drv_where += " AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
             drv_params.extend([start_filter_date, end_filter_date])
 
         drv_data = run_query(f"""
-            SELECT d.driver_code, d.full_name, COUNT(t.trip_id) AS trips,
-                   COALESCE(SUM(t.total_km_run), 0.00) AS total_km,
-                   COALESCE(SUM(COALESCE(t.unloaded_weight_mt, t.loaded_weight_mt)), 0.00) AS total_mt,
-                   ROUND(SUM(t.total_km_run) / NULLIF(SUM(t.fuel_litres), 0.00), 2) AS kmpl,
-                   COALESCE(SUM(t.shortage_mt), 0.00) AS shortage_mt,
-                   COALESCE(SUM(t.freight_revenue), 0.00) AS revenue,
-                   COALESCE(SUM(t.driver_bata), 0.00) AS bata_earned
-            FROM drivers d LEFT JOIN trips t ON d.driver_id = t.primary_driver_id
-            {drv_where} GROUP BY d.driver_code, d.full_name ORDER BY revenue DESC;
+            SELECT 
+                d.driver_code, 
+                d.full_name, 
+                COUNT(t.trip_id) AS trips,
+                COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km,
+                COALESCE(SUM(
+                    COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
+                ), 0.00) AS total_mt,
+                ROUND(SUM(COALESCE(t.total_km_run, 0.00)) / NULLIF(SUM(COALESCE(t.fuel_litres, 0.00)), 0.00), 2) AS kmpl,
+                COALESCE(SUM(COALESCE(t.shortage_mt, 0.00)), 0.00) AS shortage_mt,
+                COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS revenue,
+                COALESCE(SUM(COALESCE(t.driver_bata, 0.00)), 0.00) AS bata_earned
+            FROM drivers d 
+            LEFT JOIN trips t ON d.driver_id = t.primary_driver_id {join_date_condition}
+            WHERE d.is_active = TRUE 
+            GROUP BY d.driver_code, d.full_name 
+            ORDER BY revenue DESC;
         """, tuple(drv_params) if drv_params else None)
+        
         if drv_data:
-            st.dataframe(pd.DataFrame(drv_data), hide_index=True, use_container_width=True, height=350)
+            st.dataframe(pd.DataFrame(drv_data), hide_index=True, use_container_width=True, height=380)
 
     with tab_v:
         if fleet_data:
@@ -953,18 +1092,44 @@ elif menu == "Executive Retention Analytics":
             all_v = sorted(list(set(df_fl['truck_type'].tolist())))
             sel_v = st.selectbox("Select Variant to Compare (e.g. 30MT vs 30MT)", ["All Variants"] + all_v)
             df_peer = df_fl if sel_v == "All Variants" else df_fl[df_fl['truck_type'] == sel_v]
-            st.dataframe(df_peer, hide_index=True, use_container_width=True, height=350)
+            st.dataframe(df_peer, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. FULL-WIDTH AUDIT LOG
+# 10. FULL-WIDTH AUDIT LOG (WITH PER-RECORD DELETE)
 # ==============================================================================
 elif menu == "Audit Log":
+    st.markdown('<div class="section-header">Complete System Audit Log & Data Registry</div>', unsafe_allow_html=True)
+    
     all_trips = run_query("""
         SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, v.vehicle_number, d.full_name AS driver,
-               t.origin, t.destination, t.unloaded_weight_mt, t.freight_revenue, t.fuel_expense, t.driver_bata,
+               t.origin, t.destination, t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_expense, t.driver_bata,
                (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.enroute_repairs_maintenance)) AS net_profit, t.trip_status
-        FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id
-        ORDER BY t.trip_id DESC LIMIT 100;
+        FROM trips t 
+        JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
+        JOIN drivers d ON t.primary_driver_id = d.driver_id
+        ORDER BY t.trip_id DESC;
     """)
+    
     if all_trips:
-        st.dataframe(pd.DataFrame(all_trips), hide_index=True, use_container_width=True, height=450)
+        df_all = pd.DataFrame(all_trips)
+        st.dataframe(df_all, hide_index=True, use_container_width=True, height=350)
+        
+        del_log1, del_log2 = st.columns([3, 1])
+        with del_log1:
+            del_target_id = st.selectbox(
+                "Select Trip ID to Delete", 
+                df_all['trip_id'].tolist(),
+                format_func=lambda x: f"Trip ID #{x} - LR: {df_all.loc[df_all['trip_id'] == x, 'trip_number'].values[0]} ({df_all.loc[df_all['trip_id'] == x, 'vehicle_number'].values[0]})"
+            )
+        with del_log2:
+            st.write("")
+            if st.button("🗑️ Purge Trip from Registry", type="secondary", use_container_width=True):
+                try:
+                    run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (del_target_id,), fetch=False)
+                    run_query("DELETE FROM trips WHERE trip_id = %s", (del_target_id,), fetch=False)
+                    get_cached_vehicles.clear()
+                    trigger_toast_and_rerun("SUCCESS", f"Trip #{del_target_id} purged from registry.")
+                except Exception as e:
+                    show_error_toast(f"Purge error: {e}")
+    else:
+        st.info("Trip registry contains no records.")
