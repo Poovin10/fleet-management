@@ -262,7 +262,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. FULL-WIDTH TRIP DISPATCH ENTRY (PAST DATES FULLY SELECTABLE)
+# 1. FULL-WIDTH TRIP DISPATCH ENTRY
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -279,24 +279,19 @@ if menu == "Trip Dispatch Entry":
 
     st.markdown('<div class="section-header">Primary Manifest & Routing Assignment</div>', unsafe_allow_html=True)
     
-    # Row 1: Date, LR No, Cargo Category (Filter), Truck (Filtered) & Source Hub
     r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.4, 1.3, 2.6, 1.5])
     
-    # 1. DATE (Past dates selectable from 2020 onwards)
     with r1_c1:
         start_date = st.date_input("1. Trip Start Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key=f"sdate_{cnt}")
         
-    # 2. LR NO
     with r1_c2:
         lr_no = st.text_input("2. LR Number*", placeholder="LR-XXXX", key=f"lr_{cnt}").strip().upper()
         if lr_no and check_lr_exists(lr_no):
             st.error(f"Duplicate LR: {lr_no}")
 
-    # 3. CARGO CATEGORY (BULK / BAG)
     with r1_c3:
         cargo_category = st.selectbox("3. Cargo Category*", ["BULK", "BAG"], key=f"cargo_sel_{cnt}")
 
-    # Dynamically filter vehicles based on selected Cargo Category
     if cargo_category == "BULK":
         filtered_vehicles = [v for v in vehicles if "BULK" in str(v.get('truck_type', '')).upper()]
     else:  # BAG
@@ -310,19 +305,16 @@ if menu == "Trip Dispatch Entry":
         for v in filtered_vehicles
     }
 
-    # 4. ASSIGNED TRUCK
     with r1_c4:
         sel_veh_label = st.selectbox(f"4. Assigned Truck ({cargo_category} Only)*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
         active_veh = vehicle_map[sel_veh_label]
         v_class_mt = float(active_veh['carrying_capacity_tons'])
         last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
 
-    # 5. SOURCE HUB
     with r1_c5:
         chosen_source_opt = st.selectbox("5. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
         origin_terminal = st.text_input("Custom Source", placeholder="Enter Source").strip().upper() if chosen_source_opt == "CUSTOM" else chosen_source_opt
 
-    # Row 2: Destination, Driver, Loaded Weight & Auto Freight
     routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
     dest_options = {}
     if routes_from_source:
@@ -362,7 +354,6 @@ if menu == "Trip Dispatch Entry":
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
-    # Row 3: Driver Bata, Diesel Litres, Odometers & Advance
     master_bata_val = lookup_driver_bata(dest_terminal, cargo_category, active_veh['vehicle_id'])
     st.markdown('<div class="section-header">Fuel, Allowances & Odometer Tracking</div>', unsafe_allow_html=True)
     r3_c1, r3_c2, r3_c3, r3_c4, r3_c5, r3_c6 = st.columns(6)
@@ -420,7 +411,7 @@ if menu == "Trip Dispatch Entry":
                 st.error(f"Database Error: {e}")
 
 # ==============================================================================
-# 2. POD RECEIVE & TRIP CLOSURE (PAST DATES FULLY SELECTABLE)
+# 2. POD RECEIVE & TRIP CLOSURE
 # ==============================================================================
 elif menu == "POD Receive & Close":
     active_trips = run_query("""
@@ -520,7 +511,7 @@ elif menu == "Fleet Status Board":
                     st.rerun()
 
 # ==============================================================================
-# 4. FULL-WIDTH DIESEL LOGS (PAST DATES FULLY SELECTABLE)
+# 4. FULL-WIDTH DIESEL LOGS
 # ==============================================================================
 elif menu == "Diesel Logs":
     vehicles = get_cached_vehicles()
@@ -551,7 +542,7 @@ elif menu == "Diesel Logs":
             st.dataframe(pd.DataFrame(d_logs), hide_index=True, use_container_width=True, height=350)
 
 # ==============================================================================
-# 5. FULL-WIDTH DRIVER ADVANCES (PAST DATES FULLY SELECTABLE)
+# 5. FULL-WIDTH DRIVER ADVANCES
 # ==============================================================================
 elif menu == "Driver Advances":
     drivers = get_cached_drivers()
@@ -580,7 +571,7 @@ elif menu == "Driver Advances":
             st.dataframe(pd.DataFrame(adv_recs), hide_index=True, use_container_width=True, height=350)
 
 # ==============================================================================
-# 6. FULL-WIDTH MODIFY TRIPS & EXPENSES (PAST DATES FULLY SELECTABLE)
+# 6. FULL-WIDTH MODIFY TRIPS & EXPENSES
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
     trips = run_query("SELECT t.trip_id, t.trip_number, v.vehicle_number, d.full_name, t.origin, t.destination, t.trip_start_date, t.trip_end_date, t.start_km, t.end_km, t.total_km_run, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, t.fuel_expense, t.driver_bata, t.cash_advance_issued, t.enroute_repairs_maintenance, t.trip_status FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id ORDER BY t.trip_id DESC LIMIT 50")
@@ -619,7 +610,7 @@ elif menu == "Modify Trips & Claims":
                 st.rerun()
 
 # ==============================================================================
-# 7. FULL-WIDTH DRIVER SETTLEMENT (PAST DATES FULLY SELECTABLE)
+# 7. FULL-WIDTH DRIVER SETTLEMENT
 # ==============================================================================
 elif menu == "Driver Settlement":
     drivers = get_cached_drivers()
@@ -666,7 +657,7 @@ elif menu == "Driver Settlement":
             st.rerun()
 
 # ==============================================================================
-# 8. FULL-WIDTH MASTER CONFIGURATION
+# 8. FULL-WIDTH MASTER CONFIGURATION (DUPLICATE-SAFE DRIVER INSERTION)
 # ==============================================================================
 elif menu == "Master Configuration":
     t_v, t_d, t_r, t_b = st.tabs(["Trucks Master", "Drivers Master", "Freight Slabs Master", "Driver Bata Master"])
@@ -705,10 +696,32 @@ elif menu == "Master Configuration":
                 nd_exp = st.date_input("License Expiry Date", date(2030, 1, 1), min_value=date(2000, 1, 1), max_value=date(2050, 12, 31))
                 st.write("")
                 if st.form_submit_button("Save Driver Master", type="primary", use_container_width=True):
-                    if nd_n and nd_p:
-                        run_query("INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id) VALUES (%s, %s, %s, %s, %s, 1)", (nd_c, nd_n, nd_p, nd_l, nd_exp), fetch=False)
-                        get_cached_drivers.clear()
-                        st.rerun()
+                    if not nd_n or not nd_p:
+                        st.error("Driver Name and Phone Number are mandatory.")
+                    else:
+                        try:
+                            final_code = nd_c
+                            existing_code = run_query("SELECT driver_id FROM drivers WHERE LOWER(driver_code) = LOWER(%s)", (final_code,))
+                            if existing_code:
+                                max_drv = run_query("SELECT driver_id FROM drivers ORDER BY driver_id DESC LIMIT 1")
+                                next_id = (max_drv[0]['driver_id'] + 1) if max_drv else 1
+                                final_code = f"DRV-{next_id:03d}"
+
+                            run_query("""
+                                INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id) 
+                                VALUES (%s, %s, %s, %s, %s, 1)
+                                ON CONFLICT (driver_code) DO UPDATE 
+                                SET full_name = EXCLUDED.full_name,
+                                    phone_number = EXCLUDED.phone_number,
+                                    license_number = EXCLUDED.license_number,
+                                    license_expiry_date = EXCLUDED.license_expiry_date,
+                                    is_active = TRUE;
+                            """, (final_code, nd_n, nd_p, nd_l, nd_exp), fetch=False)
+                            get_cached_drivers.clear()
+                            st.success(f"Driver '{nd_n}' saved successfully as {final_code}.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error saving driver: {e}")
         with c2:
             st.markdown('<div class="section-header">Active Driver Directory</div>', unsafe_allow_html=True)
             d_recs = get_cached_drivers(True)
@@ -779,7 +792,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS
+# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS (PAST DATES FULLY SELECTABLE)
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
