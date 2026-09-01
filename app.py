@@ -244,7 +244,7 @@ def check_lr_exists(trip_no, exclude_trip_id=None):
         res = run_query("SELECT trip_id FROM trips WHERE LOWER(trip_number) = LOWER(%s)", (trip_no.strip(),))
     return len(res) > 0
 
-def check_duplicate_diesel_entry(vehicle_id, fuel_date, litres, filling_km=None, lr_number=None):
+def check_duplicate_diesel_entry(vehicle_id, fuel_date, litres, filling_km=None, lr_number=None, exclude_fuel_log_id=None):
     query = """
         SELECT fuel_log_id FROM diesel_fuel_logs 
         WHERE vehicle_id = %s 
@@ -252,6 +252,10 @@ def check_duplicate_diesel_entry(vehicle_id, fuel_date, litres, filling_km=None,
           AND ABS(litres_filled - %s) < 0.01
     """
     params = [vehicle_id, fuel_date, litres]
+    if exclude_fuel_log_id:
+        query += " AND fuel_log_id != %s"
+        params.append(exclude_fuel_log_id)
+        
     if filling_km and filling_km > 0:
         query += " AND ABS(COALESCE(filling_odometer_km, 0) - %s) < 0.1"
         params.append(filling_km)
@@ -578,51 +582,165 @@ elif menu == "Fleet Status Board":
                     trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
-# 4. FULL-WIDTH DIESEL LOGS
+# 4. FULL-WIDTH DIESEL LOGS (WITH FULL EDITING CAPABILITY & AUTO TRIP RECALCULATION)
 # ==============================================================================
 elif menu == "Diesel Logs":
+    tab_issue, tab_edit_fuel, tab_audit_fuel = st.tabs([
+        "⛽ Issue / Record Diesel",
+        "✏️ Edit Existing Diesel Log",
+        "📊 Fuel Disbursements & Delete"
+    ])
+    
     vehicles = get_cached_vehicles()
     v_dict = {f"{v['vehicle_number']} ({v['truck_type']})": v for v in vehicles}
     
-    col_d1, col_d2 = st.columns([1.5, 3.5])
-    with col_d1:
-        with st.form("d_entry_form", clear_on_submit=True):
-            st.markdown('<div class="section-header">Issue Diesel / Log Fuel Bill</div>', unsafe_allow_html=True)
-            f_date = st.date_input("Fuel Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
-            f_veh = st.selectbox("Select Truck*", list(v_dict.keys()))
-            target_veh_id = v_dict[f_veh]['vehicle_id']
-            f_cat = st.selectbox("Diesel Category*", ["TRIP_DIESEL", "SUNDRY_DIESEL"])
-            f_lr = st.text_input("Trip LR No (Optional)", placeholder="LR-XXXX").strip().upper()
-            
-            filling_km = st.number_input("Filling Odometer (KM)*", min_value=0.0, step=10.0, value=0.0)
-            f_l = st.number_input("Litres Filled*", min_value=0.0, step=10.0)
-            f_cost = round(f_l * d_rate_fast, 2)
-            st.metric("Total Fuel Cost", f"₹{f_cost:,.2f}")
-            st.write("")
-            
-            if st.form_submit_button("Record Diesel Entry", type="primary", use_container_width=True):
-                if f_l <= 0:
-                    show_error_toast("Fuel quantity must be greater than zero.")
-                elif check_duplicate_diesel_entry(target_veh_id, f_date, f_l, filling_km=filling_km, lr_number=f_lr):
-                    show_error_toast(f"Duplicate Entry: A matching fuel log for {f_veh} on {f_date} ({f_l}L) already exists.")
-                else:
-                    try:
-                        run_query("""
-                            INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km) 
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                        """, (f_date, target_veh_id, f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, f_cost, filling_km), fetch=False)
-                        trigger_toast_and_rerun("SUCCESS", f"Recorded {f_l}L fuel for {f_veh} at {filling_km} KM.")
-                    except Exception as e:
-                        show_error_toast(f"Diesel log error: {e}")
-    with col_d2:
-        st.markdown('<div class="section-header">Recent Diesel Disbursements</div>', unsafe_allow_html=True)
-        d_logs = run_query("""
-            SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, 
-                   f.filling_odometer_km, f.litres_filled, f.total_fuel_cost 
+    with tab_issue:
+        col_d1, col_d2 = st.columns([1.5, 3.5])
+        with col_d1:
+            with st.form("d_entry_form", clear_on_submit=True):
+                st.markdown('<div class="section-header">Issue Diesel / Log Fuel Bill</div>', unsafe_allow_html=True)
+                f_date = st.date_input("Fuel Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
+                f_veh = st.selectbox("Select Truck*", list(v_dict.keys()))
+                target_veh_id = v_dict[f_veh]['vehicle_id']
+                f_cat = st.selectbox("Diesel Category*", ["TRIP_DIESEL", "SUNDRY_DIESEL"])
+                f_lr = st.text_input("Trip LR No (Optional)", placeholder="LR-XXXX").strip().upper()
+                
+                filling_km = st.number_input("Filling Odometer (KM)*", min_value=0.0, step=10.0, value=0.0)
+                f_l = st.number_input("Litres Filled*", min_value=0.0, step=10.0)
+                f_cost = round(f_l * d_rate_fast, 2)
+                st.metric("Total Fuel Cost", f"₹{f_cost:,.2f}")
+                st.write("")
+                
+                if st.form_submit_button("Record Diesel Entry", type="primary", use_container_width=True):
+                    if f_l <= 0:
+                        show_error_toast("Fuel quantity must be greater than zero.")
+                    elif check_duplicate_diesel_entry(target_veh_id, f_date, f_l, filling_km=filling_km, lr_number=f_lr):
+                        show_error_toast(f"Duplicate Entry: A matching fuel log for {f_veh} on {f_date} ({f_l}L) already exists.")
+                    else:
+                        try:
+                            run_query("""
+                                INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km) 
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            """, (f_date, target_veh_id, f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, f_cost, filling_km), fetch=False)
+                            trigger_toast_and_rerun("SUCCESS", f"Recorded {f_l}L fuel for {f_veh} at {filling_km} KM.")
+                        except Exception as e:
+                            show_error_toast(f"Diesel log error: {e}")
+        with col_d2:
+            st.markdown('<div class="section-header">Recent Diesel Disbursements Overview</div>', unsafe_allow_html=True)
+            d_recent = run_query("""
+                SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, 
+                       f.filling_odometer_km, f.litres_filled, f.total_fuel_cost 
+                FROM diesel_fuel_logs f 
+                JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
+                ORDER BY f.fuel_date DESC, f.fuel_log_id DESC 
+                LIMIT 50;
+            """)
+            if d_recent:
+                st.dataframe(pd.DataFrame(d_recent), hide_index=True, use_container_width=True, height=320)
+
+    with tab_edit_fuel:
+        st.markdown('<div class="section-header">Search & Edit Specific Diesel Log</div>', unsafe_allow_html=True)
+        
+        all_fuel_entries = run_query("""
+            SELECT f.fuel_log_id, f.fuel_date, f.vehicle_id, v.vehicle_number, f.diesel_category, 
+                   f.lr_number, f.filling_odometer_km, f.litres_filled, f.diesel_rate_per_litre, 
+                   f.total_fuel_cost, f.trip_id
             FROM diesel_fuel_logs f 
             JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
-            ORDER BY f.fuel_date DESC, f.fuel_log_id DESC 
-            LIMIT 100;
+            ORDER BY f.fuel_date DESC, f.fuel_log_id DESC;
+        """)
+        
+        if not all_fuel_entries:
+            st.info("No diesel logs found in registry.")
+        else:
+            fuel_map = {
+                f"Log #{f['fuel_log_id']} | Date: {f['fuel_date']} | Truck: {f['vehicle_number']} | Litres: {f['litres_filled']} L | LR: {f['lr_number']}": f 
+                for f in all_fuel_entries
+            }
+            
+            chosen_fuel_key = st.selectbox("Select Diesel Record to Edit", list(fuel_map.keys()))
+            target_fuel = fuel_map[chosen_fuel_key]
+            
+            # Map default vehicle dropdown index
+            v_keys = list(v_dict.keys())
+            def_v_idx = 0
+            for idx, k in enumerate(v_keys):
+                if v_dict[k]['vehicle_id'] == target_fuel['vehicle_id']:
+                    def_v_idx = idx
+                    break
+
+            with st.form("edit_diesel_form"):
+                ed1, ed2, ed3, ed4, ed5 = st.columns(5)
+                with ed1:
+                    e_fuel_date = st.date_input("Fuel Date*", target_fuel['fuel_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
+                with ed2:
+                    e_fuel_veh_str = st.selectbox("Vehicle*", v_keys, index=def_v_idx)
+                    e_target_veh_id = v_dict[e_fuel_veh_str]['vehicle_id']
+                with ed3:
+                    cat_opts = ["TRIP_DIESEL", "SUNDRY_DIESEL"]
+                    cur_cat_idx = cat_opts.index(target_fuel['diesel_category']) if target_fuel['diesel_category'] in cat_opts else 0
+                    e_cat = st.selectbox("Category*", cat_opts, index=cur_cat_idx)
+                with ed4:
+                    e_lr_val = st.text_input("Trip LR No", value=target_fuel['lr_number'] or "").strip().upper()
+                with ed5:
+                    e_filling_km = st.number_input("Filling Odometer (KM)*", min_value=0.0, value=float(target_fuel['filling_odometer_km'] or 0.0), step=10.0)
+
+                ed6, ed7, ed8 = st.columns(3)
+                with ed6:
+                    e_litres = st.number_input("Litres Filled*", min_value=0.0, value=float(target_fuel['litres_filled'] or 0.0), step=5.0)
+                with ed7:
+                    e_rate = st.number_input("Diesel Rate (₹/L)*", min_value=50.0, max_value=150.0, value=float(target_fuel['diesel_rate_per_litre'] or d_rate_fast), step=0.05)
+                with ed8:
+                    e_cost = round(e_litres * e_rate, 2)
+                    st.metric("Recalculated Fuel Cost", f"₹{e_cost:,.2f}")
+
+                st.write("")
+                if st.form_submit_button("💾 Commit Diesel Log Updates", type="primary", use_container_width=True):
+                    if e_litres <= 0:
+                        show_error_toast("Fuel quantity must be greater than zero.")
+                    elif check_duplicate_diesel_entry(e_target_veh_id, e_fuel_date, e_litres, filling_km=e_filling_km, lr_number=e_lr_val, exclude_fuel_log_id=target_fuel['fuel_log_id']):
+                        show_error_toast("Duplicate Violation: Another matching log for this vehicle, date, and litres/KM already exists.")
+                    else:
+                        try:
+                            # 1. Update the fuel log record
+                            run_query("""
+                                UPDATE diesel_fuel_logs 
+                                SET fuel_date = %s,
+                                    vehicle_id = %s,
+                                    diesel_category = %s,
+                                    lr_number = %s,
+                                    filling_odometer_km = %s,
+                                    litres_filled = %s,
+                                    diesel_rate_per_litre = %s,
+                                    total_fuel_cost = %s
+                                WHERE fuel_log_id = %s;
+                            """, (
+                                e_fuel_date, e_target_veh_id, e_cat, e_lr_val or "SUNDRY",
+                                e_filling_km, e_litres, e_rate, e_cost, target_fuel['fuel_log_id']
+                            ), fetch=False)
+
+                            # 2. If this fuel log is linked to a trip, automatically synchronize trip fuel & cost
+                            if target_fuel['trip_id']:
+                                run_query("""
+                                    UPDATE trips 
+                                    SET fuel_litres = %s, 
+                                        fuel_expense = %s,
+                                        start_km = CASE WHEN start_km = 0 THEN %s ELSE start_km END
+                                    WHERE trip_id = %s;
+                                """, (e_litres, e_cost, e_filling_km, target_fuel['trip_id']), fetch=False)
+
+                            trigger_toast_and_rerun("SUCCESS", f"Fuel Log #{target_fuel['fuel_log_id']} updated successfully.")
+                        except Exception as e:
+                            show_error_toast(f"Update error: {e}")
+
+    with tab_audit_fuel:
+        st.markdown('<div class="section-header">Complete Diesel Logs Audit Registry</div>', unsafe_allow_html=True)
+        d_logs = run_query("""
+            SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, 
+                   f.filling_odometer_km, f.litres_filled, f.diesel_rate_per_litre, f.total_fuel_cost 
+            FROM diesel_fuel_logs f 
+            JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
+            ORDER BY f.fuel_date DESC, f.fuel_log_id DESC;
         """)
         if d_logs:
             df_d_logs = pd.DataFrame(d_logs)
@@ -636,19 +754,20 @@ elif menu == "Diesel Logs":
                     "lr_number": "LR Number",
                     "filling_odometer_km": "Filling KM",
                     "litres_filled": "Litres",
-                    "total_fuel_cost": "Cost (₹)"
+                    "diesel_rate_per_litre": "Rate (₹/L)",
+                    "total_fuel_cost": "Total Cost (₹)"
                 },
                 hide_index=True, 
                 use_container_width=True, 
-                height=280
+                height=300
             )
             
             del_c1, del_c2 = st.columns([3, 1])
             with del_c1:
-                del_fuel_id = st.selectbox("Select Fuel Entry to Remove", df_d_logs['fuel_log_id'].tolist(), format_func=lambda x: f"Fuel Log #{x}")
+                del_fuel_id = st.selectbox("Select Fuel Entry ID to Remove", df_d_logs['fuel_log_id'].tolist(), format_func=lambda x: f"Fuel Log #{x}")
             with del_c2:
                 st.write("")
-                if st.button("🗑️ Delete Fuel Log", type="secondary", use_container_width=True):
+                if st.button("🗑️ Delete Fuel Log Record", type="secondary", use_container_width=True):
                     run_query("DELETE FROM diesel_fuel_logs WHERE fuel_log_id = %s", (del_fuel_id,), fetch=False)
                     trigger_toast_and_rerun("SUCCESS", f"Fuel log #{del_fuel_id} deleted.")
 
@@ -1050,7 +1169,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS (WITH MULTI-METRIC PERFORMANCE SORTING)
+# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -1099,7 +1218,6 @@ elif menu == "Executive Retention Analytics":
             ]
         )
 
-    # Map selected sort options to dataframe columns
     METRIC_COL_MAP = {
         "Net Retained Margin (₹)": "net_profit",
         "Gross Freight Revenue (₹)": "revenue",
@@ -1178,11 +1296,9 @@ elif menu == "Executive Retention Analytics":
         if fleet_data:
             df_fl = pd.DataFrame(fleet_data)
             
-            # Numeric type conversion for accurate sorting
             for c in ['trips', 'total_km', 'total_mt', 'revenue', 'direct_costs', 'net_profit', 'margin_pct', 'kmpl']:
                 df_fl[c] = pd.to_numeric(df_fl[c], errors='coerce').fillna(0.0)
 
-            # Apply performance sort
             df_fl = df_fl.sort_values(by=[target_sort_col, 'net_profit'], ascending=[is_ascending, False]).reset_index(drop=True)
 
             tot_r = float(df_fl['revenue'].sum() or 0.0)
@@ -1260,6 +1376,7 @@ elif menu == "Executive Retention Analytics":
 
     with tab_v:
         if fleet_data:
+            df_fl = pd.DataFrame(fleet_data)
             all_v = sorted(list(set(df_fl['truck_type'].tolist())))
             sel_v = st.selectbox("Select Variant to Compare (e.g. 30MT vs 30MT)", ["All Variants"] + all_v)
             df_peer = df_fl if sel_v == "All Variants" else df_fl[df_fl['truck_type'] == sel_v]
