@@ -111,9 +111,13 @@ def run_query(query, params=None, fetch=True):
             if fetch:
                 result = cur.fetchall()
             else:
-                conn.commit()
                 result = None
+            # Explicitly commit write operations on every execution
+            conn.commit()
         return result
+    except Exception as e:
+        conn.rollback()
+        raise e
     finally:
         db_pool.putconn(conn)
 
@@ -279,19 +283,24 @@ if menu == "Trip Dispatch Entry":
 
     st.markdown('<div class="section-header">Primary Manifest & Routing Assignment</div>', unsafe_allow_html=True)
     
+    # Row 1: Date, LR No, Cargo Category, Filtered Truck, Source Hub
     r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.4, 1.3, 2.6, 1.5])
     
+    # 1. DATE (Past dates selectable)
     with r1_c1:
         start_date = st.date_input("1. Trip Start Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key=f"sdate_{cnt}")
         
+    # 2. LR NO
     with r1_c2:
         lr_no = st.text_input("2. LR Number*", placeholder="LR-XXXX", key=f"lr_{cnt}").strip().upper()
         if lr_no and check_lr_exists(lr_no):
             st.error(f"Duplicate LR: {lr_no}")
 
+    # 3. CARGO CATEGORY (BULK / BAG)
     with r1_c3:
         cargo_category = st.selectbox("3. Cargo Category*", ["BULK", "BAG"], key=f"cargo_sel_{cnt}")
 
+    # Filter trucks based on cargo category
     if cargo_category == "BULK":
         filtered_vehicles = [v for v in vehicles if "BULK" in str(v.get('truck_type', '')).upper()]
     else:  # BAG
@@ -305,16 +314,19 @@ if menu == "Trip Dispatch Entry":
         for v in filtered_vehicles
     }
 
+    # 4. ASSIGNED TRUCK
     with r1_c4:
         sel_veh_label = st.selectbox(f"4. Assigned Truck ({cargo_category} Only)*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
         active_veh = vehicle_map[sel_veh_label]
         v_class_mt = float(active_veh['carrying_capacity_tons'])
         last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
 
+    # 5. SOURCE HUB
     with r1_c5:
         chosen_source_opt = st.selectbox("5. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
         origin_terminal = st.text_input("Custom Source", placeholder="Enter Source").strip().upper() if chosen_source_opt == "CUSTOM" else chosen_source_opt
 
+    # Row 2: Destination, Driver, Loaded Weight & Auto Freight
     routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
     dest_options = {}
     if routes_from_source:
@@ -354,6 +366,7 @@ if menu == "Trip Dispatch Entry":
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
+    # Row 3: Driver Bata, Diesel Litres, Odometers & Advance
     master_bata_val = lookup_driver_bata(dest_terminal, cargo_category, active_veh['vehicle_id'])
     st.markdown('<div class="section-header">Fuel, Allowances & Odometer Tracking</div>', unsafe_allow_html=True)
     r3_c1, r3_c2, r3_c3, r3_c4, r3_c5, r3_c6 = st.columns(6)
@@ -394,8 +407,9 @@ if menu == "Trip Dispatch Entry":
                     start_km, end_km, computed_km, weighbridge_mt, weighbridge_mt, weighbridge_mt,
                     gross_freight, fuel_qty, gross_fuel_cost, driver_bata, cash_advance
                 ))
-                trip_id_created = new_t[0]['trip_id']
-                if fuel_qty > 0:
+                trip_id_created = new_t[0]['trip_id'] if new_t else None
+
+                if fuel_qty > 0 and trip_id_created:
                     run_query("""
                         INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost)
                         VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s);
@@ -657,7 +671,7 @@ elif menu == "Driver Settlement":
             st.rerun()
 
 # ==============================================================================
-# 8. FULL-WIDTH MASTER CONFIGURATION (DUPLICATE-SAFE DRIVER INSERTION)
+# 8. FULL-WIDTH MASTER CONFIGURATION
 # ==============================================================================
 elif menu == "Master Configuration":
     t_v, t_d, t_r, t_b = st.tabs(["Trucks Master", "Drivers Master", "Freight Slabs Master", "Driver Bata Master"])
@@ -792,7 +806,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS (PAST DATES FULLY SELECTABLE)
+# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
