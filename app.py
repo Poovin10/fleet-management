@@ -244,6 +244,24 @@ def check_lr_exists(trip_no, exclude_trip_id=None):
         res = run_query("SELECT trip_id FROM trips WHERE LOWER(trip_number) = LOWER(%s)", (trip_no.strip(),))
     return len(res) > 0
 
+def check_duplicate_diesel_entry(vehicle_id, fuel_date, litres, filling_km=None, lr_number=None):
+    query = """
+        SELECT fuel_log_id FROM diesel_fuel_logs 
+        WHERE vehicle_id = %s 
+          AND fuel_date = %s 
+          AND ABS(litres_filled - %s) < 0.01
+    """
+    params = [vehicle_id, fuel_date, litres]
+    if filling_km and filling_km > 0:
+        query += " AND ABS(COALESCE(filling_odometer_km, 0) - %s) < 0.1"
+        params.append(filling_km)
+    elif lr_number and lr_number.strip() and lr_number.strip().upper() != "SUNDRY":
+        query += " AND UPPER(COALESCE(lr_number, '')) = UPPER(%s)"
+        params.append(lr_number.strip())
+        
+    res = run_query(query, tuple(params))
+    return len(res) > 0
+
 def lookup_driver_bata(dest_name, cargo_type, vehicle_id):
     if not dest_name:
         return 0.00
@@ -300,7 +318,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. FULL-WIDTH TRIP DISPATCH ENTRY
+# 1. FULL-WIDTH TRIP DISPATCH ENTRY (AUTO CAPACITY DEFAULT + FREE EDIT)
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -317,7 +335,6 @@ if menu == "Trip Dispatch Entry":
 
     st.markdown('<div class="section-header">Primary Manifest & Routing Assignment</div>', unsafe_allow_html=True)
     
-    # Row 1: Date, LR No, Cargo Category, Filtered Truck, Source Hub
     r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.4, 1.3, 2.6, 1.5])
     
     with r1_c1:
@@ -451,9 +468,9 @@ if menu == "Trip Dispatch Entry":
 
                 if fuel_qty > 0 and trip_id_created:
                     run_query("""
-                        INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost)
-                        VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s);
-                    """, (start_date, active_veh['vehicle_id'], trip_id_created, lr_no, fuel_qty, d_rate_fast, gross_fuel_cost), fetch=False)
+                        INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km)
+                        VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s);
+                    """, (start_date, active_veh['vehicle_id'], trip_id_created, lr_no, fuel_qty, d_rate_fast, gross_fuel_cost, start_km), fetch=False)
 
                 run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s",
                           (f"Trip {lr_no}: {origin_terminal} ➔ {dest_terminal}", active_veh['vehicle_id']), fetch=False)
@@ -561,7 +578,7 @@ elif menu == "Fleet Status Board":
                     trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
-# 4. FULL-WIDTH DIESEL LOGS
+# 4. FULL-WIDTH DIESEL LOGS (FILLING KM + DUPLICATE ENTRY CHECK)
 # ==============================================================================
 elif menu == "Diesel Logs":
     vehicles = get_cached_vehicles()
@@ -573,25 +590,59 @@ elif menu == "Diesel Logs":
             st.markdown('<div class="section-header">Issue Diesel / Log Fuel Bill</div>', unsafe_allow_html=True)
             f_date = st.date_input("Fuel Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
             f_veh = st.selectbox("Select Truck*", list(v_dict.keys()))
+            target_veh_id = v_dict[f_veh]['vehicle_id']
             f_cat = st.selectbox("Diesel Category*", ["TRIP_DIESEL", "SUNDRY_DIESEL"])
             f_lr = st.text_input("Trip LR No (Optional)", placeholder="LR-XXXX").strip().upper()
+            
+            # Added explicit Diesel Filling KM input
+            filling_km = st.number_input("Filling Odometer (KM)*", min_value=0.0, step=10.0, value=0.0)
             f_l = st.number_input("Litres Filled*", min_value=0.0, step=10.0)
             f_cost = round(f_l * d_rate_fast, 2)
             st.metric("Total Fuel Cost", f"₹{f_cost:,.2f}")
             st.write("")
+            
             if st.form_submit_button("Record Diesel Entry", type="primary", use_container_width=True):
-                if f_l > 0:
-                    run_query("INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                              (f_date, v_dict[f_veh]['vehicle_id'], f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, f_cost), fetch=False)
-                    trigger_toast_and_rerun("SUCCESS", f"Recorded {f_l}L fuel for {f_veh}.")
-                else:
+                if f_l <= 0:
                     show_error_toast("Fuel quantity must be greater than zero.")
+                elif check_duplicate_diesel_entry(target_veh_id, f_date, f_l, filling_km=filling_km, lr_number=f_lr):
+                    show_error_toast(f"Duplicate Entry: A matching fuel log for {f_veh} on {f_date} ({f_l}L) already exists.")
+                else:
+                    try:
+                        run_query("""
+                            INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km) 
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (f_date, target_veh_id, f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, f_cost, filling_km), fetch=False)
+                        trigger_toast_and_rerun("SUCCESS", f"Recorded {f_l}L fuel for {f_veh} at {filling_km} KM.")
+                    except Exception as e:
+                        show_error_toast(f"Diesel log error: {e}")
     with col_d2:
         st.markdown('<div class="section-header">Recent Diesel Disbursements</div>', unsafe_allow_html=True)
-        d_logs = run_query("SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, f.litres_filled, f.total_fuel_cost FROM diesel_fuel_logs f JOIN vehicles v ON f.vehicle_id = v.vehicle_id ORDER BY f.fuel_date DESC LIMIT 100")
+        d_logs = run_query("""
+            SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, 
+                   f.filling_odometer_km, f.litres_filled, f.total_fuel_cost 
+            FROM diesel_fuel_logs f 
+            JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
+            ORDER BY f.fuel_date DESC, f.fuel_log_id DESC 
+            LIMIT 100;
+        """)
         if d_logs:
             df_d_logs = pd.DataFrame(d_logs)
-            st.dataframe(df_d_logs, hide_index=True, use_container_width=True, height=280)
+            st.dataframe(
+                df_d_logs, 
+                column_config={
+                    "fuel_log_id": "Log ID",
+                    "fuel_date": "Date",
+                    "vehicle_number": "Truck No",
+                    "diesel_category": "Category",
+                    "lr_number": "LR Number",
+                    "filling_odometer_km": "Filling KM",
+                    "litres_filled": "Litres",
+                    "total_fuel_cost": "Cost (₹)"
+                },
+                hide_index=True, 
+                use_container_width=True, 
+                height=280
+            )
             
             del_c1, del_c2 = st.columns([3, 1])
             with del_c1:
@@ -628,7 +679,7 @@ elif menu == "Driver Advances":
                     show_error_toast("Advance amount must be greater than zero.")
     with col_a2:
         st.markdown('<div class="section-header">Direct Advance History</div>', unsafe_allow_html=True)
-        adv_recs = run_query("SELECT a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
+        adv_recs = run_query("SELECT a.advance_id, a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
         if adv_recs:
             df_adv_recs = pd.DataFrame(adv_recs)
             st.dataframe(df_adv_recs, hide_index=True, use_container_width=True, height=280)
@@ -1096,7 +1147,7 @@ elif menu == "Executive Retention Analytics":
             st.dataframe(df_peer, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. FULL-WIDTH AUDIT LOG (WITH RECORD DELETE)
+# 10. FULL-WIDTH AUDIT LOG (WITH PER-RECORD DELETE)
 # ==============================================================================
 elif menu == "Audit Log":
     st.markdown('<div class="section-header">Complete System Audit Log & Data Registry</div>', unsafe_allow_html=True)
@@ -1107,7 +1158,7 @@ elif menu == "Audit Log":
                (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.enroute_repairs_maintenance)) AS net_profit, t.trip_status
         FROM trips t 
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
-        JOIN drivers d ON t.primary_driver_id = d.driver_id 
+        JOIN drivers d ON t.primary_driver_id = d.driver_id
         ORDER BY t.trip_id DESC;
     """)
     
