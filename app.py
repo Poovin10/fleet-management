@@ -262,7 +262,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. FULL-WIDTH TRIP DISPATCH ENTRY
+# 1. FULL-WIDTH TRIP DISPATCH ENTRY (ORDERED WORKFLOW + DYNAMIC TRUCK FILTER)
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -279,37 +279,62 @@ if menu == "Trip Dispatch Entry":
 
     st.markdown('<div class="section-header">Primary Manifest & Routing Assignment</div>', unsafe_allow_html=True)
     
-    r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.5, 2.5, 1.2, 1.6])
+    # Row 1: Date, LR No, Cargo Category (Filter), Truck (Filtered) & Source Hub
+    r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.4, 1.3, 2.6, 1.5])
+    
+    # 1. DATE
     with r1_c1:
-        start_date = st.date_input("1. Trip Start Date*", date.today(), key=f"sdate_{cnt}")
+        start_date = st.date_input("1. Trip Date*", date.today(), key=f"sdate_{cnt}")
+        
+    # 2. LR NO
     with r1_c2:
         lr_no = st.text_input("2. LR Number*", placeholder="LR-XXXX", key=f"lr_{cnt}").strip().upper()
         if lr_no and check_lr_exists(lr_no):
             st.error(f"Duplicate LR: {lr_no}")
 
-    vehicle_map = {f"{v['vehicle_number']}  ➔  [{v['truck_type']} | {v['carrying_capacity_tons']} MT Class]": v for v in vehicles}
+    # 3. CARGO CATEGORY (BULK / BAG)
     with r1_c3:
-        sel_veh_label = st.selectbox("3. Assigned Truck*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
+        cargo_category = st.selectbox("3. Cargo Category*", ["BULK", "BAG"], key=f"cargo_sel_{cnt}")
+
+    # Dynamically filter vehicles based on selected Cargo Category
+    if cargo_category == "BULK":
+        filtered_vehicles = [v for v in vehicles if "BULK" in str(v.get('truck_type', '')).upper()]
+    else:  # BAG
+        filtered_vehicles = [v for v in vehicles if any(k in str(v.get('truck_type', '')).upper() for k in ["BAG", "BODY"])]
+
+    # Fallback to all vehicles if no specific tag is matched
+    if not filtered_vehicles:
+        filtered_vehicles = vehicles
+
+    vehicle_map = {
+        f"{v['vehicle_number']} ➔ [{v['truck_type']} | {v['carrying_capacity_tons']} MT Class]": v 
+        for v in filtered_vehicles
+    }
+
+    # 4. ASSIGNED TRUCK (Only displays trucks of selected category)
+    with r1_c4:
+        sel_veh_label = st.selectbox(f"4. Assigned Truck ({cargo_category} Only)*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
         active_veh = vehicle_map[sel_veh_label]
         v_class_mt = float(active_veh['carrying_capacity_tons'])
         last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
-    with r1_c4:
-        cargo_category = st.selectbox("Cargo Category", ["BULK", "BAG"], key=f"cargo_sel_{cnt}")
+
+    # 5. SOURCE HUB
     with r1_c5:
-        chosen_source_opt = st.selectbox("4. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
+        chosen_source_opt = st.selectbox("5. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
         origin_terminal = st.text_input("Custom Source", placeholder="Enter Source").strip().upper() if chosen_source_opt == "CUSTOM" else chosen_source_opt
 
+    # Row 2: Destination, Driver, Loaded Weight & Auto Freight
     routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
     dest_options = {}
     if routes_from_source:
         for r in routes_from_source:
-            lbl = f"{r['destination_name']}  ➔  [Rate: ₹{r['freight_rate_per_ton']}/MT | {r['standard_km']} KM]"
+            lbl = f"{r['destination_name']} ➔ [Rate: ₹{r['freight_rate_per_ton']}/MT | {r['standard_km']} KM]"
             dest_options[lbl] = r
     dest_options["-- MANUAL / SPOT DESTINATION --"] = {"origin": origin_terminal, "destination_name": "", "standard_km": 0.0, "freight_rate_per_ton": 0.0}
 
     r2_c1, r2_c2, r2_c3, r2_c4 = st.columns([2.8, 2.2, 1.5, 1.5])
     with r2_c1:
-        sel_dest_label = st.selectbox(f"5. Destination Terminal ({origin_terminal})*", list(dest_options.keys()), key=f"dest_sel_{cnt}")
+        sel_dest_label = st.selectbox(f"6. Destination Terminal ({origin_terminal})*", list(dest_options.keys()), key=f"dest_sel_{cnt}")
         active_route = dest_options[sel_dest_label]
         is_spot = (sel_dest_label == "-- MANUAL / SPOT DESTINATION --")
         if is_spot:
@@ -330,21 +355,22 @@ if menu == "Trip Dispatch Entry":
                 break
 
     with r2_c2:
-        chosen_driver_str = st.selectbox("6. Designated Driver*", list(driver_dict.keys()), index=default_driver_index, key=f"drv_{cnt}")
+        chosen_driver_str = st.selectbox("7. Designated Driver*", list(driver_dict.keys()), index=default_driver_index, key=f"drv_{cnt}")
         sel_driver_obj = driver_dict[chosen_driver_str]
     with r2_c3:
-        weighbridge_mt = st.number_input("7. Loaded Weight (MT)*", min_value=0.0, max_value=60.0, step=0.05, value=v_class_mt, key=f"wmt_{cnt}")
+        weighbridge_mt = st.number_input("8. Loaded Weight (MT)*", min_value=0.0, max_value=60.0, step=0.05, value=v_class_mt, key=f"wmt_{cnt}")
     with r2_c4:
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
+    # Row 3: Driver Bata, Diesel Litres, Odometers & Advance
     master_bata_val = lookup_driver_bata(dest_terminal, cargo_category, active_veh['vehicle_id'])
     st.markdown('<div class="section-header">Fuel, Allowances & Odometer Tracking</div>', unsafe_allow_html=True)
     r3_c1, r3_c2, r3_c3, r3_c4, r3_c5, r3_c6 = st.columns(6)
     with r3_c1:
-        driver_bata = st.number_input("8. Driver Bata (₹)*", min_value=0.0, step=100.0, value=master_bata_val, key=f"bata_{cnt}")
+        driver_bata = st.number_input("9. Driver Bata (₹)*", min_value=0.0, step=100.0, value=master_bata_val, key=f"bata_{cnt}")
     with r3_c2:
-        fuel_qty = st.number_input("9. Diesel (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
+        fuel_qty = st.number_input("10. Diesel (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
     with r3_c3:
         gross_fuel_cost = round(fuel_qty * d_rate_fast, 2)
         st.metric("Auto Fuel Expense", f"₹{gross_fuel_cost:,.2f}")
@@ -357,7 +383,7 @@ if menu == "Trip Dispatch Entry":
         cash_advance = st.number_input("Cash Advance (₹)", min_value=0.0, step=500.0, value=0.0, key=f"adv_{cnt}")
 
     st.write("")
-    if st.button("Save & Dispatch Trip Record", type="primary", use_container_width=True):
+    if st.button("🚀 Save & Dispatch Trip Record", type="primary", use_container_width=True):
         if not lr_no or not dest_terminal or not origin_terminal:
             st.error("Validation Failure: LR Number, Source, and Destination are required.")
         elif check_lr_exists(lr_no):
@@ -440,7 +466,7 @@ elif menu == "POD Receive & Close":
                 final_freight = round(unloaded_wt * applied_rate, 2)
 
             st.write("")
-            if st.form_submit_button("Settle POD, Close Trip & Release Truck", type="primary", use_container_width=True):
+            if st.form_submit_button("✅ Settle POD, Close Trip & Release Truck", type="primary", use_container_width=True):
                 if not pod_no:
                     st.error("POD Number is required.")
                 else:
@@ -467,12 +493,12 @@ elif menu == "Fleet Status Board":
         df_v['status_lbl'] = df_v['current_status'].map(lambda x: STATUS_OPTIONS.get(x, x))
         
         c1, c2, c3, c4, c5, c6 = st.columns(6)
-        c1.metric("Available", len(df_v[df_v['current_status'] == 'AVAILABLE_FOR_LOAD']))
-        c2.metric("Plant Loading", len(df_v[df_v['current_status'] == 'WAITING_FOR_LOAD']))
-        c3.metric("In Transit", len(df_v[df_v['current_status'] == 'IN_TRANSIT']))
-        c4.metric("Site Unloading", len(df_v[df_v['current_status'] == 'WAITING_FOR_UNLOAD']))
-        c5.metric("In Workshop", len(df_v[df_v['current_status'] == 'WORKSHOP_MAINTENANCE']))
-        c6.metric("Driver Leave", len(df_v[df_v['current_status'] == 'DRIVER_UNAVAILABLE']))
+        c1.metric("🟢 Ready / Available", len(df_v[df_v['current_status'] == 'AVAILABLE_FOR_LOAD']))
+        c2.metric("🟡 Plant Loading", len(df_v[df_v['current_status'] == 'WAITING_FOR_LOAD']))
+        c3.metric("🚚 In Transit", len(df_v[df_v['current_status'] == 'IN_TRANSIT']))
+        c4.metric("⏳ Site Unloading", len(df_v[df_v['current_status'] == 'WAITING_FOR_UNLOAD']))
+        c5.metric("🛠️ In Workshop", len(df_v[df_v['current_status'] == 'WORKSHOP_MAINTENANCE']))
+        c6.metric("🚫 Driver Leave", len(df_v[df_v['current_status'] == 'DRIVER_UNAVAILABLE']))
 
         st.markdown('<div class="section-header">Active Fleet Overview & Quick Status Update</div>', unsafe_allow_html=True)
         v_col1, v_col2 = st.columns([3.2, 1.8])
@@ -644,7 +670,7 @@ elif menu == "Driver Settlement":
 # 8. FULL-WIDTH MASTER CONFIGURATION
 # ==============================================================================
 elif menu == "Master Configuration":
-    t_v, t_d, t_r, t_b = st.tabs(["Trucks Master", "Drivers Master", "Freight Slabs Master", "Driver Bata Master"])
+    t_v, t_d, t_r, t_b = st.tabs(["🚛 Trucks Master", "👨‍✈️ Drivers Master", "📍 Freight Slabs Master", "💰 Driver Bata Master"])
     
     with t_v:
         c1, c2 = st.columns([1.5, 3.5])
