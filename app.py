@@ -300,7 +300,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. FULL-WIDTH TRIP DISPATCH ENTRY (AUTO DEFAULT CAPACITY + FREE EDIT TON)
+# 1. FULL-WIDTH TRIP DISPATCH ENTRY
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -354,7 +354,6 @@ if menu == "Trip Dispatch Entry":
         chosen_source_opt = st.selectbox("5. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
         origin_terminal = st.text_input("Custom Source", placeholder="Enter Source").strip().upper() if chosen_source_opt == "CUSTOM" else chosen_source_opt
 
-    # Row 2: Destination, Driver, Loaded Weight (Defaults to truck class, then freely editable), Auto Freight
     routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
     dest_options = {}
     if routes_from_source:
@@ -396,7 +395,6 @@ if menu == "Trip Dispatch Entry":
         sel_driver_obj = driver_dict[chosen_driver_str]
 
     with r2_c3:
-        # Dynamic default capacity per selected truck, fully editable by the user
         weighbridge_mt = st.number_input(
             "8. Loaded Weight (MT)*", 
             min_value=0.0, 
@@ -409,7 +407,6 @@ if menu == "Trip Dispatch Entry":
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
-    # Row 3: Driver Bata, Cash Advance (Next to Bata), Diesel Litres, Fuel Expense & Odometers
     master_bata_val = lookup_driver_bata(dest_terminal, cargo_category, active_veh['vehicle_id'])
     st.markdown('<div class="section-header">Allowances, Fuel & Odometer Tracking</div>', unsafe_allow_html=True)
     r3_c1, r3_c2, r3_c3, r3_c4, r3_c5, r3_c6 = st.columns(6)
@@ -564,7 +561,7 @@ elif menu == "Fleet Status Board":
                     trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
-# 4. FULL-WIDTH DIESEL LOGS (WITH DELETE OPTION)
+# 4. FULL-WIDTH DIESEL LOGS
 # ==============================================================================
 elif menu == "Diesel Logs":
     vehicles = get_cached_vehicles()
@@ -606,7 +603,7 @@ elif menu == "Diesel Logs":
                     trigger_toast_and_rerun("SUCCESS", f"Fuel log #{del_fuel_id} deleted.")
 
 # ==============================================================================
-# 5. FULL-WIDTH DRIVER ADVANCES (WITH DELETE OPTION)
+# 5. FULL-WIDTH DRIVER ADVANCES
 # ==============================================================================
 elif menu == "Driver Advances":
     drivers = get_cached_drivers()
@@ -631,7 +628,7 @@ elif menu == "Driver Advances":
                     show_error_toast("Advance amount must be greater than zero.")
     with col_a2:
         st.markdown('<div class="section-header">Direct Advance History</div>', unsafe_allow_html=True)
-        adv_recs = run_query("SELECT a.advance_id, a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
+        adv_recs = run_query("SELECT a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
         if adv_recs:
             df_adv_recs = pd.DataFrame(adv_recs)
             st.dataframe(df_adv_recs, hide_index=True, use_container_width=True, height=280)
@@ -651,7 +648,6 @@ elif menu == "Driver Advances":
 elif menu == "Modify Trips & Claims":
     st.markdown('<div class="section-header">Search, Edit & Delete Master Trip Records</div>', unsafe_allow_html=True)
     
-    # Live Search Filter across ALL database trips
     f_c1, f_c2 = st.columns([2, 2])
     with f_c1:
         search_query = st.text_input("🔍 Quick Search by LR Number or Truck Number", placeholder="e.g. 4312 or LR-9081").strip().upper()
@@ -728,10 +724,8 @@ elif menu == "Modify Trips & Claims":
         with del_col2:
             if st.button("🗑️ Delete Trip Record", type="secondary", use_container_width=True):
                 try:
-                    # Dissociate linked fuel logs and delete trip
                     run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
                     run_query("DELETE FROM trips WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
-                    # Reset vehicle status if it was in transit for this trip
                     run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = 'Available' WHERE vehicle_id = %s AND current_status = 'IN_TRANSIT'", (t_data['vehicle_id'],), fetch=False)
                     get_cached_vehicles.clear()
                     trigger_toast_and_rerun("SUCCESS", f"Trip {t_data['trip_number']} permanently deleted.")
@@ -936,7 +930,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS (BASED ON TRIP START & LOADED MT)
+# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS (FIXED ZERO-TRIP TONNAGE SUM)
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -962,7 +956,6 @@ elif menu == "Executive Retention Analytics":
 
     tab_f, tab_d, tab_v = st.tabs(["📊 Fleet Unit Retention & Margins", "👨‍✈️ Driver Performance Scorecard", "⚖️ Variant Peer Benchmarks"])
     
-    # Strictly join on trip_start_date
     join_date_condition = ""
     params = []
     if start_filter_date and end_filter_date:
@@ -978,7 +971,11 @@ elif menu == "Executive Retention Analytics":
                 COUNT(t.trip_id) AS trips,
                 COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km,
                 COALESCE(SUM(
-                    COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), v.carrying_capacity_tons, 0.00)
+                    CASE 
+                        WHEN t.trip_id IS NOT NULL THEN 
+                            COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), v.carrying_capacity_tons, 0.00)
+                        ELSE 0.00
+                    END
                 ), 0.00) AS total_mt,
                 COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS revenue,
                 COALESCE(SUM(
@@ -1070,7 +1067,11 @@ elif menu == "Executive Retention Analytics":
                 COUNT(t.trip_id) AS trips,
                 COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km,
                 COALESCE(SUM(
-                    COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
+                    CASE 
+                        WHEN t.trip_id IS NOT NULL THEN 
+                            COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
+                        ELSE 0.00
+                    END
                 ), 0.00) AS total_mt,
                 ROUND(SUM(COALESCE(t.total_km_run, 0.00)) / NULLIF(SUM(COALESCE(t.fuel_litres, 0.00)), 0.00), 2) AS kmpl,
                 COALESCE(SUM(COALESCE(t.shortage_mt, 0.00)), 0.00) AS shortage_mt,
@@ -1095,7 +1096,7 @@ elif menu == "Executive Retention Analytics":
             st.dataframe(df_peer, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. FULL-WIDTH AUDIT LOG (WITH PER-RECORD DELETE)
+# 10. FULL-WIDTH AUDIT LOG (WITH RECORD DELETE)
 # ==============================================================================
 elif menu == "Audit Log":
     st.markdown('<div class="section-header">Complete System Audit Log & Data Registry</div>', unsafe_allow_html=True)
@@ -1106,7 +1107,7 @@ elif menu == "Audit Log":
                (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.enroute_repairs_maintenance)) AS net_profit, t.trip_status
         FROM trips t 
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
-        JOIN drivers d ON t.primary_driver_id = d.driver_id
+        JOIN drivers d ON t.primary_driver_id = d.driver_id 
         ORDER BY t.trip_id DESC;
     """)
     
