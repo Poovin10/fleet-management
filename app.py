@@ -149,7 +149,7 @@ def run_query(query, params=None, fetch=True):
     finally:
         db_pool.putconn(conn)
 
-# --- Fast Caching ---
+# --- Fast Caching with Unified 25MT/30MT Bag Slab Logic ---
 @st.cache_data(ttl=60)
 def get_cached_vehicles():
     return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
@@ -693,7 +693,7 @@ elif menu == "Driver Advances":
                     trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. FULL-WIDTH MODIFY TRIPS & CLAIMS (WITH POD EDIT & REOPEN TRIP OPTION)
+# 6. FULL-WIDTH MODIFY TRIPS & CLAIMS
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
     st.markdown('<div class="section-header">Search, Edit POD Details & Manage Master Trip Records</div>', unsafe_allow_html=True)
@@ -784,7 +784,6 @@ elif menu == "Modify Trips & Claims":
                     recalculated_fuel_cost = round(e_fuel_l * d_rate_fast, 2)
                     shortage_val = max(0.0, e_ton - e_unloaded_mt)
                     
-                    # 1. Update Trip Record including POD details
                     run_query("""
                         UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s,
                                          loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, shortage_mt=%s,
@@ -800,7 +799,6 @@ elif menu == "Modify Trips & Claims":
                         e_pod_no or None, e_trip_status, t_data['trip_id']
                     ), fetch=False)
                     
-                    # 2. Synchronize vehicle state based on trip status
                     if e_trip_status == "COMPLETED":
                         run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
                                   (f"Completed Trip {e_lr}", t_data['vehicle_id']), fetch=False)
@@ -808,7 +806,6 @@ elif menu == "Modify Trips & Claims":
                         run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s",
                                   (f"Trip {e_lr}: {e_orig} ➔ {e_dest}", t_data['vehicle_id']), fetch=False)
 
-                    # 3. Synchronize Diesel Logs
                     existing_fuel_log = run_query("SELECT fuel_log_id FROM diesel_fuel_logs WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s)", (t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id']))
                     if existing_fuel_log:
                         run_query("""
@@ -822,7 +819,6 @@ elif menu == "Modify Trips & Claims":
                 except Exception as e:
                     show_error_toast(f"Update failed: {e}")
 
-        # Quick Actions: Reopen Trip or Delete Trip
         st.markdown("<hr style='margin: 10px 0;' />", unsafe_allow_html=True)
         act1, act2 = st.columns(2)
         
@@ -1054,7 +1050,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS (FIXED ZERO-TRIP TONNAGE SUM)
+# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS (WITH MULTI-METRIC PERFORMANCE SORTING)
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -1077,6 +1073,44 @@ elif menu == "Executive Retention Analytics":
     else:
         start_filter_date = None
         end_filter_date = None
+
+    # Performance Sorting Controls
+    st.markdown('<div class="section-header">Performance Filter & Sorting Controls</div>', unsafe_allow_html=True)
+    sort_c1, sort_c2 = st.columns([2.5, 2.5])
+    with sort_c1:
+        sort_metric_label = st.selectbox(
+            "Sort Report By Metric",
+            [
+                "Net Retained Margin (₹)",
+                "Gross Freight Revenue (₹)",
+                "Total Trips Completed",
+                "Fuel Mileage (KMPL)",
+                "Total Tonnage Hauled (MT)",
+                "Total Distance (KM)",
+                "Margin Percentage (%)"
+            ]
+        )
+    with sort_c2:
+        sort_direction_label = st.selectbox(
+            "Performance Ranking Order",
+            [
+                "Top Performers (High ➔ Low / Descending)",
+                "Underperformers / Poor Performing (Low ➔ High / Ascending)"
+            ]
+        )
+
+    # Map selected sort options to dataframe columns
+    METRIC_COL_MAP = {
+        "Net Retained Margin (₹)": "net_profit",
+        "Gross Freight Revenue (₹)": "revenue",
+        "Total Trips Completed": "trips",
+        "Fuel Mileage (KMPL)": "kmpl",
+        "Total Tonnage Hauled (MT)": "total_mt",
+        "Total Distance (KM)": "total_km",
+        "Margin Percentage (%)": "margin_pct"
+    }
+    target_sort_col = METRIC_COL_MAP[sort_metric_label]
+    is_ascending = ("Low ➔ High" in sort_direction_label)
 
     tab_f, tab_d, tab_v = st.tabs(["📊 Fleet Unit Retention & Margins", "👨‍✈️ Driver Performance Scorecard", "⚖️ Variant Peer Benchmarks"])
     
@@ -1138,12 +1172,19 @@ elif menu == "Executive Retention Analytics":
             FROM vehicles v 
             LEFT JOIN trips t ON v.vehicle_id = t.vehicle_id {join_date_condition}
             WHERE v.is_active = TRUE
-            GROUP BY v.vehicle_number, v.truck_type, v.carrying_capacity_tons 
-            ORDER BY net_profit DESC;
+            GROUP BY v.vehicle_number, v.truck_type, v.carrying_capacity_tons;
         """, tuple(params) if params else None)
         
         if fleet_data:
             df_fl = pd.DataFrame(fleet_data)
+            
+            # Numeric type conversion for accurate sorting
+            for c in ['trips', 'total_km', 'total_mt', 'revenue', 'direct_costs', 'net_profit', 'margin_pct', 'kmpl']:
+                df_fl[c] = pd.to_numeric(df_fl[c], errors='coerce').fillna(0.0)
+
+            # Apply performance sort
+            df_fl = df_fl.sort_values(by=[target_sort_col, 'net_profit'], ascending=[is_ascending, False]).reset_index(drop=True)
+
             tot_r = float(df_fl['revenue'].sum() or 0.0)
             tot_p = float(df_fl['net_profit'].sum() or 0.0)
             tot_km = float(df_fl['total_km'].sum() or 0.0)
@@ -1204,16 +1245,21 @@ elif menu == "Executive Retention Analytics":
             FROM drivers d 
             LEFT JOIN trips t ON d.driver_id = t.primary_driver_id {join_date_condition}
             WHERE d.is_active = TRUE 
-            GROUP BY d.driver_code, d.full_name 
-            ORDER BY revenue DESC;
+            GROUP BY d.driver_code, d.full_name;
         """, tuple(drv_params) if drv_params else None)
         
         if drv_data:
-            st.dataframe(pd.DataFrame(drv_data), hide_index=True, use_container_width=True, height=380)
+            df_drv = pd.DataFrame(drv_data)
+            for c in ['trips', 'total_km', 'total_mt', 'kmpl', 'shortage_mt', 'revenue', 'bata_earned']:
+                df_drv[c] = pd.to_numeric(df_drv[c], errors='coerce').fillna(0.0)
+
+            drv_sort_col = target_sort_col if target_sort_col in df_drv.columns else "revenue"
+            df_drv = df_drv.sort_values(by=[drv_sort_col, 'revenue'], ascending=[is_ascending, False]).reset_index(drop=True)
+
+            st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
     with tab_v:
         if fleet_data:
-            df_fl = pd.DataFrame(fleet_data)
             all_v = sorted(list(set(df_fl['truck_type'].tolist())))
             sel_v = st.selectbox("Select Variant to Compare (e.g. 30MT vs 30MT)", ["All Variants"] + all_v)
             df_peer = df_fl if sel_v == "All Variants" else df_fl[df_fl['truck_type'] == sel_v]
