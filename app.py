@@ -16,7 +16,6 @@ st.set_page_config(
 # --- Professional Widescreen ERP CSS (100% Viewport Coverage) ---
 st.markdown("""
 <style>
-    /* Force 100% full screen fluid width */
     .main .block-container, div[data-testid="stAppViewBlockContainer"] {
         padding-top: 0.8rem !important;
         padding-bottom: 1rem !important;
@@ -29,7 +28,6 @@ st.markdown("""
     #MainMenu {visibility: hidden; display: none !important;}
     footer {visibility: hidden; display: none !important;}
     
-    /* Clean Enterprise Metrics */
     div[data-testid="stMetricValue"] {
         font-size: 1.25rem !important;
         font-weight: 700 !important;
@@ -53,7 +51,6 @@ st.markdown("""
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
     }
-    /* Proper Proportional Inputs */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
         height: 38px !important;
         font-size: 0.92rem !important;
@@ -71,7 +68,6 @@ st.markdown("""
         border-radius: 6px !important;
         background-color: #FAFAFA !important;
     }
-    /* Full Width Dataframe styling */
     div[data-testid="stDataFrame"] {
         width: 100% !important;
     }
@@ -121,7 +117,7 @@ def run_query(query, params=None, fetch=True):
     finally:
         db_pool.putconn(conn)
 
-# --- Fast Caching ---
+# --- Fast Caching with Unified 25MT/30MT Bag Slab Logic ---
 @st.cache_data(ttl=60)
 def get_cached_vehicles():
     return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
@@ -139,14 +135,30 @@ def get_cached_routes(cargo_type=None, capacity=None, origin=None):
     if cargo_type:
         query += " AND cargo_type = %s"
         params.append(cargo_type)
-    if capacity:
-        query += " AND capacity_tons = %s"
-        params.append(capacity)
     if origin:
         query += " AND UPPER(origin) = UPPER(%s)"
         params.append(origin.strip())
-    query += " ORDER BY destination_name ASC"
-    return run_query(query, tuple(params))
+        
+    if cargo_type == "BAG" and capacity in [25.0, 30.0]:
+        query += " AND capacity_tons IN (25.0, 30.0)"
+    elif capacity:
+        query += " AND capacity_tons = %s"
+        params.append(capacity)
+        
+    query += " ORDER BY destination_name ASC, capacity_tons ASC"
+    routes = run_query(query, tuple(params))
+    
+    if cargo_type == "BAG" and routes:
+        seen = set()
+        deduped = []
+        for r in routes:
+            key = (r['origin'].upper(), r['destination_name'].upper())
+            if key not in seen:
+                seen.add(key)
+                deduped.append(r)
+        return deduped
+        
+    return routes
 
 @st.cache_data(ttl=60)
 def get_cached_bata_rules():
@@ -267,7 +279,6 @@ if menu == "Trip Dispatch Entry":
 
     st.markdown('<div class="section-header">Primary Manifest & Routing Assignment</div>', unsafe_allow_html=True)
     
-    # Row 1: Manifest Basics
     r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.5, 2.5, 1.2, 1.6])
     with r1_c1:
         start_date = st.date_input("1. Trip Start Date*", date.today(), key=f"sdate_{cnt}")
@@ -288,7 +299,6 @@ if menu == "Trip Dispatch Entry":
         chosen_source_opt = st.selectbox("4. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
         origin_terminal = st.text_input("Custom Source", placeholder="Enter Source").strip().upper() if chosen_source_opt == "CUSTOM" else chosen_source_opt
 
-    # Row 2: Route, Driver & Payload
     routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
     dest_options = {}
     if routes_from_source:
@@ -328,7 +338,6 @@ if menu == "Trip Dispatch Entry":
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
-    # Row 3: Fuel, Bata & Financials
     master_bata_val = lookup_driver_bata(dest_terminal, cargo_category, active_veh['vehicle_id'])
     st.markdown('<div class="section-header">Fuel, Allowances & Odometer Tracking</div>', unsafe_allow_html=True)
     r3_c1, r3_c2, r3_c3, r3_c4, r3_c5, r3_c6 = st.columns(6)
@@ -348,7 +357,7 @@ if menu == "Trip Dispatch Entry":
         cash_advance = st.number_input("Cash Advance (₹)", min_value=0.0, step=500.0, value=0.0, key=f"adv_{cnt}")
 
     st.write("")
-    if st.button("🚀 Save & Dispatch Trip Record", type="primary", use_container_width=True):
+    if st.button("Save & Dispatch Trip Record", type="primary", use_container_width=True):
         if not lr_no or not dest_terminal or not origin_terminal:
             st.error("Validation Failure: LR Number, Source, and Destination are required.")
         elif check_lr_exists(lr_no):
@@ -431,7 +440,7 @@ elif menu == "POD Receive & Close":
                 final_freight = round(unloaded_wt * applied_rate, 2)
 
             st.write("")
-            if st.form_submit_button("✅ Settle POD, Close Trip & Release Truck", type="primary", use_container_width=True):
+            if st.form_submit_button("Settle POD, Close Trip & Release Truck", type="primary", use_container_width=True):
                 if not pod_no:
                     st.error("POD Number is required.")
                 else:
@@ -458,12 +467,12 @@ elif menu == "Fleet Status Board":
         df_v['status_lbl'] = df_v['current_status'].map(lambda x: STATUS_OPTIONS.get(x, x))
         
         c1, c2, c3, c4, c5, c6 = st.columns(6)
-        c1.metric("🟢 Ready / Available", len(df_v[df_v['current_status'] == 'AVAILABLE_FOR_LOAD']))
-        c2.metric("🟡 Plant Loading", len(df_v[df_v['current_status'] == 'WAITING_FOR_LOAD']))
-        c3.metric("🚚 In Transit", len(df_v[df_v['current_status'] == 'IN_TRANSIT']))
-        c4.metric("⏳ Site Unloading", len(df_v[df_v['current_status'] == 'WAITING_FOR_UNLOAD']))
-        c5.metric("🛠️ In Workshop", len(df_v[df_v['current_status'] == 'WORKSHOP_MAINTENANCE']))
-        c6.metric("🚫 Driver Leave", len(df_v[df_v['current_status'] == 'DRIVER_UNAVAILABLE']))
+        c1.metric("Available", len(df_v[df_v['current_status'] == 'AVAILABLE_FOR_LOAD']))
+        c2.metric("Plant Loading", len(df_v[df_v['current_status'] == 'WAITING_FOR_LOAD']))
+        c3.metric("In Transit", len(df_v[df_v['current_status'] == 'IN_TRANSIT']))
+        c4.metric("Site Unloading", len(df_v[df_v['current_status'] == 'WAITING_FOR_UNLOAD']))
+        c5.metric("In Workshop", len(df_v[df_v['current_status'] == 'WORKSHOP_MAINTENANCE']))
+        c6.metric("Driver Leave", len(df_v[df_v['current_status'] == 'DRIVER_UNAVAILABLE']))
 
         st.markdown('<div class="section-header">Active Fleet Overview & Quick Status Update</div>', unsafe_allow_html=True)
         v_col1, v_col2 = st.columns([3.2, 1.8])
@@ -635,7 +644,7 @@ elif menu == "Driver Settlement":
 # 8. FULL-WIDTH MASTER CONFIGURATION
 # ==============================================================================
 elif menu == "Master Configuration":
-    t_v, t_d, t_r, t_b = st.tabs(["🚛 Trucks Master", "👨‍✈️ Drivers Master", "📍 Freight Slabs Master", "💰 Driver Bata Master"])
+    t_v, t_d, t_r, t_b = st.tabs(["Trucks Master", "Drivers Master", "Freight Slabs Master", "Driver Bata Master"])
     
     with t_v:
         c1, c2 = st.columns([1.5, 3.5])
@@ -696,8 +705,16 @@ elif menu == "Master Configuration":
                 st.write("")
                 if st.form_submit_button("Save Freight Slab", type="primary", use_container_width=True):
                     if dt and rt > 0:
-                        run_query("INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) DO UPDATE SET freight_rate_per_ton=EXCLUDED.freight_rate_per_ton, standard_km=EXCLUDED.standard_km;", (cg, so, dt, cl, rt, km), fetch=False)
+                        target_capacities = [25.0, 30.0] if cg == "BAG" else [cl]
+                        for c_val in target_capacities:
+                            run_query("""
+                                INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km) 
+                                VALUES (%s, %s, %s, %s, %s, %s) 
+                                ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) 
+                                DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;
+                            """, (cg, so, dt, c_val, rt, km), fetch=False)
                         get_cached_routes.clear()
+                        st.success(f"Saved {cg} slab: {so} ➔ {dt} at ₹{rt}/MT.")
                         st.rerun()
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
