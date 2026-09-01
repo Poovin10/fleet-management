@@ -318,7 +318,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. FULL-WIDTH TRIP DISPATCH ENTRY (AUTO CAPACITY DEFAULT + FREE EDIT)
+# 1. FULL-WIDTH TRIP DISPATCH ENTRY
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -350,7 +350,7 @@ if menu == "Trip Dispatch Entry":
 
     if cargo_category == "BULK":
         filtered_vehicles = [v for v in vehicles if "BULK" in str(v.get('truck_type', '')).upper()]
-    else:  # BAG
+    else:
         filtered_vehicles = [v for v in vehicles if any(k in str(v.get('truck_type', '')).upper() for k in ["BAG", "BODY"])]
 
     if not filtered_vehicles:
@@ -594,7 +594,6 @@ elif menu == "Diesel Logs":
             f_cat = st.selectbox("Diesel Category*", ["TRIP_DIESEL", "SUNDRY_DIESEL"])
             f_lr = st.text_input("Trip LR No (Optional)", placeholder="LR-XXXX").strip().upper()
             
-            # Added explicit Diesel Filling KM input
             filling_km = st.number_input("Filling Odometer (KM)*", min_value=0.0, step=10.0, value=0.0)
             f_l = st.number_input("Litres Filled*", min_value=0.0, step=10.0)
             f_cost = round(f_l * d_rate_fast, 2)
@@ -679,7 +678,7 @@ elif menu == "Driver Advances":
                     show_error_toast("Advance amount must be greater than zero.")
     with col_a2:
         st.markdown('<div class="section-header">Direct Advance History</div>', unsafe_allow_html=True)
-        adv_recs = run_query("SELECT a.advance_id, a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
+        adv_recs = run_query("SELECT a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
         if adv_recs:
             df_adv_recs = pd.DataFrame(adv_recs)
             st.dataframe(df_adv_recs, hide_index=True, use_container_width=True, height=280)
@@ -694,14 +693,14 @@ elif menu == "Driver Advances":
                     trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. FULL-WIDTH MODIFY & DELETE TRIPS (SEARCH ALL TRIPS WITHOUT LIMIT)
+# 6. FULL-WIDTH MODIFY & DELETE TRIPS (WITH AUTOMATIC DIESEL LOG SYNCHRONIZATION)
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
     st.markdown('<div class="section-header">Search, Edit & Delete Master Trip Records</div>', unsafe_allow_html=True)
     
     f_c1, f_c2 = st.columns([2, 2])
     with f_c1:
-        search_query = st.text_input("🔍 Quick Search by LR Number or Truck Number", placeholder="e.g. 4312 or LR-9081").strip().upper()
+        search_query = st.text_input("🔍 Quick Search by LR Number or Truck Number", placeholder="e.g. 839 or KL43J6682").strip().upper()
     with f_c2:
         status_filter = st.selectbox("Filter by Trip Status", ["All Statuses", "IN_TRANSIT", "COMPLETED"])
 
@@ -743,7 +742,7 @@ elif menu == "Modify Trips & Claims":
                 e_sdate = st.date_input("Start Date", t_data['trip_start_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
                 e_edate = st.date_input("End Date", t_data['trip_end_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
             with m2:
-                e_lr = st.text_input("Trip LR No", value=t_data['trip_number'])
+                e_lr = st.text_input("Trip LR No", value=t_data['trip_number']).strip().upper()
                 e_orig = st.text_input("Origin Hub", value=t_data['origin'])
             with m3:
                 e_dest = st.text_input("Destination", value=t_data['destination'])
@@ -758,13 +757,35 @@ elif menu == "Modify Trips & Claims":
             st.write("")
             if st.form_submit_button("💾 Commit Updates to Trip Record", type="primary", use_container_width=True):
                 try:
+                    recalculated_fuel_cost = round(e_fuel_l * d_rate_fast, 2)
+                    
+                    # 1. Update the Trip Record
                     run_query("""
                         UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s,
                                          loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, freight_revenue=%s,
                                          fuel_litres=%s, fuel_expense=%s, driver_bata=%s, cash_advance_issued=%s
-                        WHERE trip_id=%s
-                    """, (e_sdate, e_edate, e_lr, e_orig, e_dest, e_ton, e_ton, e_ton, e_freight, e_fuel_l, round(e_fuel_l * d_rate_fast, 2), e_bata, e_adv, t_data['trip_id']), fetch=False)
-                    trigger_toast_and_rerun("SUCCESS", f"Trip record {e_lr} updated successfully.")
+                        WHERE trip_id=%s;
+                    """, (e_sdate, e_edate, e_lr, e_orig, e_dest, e_ton, e_ton, e_ton, e_freight, e_fuel_l, recalculated_fuel_cost, e_bata, e_adv, t_data['trip_id']), fetch=False)
+                    
+                    # 2. Automatically Cascade and Synchronize the Linked Diesel Fuel Log
+                    existing_fuel_log = run_query("SELECT fuel_log_id FROM diesel_fuel_logs WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s)", (t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id']))
+                    if existing_fuel_log:
+                        run_query("""
+                            UPDATE diesel_fuel_logs 
+                            SET fuel_date = %s,
+                                lr_number = %s,
+                                litres_filled = %s,
+                                total_fuel_cost = %s,
+                                trip_id = %s
+                            WHERE fuel_log_id = %s;
+                        """, (e_sdate, e_lr, e_fuel_l, recalculated_fuel_cost, t_data['trip_id'], existing_fuel_log[0]['fuel_log_id']), fetch=False)
+                    elif e_fuel_l > 0:
+                        run_query("""
+                            INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost)
+                            VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s);
+                        """, (e_sdate, t_data['vehicle_id'], t_data['trip_id'], e_lr, e_fuel_l, d_rate_fast, recalculated_fuel_cost), fetch=False)
+
+                    trigger_toast_and_rerun("SUCCESS", f"Trip record {e_lr} & linked diesel logs synchronized to {e_sdate}.")
                 except Exception as e:
                     show_error_toast(f"Update failed: {e}")
 
