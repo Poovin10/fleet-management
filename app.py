@@ -829,10 +829,10 @@ elif menu == "Driver Advances":
                         trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. FULL-WIDTH MODIFY TRIPS & CLAIMS
+# 6. FULL-WIDTH MODIFY TRIPS & CLAIMS (WITH START KM, END KM & DISTANCE EDITING)
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
-    st.markdown('<div class="section-header">Search, Edit POD Details & Manage Master Trip Records</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Search, Edit Odometer KM, POD Details & Manage Master Trip Records</div>', unsafe_allow_html=True)
     
     f_c1, f_c2 = st.columns([2, 2])
     with f_c1:
@@ -886,7 +886,17 @@ elif menu == "Modify Trips & Claims":
             with m5:
                 e_dest = st.text_input("Destination", value=t_data['destination'])
 
-            st.markdown('<div class="section-header">2. Tonnage, Freight, Allowances & Fuel</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">2. Odometer Readings & Distance Tracking</div>', unsafe_allow_html=True)
+            ok1, ok2, ok3 = st.columns(3)
+            with ok1:
+                e_start_km = st.number_input("Start Odometer KM*", min_value=0.0, value=float(t_data['start_km'] or 0.0), step=10.0)
+            with ok2:
+                e_end_km = st.number_input("End Odometer KM", min_value=0.0, value=float(t_data['end_km'] or 0.0), step=10.0)
+            with ok3:
+                calc_km = max(0.0, e_end_km - e_start_km) if (e_end_km >= e_start_km and e_end_km > 0) else float(t_data['total_km_run'] or 0.0)
+                e_total_km = st.number_input("Total Distance (KM)*", min_value=0.0, value=calc_km, step=10.0)
+
+            st.markdown('<div class="section-header">3. Tonnage, Freight, Allowances & Fuel</div>', unsafe_allow_html=True)
             f1, f2, f3, f4, f5 = st.columns(5)
             with f1:
                 e_ton = st.number_input("Loaded MT*", value=float(t_data['loaded_weight_mt'] or 0.0), step=0.05)
@@ -899,7 +909,7 @@ elif menu == "Modify Trips & Claims":
             with f5:
                 e_fuel_l = st.number_input("Fuel Litres", value=float(t_data['fuel_litres'] or 0.0), step=5.0)
 
-            st.markdown('<div class="section-header">3. POD Reference & Closing Parameters (Editable)</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">4. POD Reference & Closing Parameters (Editable)</div>', unsafe_allow_html=True)
             p1, p2, p3, p4, p5 = st.columns(5)
             with p1:
                 e_pod_no = st.text_input("POD / Challan No", value=t_data['pod_number'] or "")
@@ -926,6 +936,7 @@ elif menu == "Modify Trips & Claims":
                         
                         run_query("""
                             UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s,
+                                             start_km=%s, end_km=%s, total_km_run=%s,
                                              loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, shortage_mt=%s,
                                              freight_revenue=%s, fuel_litres=%s, fuel_expense=%s, driver_bata=%s, 
                                              halt_bata=%s, cash_advance_issued=%s, enroute_repairs_maintenance=%s,
@@ -933,6 +944,7 @@ elif menu == "Modify Trips & Claims":
                             WHERE trip_id=%s;
                         """, (
                             e_sdate, e_edate, e_lr, e_orig, e_dest, 
+                            e_start_km, e_end_km, e_total_km,
                             e_ton, e_unloaded_mt, e_ton, shortage_val,
                             e_freight, e_fuel_l, recalculated_fuel_cost, e_bata, 
                             e_halt_bata, e_adv, e_claims,
@@ -950,12 +962,12 @@ elif menu == "Modify Trips & Claims":
                         if existing_fuel_log:
                             run_query("""
                                 UPDATE diesel_fuel_logs 
-                                SET fuel_date = %s, lr_number = %s, litres_filled = %s, total_fuel_cost = %s, trip_id = %s
+                                SET fuel_date = %s, lr_number = %s, litres_filled = %s, total_fuel_cost = %s, filling_odometer_km = %s, trip_id = %s
                                 WHERE fuel_log_id = %s;
-                            """, (e_sdate, e_lr, e_fuel_l, recalculated_fuel_cost, t_data['trip_id'], existing_fuel_log[0]['fuel_log_id']), fetch=False)
+                            """, (e_sdate, e_lr, e_fuel_l, recalculated_fuel_cost, e_start_km, t_data['trip_id'], existing_fuel_log[0]['fuel_log_id']), fetch=False)
 
                         get_cached_vehicles.clear()
-                        trigger_toast_and_rerun("SUCCESS", f"Trip #{e_lr} & POD records successfully updated.")
+                        trigger_toast_and_rerun("SUCCESS", f"Trip #{e_lr} & Odometer KM updated successfully.")
                     except Exception as e:
                         show_error_toast(f"Update failed: {e}")
 
@@ -1276,7 +1288,6 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
-    # 1. Fetch Fleet Data with True Fuel Reconciliation from diesel_fuel_logs
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -1384,7 +1395,7 @@ elif menu == "Executive Retention Analytics":
                 ROUND(
                     (COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00))) 
                     / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2
-                ) AS retention_pct,
+                ) AS margin_pct,
                 ROUND(
                     COALESCE(fs.total_diesel_expense, 0.00) / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2
                 ) AS diesel_pct,
@@ -1409,10 +1420,8 @@ elif menu == "Executive Retention Analytics":
             for c in numeric_cols:
                 df_fl[c] = pd.to_numeric(df_fl[c], errors='coerce').fillna(0.0)
 
-            # Sort records
             df_fl = df_fl.sort_values(by=[target_sort_col, 'net_retention'], ascending=[is_ascending, False]).reset_index(drop=True)
 
-            # Fleet Total Calculations
             tot_trips = int(df_fl['total_trips'].sum() or 0)
             tot_tons = float(df_fl['total_tons'].sum() or 0.0)
             tot_freight = float(df_fl['total_freight'].sum() or 0.0)
@@ -1423,7 +1432,6 @@ elif menu == "Executive Retention Analytics":
             tot_ret_pct = round((tot_ret / max(1.0, tot_freight)) * 100.0, 2) if tot_freight > 0 else 0.0
             tot_diesel_pct = round((tot_diesel_cost / max(1.0, tot_freight)) * 100.0, 2) if tot_freight > 0 else 0.0
 
-            # Dynamic KPI Bar
             k1, k2, k3, k4, k5, k6 = st.columns(6)
             k1.metric("Total Trips", f"{tot_trips}")
             k2.metric("Total Tonnage", f"{tot_tons:,.2f} MT")
@@ -1477,7 +1485,6 @@ elif menu == "Executive Retention Analytics":
 
             df_v_peer = df_v_peer.sort_values(by=[target_sort_col, 'net_retention'], ascending=[is_ascending, False]).reset_index(drop=True)
 
-            # Peer summary
             p_trips = int(df_v_peer['total_trips'].sum() or 0)
             p_freight = float(df_v_peer['total_freight'].sum() or 0.0)
             p_diesel = float(df_v_peer['total_diesel_cost'].sum() or 0.0)
@@ -1570,18 +1577,21 @@ elif menu == "Executive Retention Analytics":
             for c in ['trips', 'total_km', 'total_mt', 'kmpl', 'shortage_mt', 'revenue', 'bata_earned']:
                 df_drv[c] = pd.to_numeric(df_drv[c], errors='coerce').fillna(0.0)
 
-            df_drv = df_drv.sort_values(by=['revenue'], ascending=[False]).reset_index(drop=True)
+            drv_sort_col = target_sort_col if target_sort_col in df_drv.columns else "revenue"
+            df_drv = df_drv.sort_values(by=[drv_sort_col, 'revenue'], ascending=[is_ascending, False]).reset_index(drop=True)
+
             st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. FULL-WIDTH AUDIT LOG (WITH CONFIRMATION KEY ON DELETE)
+# 10. FULL-WIDTH AUDIT LOG (WITH PER-RECORD DELETE)
 # ==============================================================================
 elif menu == "Audit Log":
     st.markdown('<div class="section-header">Complete System Audit Log & Data Registry</div>', unsafe_allow_html=True)
     
     all_trips = run_query("""
         SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, v.vehicle_number, d.full_name AS driver,
-               t.origin, t.destination, t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_expense, t.driver_bata,
+               t.origin, t.destination, t.start_km, t.end_km, t.total_km_run,
+               t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_expense, t.driver_bata,
                (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.enroute_repairs_maintenance)) AS net_profit, t.trip_status
         FROM trips t 
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
