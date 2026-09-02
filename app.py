@@ -149,7 +149,7 @@ def run_query(query, params=None, fetch=True):
     finally:
         db_pool.putconn(conn)
 
-# --- In-Memory Caching ---
+# --- Fast Caching with Unified 25MT/30MT Bag Slab Logic ---
 @st.cache_data(ttl=60)
 def get_cached_vehicles():
     return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
@@ -582,7 +582,7 @@ elif menu == "Fleet Status Board":
                     trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
-# 4. FULL-WIDTH DIESEL LOGS (WITH FULL EDITING CAPABILITY)
+# 4. FULL-WIDTH DIESEL LOGS
 # ==============================================================================
 elif menu == "Diesel Logs":
     tab_issue, tab_edit_fuel, tab_audit_fuel = st.tabs([
@@ -701,7 +701,6 @@ elif menu == "Diesel Logs":
                         show_error_toast("Duplicate Violation: Another matching log for this vehicle, date, and litres/KM already exists.")
                     else:
                         try:
-                            # 1. Update the fuel log record
                             run_query("""
                                 UPDATE diesel_fuel_logs 
                                 SET fuel_date = %s,
@@ -718,7 +717,6 @@ elif menu == "Diesel Logs":
                                 e_filling_km, e_litres, e_rate, e_cost, target_fuel['fuel_log_id']
                             ), fetch=False)
 
-                            # 2. If this fuel log is linked to a trip, automatically synchronize trip fuel & cost
                             if target_fuel['trip_id']:
                                 run_query("""
                                     UPDATE trips 
@@ -1168,7 +1166,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS (EXACT DIESEL LOG RECONCILIATION)
+# 9. FULL-WIDTH EXECUTIVE RETENTION ANALYTICS (FIXED PARAMETER INDEXING)
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -1231,72 +1229,115 @@ elif menu == "Executive Retention Analytics":
 
     tab_f, tab_d, tab_v = st.tabs(["📊 Fleet Unit Retention & Margins", "👨‍✈️ Driver Performance Scorecard", "⚖️ Variant Peer Benchmarks"])
     
-    trip_date_cond = ""
-    fuel_date_cond = ""
-    params = []
-    
-    if start_filter_date and end_filter_date:
-        trip_date_cond = "AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
-        fuel_date_cond = "WHERE fuel_date >= %s AND fuel_date <= %s"
-        params.extend([start_filter_date, end_filter_date, start_filter_date, end_filter_date])
-
     with tab_f:
-        fleet_data = run_query(f"""
-            WITH vehicle_fuel_summary AS (
+        if start_filter_date and end_filter_date:
+            fleet_sql = """
+                WITH vehicle_fuel_summary AS (
+                    SELECT 
+                        vehicle_id,
+                        COALESCE(SUM(litres_filled), 0.00) AS total_litres_pumped,
+                        COALESCE(SUM(total_fuel_cost), 0.00) AS total_diesel_expense
+                    FROM diesel_fuel_logs
+                    WHERE fuel_date >= %s AND fuel_date <= %s
+                    GROUP BY vehicle_id
+                ),
+                vehicle_trip_summary AS (
+                    SELECT 
+                        t.vehicle_id,
+                        COUNT(t.trip_id) AS trips_count,
+                        COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km_run,
+                        COALESCE(SUM(
+                            COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
+                        ), 0.00) AS total_tonnage,
+                        COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS total_freight_revenue,
+                        COALESCE(SUM(
+                            COALESCE(t.driver_bata, 0.00) + 
+                            COALESCE(t.toll_fastag_expense, 0.00) + 
+                            COALESCE(t.enroute_repairs_maintenance, 0.00) + 
+                            COALESCE(t.loading_unloading_expense, 0.00) + 
+                            COALESCE(t.misc_trip_expense, 0.00)
+                        ), 0.00) AS non_fuel_trip_costs
+                    FROM trips t
+                    WHERE t.trip_start_date >= %s AND t.trip_start_date <= %s
+                    GROUP BY t.vehicle_id
+                )
                 SELECT 
-                    vehicle_id,
-                    COALESCE(SUM(litres_filled), 0.00) AS total_litres_pumped,
-                    COALESCE(SUM(total_fuel_cost), 0.00) AS total_diesel_expense
-                FROM diesel_fuel_logs
-                {fuel_date_cond}
-                GROUP BY vehicle_id
-            ),
-            vehicle_trip_summary AS (
+                    v.vehicle_number, 
+                    v.truck_type, 
+                    v.carrying_capacity_tons,
+                    COALESCE(ts.trips_count, 0) AS trips,
+                    COALESCE(ts.total_km_run, 0.00) AS total_km,
+                    COALESCE(ts.total_tonnage, 0.00) AS total_mt,
+                    COALESCE(ts.total_freight_revenue, 0.00) AS revenue,
+                    COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00) AS direct_costs,
+                    COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00)) AS net_profit,
+                    ROUND(
+                        (COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00))) 
+                        / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2
+                    ) AS margin_pct,
+                    ROUND(
+                        COALESCE(ts.total_km_run, 0.00) / NULLIF(fs.total_litres_pumped, 0.00), 2
+                    ) AS kmpl
+                FROM vehicles v
+                LEFT JOIN vehicle_trip_summary ts ON v.vehicle_id = ts.vehicle_id
+                LEFT JOIN vehicle_fuel_summary fs ON v.vehicle_id = fs.vehicle_id
+                WHERE v.is_active = TRUE;
+            """
+            fleet_params = (start_filter_date, end_filter_date, start_filter_date, end_filter_date)
+        else:
+            fleet_sql = """
+                WITH vehicle_fuel_summary AS (
+                    SELECT 
+                        vehicle_id,
+                        COALESCE(SUM(litres_filled), 0.00) AS total_litres_pumped,
+                        COALESCE(SUM(total_fuel_cost), 0.00) AS total_diesel_expense
+                    FROM diesel_fuel_logs
+                    GROUP BY vehicle_id
+                ),
+                vehicle_trip_summary AS (
+                    SELECT 
+                        t.vehicle_id,
+                        COUNT(t.trip_id) AS trips_count,
+                        COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km_run,
+                        COALESCE(SUM(
+                            COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
+                        ), 0.00) AS total_tonnage,
+                        COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS total_freight_revenue,
+                        COALESCE(SUM(
+                            COALESCE(t.driver_bata, 0.00) + 
+                            COALESCE(t.toll_fastag_expense, 0.00) + 
+                            COALESCE(t.enroute_repairs_maintenance, 0.00) + 
+                            COALESCE(t.loading_unloading_expense, 0.00) + 
+                            COALESCE(t.misc_trip_expense, 0.00)
+                        ), 0.00) AS non_fuel_trip_costs
+                    FROM trips t
+                    GROUP BY t.vehicle_id
+                )
                 SELECT 
-                    t.vehicle_id,
-                    COUNT(t.trip_id) AS trips_count,
-                    COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km_run,
-                    COALESCE(SUM(
-                        COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
-                    ), 0.00) AS total_tonnage,
-                    COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS total_freight_revenue,
-                    COALESCE(SUM(
-                        COALESCE(t.driver_bata, 0.00) + 
-                        COALESCE(t.toll_fastag_expense, 0.00) + 
-                        COALESCE(t.enroute_repairs_maintenance, 0.00) + 
-                        COALESCE(t.loading_unloading_expense, 0.00) + 
-                        COALESCE(t.misc_trip_expense, 0.00)
-                    ), 0.00) AS non_fuel_trip_costs
-                FROM trips t
-                WHERE 1=1 {trip_date_cond}
-                GROUP BY t.vehicle_id
-            )
-            SELECT 
-                v.vehicle_number, 
-                v.truck_type, 
-                v.carrying_capacity_tons,
-                COALESCE(ts.trips_count, 0) AS trips,
-                COALESCE(ts.total_km_run, 0.00) AS total_km,
-                COALESCE(ts.total_tonnage, 0.00) AS total_mt,
-                COALESCE(ts.total_freight_revenue, 0.00) AS revenue,
-                -- 100% True Fuel Expense from diesel_fuel_logs + Allowances
-                COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00) AS direct_costs,
-                -- True Net Profit
-                COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00)) AS net_profit,
-                -- True Margin %
-                ROUND(
-                    (COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00))) 
-                    / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2
-                ) AS margin_pct,
-                -- KMPL from true fuel pumped
-                ROUND(
-                    COALESCE(ts.total_km_run, 0.00) / NULLIF(fs.total_litres_pumped, 0.00), 2
-                ) AS kmpl
-            FROM vehicles v
-            LEFT JOIN vehicle_trip_summary ts ON v.vehicle_id = ts.vehicle_id
-            LEFT JOIN vehicle_fuel_summary fs ON v.vehicle_id = fs.vehicle_id
-            WHERE v.is_active = TRUE;
-        """, tuple(params) if params else None)
+                    v.vehicle_number, 
+                    v.truck_type, 
+                    v.carrying_capacity_tons,
+                    COALESCE(ts.trips_count, 0) AS trips,
+                    COALESCE(ts.total_km_run, 0.00) AS total_km,
+                    COALESCE(ts.total_tonnage, 0.00) AS total_mt,
+                    COALESCE(ts.total_freight_revenue, 0.00) AS revenue,
+                    COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00) AS direct_costs,
+                    COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00)) AS net_profit,
+                    ROUND(
+                        (COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00))) 
+                        / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2
+                    ) AS margin_pct,
+                    ROUND(
+                        COALESCE(ts.total_km_run, 0.00) / NULLIF(fs.total_litres_pumped, 0.00), 2
+                    ) AS kmpl
+                FROM vehicles v
+                LEFT JOIN vehicle_trip_summary ts ON v.vehicle_id = ts.vehicle_id
+                LEFT JOIN vehicle_fuel_summary fs ON v.vehicle_id = fs.vehicle_id
+                WHERE v.is_active = TRUE;
+            """
+            fleet_params = None
+
+        fleet_data = run_query(fleet_sql, fleet_params)
         
         if fleet_data:
             df_fl = pd.DataFrame(fleet_data)
@@ -1340,34 +1381,57 @@ elif menu == "Executive Retention Analytics":
             )
 
     with tab_d:
-        drv_where = "WHERE d.is_active = TRUE"
-        drv_params = []
         if start_filter_date and end_filter_date:
-            drv_where += " AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
-            drv_params.extend([start_filter_date, end_filter_date])
+            drv_sql = """
+                SELECT 
+                    d.driver_code, 
+                    d.full_name, 
+                    COUNT(t.trip_id) AS trips,
+                    COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km,
+                    COALESCE(SUM(
+                        CASE 
+                            WHEN t.trip_id IS NOT NULL THEN 
+                                COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
+                            ELSE 0.00
+                        END
+                    ), 0.00) AS total_mt,
+                    ROUND(SUM(COALESCE(t.total_km_run, 0.00)) / NULLIF(SUM(COALESCE(t.fuel_litres, 0.00)), 0.00), 2) AS kmpl,
+                    COALESCE(SUM(COALESCE(t.shortage_mt, 0.00)), 0.00) AS shortage_mt,
+                    COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS revenue,
+                    COALESCE(SUM(COALESCE(t.driver_bata, 0.00)), 0.00) AS bata_earned
+                FROM drivers d 
+                LEFT JOIN trips t ON d.driver_id = t.primary_driver_id 
+                    AND t.trip_start_date >= %s AND t.trip_start_date <= %s
+                WHERE d.is_active = TRUE 
+                GROUP BY d.driver_code, d.full_name;
+            """
+            drv_params = (start_filter_date, end_filter_date)
+        else:
+            drv_sql = """
+                SELECT 
+                    d.driver_code, 
+                    d.full_name, 
+                    COUNT(t.trip_id) AS trips,
+                    COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km,
+                    COALESCE(SUM(
+                        CASE 
+                            WHEN t.trip_id IS NOT NULL THEN 
+                                COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
+                            ELSE 0.00
+                        END
+                    ), 0.00) AS total_mt,
+                    ROUND(SUM(COALESCE(t.total_km_run, 0.00)) / NULLIF(SUM(COALESCE(t.fuel_litres, 0.00)), 0.00), 2) AS kmpl,
+                    COALESCE(SUM(COALESCE(t.shortage_mt, 0.00)), 0.00) AS shortage_mt,
+                    COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS revenue,
+                    COALESCE(SUM(COALESCE(t.driver_bata, 0.00)), 0.00) AS bata_earned
+                FROM drivers d 
+                LEFT JOIN trips t ON d.driver_id = t.primary_driver_id
+                WHERE d.is_active = TRUE 
+                GROUP BY d.driver_code, d.full_name;
+            """
+            drv_params = None
 
-        drv_data = run_query(f"""
-            SELECT 
-                d.driver_code, 
-                d.full_name, 
-                COUNT(t.trip_id) AS trips,
-                COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km,
-                COALESCE(SUM(
-                    CASE 
-                        WHEN t.trip_id IS NOT NULL THEN 
-                            COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
-                        ELSE 0.00
-                    END
-                ), 0.00) AS total_mt,
-                ROUND(SUM(COALESCE(t.total_km_run, 0.00)) / NULLIF(SUM(COALESCE(t.fuel_litres, 0.00)), 0.00), 2) AS kmpl,
-                COALESCE(SUM(COALESCE(t.shortage_mt, 0.00)), 0.00) AS shortage_mt,
-                COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS revenue,
-                COALESCE(SUM(COALESCE(t.driver_bata, 0.00)), 0.00) AS bata_earned
-            FROM drivers d 
-            LEFT JOIN trips t ON d.driver_id = t.primary_driver_id
-            {drv_where} 
-            GROUP BY d.driver_code, d.full_name;
-        """, tuple(drv_params) if drv_params else None)
+        drv_data = run_query(drv_sql, drv_params)
         
         if drv_data:
             df_drv = pd.DataFrame(drv_data)
