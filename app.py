@@ -274,7 +274,6 @@ def check_duplicate_diesel_entry(vehicle_id, fuel_date, litres, filling_km=None,
     res = run_query(query, tuple(params))
     return len(res) > 0
 
-# Slab-based Driver Bata Lookup
 def lookup_driver_bata_slab(dest_name, cargo_type, capacity_tons):
     if not dest_name:
         return 0.00
@@ -304,8 +303,8 @@ STATUS_OPTIONS = {
 
 STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"]
 
-# --- Full Widescreen Header Ribbon ---
-nav1, nav2, nav3 = st.columns([2.5, 4.5, 1.5])
+# --- Clean Widescreen Header Ribbon (Diesel Rate Selector Removed Globally) ---
+nav1, nav2 = st.columns([3.0, 7.0])
 with nav1:
     st.markdown("<h3 style='margin:0; padding:0; font-size:1.35rem; color:#0F172A; font-weight:700;'>Fleet Operations ERP</h3>", unsafe_allow_html=True)
 with nav2:
@@ -322,16 +321,11 @@ with nav2:
         "Audit Log"
     ]
     menu = st.selectbox("Module Navigation", MODULE_LIST, index=0, label_visibility="collapsed")
-with nav3:
-    current_d_rate = get_cached_diesel_rate()
-    d_rate_fast = st.number_input("Active Diesel Rate (₹/L)", value=current_d_rate, step=0.1, label_visibility="collapsed")
-    if d_rate_fast != current_d_rate:
-        set_saved_diesel_rate(d_rate_fast)
 
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. FULL-WIDTH TRIP DISPATCH ENTRY
+# 1. FULL-WIDTH TRIP DISPATCH ENTRY (WITH ACTIVE DIESEL RATE EDITOR)
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -346,7 +340,15 @@ if menu == "Trip Dispatch Entry":
 
     cnt = st.session_state.form_reset_counter
 
-    st.markdown('<div class="section-header">Primary Manifest & Routing Assignment</div>', unsafe_allow_html=True)
+    # Header Row: Section Header + Active Diesel Rate Editor
+    h_col1, h_col2 = st.columns([7.5, 2.5])
+    with h_col1:
+        st.markdown('<div class="section-header">Primary Manifest & Routing Assignment</div>', unsafe_allow_html=True)
+    with h_col2:
+        current_d_rate = get_cached_diesel_rate()
+        d_rate_fast = st.number_input("⛽ Active Diesel Rate (₹/L)*", value=current_d_rate, step=0.1, key=f"drate_entry_{cnt}")
+        if d_rate_fast != current_d_rate:
+            set_saved_diesel_rate(d_rate_fast)
     
     r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.4, 1.3, 2.6, 1.5])
     
@@ -437,7 +439,6 @@ if menu == "Trip Dispatch Entry":
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
-    # Slab-based Driver Bata Lookup (e.g. 25MT Body, 30MT Body, 25MT Bulk, 30MT Bulk, 35MT Bulk)
     master_bata_val = lookup_driver_bata_slab(dest_terminal, cargo_category, v_class_mt)
     
     st.markdown('<div class="section-header">Allowances, Fuel & Odometer Tracking</div>', unsafe_allow_html=True)
@@ -600,9 +601,19 @@ elif menu == "Fleet Status Board":
                         trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
-# 4. FULL-WIDTH DIESEL LOGS
+# 4. FULL-WIDTH DIESEL LOGS (WITH ACTIVE DIESEL RATE EDITOR)
 # ==============================================================================
 elif menu == "Diesel Logs":
+    # Header Row: Diesel Rate Editor inside Diesel Logs
+    hd1, hd2 = st.columns([7.5, 2.5])
+    with hd1:
+        st.markdown('<div class="section-header">Diesel Fuel Management & Audit Logs</div>', unsafe_allow_html=True)
+    with hd2:
+        current_d_rate = get_cached_diesel_rate()
+        d_rate_fast = st.number_input("⛽ Active Diesel Rate (₹/L)*", value=current_d_rate, step=0.1, key="drate_diesellog")
+        if d_rate_fast != current_d_rate:
+            set_saved_diesel_rate(d_rate_fast)
+
     tab_issue, tab_edit_fuel, tab_audit_fuel = st.tabs([
         "⛽ Issue / Record Diesel",
         "✏️ Edit Existing Diesel Log",
@@ -840,10 +851,18 @@ elif menu == "Driver Advances":
                         trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. FULL-WIDTH MODIFY TRIPS & CLAIMS
+# 6. FULL-WIDTH MODIFY TRIPS & CLAIMS (WITH ACTIVE DIESEL RATE EDITOR)
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
-    st.markdown('<div class="section-header">Search, Edit Odometer KM, POD Details & Manage Master Trip Records</div>', unsafe_allow_html=True)
+    # Header Row: Diesel Rate Editor inside Modify Trips
+    hm1, hm2 = st.columns([7.5, 2.5])
+    with hm1:
+        st.markdown('<div class="section-header">Search, Edit Odometer KM, POD Details & Manage Master Trip Records</div>', unsafe_allow_html=True)
+    with hm2:
+        current_d_rate = get_cached_diesel_rate()
+        d_rate_fast = st.number_input("⛽ Active Diesel Rate (₹/L)*", value=current_d_rate, step=0.1, key="drate_modtrip")
+        if d_rate_fast != current_d_rate:
+            set_saved_diesel_rate(d_rate_fast)
     
     f_c1, f_c2 = st.columns([2, 2])
     with f_c1:
@@ -1078,7 +1097,7 @@ elif menu == "Driver Settlement":
                     show_error_toast(f"Settlement failed: {e}")
 
 # ==============================================================================
-# 8. FULL-WIDTH MASTER CONFIGURATION (WITH 5 EXACT BATA SLABS)
+# 8. FULL-WIDTH MASTER CONFIGURATION
 # ==============================================================================
 elif menu == "Master Configuration":
     t_v, t_d, t_r, t_b = st.tabs(["Trucks Master", "Drivers Master", "Freight Slabs Master", "Driver Bata Master"])
@@ -1200,7 +1219,6 @@ elif menu == "Master Configuration":
                 st.markdown('<div class="section-header">Configure Driver Bata Slab</div>', unsafe_allow_html=True)
                 bd = st.text_input("Destination Terminal*", placeholder="e.g. SANKARI").strip().upper()
                 
-                # The 5 standard slabs
                 selected_slab_label = st.selectbox(
                     "Select Truck Slab*", 
                     list(BATA_SLAB_DEFINITIONS.keys())
@@ -1236,7 +1254,6 @@ elif menu == "Master Configuration":
             if bata_list:
                 df_bata = pd.DataFrame(bata_list)
                 
-                # Map readable slab label
                 def format_slab_display(row):
                     cg = str(row['cargo_type']).upper()
                     cap = int(float(row['capacity_tons']))
@@ -1466,7 +1483,6 @@ elif menu == "Executive Retention Analytics":
                             'total_diesel_cost', 'trip_bata_claims', 'total_expense', 'net_retention', 
                             'retention_pct', 'diesel_pct', 'kmpl']
             
-            # Safe conversion
             for c in numeric_cols:
                 if c in df_fl.columns:
                     df_fl[c] = pd.to_numeric(df_fl[c], errors='coerce').fillna(0.0)
@@ -1636,7 +1652,7 @@ elif menu == "Executive Retention Analytics":
             st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. FULL-WIDTH AUDIT LOG (WITH CONFIRMATION KEY ON DELETE)
+# 10. FULL-WIDTH AUDIT LOG (WITH PER-RECORD DELETE)
 # ==============================================================================
 elif menu == "Audit Log":
     st.markdown('<div class="section-header">Complete System Audit Log & Data Registry</div>', unsafe_allow_html=True)
