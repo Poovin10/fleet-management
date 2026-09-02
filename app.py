@@ -829,7 +829,7 @@ elif menu == "Driver Advances":
                         trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. FULL-WIDTH MODIFY TRIPS & CLAIMS (WITH START KM, END KM & DISTANCE EDITING)
+# 6. FULL-WIDTH MODIFY TRIPS & CLAIMS
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
     st.markdown('<div class="section-header">Search, Edit Odometer KM, POD Details & Manage Master Trip Records</div>', unsafe_allow_html=True)
@@ -1288,6 +1288,7 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
+    # SQL query for fleet analytics
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -1395,7 +1396,7 @@ elif menu == "Executive Retention Analytics":
                 ROUND(
                     (COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00))) 
                     / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2
-                ) AS margin_pct,
+                ) AS retention_pct,
                 ROUND(
                     COALESCE(fs.total_diesel_expense, 0.00) / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2
                 ) AS diesel_pct,
@@ -1417,18 +1418,22 @@ elif menu == "Executive Retention Analytics":
             numeric_cols = ['total_trips', 'total_km', 'total_tons', 'total_freight', 'total_diesel_litres', 
                             'total_diesel_cost', 'trip_bata_claims', 'total_expense', 'net_retention', 
                             'retention_pct', 'diesel_pct', 'kmpl']
+            
+            # Key safe-guard: Only convert columns that exist in the dataframe
             for c in numeric_cols:
-                df_fl[c] = pd.to_numeric(df_fl[c], errors='coerce').fillna(0.0)
+                if c in df_fl.columns:
+                    df_fl[c] = pd.to_numeric(df_fl[c], errors='coerce').fillna(0.0)
 
-            df_fl = df_fl.sort_values(by=[target_sort_col, 'net_retention'], ascending=[is_ascending, False]).reset_index(drop=True)
+            sort_col = target_sort_col if target_sort_col in df_fl.columns else 'net_retention'
+            df_fl = df_fl.sort_values(by=[sort_col], ascending=[is_ascending]).reset_index(drop=True)
 
-            tot_trips = int(df_fl['total_trips'].sum() or 0)
-            tot_tons = float(df_fl['total_tons'].sum() or 0.0)
-            tot_freight = float(df_fl['total_freight'].sum() or 0.0)
-            tot_diesel_l = float(df_fl['total_diesel_litres'].sum() or 0.0)
-            tot_diesel_cost = float(df_fl['total_diesel_cost'].sum() or 0.0)
-            tot_exp = float(df_fl['total_expense'].sum() or 0.0)
-            tot_ret = float(df_fl['net_retention'].sum() or 0.0)
+            tot_trips = int(df_fl['total_trips'].sum() or 0) if 'total_trips' in df_fl.columns else 0
+            tot_tons = float(df_fl['total_tons'].sum() or 0.0) if 'total_tons' in df_fl.columns else 0.0
+            tot_freight = float(df_fl['total_freight'].sum() or 0.0) if 'total_freight' in df_fl.columns else 0.0
+            tot_diesel_l = float(df_fl['total_diesel_litres'].sum() or 0.0) if 'total_diesel_litres' in df_fl.columns else 0.0
+            tot_diesel_cost = float(df_fl['total_diesel_cost'].sum() or 0.0) if 'total_diesel_cost' in df_fl.columns else 0.0
+            tot_exp = float(df_fl['total_expense'].sum() or 0.0) if 'total_expense' in df_fl.columns else 0.0
+            tot_ret = float(df_fl['net_retention'].sum() or 0.0) if 'net_retention' in df_fl.columns else 0.0
             tot_ret_pct = round((tot_ret / max(1.0, tot_freight)) * 100.0, 2) if tot_freight > 0 else 0.0
             tot_diesel_pct = round((tot_diesel_cost / max(1.0, tot_freight)) * 100.0, 2) if tot_freight > 0 else 0.0
 
@@ -1475,20 +1480,22 @@ elif menu == "Executive Retention Analytics":
         if fleet_data:
             df_v_peer = pd.DataFrame(fleet_data)
             for c in numeric_cols:
-                df_v_peer[c] = pd.to_numeric(df_v_peer[c], errors='coerce').fillna(0.0)
+                if c in df_v_peer.columns:
+                    df_v_peer[c] = pd.to_numeric(df_v_peer[c], errors='coerce').fillna(0.0)
 
-            all_variants = sorted(list(set(df_v_peer['truck_type'].tolist())))
+            all_variants = sorted(list(set(df_v_peer['truck_type'].tolist()))) if 'truck_type' in df_v_peer.columns else []
             sel_var = st.selectbox("Filter by Specific Variant Class", ["All Variants"] + all_variants)
             
             if sel_var != "All Variants":
                 df_v_peer = df_v_peer[df_v_peer['truck_type'] == sel_var]
 
-            df_v_peer = df_v_peer.sort_values(by=[target_sort_col, 'net_retention'], ascending=[is_ascending, False]).reset_index(drop=True)
+            sort_col_v = target_sort_col if target_sort_col in df_v_peer.columns else 'net_retention'
+            df_v_peer = df_v_peer.sort_values(by=[sort_col_v], ascending=[is_ascending]).reset_index(drop=True)
 
-            p_trips = int(df_v_peer['total_trips'].sum() or 0)
-            p_freight = float(df_v_peer['total_freight'].sum() or 0.0)
-            p_diesel = float(df_v_peer['total_diesel_cost'].sum() or 0.0)
-            p_ret = float(df_v_peer['net_retention'].sum() or 0.0)
+            p_trips = int(df_v_peer['total_trips'].sum() or 0) if 'total_trips' in df_v_peer.columns else 0
+            p_freight = float(df_v_peer['total_freight'].sum() or 0.0) if 'total_freight' in df_v_peer.columns else 0.0
+            p_diesel = float(df_v_peer['total_diesel_cost'].sum() or 0.0) if 'total_diesel_cost' in df_v_peer.columns else 0.0
+            p_ret = float(df_v_peer['net_retention'].sum() or 0.0) if 'net_retention' in df_v_peer.columns else 0.0
             p_ret_pct = round((p_ret / max(1.0, p_freight)) * 100.0, 2) if p_freight > 0 else 0.0
 
             pk1, pk2, pk3, pk4, pk5 = st.columns(5)
@@ -1575,11 +1582,10 @@ elif menu == "Executive Retention Analytics":
         if drv_data:
             df_drv = pd.DataFrame(drv_data)
             for c in ['trips', 'total_km', 'total_mt', 'kmpl', 'shortage_mt', 'revenue', 'bata_earned']:
-                df_drv[c] = pd.to_numeric(df_drv[c], errors='coerce').fillna(0.0)
+                if c in df_drv.columns:
+                    df_drv[c] = pd.to_numeric(df_drv[c], errors='coerce').fillna(0.0)
 
-            drv_sort_col = target_sort_col if target_sort_col in df_drv.columns else "revenue"
-            df_drv = df_drv.sort_values(by=[drv_sort_col, 'revenue'], ascending=[is_ascending, False]).reset_index(drop=True)
-
+            df_drv = df_drv.sort_values(by=['revenue'], ascending=[False]).reset_index(drop=True)
             st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
