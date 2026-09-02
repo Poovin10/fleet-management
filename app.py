@@ -149,6 +149,15 @@ def run_query(query, params=None, fetch=True):
     finally:
         db_pool.putconn(conn)
 
+# --- Standard Defined Bata Slabs ---
+BATA_SLAB_DEFINITIONS = {
+    "25MT Body (Bag)": {"cargo_type": "BAG", "capacity_tons": 25.0},
+    "30MT Body (Bag)": {"cargo_type": "BAG", "capacity_tons": 30.0},
+    "25MT Bulk (Bulker)": {"cargo_type": "BULK", "capacity_tons": 25.0},
+    "30MT Bulk (Bulker)": {"cargo_type": "BULK", "capacity_tons": 30.0},
+    "35MT Bulk (Bulker)": {"cargo_type": "BULK", "capacity_tons": 35.0}
+}
+
 # --- Fast Caching ---
 @st.cache_data(ttl=60)
 def get_cached_vehicles():
@@ -195,10 +204,9 @@ def get_cached_routes(cargo_type=None, capacity=None, origin=None):
 @st.cache_data(ttl=60)
 def get_cached_bata_rules():
     return run_query("""
-        SELECT b.bata_rule_id, b.destination_name, b.cargo_type, b.vehicle_id, v.vehicle_number, b.capacity_tons, b.standard_bata_inr
-        FROM driver_bata_master b
-        LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
-        ORDER BY b.destination_name, v.vehicle_number ASC
+        SELECT bata_rule_id, destination_name, cargo_type, capacity_tons, standard_bata_inr
+        FROM driver_bata_master
+        ORDER BY destination_name ASC, cargo_type ASC, capacity_tons ASC;
     """)
 
 @st.cache_data(ttl=300)
@@ -266,7 +274,8 @@ def check_duplicate_diesel_entry(vehicle_id, fuel_date, litres, filling_km=None,
     res = run_query(query, tuple(params))
     return len(res) > 0
 
-def lookup_driver_bata(dest_name, cargo_type, vehicle_id):
+# Slab-based Driver Bata Lookup
+def lookup_driver_bata_slab(dest_name, cargo_type, capacity_tons):
     if not dest_name:
         return 0.00
     try:
@@ -275,9 +284,9 @@ def lookup_driver_bata(dest_name, cargo_type, vehicle_id):
             FROM driver_bata_master 
             WHERE LOWER(destination_name) = LOWER(%s) 
               AND cargo_type = %s 
-              AND vehicle_id = %s 
-            LIMIT 1
-        """, (dest_name.strip(), cargo_type, vehicle_id))
+              AND capacity_tons = %s 
+            LIMIT 1;
+        """, (dest_name.strip(), cargo_type, capacity_tons))
         if res:
             return float(res[0]['standard_bata_inr'])
     except Exception:
@@ -428,7 +437,9 @@ if menu == "Trip Dispatch Entry":
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
-    master_bata_val = lookup_driver_bata(dest_terminal, cargo_category, active_veh['vehicle_id'])
+    # Slab-based Driver Bata Lookup (e.g. 25MT Body, 30MT Body, 25MT Bulk, 30MT Bulk, 35MT Bulk)
+    master_bata_val = lookup_driver_bata_slab(dest_terminal, cargo_category, v_class_mt)
+    
     st.markdown('<div class="section-header">Allowances, Fuel & Odometer Tracking</div>', unsafe_allow_html=True)
     r3_c1, r3_c2, r3_c3, r3_c4, r3_c5, r3_c6 = st.columns(6)
     with r3_c1:
@@ -1067,7 +1078,7 @@ elif menu == "Driver Settlement":
                     show_error_toast(f"Settlement failed: {e}")
 
 # ==============================================================================
-# 8. FULL-WIDTH MASTER CONFIGURATION
+# 8. FULL-WIDTH MASTER CONFIGURATION (WITH 5 EXACT BATA SLABS)
 # ==============================================================================
 elif menu == "Master Configuration":
     t_v, t_d, t_r, t_b = st.tabs(["Trucks Master", "Drivers Master", "Freight Slabs Master", "Driver Bata Master"])
@@ -1181,36 +1192,72 @@ elif menu == "Master Configuration":
                 cols = [c for c in ['cargo_type', 'origin', 'destination_name', 'capacity_tons', 'freight_rate_per_ton', 'standard_km'] if c in df_r.columns]
                 st.dataframe(df_r[cols], hide_index=True, use_container_width=True, height=300)
 
+    # 4. SLAB-BASED DRIVER BATA MASTER (5 DISTINCT OPERATIONAL SLABS)
     with t_b:
         c1, c2 = st.columns([1.5, 3.5])
-        vehicles = get_cached_vehicles()
-        v_map = {f"{v['vehicle_number']} ({v['carrying_capacity_tons']} MT)": v for v in vehicles} if vehicles else {}
         with c1:
             with st.form("quick_bata"):
-                st.markdown('<div class="section-header">Add Driver Bata Rule</div>', unsafe_allow_html=True)
-                bd = st.text_input("Destination*", placeholder="SANKARI").strip().upper()
-                bc = st.selectbox("Cargo", ["BULK", "BAG"])
-                bv = st.selectbox("Target Truck", list(v_map.keys())) if v_map else None
+                st.markdown('<div class="section-header">Configure Driver Bata Slab</div>', unsafe_allow_html=True)
+                bd = st.text_input("Destination Terminal*", placeholder="e.g. SANKARI").strip().upper()
+                
+                # The 5 standard slabs
+                selected_slab_label = st.selectbox(
+                    "Select Truck Slab*", 
+                    list(BATA_SLAB_DEFINITIONS.keys())
+                )
+                slab_meta = BATA_SLAB_DEFINITIONS[selected_slab_label]
+                
                 ba = st.number_input("Standard Bata (₹)*", min_value=0.0, step=100.0, value=3000.0)
                 st.write("")
-                if st.form_submit_button("Save Bata Rule", type="primary", use_container_width=True):
-                    if bd and ba > 0 and bv:
-                        try:
-                            t_obj = v_map[bv]
-                            run_query("INSERT INTO driver_bata_master (destination_name, cargo_type, vehicle_id, capacity_tons, standard_bata_inr) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (destination_name, cargo_type, vehicle_id) DO UPDATE SET standard_bata_inr=EXCLUDED.standard_bata_inr;", (bd, bc, t_obj['vehicle_id'], t_obj['carrying_capacity_tons'], ba), fetch=False)
-                            get_cached_bata_rules.clear()
-                            trigger_toast_and_rerun("SUCCESS", f"Bata rule for {bd} saved.")
-                        except Exception as e:
-                            show_error_toast(f"Bata save failed: {e}")
+                confirm_bata_save = st.checkbox("🔑 Confirm Bata Rule Save", key="chk_save_bata")
+                
+                if st.form_submit_button("Save Driver Bata Slab", type="primary", use_container_width=True):
+                    if not confirm_bata_save:
+                        show_error_toast("Check the confirmation key before saving.")
+                    elif not bd:
+                        show_error_toast("Destination is required.")
+                    elif ba <= 0:
+                        show_error_toast("Bata amount must be greater than zero.")
                     else:
-                        show_error_toast("Destination, Truck, and Bata Amount are required.")
+                        try:
+                            run_query("""
+                                INSERT INTO driver_bata_master (destination_name, cargo_type, capacity_tons, standard_bata_inr) 
+                                VALUES (%s, %s, %s, %s) 
+                                ON CONFLICT (destination_name, cargo_type, capacity_tons) 
+                                DO UPDATE SET standard_bata_inr = EXCLUDED.standard_bata_inr;
+                            """, (bd, slab_meta["cargo_type"], slab_meta["capacity_tons"], ba), fetch=False)
+                            get_cached_bata_rules.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Bata for {bd} ({selected_slab_label}) saved as ₹{ba:,.2f}.")
+                        except Exception as e:
+                            show_error_toast(f"Bata rule save failed: {e}")
         with c2:
-            st.markdown('<div class="section-header">Configured Driver Bata Master</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Configured Driver Bata Slabs Master</div>', unsafe_allow_html=True)
             bata_list = get_cached_bata_rules()
             if bata_list:
                 df_bata = pd.DataFrame(bata_list)
-                cols_to_show = [c for c in ['destination_name', 'cargo_type', 'vehicle_number', 'capacity_tons', 'standard_bata_inr'] if c in df_bata.columns]
-                st.dataframe(df_bata[cols_to_show], hide_index=True, use_container_width=True, height=300)
+                
+                # Map readable slab label
+                def format_slab_display(row):
+                    cg = str(row['cargo_type']).upper()
+                    cap = int(float(row['capacity_tons']))
+                    if cg == "BAG":
+                        return f"{cap}MT Body (Bag)"
+                    return f"{cap}MT Bulk (Bulker)"
+                
+                df_bata['bata_slab'] = df_bata.apply(format_slab_display, axis=1)
+                
+                cols_to_show = ['destination_name', 'bata_slab', 'standard_bata_inr']
+                st.dataframe(
+                    df_bata[cols_to_show], 
+                    column_config={
+                        "destination_name": "Destination",
+                        "bata_slab": "Truck Slab",
+                        "standard_bata_inr": "Standard Bata (₹)"
+                    },
+                    hide_index=True, 
+                    use_container_width=True, 
+                    height=300
+                )
             else:
                 st.info("No Driver Bata rules configured yet.")
 
@@ -1288,7 +1335,7 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
-    # SQL query for fleet analytics
+    # Safe parameter handling
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -1419,7 +1466,7 @@ elif menu == "Executive Retention Analytics":
                             'total_diesel_cost', 'trip_bata_claims', 'total_expense', 'net_retention', 
                             'retention_pct', 'diesel_pct', 'kmpl']
             
-            # Key safe-guard: Only convert columns that exist in the dataframe
+            # Safe conversion
             for c in numeric_cols:
                 if c in df_fl.columns:
                     df_fl[c] = pd.to_numeric(df_fl[c], errors='coerce').fillna(0.0)
@@ -1589,7 +1636,7 @@ elif menu == "Executive Retention Analytics":
             st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. FULL-WIDTH AUDIT LOG (WITH PER-RECORD DELETE)
+# 10. FULL-WIDTH AUDIT LOG (WITH CONFIRMATION KEY ON DELETE)
 # ==============================================================================
 elif menu == "Audit Log":
     st.markdown('<div class="section-header">Complete System Audit Log & Data Registry</div>', unsafe_allow_html=True)
