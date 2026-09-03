@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- Professional Widescreen ERP CSS (100% Viewport Coverage) ---
+# --- Professional Widescreen ERP CSS ---
 st.markdown("""
 <style>
     .main .block-container, div[data-testid="stAppViewBlockContainer"] {
@@ -81,14 +81,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- Bottom-Right Toast Helper Functions ---
+# --- Toast Functions ---
 def show_success_toast(msg: str):
     st.toast(f"✅ {msg}", icon="✅")
 
 def show_error_toast(msg: str):
     st.toast(f"❌ {msg}", icon="❌")
 
-# --- Authentication System ---
+# --- Authentication ---
 USER_CREDENTIALS = {
     "admin": {"password": "admin123", "role": "MASTER"},
     "staff": {"password": "staff123", "role": "VIEWER"}
@@ -101,15 +101,14 @@ if "authenticated" not in st.session_state:
 
 if not st.session_state.authenticated:
     st.markdown("<br><br>", unsafe_allow_html=True)
-    col_l1, col_l2, col_l3 = st.columns([3, 4, 3])
-    with col_l2:
+    c_l1, c_l2, c_l3 = st.columns([3, 4, 3])
+    with c_l2:
         st.markdown("<h2 style='text-align: center; color: #0F172A;'>Fleet Operations ERP</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #64748B;'>Please sign in to access fleet operations and reports</p>", unsafe_allow_html=True)
         with st.form("login_form"):
             in_user = st.text_input("Username").strip().lower()
             in_pass = st.text_input("Password", type="password").strip()
             btn_login = st.form_submit_button("Sign In", type="primary", use_container_width=True)
-            
             if btn_login:
                 if in_user in USER_CREDENTIALS and USER_CREDENTIALS[in_user]["password"] == in_pass:
                     st.session_state.authenticated = True
@@ -120,7 +119,7 @@ if not st.session_state.authenticated:
                     show_error_toast("Invalid Username or Password.")
     st.stop()
 
-# --- Toast Queue Handler on Rerun ---
+# --- Toast Queue Handler ---
 if "pending_toast" in st.session_state and st.session_state.pending_toast:
     t_type, t_msg = st.session_state.pending_toast
     if t_type == "SUCCESS":
@@ -134,7 +133,7 @@ def trigger_toast_and_rerun(toast_type: str, message: str, delay_sec: float = 1.
     time.sleep(delay_sec)
     st.rerun()
 
-# --- Database Connection Pool ---
+# --- Database Pool ---
 @st.cache_resource
 def init_connection_pool():
     creds = {
@@ -180,7 +179,7 @@ def run_query(query, params=None, fetch=True):
     finally:
         db_pool.putconn(conn)
 
-# --- Standard Defined Bata Slabs ---
+# --- Standard Bata Slabs ---
 BATA_SLAB_DEFINITIONS = {
     "25MT Body (Bag)": {"cargo_type": "BAG", "capacity_tons": 25.0},
     "30MT Body (Bag)": {"cargo_type": "BAG", "capacity_tons": 30.0},
@@ -189,7 +188,7 @@ BATA_SLAB_DEFINITIONS = {
     "35MT Bulk (Bulker)": {"cargo_type": "BULK", "capacity_tons": 35.0}
 }
 
-# --- Fast Caching ---
+# --- Caching ---
 @st.cache_data(ttl=60)
 def get_cached_vehicles():
     return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
@@ -338,7 +337,7 @@ STATUS_OPTIONS = {
 
 STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"]
 
-# --- Clean Header Ribbon with Role Badge and Logout ---
+# --- Clean Header Navigation Ribbon ---
 nav1, nav2, nav3 = st.columns([3.0, 5.8, 1.2])
 with nav1:
     role_badge = "👑 MASTER" if st.session_state.user_role == "MASTER" else "👁️ REPORTS ONLY"
@@ -1414,8 +1413,6 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
-                    else:
-                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
@@ -1929,7 +1926,7 @@ elif menu == "Executive Retention Analytics":
             st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. AUDIT LOG (CLEAN DYNAMIC QUERY - FIXES LINE 1417 SYNTAX ERROR)
+# 10. AUDIT LOG (CLEANED)
 # ==============================================================================
 elif menu == "Audit Log":
     st.markdown('<div class="section-header">Complete System Audit Log & Multi-Parameter Filter</div>', unsafe_allow_html=True)
