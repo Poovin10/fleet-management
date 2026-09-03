@@ -1003,6 +1003,7 @@ elif menu == "Modify Trips & Claims":
                     except Exception as e:
                         show_error_toast(f"Update failed: {e}")
 
+        # Quick Actions: Reopen Trip or Delete Trip
         st.markdown("<hr style='margin: 10px 0;' />", unsafe_allow_html=True)
         act1, act2 = st.columns(2)
         with act1:
@@ -1107,7 +1108,6 @@ elif menu == "Driver Settlement":
                 st.markdown(f"#### 🚚 Truck: **{trk}**")
                 df_trk = df_all_trips[df_all_trips['vehicle_number'] == trk].copy()
                 
-                # Format columns
                 df_trk_view = df_trk[['trip_start_date', 'lr_no', 'source', 'destination', 'diesel_litres', 'total_bata', 'advance_issued', 'balance_amount']].copy()
                 
                 sub_bata = float(df_trk['total_bata'].sum() or 0.0)
@@ -1135,7 +1135,6 @@ elif menu == "Driver Settlement":
                     use_container_width=True
                 )
                 
-                # Subtotal ribbon for this specific truck
                 sb1, sb2, sb3, sb4 = st.columns(4)
                 sb1.caption(f"**Truck {trk} Diesel:** {sub_diesel:,.1f} L")
                 sb2.caption(f"**Truck {trk} Bata:** ₹{sub_bata:,.2f}")
@@ -1145,7 +1144,6 @@ elif menu == "Driver Settlement":
         else:
             st.info("No trips logged for this driver in the selected period.")
 
-        # Additional Direct Cash Advances Table (if any)
         direct_adv_sum = 0.0
         if adv_drv:
             st.markdown("#### 💵 Direct Cash & Salary Advances (Outside Trips)")
@@ -1165,7 +1163,6 @@ elif menu == "Driver Settlement":
                 use_container_width=True
             )
 
-        # Grand Summary
         final_balance_payable = grand_total_bata - grand_total_adv
 
         st.markdown('<div class="section-header">Overall Cycle Position</div>', unsafe_allow_html=True)
@@ -1307,6 +1304,8 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
+                    else:
+                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
@@ -1315,6 +1314,7 @@ elif menu == "Master Configuration":
                 cols = [c for c in ['cargo_type', 'origin', 'destination_name', 'capacity_tons', 'freight_rate_per_ton', 'standard_km'] if c in df_r.columns]
                 st.dataframe(df_r[cols], hide_index=True, use_container_width=True, height=300)
 
+    # 4. SLAB-BASED DRIVER BATA MASTER
     with t_b:
         c1, c2 = st.columns([1.5, 3.5])
         with c1:
@@ -1378,7 +1378,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. EXECUTIVE RETENTION ANALYTICS
+# 9. EXECUTIVE RETENTION ANALYTICS (WITH INCOMPLETE TRIPS & DRIVER FOLLOW-UP)
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -1411,6 +1411,7 @@ elif menu == "Executive Retention Analytics":
                 "Total Net Retention (₹)",
                 "Total Freight Revenue (₹)",
                 "Total Trips",
+                "Incomplete Trips (Pending POD)",
                 "Total Tons (Loaded MT)",
                 "Total Diesel Given (Litres)",
                 "Total Diesel Expense (₹)",
@@ -1433,6 +1434,7 @@ elif menu == "Executive Retention Analytics":
         "Total Net Retention (₹)": "net_retention",
         "Total Freight Revenue (₹)": "total_freight",
         "Total Trips": "total_trips",
+        "Incomplete Trips (Pending POD)": "incomplete_trips",
         "Total Tons (Loaded MT)": "total_tons",
         "Total Diesel Given (Litres)": "total_diesel_litres",
         "Total Diesel Expense (₹)": "total_diesel_cost",
@@ -1450,6 +1452,7 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
+    # Query with incomplete trips (Pending POD) calculation
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -1465,6 +1468,7 @@ elif menu == "Executive Retention Analytics":
                 SELECT 
                     t.vehicle_id,
                     COUNT(t.trip_id) AS trips_count,
+                    COUNT(CASE WHEN t.trip_status != 'COMPLETED' THEN 1 END) AS pending_pod_count,
                     COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km_run,
                     COALESCE(SUM(
                         COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
@@ -1487,6 +1491,7 @@ elif menu == "Executive Retention Analytics":
                 v.truck_type, 
                 v.carrying_capacity_tons,
                 COALESCE(ts.trips_count, 0) AS total_trips,
+                COALESCE(ts.pending_pod_count, 0) AS incomplete_trips,
                 COALESCE(ts.total_km_run, 0.00) AS total_km,
                 COALESCE(ts.total_tonnage, 0.00) AS total_tons,
                 COALESCE(ts.total_freight_revenue, 0.00) AS total_freight,
@@ -1525,6 +1530,7 @@ elif menu == "Executive Retention Analytics":
                 SELECT 
                     t.vehicle_id,
                     COUNT(t.trip_id) AS trips_count,
+                    COUNT(CASE WHEN t.trip_status != 'COMPLETED' THEN 1 END) AS pending_pod_count,
                     COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km_run,
                     COALESCE(SUM(
                         COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)
@@ -1546,6 +1552,7 @@ elif menu == "Executive Retention Analytics":
                 v.truck_type, 
                 v.carrying_capacity_tons,
                 COALESCE(ts.trips_count, 0) AS total_trips,
+                COALESCE(ts.pending_pod_count, 0) AS incomplete_trips,
                 COALESCE(ts.total_km_run, 0.00) AS total_km,
                 COALESCE(ts.total_tonnage, 0.00) AS total_tons,
                 COALESCE(ts.total_freight_revenue, 0.00) AS total_freight,
@@ -1576,9 +1583,9 @@ elif menu == "Executive Retention Analytics":
     with tab_f:
         if fleet_data:
             df_fl = pd.DataFrame(fleet_data)
-            numeric_cols = ['total_trips', 'total_km', 'total_tons', 'total_freight', 'total_diesel_litres', 
-                            'total_diesel_cost', 'trip_bata_claims', 'total_expense', 'net_retention', 
-                            'retention_pct', 'diesel_pct', 'kmpl']
+            numeric_cols = ['total_trips', 'incomplete_trips', 'total_km', 'total_tons', 'total_freight', 
+                            'total_diesel_litres', 'total_diesel_cost', 'trip_bata_claims', 'total_expense', 
+                            'net_retention', 'retention_pct', 'diesel_pct', 'kmpl']
             
             for c in numeric_cols:
                 if c in df_fl.columns:
@@ -1588,6 +1595,7 @@ elif menu == "Executive Retention Analytics":
             df_fl = df_fl.sort_values(by=[sort_col], ascending=[is_ascending]).reset_index(drop=True)
 
             tot_trips = int(df_fl['total_trips'].sum() or 0) if 'total_trips' in df_fl.columns else 0
+            tot_incomp = int(df_fl['incomplete_trips'].sum() or 0) if 'incomplete_trips' in df_fl.columns else 0
             tot_tons = float(df_fl['total_tons'].sum() or 0.0) if 'total_tons' in df_fl.columns else 0.0
             tot_freight = float(df_fl['total_freight'].sum() or 0.0) if 'total_freight' in df_fl.columns else 0.0
             tot_diesel_l = float(df_fl['total_diesel_litres'].sum() or 0.0) if 'total_diesel_litres' in df_fl.columns else 0.0
@@ -1599,7 +1607,7 @@ elif menu == "Executive Retention Analytics":
 
             k1, k2, k3, k4, k5, k6 = st.columns(6)
             k1.metric("Total Trips", f"{tot_trips}")
-            k2.metric("Total Tonnage", f"{tot_tons:,.2f} MT")
+            k2.metric("Incomplete Trips (Pending POD)", f"{tot_incomp}")
             k3.metric("Total Freight", f"₹{tot_freight:,.2f}")
             k4.metric("Total Diesel Expense", f"₹{tot_diesel_cost:,.2f}")
             k5.metric("Total Net Retention", f"₹{tot_ret:,.2f}")
@@ -1618,6 +1626,7 @@ elif menu == "Executive Retention Analytics":
                     "truck_type": "Variant",
                     "carrying_capacity_tons": "Capacity Class",
                     "total_trips": "Total Trips",
+                    "incomplete_trips": "Incomplete (Pending POD)",
                     "total_tons": "Total Tons (MT)",
                     "total_freight": "Total Freight (₹)",
                     "total_diesel_litres": "Diesel Given (L)",
@@ -1634,6 +1643,66 @@ elif menu == "Executive Retention Analytics":
                 use_container_width=True,
                 height=400
             )
+
+            # Driver Follow-up Desk for Incomplete Trips (Pending POD)
+            st.markdown('<div class="section-header">📞 Driver Follow-up Desk (Pending POD Calling List)</div>', unsafe_allow_html=True)
+            
+            # Fetch pending trip loads with driver details
+            date_filter_cond = ""
+            sub_params = []
+            if start_filter_date and end_filter_date:
+                date_filter_cond = "AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
+                sub_params.extend([start_filter_date, end_filter_date])
+
+            pending_trips = run_query(f"""
+                SELECT 
+                    t.trip_id,
+                    t.trip_number AS lr_no,
+                    v.vehicle_number,
+                    d.full_name AS driver_name,
+                    d.phone_number AS driver_phone,
+                    t.origin AS source,
+                    t.destination,
+                    t.trip_start_date,
+                    CURRENT_DATE - t.trip_start_date AS days_pending,
+                    t.tonnage_loaded
+                FROM trips t
+                JOIN vehicles v ON t.vehicle_id = v.vehicle_id
+                JOIN drivers d ON t.primary_driver_id = d.driver_id
+                WHERE t.trip_status != 'COMPLETED'
+                {date_filter_cond}
+                ORDER BY t.trip_start_date ASC;
+            """, tuple(sub_params) if sub_params else None)
+
+            if pending_trips:
+                df_pending = pd.DataFrame(pending_trips)
+                
+                # Filter by Truck selector
+                f_trucks = ["All Trucks"] + sorted(df_pending['vehicle_number'].unique().tolist())
+                sel_f_trk = st.selectbox("Filter Pending POD by Specific Truck", f_trucks)
+                
+                if sel_f_trk != "All Trucks":
+                    df_pending = df_pending[df_pending['vehicle_number'] == sel_f_trk]
+                
+                st.dataframe(
+                    df_pending[['vehicle_number', 'lr_no', 'driver_name', 'driver_phone', 'source', 'destination', 'trip_start_date', 'days_pending', 'tonnage_loaded']],
+                    column_config={
+                        "vehicle_number": "Truck No",
+                        "lr_no": "LR Number",
+                        "driver_name": "Assigned Driver",
+                        "driver_phone": "Driver Contact No",
+                        "source": "Source",
+                        "destination": "Destination",
+                        "trip_start_date": "Dispatched On",
+                        "days_pending": "Days Pending",
+                        "tonnage_loaded": "Tons Loaded"
+                    },
+                    hide_index=True,
+                    use_container_width=True,
+                    height=260
+                )
+            else:
+                st.success("All dispatched trips for this window have their PODs received and closed.")
 
     with tab_v:
         st.markdown('<div class="section-header">Truck Variant Peer Benchmarks</div>', unsafe_allow_html=True)
@@ -1671,6 +1740,7 @@ elif menu == "Executive Retention Analytics":
                     "vehicle_number": "Truck No",
                     "truck_type": "Variant",
                     "total_trips": "Total Trips",
+                    "incomplete_trips": "Incomplete Trips",
                     "total_tons": "Total Tons (MT)",
                     "total_freight": "Total Freight (₹)",
                     "total_diesel_litres": "Diesel Given (L)",
@@ -1693,6 +1763,7 @@ elif menu == "Executive Retention Analytics":
                     d.driver_code, 
                     d.full_name, 
                     COUNT(t.trip_id) AS trips,
+                    COUNT(CASE WHEN t.trip_status != 'COMPLETED' THEN 1 END) AS incomplete_trips,
                     COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km,
                     COALESCE(SUM(
                         CASE 
@@ -1718,6 +1789,7 @@ elif menu == "Executive Retention Analytics":
                     d.driver_code, 
                     d.full_name, 
                     COUNT(t.trip_id) AS trips,
+                    COUNT(CASE WHEN t.trip_status != 'COMPLETED' THEN 1 END) AS incomplete_trips,
                     COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km,
                     COALESCE(SUM(
                         CASE 
@@ -1741,7 +1813,7 @@ elif menu == "Executive Retention Analytics":
         
         if drv_data:
             df_drv = pd.DataFrame(drv_data)
-            for c in ['trips', 'total_km', 'total_mt', 'kmpl', 'shortage_mt', 'revenue', 'bata_earned']:
+            for c in ['trips', 'incomplete_trips', 'total_km', 'total_mt', 'kmpl', 'shortage_mt', 'revenue', 'bata_earned']:
                 if c in df_drv.columns:
                     df_drv[c] = pd.to_numeric(df_drv[c], errors='coerce').fillna(0.0)
 
