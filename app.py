@@ -303,7 +303,7 @@ STATUS_OPTIONS = {
 
 STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"]
 
-# --- Clean Widescreen Header Ribbon (Diesel Rate Selector Removed Globally) ---
+# --- Clean Header Navigation Ribbon ---
 nav1, nav2 = st.columns([3.0, 7.0])
 with nav1:
     st.markdown("<h3 style='margin:0; padding:0; font-size:1.35rem; color:#0F172A; font-weight:700;'>Fleet Operations ERP</h3>", unsafe_allow_html=True)
@@ -325,7 +325,7 @@ with nav2:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. FULL-WIDTH TRIP DISPATCH ENTRY (WITH ACTIVE DIESEL RATE EDITOR)
+# 1. TRIP DISPATCH ENTRY
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -340,7 +340,6 @@ if menu == "Trip Dispatch Entry":
 
     cnt = st.session_state.form_reset_counter
 
-    # Header Row: Section Header + Active Diesel Rate Editor
     h_col1, h_col2 = st.columns([7.5, 2.5])
     with h_col1:
         st.markdown('<div class="section-header">Primary Manifest & Routing Assignment</div>', unsafe_allow_html=True)
@@ -351,15 +350,12 @@ if menu == "Trip Dispatch Entry":
             set_saved_diesel_rate(d_rate_fast)
     
     r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.4, 1.3, 2.6, 1.5])
-    
     with r1_c1:
         start_date = st.date_input("1. Trip Start Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key=f"sdate_{cnt}")
-        
     with r1_c2:
         lr_no = st.text_input("2. LR Number*", placeholder="LR-XXXX", key=f"lr_{cnt}").strip().upper()
         if lr_no and check_lr_exists(lr_no):
             show_error_toast(f"Duplicate Alert: LR Number '{lr_no}' already exists!")
-
     with r1_c3:
         cargo_category = st.selectbox("3. Cargo Category*", ["BULK", "BAG"], key=f"cargo_sel_{cnt}")
 
@@ -459,8 +455,11 @@ if menu == "Trip Dispatch Entry":
         computed_km = max(0.0, end_km - start_km) if (end_km >= start_km and end_km > 0) else standard_route_km
 
     st.write("")
+    confirm_dispatch = st.checkbox("🔑 Confirm Trip Dispatch Record", key=f"chk_dispatch_{cnt}")
     if st.button("🚀 Save & Dispatch Trip Record", type="primary", use_container_width=True):
-        if not lr_no or not dest_terminal or not origin_terminal:
+        if not confirm_dispatch:
+            show_error_toast("Check the confirmation key before dispatching.")
+        elif not lr_no or not dest_terminal or not origin_terminal:
             show_error_toast("Validation Failure: LR Number, Source, and Destination are required.")
         elif check_lr_exists(lr_no):
             show_error_toast(f"Cannot dispatch trip. LR Number '{lr_no}' already exists.")
@@ -497,7 +496,7 @@ if menu == "Trip Dispatch Entry":
                 show_error_toast(f"Database Error: {e}")
 
 # ==============================================================================
-# 2. POD RECEIVE & TRIP CLOSURE (REFERENCE ONLY)
+# 2. POD RECEIVE & TRIP CLOSURE
 # ==============================================================================
 elif menu == "POD Receive & Close":
     active_trips = run_query("""
@@ -561,7 +560,7 @@ elif menu == "POD Receive & Close":
                         show_error_toast(f"Error closing trip: {e}")
 
 # ==============================================================================
-# 3. FULL-WIDTH FLEET STATUS BOARD
+# 3. FLEET STATUS BOARD
 # ==============================================================================
 elif menu == "Fleet Status Board":
     vehicles = get_cached_vehicles()
@@ -601,10 +600,9 @@ elif menu == "Fleet Status Board":
                         trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
-# 4. FULL-WIDTH DIESEL LOGS (WITH ACTIVE DIESEL RATE EDITOR)
+# 4. DIESEL LOGS
 # ==============================================================================
 elif menu == "Diesel Logs":
-    # Header Row: Diesel Rate Editor inside Diesel Logs
     hd1, hd2 = st.columns([7.5, 2.5])
     with hd1:
         st.markdown('<div class="section-header">Diesel Fuel Management & Audit Logs</div>', unsafe_allow_html=True)
@@ -639,9 +637,11 @@ elif menu == "Diesel Logs":
                 f_cost = round(f_l * d_rate_fast, 2)
                 st.metric("Total Fuel Cost", f"₹{f_cost:,.2f}")
                 st.write("")
-                
+                confirm_issue = st.checkbox("🔑 Confirm Fuel Disbursement Entry", key="chk_fuel_iss")
                 if st.form_submit_button("Record Diesel Entry", type="primary", use_container_width=True):
-                    if f_l <= 0:
+                    if not confirm_issue:
+                        show_error_toast("Check the confirmation key before recording fuel.")
+                    elif f_l <= 0:
                         show_error_toast("Fuel quantity must be greater than zero.")
                     elif check_duplicate_diesel_entry(target_veh_id, f_date, f_l, filling_km=filling_km, lr_number=f_lr):
                         show_error_toast(f"Duplicate Entry: A matching fuel log for {f_veh} on {f_date} ({f_l}L) already exists.")
@@ -806,7 +806,7 @@ elif menu == "Diesel Logs":
                         trigger_toast_and_rerun("SUCCESS", f"Fuel log #{del_fuel_id} deleted.")
 
 # ==============================================================================
-# 5. FULL-WIDTH DRIVER ADVANCES
+# 5. DRIVER ADVANCES
 # ==============================================================================
 elif menu == "Driver Advances":
     drivers = get_cached_drivers()
@@ -822,13 +822,16 @@ elif menu == "Driver Advances":
             ad_cat = st.selectbox("Category", ["BATA_ADVANCE", "GENERAL_ADVANCE", "EMERGENCY_MEDICAL", "SALARY_ADVANCE"])
             ad_ref = st.text_input("Reference Note", placeholder="UPI / Voucher No")
             st.write("")
+            confirm_iss_adv = st.checkbox("🔑 Confirm Advance Issuance", key="chk_iss_adv")
             if st.form_submit_button("Issue Advance", type="primary", use_container_width=True):
-                if ad_amt > 0:
+                if not confirm_iss_adv:
+                    show_error_toast("Check the confirmation key before issuing.")
+                elif ad_amt <= 0:
+                    show_error_toast("Advance amount must be greater than zero.")
+                else:
                     run_query("INSERT INTO driver_direct_advances (advance_date, driver_id, amount_inr, advance_type, reference_remarks) VALUES (%s, %s, %s, %s, %s)",
                               (ad_date, d_map[ad_drv]['driver_id'], ad_amt, ad_cat, ad_ref), fetch=False)
                     trigger_toast_and_rerun("SUCCESS", f"Advance of ₹{ad_amt:,.2f} recorded.")
-                else:
-                    show_error_toast("Advance amount must be greater than zero.")
     with col_a2:
         st.markdown('<div class="section-header">Direct Advance History</div>', unsafe_allow_html=True)
         adv_recs = run_query("SELECT a.advance_id, a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
@@ -851,10 +854,9 @@ elif menu == "Driver Advances":
                         trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. FULL-WIDTH MODIFY TRIPS & CLAIMS (WITH ACTIVE DIESEL RATE EDITOR)
+# 6. MODIFY TRIPS & CLAIMS
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
-    # Header Row: Diesel Rate Editor inside Modify Trips
     hm1, hm2 = st.columns([7.5, 2.5])
     with hm1:
         st.markdown('<div class="section-header">Search, Edit Odometer KM, POD Details & Manage Master Trip Records</div>', unsafe_allow_html=True)
@@ -1001,10 +1003,8 @@ elif menu == "Modify Trips & Claims":
                     except Exception as e:
                         show_error_toast(f"Update failed: {e}")
 
-        # Quick Actions: Reopen Trip or Delete Trip
         st.markdown("<hr style='margin: 10px 0;' />", unsafe_allow_html=True)
         act1, act2 = st.columns(2)
-        
         with act1:
             if t_data['trip_status'] == 'COMPLETED':
                 confirm_reopen = st.checkbox("🔑 Confirm Trip Reopening", key="chk_reopen")
@@ -1044,60 +1044,155 @@ elif menu == "Modify Trips & Claims":
                         show_error_toast(f"Delete failed: {e}")
 
 # ==============================================================================
-# 7. FULL-WIDTH DRIVER SETTLEMENT
+# 7. DRIVER SETTLEMENT REPORT (SEPARATE BY TRUCK & DETAILED BREAKDOWN)
 # ==============================================================================
 elif menu == "Driver Settlement":
     drivers = get_cached_drivers()
     if drivers:
-        d_dict = {f"{d['driver_code']} - {d['full_name']}": d['driver_id'] for d in drivers}
+        d_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
         
-        s1, s2, s3, s4 = st.columns([2, 1.2, 1.2, 1.5])
+        s1, s2, s3 = st.columns([2.5, 1.5, 1.5])
         with s1:
-            sel_d_name = st.selectbox("Select Driver Account", list(d_dict.keys()))
-            d_id = d_dict[sel_d_name]
+            sel_d_name = st.selectbox("Select Driver Name*", list(d_dict.keys()))
+            selected_driver = d_dict[sel_d_name]
+            d_id = selected_driver['driver_id']
         with s2:
-            s_from = st.date_input("From Date", date.today().replace(day=1), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
+            s_from = st.date_input("From Date*", date.today().replace(day=1), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
         with s3:
-            s_to = st.date_input("To Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
-        with s4:
-            st.write("")
-            confirm_settle = st.checkbox("🔑 Confirm Settlement", key="chk_settle")
-            btn_settle = st.button("Mark Period Settled", type="primary", use_container_width=True)
+            s_to = st.date_input("To Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
 
-        trips_drv = run_query("SELECT trip_number, trip_start_date, origin, destination, total_km_run, driver_bata, cash_advance_issued, enroute_repairs_maintenance FROM trips WHERE primary_driver_id=%s AND trip_start_date>=%s AND trip_start_date<=%s", (d_id, s_from, s_to))
-        adv_drv = run_query("SELECT advance_date, amount_inr, advance_type, reference_remarks FROM driver_direct_advances WHERE driver_id=%s AND advance_date>=%s AND advance_date<=%s", (d_id, s_from, s_to))
+        # Fetch trips operated by this driver in this window
+        trips_drv = run_query("""
+            SELECT 
+                t.trip_start_date,
+                t.trip_number AS lr_no,
+                v.vehicle_number,
+                t.origin AS source,
+                t.destination,
+                COALESCE(t.fuel_litres, 0.0) AS diesel_litres,
+                COALESCE(t.driver_bata, 0.0) + COALESCE(t.halt_bata, 0.0) AS total_bata,
+                COALESCE(t.cash_advance_issued, 0.0) AS advance_issued,
+                ((COALESCE(t.driver_bata, 0.0) + COALESCE(t.halt_bata, 0.0)) - COALESCE(t.cash_advance_issued, 0.0)) AS balance_amount
+            FROM trips t
+            JOIN vehicles v ON t.vehicle_id = v.vehicle_id
+            WHERE t.primary_driver_id = %s 
+              AND t.trip_start_date >= %s 
+              AND t.trip_start_date <= %s
+            ORDER BY v.vehicle_number ASC, t.trip_start_date ASC;
+        """, (d_id, s_from, s_to))
 
-        df_t = pd.DataFrame(trips_drv) if trips_drv else pd.DataFrame(columns=["driver_bata", "cash_advance_issued", "enroute_repairs_maintenance"])
-        df_a = pd.DataFrame(adv_drv) if adv_drv else pd.DataFrame(columns=["amount_inr"])
+        # Fetch direct cash advances not recorded inside a trip
+        adv_drv = run_query("""
+            SELECT advance_date, amount_inr, advance_type, reference_remarks 
+            FROM driver_direct_advances 
+            WHERE driver_id = %s 
+              AND advance_date >= %s 
+              AND advance_date <= %s
+            ORDER BY advance_date ASC;
+        """, (d_id, s_from, s_to))
 
-        tot_b = float(df_t['driver_bata'].sum() or 0.0) if not df_t.empty else 0.0
-        tot_c = float(df_t['enroute_repairs_maintenance'].sum() or 0.0) if not df_t.empty else 0.0
-        tot_adv = (float(df_t['cash_advance_issued'].sum() or 0.0) if not df_t.empty else 0.0) + (float(df_a['amount_inr'].sum() or 0.0) if not df_a.empty else 0.0)
-        net_pay = (tot_b + tot_c) - tot_adv
+        st.markdown(f'<div class="section-header">Settlement Statement for {selected_driver["full_name"]} ({s_from} to {s_to})</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="section-header">Cycle Settlement Position (Based on Trip Start Date)</div>', unsafe_allow_html=True)
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Earned Bata (₹)", f"₹{tot_b:,.2f}")
-        m2.metric("Out-of-Pocket Claims (₹)", f"₹{tot_c:,.2f}")
-        m3.metric("Advances Deducted (₹)", f"₹{tot_adv:,.2f}")
-        m4.metric("Net Balance Payable (₹)", f"₹{net_pay:,.2f}")
+        grand_total_bata = 0.0
+        grand_total_adv = 0.0
+        grand_total_diesel = 0.0
 
         if trips_drv:
-            st.dataframe(pd.DataFrame(trips_drv), hide_index=True, use_container_width=True, height=220)
+            df_all_trips = pd.DataFrame(trips_drv)
+            
+            # Group by truck if driver took more than one truck
+            truck_groups = df_all_trips['vehicle_number'].unique()
+            
+            for trk in truck_groups:
+                st.markdown(f"#### 🚚 Truck: **{trk}**")
+                df_trk = df_all_trips[df_all_trips['vehicle_number'] == trk].copy()
+                
+                # Format columns
+                df_trk_view = df_trk[['trip_start_date', 'lr_no', 'source', 'destination', 'diesel_litres', 'total_bata', 'advance_issued', 'balance_amount']].copy()
+                
+                sub_bata = float(df_trk['total_bata'].sum() or 0.0)
+                sub_adv = float(df_trk['advance_issued'].sum() or 0.0)
+                sub_diesel = float(df_trk['diesel_litres'].sum() or 0.0)
+                sub_bal = float(df_trk['balance_amount'].sum() or 0.0)
 
-        if btn_settle:
-            if not confirm_settle:
-                show_error_toast("Check the confirmation key before finalizing settlement.")
-            else:
-                try:
-                    run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date>=%s AND trip_start_date<=%s", (d_id, s_from, s_to), fetch=False)
-                    run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date>=%s AND advance_date<=%s", (d_id, s_from, s_to), fetch=False)
-                    trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {sel_d_name}.")
-                except Exception as e:
-                    show_error_toast(f"Settlement failed: {e}")
+                grand_total_bata += sub_bata
+                grand_total_adv += sub_adv
+                grand_total_diesel += sub_diesel
+
+                st.dataframe(
+                    df_trk_view,
+                    column_config={
+                        "trip_start_date": "Date",
+                        "lr_no": "LR No",
+                        "source": "Source",
+                        "destination": "Destination",
+                        "diesel_litres": "Diesel (L)",
+                        "total_bata": "Bata (₹)",
+                        "advance_issued": "Advance (₹)",
+                        "balance_amount": "Balance (₹)"
+                    },
+                    hide_index=True,
+                    use_container_width=True
+                )
+                
+                # Subtotal ribbon for this specific truck
+                sb1, sb2, sb3, sb4 = st.columns(4)
+                sb1.caption(f"**Truck {trk} Diesel:** {sub_diesel:,.1f} L")
+                sb2.caption(f"**Truck {trk} Bata:** ₹{sub_bata:,.2f}")
+                sb3.caption(f"**Truck {trk} Advance:** ₹{sub_adv:,.2f}")
+                sb4.caption(f"**Truck {trk} Subtotal Balance:** ₹{sub_bal:,.2f}")
+                st.markdown("<hr style='margin: 6px 0 12px 0;' />", unsafe_allow_html=True)
+        else:
+            st.info("No trips logged for this driver in the selected period.")
+
+        # Additional Direct Cash Advances Table (if any)
+        direct_adv_sum = 0.0
+        if adv_drv:
+            st.markdown("#### 💵 Direct Cash & Salary Advances (Outside Trips)")
+            df_direct_adv = pd.DataFrame(adv_drv)
+            direct_adv_sum = float(df_direct_adv['amount_inr'].sum() or 0.0)
+            grand_total_adv += direct_adv_sum
+            
+            st.dataframe(
+                df_direct_adv,
+                column_config={
+                    "advance_date": "Date",
+                    "amount_inr": "Advance Amount (₹)",
+                    "advance_type": "Category",
+                    "reference_remarks": "Remarks"
+                },
+                hide_index=True,
+                use_container_width=True
+            )
+
+        # Grand Summary
+        final_balance_payable = grand_total_bata - grand_total_adv
+
+        st.markdown('<div class="section-header">Overall Cycle Position</div>', unsafe_allow_html=True)
+        g1, g2, g3, g4 = st.columns(4)
+        g1.metric("Total Diesel Issued", f"{grand_total_diesel:,.1f} L")
+        g2.metric("Total Bata Earned", f"₹{grand_total_bata:,.2f}")
+        g3.metric("Total Advances Deducted", f"₹{grand_total_adv:,.2f}")
+        g4.metric("Grand Total Balance Payable", f"₹{final_balance_payable:,.2f}")
+
+        st.write("")
+        col_set1, col_set2 = st.columns([3, 1])
+        with col_set1:
+            confirm_settle = st.checkbox("🔑 Confirm Settlement & Reconcile Period", key="chk_settle_period")
+        with col_set2:
+            if st.button("Mark Period Settled", type="primary", use_container_width=True):
+                if not confirm_settle:
+                    show_error_toast("Check the confirmation key before finalizing settlement.")
+                else:
+                    try:
+                        run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date>=%s AND trip_start_date<=%s", (d_id, s_from, s_to), fetch=False)
+                        run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date>=%s AND advance_date<=%s", (d_id, s_from, s_to), fetch=False)
+                        trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {selected_driver['full_name']}.")
+                    except Exception as e:
+                        show_error_toast(f"Settlement failed: {e}")
 
 # ==============================================================================
-# 8. FULL-WIDTH MASTER CONFIGURATION
+# 8. MASTER CONFIGURATION
 # ==============================================================================
 elif menu == "Master Configuration":
     t_v, t_d, t_r, t_b = st.tabs(["Trucks Master", "Drivers Master", "Freight Slabs Master", "Driver Bata Master"])
@@ -1111,16 +1206,19 @@ elif menu == "Master Configuration":
                 vt = st.selectbox("Truck Variant", ["Bulker (16-Wheel)", "Bulker (14-Wheel)", "Bulker", "Body Truck"])
                 vc = st.selectbox("Capacity Class (MT)", [25.0, 30.0, 35.0], index=2)
                 st.write("")
+                confirm_trk_save = st.checkbox("🔑 Confirm Truck Master Save", key="chk_save_trk")
                 if st.form_submit_button("Save Truck Master", type="primary", use_container_width=True):
-                    if nv:
+                    if not confirm_trk_save:
+                        show_error_toast("Check the confirmation key before saving.")
+                    elif not nv:
+                        show_error_toast("Truck registration number is mandatory.")
+                    else:
                         try:
                             run_query("INSERT INTO vehicles (vehicle_number, truck_type, carrying_capacity_tons, current_status) VALUES (%s, %s, %s, 'AVAILABLE_FOR_LOAD')", (nv, vt, vc), fetch=False)
                             get_cached_vehicles.clear()
                             trigger_toast_and_rerun("SUCCESS", f"Truck {nv} added to registry.")
                         except Exception as e:
                             show_error_toast(f"Truck insert failed: {e}")
-                    else:
-                        show_error_toast("Truck registration number is mandatory.")
         with c2:
             st.markdown('<div class="section-header">Registered Fleet Registry</div>', unsafe_allow_html=True)
             v_recs = get_cached_vehicles()
@@ -1140,8 +1238,11 @@ elif menu == "Master Configuration":
                 nd_l = st.text_input("License No*").strip().upper()
                 nd_exp = st.date_input("License Expiry Date", date(2030, 1, 1), min_value=date(2000, 1, 1), max_value=date(2050, 12, 31))
                 st.write("")
+                confirm_drv_save = st.checkbox("🔑 Confirm Driver Master Save", key="chk_save_drv")
                 if st.form_submit_button("Save Driver Master", type="primary", use_container_width=True):
-                    if not nd_n or not nd_p:
+                    if not confirm_drv_save:
+                        show_error_toast("Check the confirmation key before saving.")
+                    elif not nd_n or not nd_p:
                         show_error_toast("Driver Name and Phone Number are mandatory.")
                     else:
                         try:
@@ -1186,8 +1287,13 @@ elif menu == "Master Configuration":
                 rt = st.number_input("Rate per MT (₹)*", min_value=0.0, step=25.0)
                 km = st.number_input("Standard KM", min_value=0.0, step=10.0)
                 st.write("")
+                confirm_route_save = st.checkbox("🔑 Confirm Freight Slab Save", key="chk_save_route")
                 if st.form_submit_button("Save Freight Slab", type="primary", use_container_width=True):
-                    if dt and rt > 0:
+                    if not confirm_route_save:
+                        show_error_toast("Check the confirmation key before saving.")
+                    elif not dt or rt <= 0:
+                        show_error_toast("Destination and freight rate are required.")
+                    else:
                         try:
                             target_capacities = [25.0, 30.0] if cg == "BAG" else [cl]
                             for c_val in target_capacities:
@@ -1201,8 +1307,6 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
-                    else:
-                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
@@ -1211,7 +1315,6 @@ elif menu == "Master Configuration":
                 cols = [c for c in ['cargo_type', 'origin', 'destination_name', 'capacity_tons', 'freight_rate_per_ton', 'standard_km'] if c in df_r.columns]
                 st.dataframe(df_r[cols], hide_index=True, use_container_width=True, height=300)
 
-    # 4. SLAB-BASED DRIVER BATA MASTER (5 DISTINCT OPERATIONAL SLABS)
     with t_b:
         c1, c2 = st.columns([1.5, 3.5])
         with c1:
@@ -1219,10 +1322,7 @@ elif menu == "Master Configuration":
                 st.markdown('<div class="section-header">Configure Driver Bata Slab</div>', unsafe_allow_html=True)
                 bd = st.text_input("Destination Terminal*", placeholder="e.g. SANKARI").strip().upper()
                 
-                selected_slab_label = st.selectbox(
-                    "Select Truck Slab*", 
-                    list(BATA_SLAB_DEFINITIONS.keys())
-                )
+                selected_slab_label = st.selectbox("Select Truck Slab*", list(BATA_SLAB_DEFINITIONS.keys()))
                 slab_meta = BATA_SLAB_DEFINITIONS[selected_slab_label]
                 
                 ba = st.number_input("Standard Bata (₹)*", min_value=0.0, step=100.0, value=3000.0)
@@ -1262,7 +1362,6 @@ elif menu == "Master Configuration":
                     return f"{cap}MT Bulk (Bulker)"
                 
                 df_bata['bata_slab'] = df_bata.apply(format_slab_display, axis=1)
-                
                 cols_to_show = ['destination_name', 'bata_slab', 'standard_bata_inr']
                 st.dataframe(
                     df_bata[cols_to_show], 
@@ -1279,7 +1378,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. FULL-WIDTH EXECUTIVE RETENTION & FLEET COMPREHENSIVE ANALYTICS
+# 9. EXECUTIVE RETENTION ANALYTICS
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -1303,7 +1402,6 @@ elif menu == "Executive Retention Analytics":
         start_filter_date = None
         end_filter_date = None
 
-    # Performance Sorting Controls
     st.markdown('<div class="section-header">Performance Filter & Sorting Controls</div>', unsafe_allow_html=True)
     sort_c1, sort_c2 = st.columns([2.5, 2.5])
     with sort_c1:
@@ -1352,7 +1450,6 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
-    # Safe parameter handling
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -1652,7 +1749,7 @@ elif menu == "Executive Retention Analytics":
             st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. FULL-WIDTH AUDIT LOG (WITH PER-RECORD DELETE)
+# 10. AUDIT LOG
 # ==============================================================================
 elif menu == "Audit Log":
     st.markdown('<div class="section-header">Complete System Audit Log & Data Registry</div>', unsafe_allow_html=True)
