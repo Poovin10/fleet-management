@@ -88,7 +88,7 @@ def show_success_toast(msg: str):
 def show_error_toast(msg: str):
     st.toast(f"❌ {msg}", icon="❌")
 
-# --- Authentication (Updated user / user123) ---
+# --- Authentication (user / user123) ---
 USER_CREDENTIALS = {
     "admin": {"password": "admin123", "role": "MASTER"},
     "user": {"password": "user123", "role": "VIEWER"}
@@ -337,7 +337,7 @@ STATUS_OPTIONS = {
 
 STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"]
 
-# --- Clean Header Navigation Ribbon ---
+# --- Clean Header Ribbon with Role Badge and Logout ---
 nav1, nav2, nav3 = st.columns([3.0, 5.8, 1.2])
 with nav1:
     role_badge = "👑 MASTER" if st.session_state.user_role == "MASTER" else "👁️ REPORTS ONLY"
@@ -552,7 +552,7 @@ if menu == "Trip Dispatch Entry":
                 show_error_toast(f"Database Error: {e}")
 
 # ==============================================================================
-# 2. POD RECEIVE & TRIP CLOSURE
+# 2. POD RECEIVE & TRIP CLOSURE (WITH START KM INCLUDED)
 # ==============================================================================
 elif menu == "POD Receive & Close":
     active_trips = run_query("""
@@ -574,7 +574,7 @@ elif menu == "POD Receive & Close":
         t_cur = trip_opts[chosen_lr]
 
         with st.form("pod_closure_form"):
-            st.markdown('<div class="section-header">Record Closing Reference & Release Vehicle</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Record Closing Reference, Start KM & Release Vehicle</div>', unsafe_allow_html=True)
             p1, p2, p3, p4 = st.columns([1.5, 1.5, 1.5, 1.5])
             with p1:
                 pod_no = st.text_input("POD / Challan No*", placeholder="POD-XXXX").strip().upper()
@@ -583,8 +583,10 @@ elif menu == "POD Receive & Close":
                 unloaded_wt = st.number_input("Customer Unloaded Weight (MT)", min_value=0.0, max_value=60.0, value=float(t_cur['loaded_weight_mt'] or 0.0), step=0.01)
                 shortage = max(0.0, float(t_cur['loaded_weight_mt']) - unloaded_wt)
             with p3:
-                final_km = st.number_input("Closing Odometer KM", min_value=float(t_cur['start_km'] or 0.0), value=float(t_cur['end_km'] or (float(t_cur['start_km'] or 0.0) + float(t_cur['total_km_run'] or 0.0))), step=10.0)
-                tot_km = max(0.0, final_km - float(t_cur['start_km'] or 0.0))
+                # Added Start KM input alongside Final KM as requested by trip sheet handovers
+                pod_start_km = st.number_input("Start Odometer KM*", min_value=0.0, value=float(t_cur['start_km'] or 0.0), step=10.0)
+                final_km = st.number_input("Closing Odometer KM*", min_value=pod_start_km, value=float(t_cur['end_km'] or (pod_start_km + float(t_cur['total_km_run'] or 0.0))), step=10.0)
+                tot_km = max(0.0, final_km - pod_start_km)
             with p4:
                 halt_bata = st.number_input("Halt Bata (₹)", min_value=0.0, value=0.0, step=100.0)
                 claims = st.number_input("En-route Claims (₹)", min_value=0.0, value=0.0, step=50.0)
@@ -600,14 +602,15 @@ elif menu == "POD Receive & Close":
                     try:
                         run_query("""
                             UPDATE trips
-                            SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, end_km = %s,
+                            SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, 
+                                start_km = %s, end_km = %s,
                                 total_km_run = CASE WHEN %s > 0 THEN %s ELSE total_km_run END,
                                 unloaded_weight_mt = %s, shortage_mt = %s, halt_bata = %s,
                                 driver_bata = driver_bata + %s,
                                 enroute_repairs_maintenance = enroute_repairs_maintenance + %s,
                                 trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
                             WHERE trip_id = %s;
-                        """, (pod_no, close_d, close_d, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
+                        """, (pod_no, close_d, close_d, pod_start_km, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
                         run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
                                   (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
                         get_cached_vehicles.clear()
@@ -2065,6 +2068,6 @@ elif menu == "Audit Log":
                             get_cached_vehicles.clear()
                             trigger_toast_and_rerun("SUCCESS", f"Trip #{del_target_id} purged from registry.")
                         except Exception as e:
-                            show_error_toast(f"Purge error: {e}")
+                            show_error_toast(f"Update error: {e}")
     else:
         st.info("No records match the specified audit filter criteria.")
