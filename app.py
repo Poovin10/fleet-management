@@ -88,10 +88,10 @@ def show_success_toast(msg: str):
 def show_error_toast(msg: str):
     st.toast(f"❌ {msg}", icon="❌")
 
-# --- Authentication ---
+# --- Authentication (Updated user / user123) ---
 USER_CREDENTIALS = {
     "admin": {"password": "admin123", "role": "MASTER"},
-    "staff": {"password": "staff123", "role": "VIEWER"}
+    "user": {"password": "user123", "role": "VIEWER"}
 }
 
 if "authenticated" not in st.session_state:
@@ -1926,7 +1926,7 @@ elif menu == "Executive Retention Analytics":
             st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. AUDIT LOG (CLEANED)
+# 10. AUDIT LOG
 # ==============================================================================
 elif menu == "Audit Log":
     st.markdown('<div class="section-header">Complete System Audit Log & Multi-Parameter Filter</div>', unsafe_allow_html=True)
