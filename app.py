@@ -1045,7 +1045,7 @@ elif menu == "Modify Trips & Claims":
                         show_error_toast(f"Delete failed: {e}")
 
 # ==============================================================================
-# 7. DRIVER SETTLEMENT REPORT (SEPARATE BY TRUCK & DETAILED BREAKDOWN)
+# 7. DRIVER SETTLEMENT REPORT
 # ==============================================================================
 elif menu == "Driver Settlement":
     drivers = get_cached_drivers()
@@ -1062,7 +1062,6 @@ elif menu == "Driver Settlement":
         with s3:
             s_to = st.date_input("To Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
 
-        # Fetch trips operated by this driver in this window
         trips_drv = run_query("""
             SELECT 
                 t.trip_start_date,
@@ -1082,7 +1081,6 @@ elif menu == "Driver Settlement":
             ORDER BY v.vehicle_number ASC, t.trip_start_date ASC;
         """, (d_id, s_from, s_to))
 
-        # Fetch direct cash advances not recorded inside a trip
         adv_drv = run_query("""
             SELECT advance_date, amount_inr, advance_type, reference_remarks 
             FROM driver_direct_advances 
@@ -1100,14 +1098,11 @@ elif menu == "Driver Settlement":
 
         if trips_drv:
             df_all_trips = pd.DataFrame(trips_drv)
-            
-            # Group by truck if driver took more than one truck
             truck_groups = df_all_trips['vehicle_number'].unique()
             
             for trk in truck_groups:
                 st.markdown(f"#### 🚚 Truck: **{trk}**")
                 df_trk = df_all_trips[df_all_trips['vehicle_number'] == trk].copy()
-                
                 df_trk_view = df_trk[['trip_start_date', 'lr_no', 'source', 'destination', 'diesel_litres', 'total_bata', 'advance_issued', 'balance_amount']].copy()
                 
                 sub_bata = float(df_trk['total_bata'].sum() or 0.0)
@@ -1304,8 +1299,6 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
-                    else:
-                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
@@ -1322,7 +1315,10 @@ elif menu == "Master Configuration":
                 st.markdown('<div class="section-header">Configure Driver Bata Slab</div>', unsafe_allow_html=True)
                 bd = st.text_input("Destination Terminal*", placeholder="e.g. SANKARI").strip().upper()
                 
-                selected_slab_label = st.selectbox("Select Truck Slab*", list(BATA_SLAB_DEFINITIONS.keys()))
+                selected_slab_label = st.selectbox(
+                    "Select Truck Slab*", 
+                    list(BATA_SLAB_DEFINITIONS.keys())
+                )
                 slab_meta = BATA_SLAB_DEFINITIONS[selected_slab_label]
                 
                 ba = st.number_input("Standard Bata (₹)*", min_value=0.0, step=100.0, value=3000.0)
@@ -1378,7 +1374,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. EXECUTIVE RETENTION ANALYTICS (WITH INCOMPLETE TRIPS & DRIVER FOLLOW-UP)
+# 9. EXECUTIVE RETENTION ANALYTICS (FIXED INDENTATION & KEY SAFEGUARDS)
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -1647,7 +1643,6 @@ elif menu == "Executive Retention Analytics":
             # Driver Follow-up Desk for Incomplete Trips (Pending POD)
             st.markdown('<div class="section-header">📞 Driver Follow-up Desk (Pending POD Calling List)</div>', unsafe_allow_html=True)
             
-            # Fetch pending trip loads with driver details
             date_filter_cond = ""
             sub_params = []
             if start_filter_date and end_filter_date:
@@ -1676,8 +1671,6 @@ elif menu == "Executive Retention Analytics":
 
             if pending_trips:
                 df_pending = pd.DataFrame(pending_trips)
-                
-                # Filter by Truck selector
                 f_trucks = ["All Trucks"] + sorted(df_pending['vehicle_number'].unique().tolist())
                 sel_f_trk = st.selectbox("Filter Pending POD by Specific Truck", f_trucks)
                 
