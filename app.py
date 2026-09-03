@@ -88,7 +88,39 @@ def show_success_toast(msg: str):
 def show_error_toast(msg: str):
     st.toast(f"❌ {msg}", icon="❌")
 
-# --- Check Session Toast Queue on Rerun ---
+# --- Simple Authentication System ---
+USER_CREDENTIALS = {
+    "admin": {"password": "admin123", "role": "MASTER"},
+    "staff": {"password": "staff123", "role": "VIEWER"}
+}
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+    st.session_state.username = None
+    st.session_state.user_role = None
+
+if not st.session_state.authenticated:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col_l1, col_l2, col_l3 = st.columns([3, 4, 3])
+    with col_l2:
+        st.markdown("<h2 style='text-align: center; color: #0F172A;'>Fleet Operations ERP</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #64748B;'>Please sign in to access fleet operations and reports</p>", unsafe_allow_html=True)
+        with st.form("login_form"):
+            in_user = st.text_input("Username").strip().lower()
+            in_pass = st.text_input("Password", type="password").strip()
+            btn_login = st.form_submit_button("Sign In", type="primary", use_container_width=True)
+            
+            if btn_login:
+                if in_user in USER_CREDENTIALS and USER_CREDENTIALS[in_user]["password"] == in_pass:
+                    st.session_state.authenticated = True
+                    st.session_state.username = in_user
+                    st.session_state.user_role = USER_CREDENTIALS[in_user]["role"]
+                    st.rerun()
+                else:
+                    show_error_toast("Invalid Username or Password.")
+    st.stop()
+
+# --- Toast Queue Handler on Rerun ---
 if "pending_toast" in st.session_state and st.session_state.pending_toast:
     t_type, t_msg = st.session_state.pending_toast
     if t_type == "SUCCESS":
@@ -251,6 +283,10 @@ def check_lr_exists(trip_no, exclude_trip_id=None):
         res = run_query("SELECT trip_id FROM trips WHERE LOWER(trip_number) = LOWER(%s)", (trip_no.strip(),))
     return len(res) > 0
 
+def check_vehicle_has_open_trip(vehicle_id):
+    res = run_query("SELECT trip_id, trip_number FROM trips WHERE vehicle_id = %s AND trip_status != 'COMPLETED' LIMIT 1;", (vehicle_id,))
+    return res[0] if res else None
+
 def check_duplicate_diesel_entry(vehicle_id, fuel_date, litres, filling_km=None, lr_number=None, exclude_fuel_log_id=None):
     query = """
         SELECT fuel_log_id FROM diesel_fuel_logs 
@@ -302,29 +338,46 @@ STATUS_OPTIONS = {
 
 STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"]
 
-# --- Clean Header Navigation Ribbon ---
-nav1, nav2 = st.columns([3.0, 7.0])
+# --- Clean Header Ribbon with Role Badge and Logout ---
+nav1, nav2, nav3 = st.columns([3.0, 5.8, 1.2])
 with nav1:
-    st.markdown("<h3 style='margin:0; padding:0; font-size:1.35rem; color:#0F172A; font-weight:700;'>Fleet Operations ERP</h3>", unsafe_allow_html=True)
+    role_badge = "👑 MASTER" if st.session_state.user_role == "MASTER" else "👁️ REPORTS ONLY"
+    st.markdown(f"<h3 style='margin:0; padding:0; font-size:1.25rem; color:#0F172A; font-weight:700;'>Fleet Operations <span style='font-size:0.75rem; background:#E2E8F0; padding:3px 8px; border-radius:4px; margin-left:6px;'>{role_badge}</span></h3>", unsafe_allow_html=True)
+
 with nav2:
-    MODULE_LIST = [
-        "Trip Dispatch Entry",
-        "POD Receive & Close",
-        "Fleet Status Board",
-        "Diesel Logs",
-        "Driver Advances",
-        "Modify Trips & Claims",
-        "Driver Settlement",
-        "Master Configuration",
-        "Executive Retention Analytics",
-        "Audit Log"
-    ]
+    if st.session_state.user_role == "MASTER":
+        MODULE_LIST = [
+            "Trip Dispatch Entry",
+            "POD Receive & Close",
+            "Fleet Status Board",
+            "Diesel Logs",
+            "Driver Advances",
+            "Modify Trips & Claims",
+            "Driver Settlement",
+            "Master Configuration",
+            "Executive Retention Analytics",
+            "Audit Log"
+        ]
+    else:
+        # Restricted read-only view for standard staff
+        MODULE_LIST = [
+            "Fleet Status Board",
+            "Driver Settlement",
+            "Executive Retention Analytics"
+        ]
     menu = st.selectbox("Module Navigation", MODULE_LIST, index=0, label_visibility="collapsed")
+
+with nav3:
+    if st.button("🚪 Logout", use_container_width=True):
+        st.session_state.authenticated = False
+        st.session_state.username = None
+        st.session_state.user_role = None
+        st.rerun()
 
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. TRIP DISPATCH ENTRY
+# 1. TRIP DISPATCH ENTRY (WITH CANNOT START IF TRIP OPEN CHECK)
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -376,6 +429,11 @@ if menu == "Trip Dispatch Entry":
         active_veh = vehicle_map[sel_veh_label]
         v_class_mt = float(active_veh['carrying_capacity_tons'])
         last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
+        
+        # Check if this truck already has an open trip
+        open_trip_check = check_vehicle_has_open_trip(active_veh['vehicle_id'])
+        if open_trip_check:
+            st.error(f"🚫 Cannot Dispatch: Truck {active_veh['vehicle_number']} already has an active incomplete trip (LR: {open_trip_check['trip_number']}). Close it first.")
 
     with r1_c5:
         chosen_source_opt = st.selectbox("5. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
@@ -458,6 +516,8 @@ if menu == "Trip Dispatch Entry":
     if st.button("🚀 Save & Dispatch Trip Record", type="primary", use_container_width=True):
         if not confirm_dispatch:
             show_error_toast("Check the confirmation key before dispatching.")
+        elif open_trip_check:
+            show_error_toast(f"Action Blocked: Truck {active_veh['vehicle_number']} already has active trip {open_trip_check['trip_number']}.")
         elif not lr_no or not dest_terminal or not origin_terminal:
             show_error_toast("Validation Failure: LR Number, Source, and Destination are required.")
         elif check_lr_exists(lr_no):
@@ -582,21 +642,24 @@ elif menu == "Fleet Status Board":
                          column_config={"vehicle_number": "Truck No", "truck_type": "Variant", "carrying_capacity_tons": "Capacity MT", "status_lbl": "Operational Status", "status_remarks": "Location / Note"},
                          hide_index=True, use_container_width=True, height=350)
         with v_col2:
-            with st.form("quick_stat_form"):
-                v_map = {f"{v['vehicle_number']} ({v['truck_type']})": v for v in vehicles}
-                target_veh_no = st.selectbox("Select Truck to Update", list(v_map.keys()))
-                target_v = v_map[target_veh_no]
-                new_st = st.selectbox("New Operational Status", list(STATUS_OPTIONS.keys()), format_func=lambda x: STATUS_OPTIONS[x])
-                new_rem = st.text_input("Current Location / Breakdown Details", value=target_v['status_remarks'] or "")
-                st.write("")
-                confirm_v_upd = st.checkbox("🔑 Confirm Vehicle Status Change", key="chk_v_stat")
-                if st.form_submit_button("Update Status", type="primary", use_container_width=True):
-                    if not confirm_v_upd:
-                        show_error_toast("Check the confirmation key before updating status.")
-                    else:
-                        run_query("UPDATE vehicles SET current_status = %s, status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP WHERE vehicle_id = %s", (new_st, new_rem, target_v['vehicle_id']), fetch=False)
-                        get_cached_vehicles.clear()
-                        trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
+            if st.session_state.user_role == "MASTER":
+                with st.form("quick_stat_form"):
+                    v_map = {f"{v['vehicle_number']} ({v['truck_type']})": v for v in vehicles}
+                    target_veh_no = st.selectbox("Select Truck to Update", list(v_map.keys()))
+                    target_v = v_map[target_veh_no]
+                    new_st = st.selectbox("New Operational Status", list(STATUS_OPTIONS.keys()), format_func=lambda x: STATUS_OPTIONS[x])
+                    new_rem = st.text_input("Current Location / Breakdown Details", value=target_v['status_remarks'] or "")
+                    st.write("")
+                    confirm_v_upd = st.checkbox("🔑 Confirm Vehicle Status Change", key="chk_v_stat")
+                    if st.form_submit_button("Update Status", type="primary", use_container_width=True):
+                        if not confirm_v_upd:
+                            show_error_toast("Check the confirmation key before updating status.")
+                        else:
+                            run_query("UPDATE vehicles SET current_status = %s, status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP WHERE vehicle_id = %s", (new_st, new_rem, target_v['vehicle_id']), fetch=False)
+                            get_cached_vehicles.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
+            else:
+                st.info("ℹ️ Status modifications are restricted to Master accounts.")
 
 # ==============================================================================
 # 4. DIESEL LOGS
@@ -1220,21 +1283,22 @@ elif menu == "Driver Settlement":
         g3.metric("Total Advances Deducted", f"₹{grand_total_adv:,.2f}")
         g4.metric("Grand Total Balance Payable", f"₹{final_balance_payable:,.2f}")
 
-        st.write("")
-        col_set1, col_set2 = st.columns([3, 1])
-        with col_set1:
-            confirm_settle = st.checkbox("🔑 Confirm Settlement & Reconcile Period", key="chk_settle_period")
-        with col_set2:
-            if st.button("Mark Period Settled", type="primary", use_container_width=True):
-                if not confirm_settle:
-                    show_error_toast("Check the confirmation key before finalizing settlement.")
-                else:
-                    try:
-                        run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date>=%s AND trip_start_date<=%s", (d_id, s_from, s_to), fetch=False)
-                        run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date>=%s AND advance_date<=%s", (d_id, s_from, s_to), fetch=False)
-                        trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {selected_driver['full_name']}.")
-                    except Exception as e:
-                        show_error_toast(f"Settlement failed: {e}")
+        if st.session_state.user_role == "MASTER":
+            st.write("")
+            col_set1, col_set2 = st.columns([3, 1])
+            with col_set1:
+                confirm_settle = st.checkbox("🔑 Confirm Settlement & Reconcile Period", key="chk_settle_period")
+            with col_set2:
+                if st.button("Mark Period Settled", type="primary", use_container_width=True):
+                    if not confirm_settle:
+                        show_error_toast("Check the confirmation key before finalizing settlement.")
+                    else:
+                        try:
+                            run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date>=%s AND trip_start_date<=%s", (d_id, s_from, s_to), fetch=False)
+                            run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date>=%s AND advance_date<=%s", (d_id, s_from, s_to), fetch=False)
+                            trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {selected_driver['full_name']}.")
+                        except Exception as e:
+                            show_error_toast(f"Settlement failed: {e}")
 
 # ==============================================================================
 # 8. MASTER CONFIGURATION
@@ -1352,6 +1416,8 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
+                    else:
+                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
@@ -1360,7 +1426,6 @@ elif menu == "Master Configuration":
                 cols = [c for c in ['cargo_type', 'origin', 'destination_name', 'capacity_tons', 'freight_rate_per_ton', 'standard_km'] if c in df_r.columns]
                 st.dataframe(df_r[cols], hide_index=True, use_container_width=True, height=300)
 
-    # 4. SLAB-BASED DRIVER BATA MASTER
     with t_b:
         c1, c2 = st.columns([1.5, 3.5])
         with c1:
@@ -1427,7 +1492,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. EXECUTIVE RETENTION ANALYTICS (FIXED INDENTATION ON LINES 1300-1370)
+# 9. EXECUTIVE RETENTION ANALYTICS
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -1501,7 +1566,6 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
-    # Strictly aligned SQL string and parameter construction
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -1693,7 +1757,6 @@ elif menu == "Executive Retention Analytics":
                 height=400
             )
 
-            # Driver Follow-up Desk for Incomplete Trips (Pending POD)
             st.markdown('<div class="section-header">📞 Driver Follow-up Desk (Pending POD Calling List)</div>', unsafe_allow_html=True)
             
             date_filter_cond = ""
@@ -1867,7 +1930,7 @@ elif menu == "Executive Retention Analytics":
             st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. AUDIT LOG (WITH FULL MULTI-PARAMETER FILTERING)
+# 10. AUDIT LOG
 # ==============================================================================
 elif menu == "Audit Log":
     st.markdown('<div class="section-header">Complete System Audit Log & Multi-Parameter Filter</div>', unsafe_allow_html=True)
@@ -1905,7 +1968,7 @@ elif menu == "Audit Log":
         with ad_c2:
             aud_to_d = st.date_input("To Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_to_d")
             aud_date_q = " AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
-            aud_params.extend([aud_from_d, aud_to_d])
+            aud_params.extend([aud_from_d, ud_to_d])
 
     aud_sql = f"""
         SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, t.trip_end_date,
