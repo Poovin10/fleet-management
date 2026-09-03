@@ -52,6 +52,13 @@ st.markdown("""
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
     }
+    .filter-box {
+        background-color: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-bottom: 12px;
+    }
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
         height: 38px !important;
         font-size: 0.92rem !important;
@@ -72,7 +79,6 @@ st.markdown("""
     div[data-testid="stDataFrame"] {
         width: 100% !important;
     }
-    
     div[data-testid="stToast"] {
         font-size: 0.90rem !important;
         font-weight: 600 !important;
@@ -600,7 +606,7 @@ elif menu == "Fleet Status Board":
                         trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
-# 4. DIESEL LOGS
+# 4. DIESEL LOGS (WITH MULTI-PARAMETER FILTERING)
 # ==============================================================================
 elif menu == "Diesel Logs":
     hd1, hd2 = st.columns([7.5, 2.5])
@@ -615,7 +621,7 @@ elif menu == "Diesel Logs":
     tab_issue, tab_edit_fuel, tab_audit_fuel = st.tabs([
         "⛽ Issue / Record Diesel",
         "✏️ Edit Existing Diesel Log",
-        "📊 Fuel Disbursements & Delete"
+        "📊 Filterable Fuel Audit Registry"
     ])
     
     vehicles = get_cached_vehicles()
@@ -655,7 +661,7 @@ elif menu == "Diesel Logs":
                         except Exception as e:
                             show_error_toast(f"Diesel log error: {e}")
         with col_d2:
-            st.markdown('<div class="section-header">Recent Diesel Disbursements Overview</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">Recent Fuel Entries (Last 50)</div>', unsafe_allow_html=True)
             d_recent = run_query("""
                 SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, 
                        f.filling_odometer_km, f.litres_filled, f.total_fuel_cost 
@@ -763,16 +769,73 @@ elif menu == "Diesel Logs":
                             show_error_toast(f"Update error: {e}")
 
     with tab_audit_fuel:
-        st.markdown('<div class="section-header">Complete Diesel Logs Audit Registry</div>', unsafe_allow_html=True)
-        d_logs = run_query("""
+        st.markdown('<div class="section-header">Multi-Parameter Diesel Log Filter</div>', unsafe_allow_html=True)
+        
+        # Filter row
+        df_col1, df_col2, df_col3, df_col4 = st.columns([2.0, 2.0, 2.0, 2.0])
+        with df_col1:
+            fuel_filter_mode = st.selectbox("Date Selection Mode", ["All Time", "Specific Single Date", "Custom Date Range"], key="fl_date_mode")
+        with df_col2:
+            all_trk_list = ["All Trucks"] + sorted([v['vehicle_number'] for v in vehicles])
+            sel_fl_trk = st.selectbox("Filter Truck No", all_trk_list, key="fl_trk_sel")
+        with df_col3:
+            sel_fl_cat = st.selectbox("Filter Category", ["All Categories", "TRIP_DIESEL", "SUNDRY_DIESEL"], key="fl_cat_sel")
+        with df_col4:
+            search_fl_lr = st.text_input("Search LR No", placeholder="e.g. LR-102 or SUNDRY", key="fl_lr_search").strip().upper()
+
+        # Dynamic Date Controls
+        date_q_cond = ""
+        fl_params = []
+        
+        if fuel_filter_mode == "Specific Single Date":
+            c_d1, _ = st.columns([2, 2])
+            with c_d1:
+                single_fl_d = st.date_input("Select Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="fl_single_d")
+                date_q_cond = " AND f.fuel_date = %s"
+                fl_params.append(single_fl_d)
+        elif fuel_filter_mode == "Custom Date Range":
+            c_d1, c_d2 = st.columns(2)
+            with c_d1:
+                from_fl_d = st.date_input("From Date", date.today().replace(day=1), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="fl_from_d")
+            with c_d2:
+                to_fl_d = st.date_input("To Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="fl_to_d")
+                date_q_cond = " AND f.fuel_date >= %s AND f.fuel_date <= %s"
+                fl_params.extend([from_fl_d, to_fl_d])
+
+        # Dynamic SQL Query for Diesel Logs
+        d_filter_sql = f"""
             SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, 
                    f.filling_odometer_km, f.litres_filled, f.diesel_rate_per_litre, f.total_fuel_cost 
             FROM diesel_fuel_logs f 
             JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
-            ORDER BY f.fuel_date DESC, f.fuel_log_id DESC;
-        """)
-        if d_logs:
-            df_d_logs = pd.DataFrame(d_logs)
+            WHERE 1=1 {date_q_cond}
+        """
+        if sel_fl_trk != "All Trucks":
+            d_filter_sql += " AND v.vehicle_number = %s"
+            fl_params.append(sel_fl_trk)
+        if sel_fl_cat != "All Categories":
+            d_filter_sql += " AND f.diesel_category = %s"
+            fl_params.append(sel_fl_cat)
+        if search_fl_lr:
+            d_filter_sql += " AND UPPER(f.lr_number) LIKE %s"
+            fl_params.append(f"%{search_fl_lr}%")
+
+        d_filter_sql += " ORDER BY f.fuel_date DESC, f.fuel_log_id DESC;"
+
+        d_filtered_logs = run_query(d_filter_sql, tuple(fl_params) if fl_params else None)
+
+        if d_filtered_logs:
+            df_d_logs = pd.DataFrame(d_filtered_logs)
+            
+            # Filter Totals Ribbon
+            tot_l_filt = float(df_d_logs['litres_filled'].sum() or 0.0)
+            tot_c_filt = float(df_d_logs['total_fuel_cost'].sum() or 0.0)
+            
+            kpi_f1, kpi_f2, kpi_f3 = st.columns(3)
+            kpi_f1.metric("Matching Fuel Entries", len(df_d_logs))
+            kpi_f2.metric("Total Filtered Litres", f"{tot_l_filt:,.1f} L")
+            kpi_f3.metric("Total Filtered Fuel Cost", f"₹{tot_c_filt:,.2f}")
+
             st.dataframe(
                 df_d_logs, 
                 column_config={
@@ -804,6 +867,8 @@ elif menu == "Diesel Logs":
                     else:
                         run_query("DELETE FROM diesel_fuel_logs WHERE fuel_log_id = %s", (del_fuel_id,), fetch=False)
                         trigger_toast_and_rerun("SUCCESS", f"Fuel log #{del_fuel_id} deleted.")
+        else:
+            st.info("No diesel logs match the selected parameters.")
 
 # ==============================================================================
 # 5. DRIVER ADVANCES
@@ -1299,6 +1364,8 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
+                    else:
+                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
@@ -1374,7 +1441,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. EXECUTIVE RETENTION ANALYTICS (FIXED INDENTATION & KEY SAFEGUARDS)
+# 9. EXECUTIVE RETENTION ANALYTICS
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -1448,7 +1515,6 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
-    # Query with incomplete trips (Pending POD) calculation
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -1814,25 +1880,125 @@ elif menu == "Executive Retention Analytics":
             st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. AUDIT LOG
+# 10. AUDIT LOG (WITH FULL MULTI-PARAMETER FILTERING)
 # ==============================================================================
 elif menu == "Audit Log":
-    st.markdown('<div class="section-header">Complete System Audit Log & Data Registry</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Complete System Audit Log & Multi-Parameter Filter</div>', unsafe_allow_html=True)
     
-    all_trips = run_query("""
-        SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, v.vehicle_number, d.full_name AS driver,
+    vehicles = get_cached_vehicles()
+    drivers = get_cached_drivers()
+
+    # Filter control bar
+    af_col1, af_col2, af_col3, af_col4, af_col5 = st.columns([1.8, 1.8, 1.8, 1.8, 2.0])
+    with af_col1:
+        aud_date_mode = st.selectbox("Date Mode", ["All Dates", "Specific Single Date", "Custom Date Range"], key="aud_d_mode")
+    with af_col2:
+        all_trks = ["All Trucks"] + sorted([v['vehicle_number'] for v in vehicles])
+        sel_aud_trk = st.selectbox("Select Truck", all_trks, key="aud_trk_sel")
+    with af_col3:
+        sel_aud_stat = st.selectbox("Trip Status", ["All Statuses", "IN_TRANSIT (Open / Pending POD)", "COMPLETED (Closed)"], key="aud_stat_sel")
+    with af_col4:
+        all_drvs = ["All Drivers"] + sorted([f"{d['driver_code']} - {d['full_name']}" for d in drivers])
+        sel_aud_drv = st.selectbox("Assigned Driver", all_drvs, key="aud_drv_sel")
+    with af_col5:
+        search_aud_text = st.text_input("Search LR / Destination", placeholder="e.g. LR-401 or SANKARI", key="aud_search_txt").strip().upper()
+
+    aud_date_q = ""
+    aud_params = []
+
+    if aud_date_mode == "Specific Single Date":
+        ad_c1, _ = st.columns([2, 2])
+        with ad_c1:
+            aud_single_d = st.date_input("Filter Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_single_d")
+            aud_date_q = " AND t.trip_start_date = %s"
+            aud_params.append(aud_single_d)
+    elif aud_date_mode == "Custom Date Range":
+        ad_c1, ad_c2 = st.columns(2)
+        with ad_c1:
+            aud_from_d = st.date_input("From Date", date.today().replace(day=1), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_from_d")
+        with ad_c2:
+            aud_to_d = st.date_input("To Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_to_d")
+            aud_date_q = " AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
+            aud_params.extend([aud_from_d, aud_to_d])
+
+    # Dynamic SQL for Audit Log
+    aud_sql = f"""
+        SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, t.trip_end_date,
+               v.vehicle_number, d.full_name AS driver, d.phone_number AS driver_phone,
                t.origin, t.destination, t.start_km, t.end_km, t.total_km_run,
-               t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_expense, t.driver_bata,
-               (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.enroute_repairs_maintenance)) AS net_profit, t.trip_status
+               t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, t.fuel_expense, 
+               t.driver_bata, t.halt_bata, t.cash_advance_issued,
+               (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.halt_bata + t.enroute_repairs_maintenance)) AS net_profit, 
+               t.trip_status
         FROM trips t 
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
         JOIN drivers d ON t.primary_driver_id = d.driver_id 
-        ORDER BY t.trip_id DESC;
-    """)
+        WHERE 1=1 {aud_date_q}
+    """
+
+    if sel_aud_trk != "All Trucks":
+        aud_sql += " AND v.vehicle_number = %s"
+        aud_params.append(sel_aud_trk)
+
+    if sel_aud_stat == "IN_TRANSIT (Open / Pending POD)":
+        aud_sql += " AND t.trip_status != 'COMPLETED'"
+    elif sel_aud_stat == "COMPLETED (Closed)":
+        aud_sql += " AND t.trip_status = 'COMPLETED'"
+
+    if sel_aud_drv != "All Drivers":
+        drv_code_extracted = sel_aud_drv.split(" - ")[0].strip()
+        aud_sql += " AND d.driver_code = %s"
+        aud_params.append(drv_code_extracted)
+
+    if search_aud_text:
+        aud_sql += " AND (UPPER(t.trip_number) LIKE %s OR UPPER(t.destination) LIKE %s OR UPPER(t.origin) LIKE %s)"
+        aud_params.extend([f"%{search_aud_text}%", f"%{search_aud_text}%", f"%{search_aud_text}%"])
+
+    aud_sql += " ORDER BY t.trip_id DESC;"
+
+    all_trips = run_query(aud_sql, tuple(aud_params) if aud_params else None)
     
     if all_trips:
         df_all = pd.DataFrame(all_trips)
-        st.dataframe(df_all, hide_index=True, use_container_width=True, height=350)
+        
+        # Summary KPI ribbon for current filter slice
+        af_k1, af_k2, af_k3, af_k4 = st.columns(4)
+        af_k1.metric("Filtered Trips", len(df_all))
+        af_k2.metric("Total Loaded Tonnage", f"{float(df_all['loaded_weight_mt'].sum() or 0.0):,.2f} MT")
+        af_k3.metric("Freight Revenue", f"₹{float(df_all['freight_revenue'].sum() or 0.0):,.2f}")
+        af_k4.metric("Net Margin Retained", f"₹{float(df_all['net_profit'].sum() or 0.0):,.2f}")
+
+        st.dataframe(
+            df_all,
+            column_config={
+                "trip_id": "Trip ID",
+                "trip_number": "LR Number",
+                "pod_number": "POD No",
+                "trip_start_date": "Start Date",
+                "trip_end_date": "Closing Date",
+                "vehicle_number": "Truck No",
+                "driver": "Driver",
+                "driver_phone": "Driver Phone",
+                "origin": "Origin",
+                "destination": "Destination",
+                "start_km": "Start KM",
+                "end_km": "End KM",
+                "total_km_run": "Total KM",
+                "loaded_weight_mt": "Loaded MT",
+                "unloaded_weight_mt": "Unloaded MT",
+                "freight_revenue": "Revenue (₹)",
+                "fuel_litres": "Diesel (L)",
+                "fuel_expense": "Diesel Cost (₹)",
+                "driver_bata": "Bata (₹)",
+                "halt_bata": "Halt (₹)",
+                "cash_advance_issued": "Advance (₹)",
+                "net_profit": "Net Margin (₹)",
+                "trip_status": "Status"
+            },
+            hide_index=True,
+            use_container_width=True,
+            height=350
+        )
         
         del_log1, del_log2, del_log3 = st.columns([2.5, 1.5, 1.0])
         with del_log1:
@@ -1857,4 +2023,4 @@ elif menu == "Audit Log":
                     except Exception as e:
                         show_error_toast(f"Purge error: {e}")
     else:
-        st.info("Trip registry contains no records.")
+        st.info("No records match the specified audit filter criteria.")
