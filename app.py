@@ -359,7 +359,6 @@ with nav2:
             "Audit Log"
         ]
     else:
-        # Restricted read-only view for standard staff
         MODULE_LIST = [
             "Fleet Status Board",
             "Driver Settlement",
@@ -377,7 +376,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. TRIP DISPATCH ENTRY (WITH CANNOT START IF TRIP OPEN CHECK)
+# 1. TRIP DISPATCH ENTRY
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -430,7 +429,6 @@ if menu == "Trip Dispatch Entry":
         v_class_mt = float(active_veh['carrying_capacity_tons'])
         last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
         
-        # Check if this truck already has an open trip
         open_trip_check = check_vehicle_has_open_trip(active_veh['vehicle_id'])
         if open_trip_check:
             st.error(f"🚫 Cannot Dispatch: Truck {active_veh['vehicle_number']} already has an active incomplete trip (LR: {open_trip_check['trip_number']}). Close it first.")
@@ -1426,6 +1424,7 @@ elif menu == "Master Configuration":
                 cols = [c for c in ['cargo_type', 'origin', 'destination_name', 'capacity_tons', 'freight_rate_per_ton', 'standard_km'] if c in df_r.columns]
                 st.dataframe(df_r[cols], hide_index=True, use_container_width=True, height=300)
 
+    # 4. SLAB-BASED DRIVER BATA MASTER
     with t_b:
         c1, c2 = st.columns([1.5, 3.5])
         with c1:
@@ -1433,10 +1432,7 @@ elif menu == "Master Configuration":
                 st.markdown('<div class="section-header">Configure Driver Bata Slab</div>', unsafe_allow_html=True)
                 bd = st.text_input("Destination Terminal*", placeholder="e.g. SANKARI").strip().upper()
                 
-                selected_slab_label = st.selectbox(
-                    "Select Truck Slab*", 
-                    list(BATA_SLAB_DEFINITIONS.keys())
-                )
+                selected_slab_label = st.selectbox("Select Truck Slab*", list(BATA_SLAB_DEFINITIONS.keys()))
                 slab_meta = BATA_SLAB_DEFINITIONS[selected_slab_label]
                 
                 ba = st.number_input("Standard Bata (₹)*", min_value=0.0, step=100.0, value=3000.0)
@@ -1968,7 +1964,7 @@ elif menu == "Audit Log":
         with ad_c2:
             aud_to_d = st.date_input("To Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_to_d")
             aud_date_q = " AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
-            aud_params.extend([aud_from_d, ud_to_d])
+            aud_params.extend([aud_from_d, aud_to_d])
 
     aud_sql = f"""
         SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, t.trip_end_date,
