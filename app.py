@@ -52,13 +52,6 @@ st.markdown("""
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
     }
-    .filter-box {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 6px;
-        padding: 10px 14px;
-        margin-bottom: 12px;
-    }
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
         height: 38px !important;
         font-size: 0.92rem !important;
@@ -606,7 +599,7 @@ elif menu == "Fleet Status Board":
                         trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
 
 # ==============================================================================
-# 4. DIESEL LOGS (WITH MULTI-PARAMETER FILTERING)
+# 4. DIESEL LOGS
 # ==============================================================================
 elif menu == "Diesel Logs":
     hd1, hd2 = st.columns([7.5, 2.5])
@@ -771,7 +764,6 @@ elif menu == "Diesel Logs":
     with tab_audit_fuel:
         st.markdown('<div class="section-header">Multi-Parameter Diesel Log Filter</div>', unsafe_allow_html=True)
         
-        # Filter row
         df_col1, df_col2, df_col3, df_col4 = st.columns([2.0, 2.0, 2.0, 2.0])
         with df_col1:
             fuel_filter_mode = st.selectbox("Date Selection Mode", ["All Time", "Specific Single Date", "Custom Date Range"], key="fl_date_mode")
@@ -783,7 +775,6 @@ elif menu == "Diesel Logs":
         with df_col4:
             search_fl_lr = st.text_input("Search LR No", placeholder="e.g. LR-102 or SUNDRY", key="fl_lr_search").strip().upper()
 
-        # Dynamic Date Controls
         date_q_cond = ""
         fl_params = []
         
@@ -802,7 +793,6 @@ elif menu == "Diesel Logs":
                 date_q_cond = " AND f.fuel_date >= %s AND f.fuel_date <= %s"
                 fl_params.extend([from_fl_d, to_fl_d])
 
-        # Dynamic SQL Query for Diesel Logs
         d_filter_sql = f"""
             SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, 
                    f.filling_odometer_km, f.litres_filled, f.diesel_rate_per_litre, f.total_fuel_cost 
@@ -827,7 +817,6 @@ elif menu == "Diesel Logs":
         if d_filtered_logs:
             df_d_logs = pd.DataFrame(d_filtered_logs)
             
-            # Filter Totals Ribbon
             tot_l_filt = float(df_d_logs['litres_filled'].sum() or 0.0)
             tot_c_filt = float(df_d_logs['total_fuel_cost'].sum() or 0.0)
             
@@ -1068,7 +1057,6 @@ elif menu == "Modify Trips & Claims":
                     except Exception as e:
                         show_error_toast(f"Update failed: {e}")
 
-        # Quick Actions: Reopen Trip or Delete Trip
         st.markdown("<hr style='margin: 10px 0;' />", unsafe_allow_html=True)
         act1, act2 = st.columns(2)
         with act1:
@@ -1364,8 +1352,6 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
-                    else:
-                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
@@ -1441,7 +1427,7 @@ elif menu == "Master Configuration":
                 st.info("No Driver Bata rules configured yet.")
 
 # ==============================================================================
-# 9. EXECUTIVE RETENTION ANALYTICS
+# 9. EXECUTIVE RETENTION ANALYTICS (FIXED INDENTATION ON LINES 1300-1370)
 # ==============================================================================
 elif menu == "Executive Retention Analytics":
     tfc1, tfc2, tfc3 = st.columns(3)
@@ -1515,6 +1501,7 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
+    # Strictly aligned SQL string and parameter construction
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -1888,7 +1875,6 @@ elif menu == "Audit Log":
     vehicles = get_cached_vehicles()
     drivers = get_cached_drivers()
 
-    # Filter control bar
     af_col1, af_col2, af_col3, af_col4, af_col5 = st.columns([1.8, 1.8, 1.8, 1.8, 2.0])
     with af_col1:
         aud_date_mode = st.selectbox("Date Mode", ["All Dates", "Specific Single Date", "Custom Date Range"], key="aud_d_mode")
@@ -1921,7 +1907,6 @@ elif menu == "Audit Log":
             aud_date_q = " AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
             aud_params.extend([aud_from_d, aud_to_d])
 
-    # Dynamic SQL for Audit Log
     aud_sql = f"""
         SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, t.trip_end_date,
                v.vehicle_number, d.full_name AS driver, d.phone_number AS driver_phone,
@@ -1961,7 +1946,6 @@ elif menu == "Audit Log":
     if all_trips:
         df_all = pd.DataFrame(all_trips)
         
-        # Summary KPI ribbon for current filter slice
         af_k1, af_k2, af_k3, af_k4 = st.columns(4)
         af_k1.metric("Filtered Trips", len(df_all))
         af_k2.metric("Total Loaded Tonnage", f"{float(df_all['loaded_weight_mt'].sum() or 0.0):,.2f} MT")
