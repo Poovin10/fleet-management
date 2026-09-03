@@ -88,7 +88,7 @@ def show_success_toast(msg: str):
 def show_error_toast(msg: str):
     st.toast(f"❌ {msg}", icon="❌")
 
-# --- Simple Authentication System ---
+# --- Authentication System ---
 USER_CREDENTIALS = {
     "admin": {"password": "admin123", "role": "MASTER"},
     "staff": {"password": "staff123", "role": "VIEWER"}
@@ -1432,7 +1432,10 @@ elif menu == "Master Configuration":
                 st.markdown('<div class="section-header">Configure Driver Bata Slab</div>', unsafe_allow_html=True)
                 bd = st.text_input("Destination Terminal*", placeholder="e.g. SANKARI").strip().upper()
                 
-                selected_slab_label = st.selectbox("Select Truck Slab*", list(BATA_SLAB_DEFINITIONS.keys()))
+                selected_slab_label = st.selectbox(
+                    "Select Truck Slab*", 
+                    list(BATA_SLAB_DEFINITIONS.keys())
+                )
                 slab_meta = BATA_SLAB_DEFINITIONS[selected_slab_label]
                 
                 ba = st.number_input("Standard Bata (₹)*", min_value=0.0, step=100.0, value=3000.0)
@@ -1926,7 +1929,7 @@ elif menu == "Executive Retention Analytics":
             st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
 
 # ==============================================================================
-# 10. AUDIT LOG
+# 10. AUDIT LOG (CLEAN DYNAMIC QUERY - FIXES LINE 1417 SYNTAX ERROR)
 # ==============================================================================
 elif menu == "Audit Log":
     st.markdown('<div class="section-header">Complete System Audit Log & Multi-Parameter Filter</div>', unsafe_allow_html=True)
@@ -2043,27 +2046,28 @@ elif menu == "Audit Log":
             height=350
         )
         
-        del_log1, del_log2, del_log3 = st.columns([2.5, 1.5, 1.0])
-        with del_log1:
-            del_target_id = st.selectbox(
-                "Select Trip ID to Delete", 
-                df_all['trip_id'].tolist(),
-                format_func=lambda x: f"Trip ID #{x} - LR: {df_all.loc[df_all['trip_id'] == x, 'trip_number'].values[0]} ({df_all.loc[df_all['trip_id'] == x, 'vehicle_number'].values[0]})"
-            )
-        with del_log2:
-            confirm_purge_audit = st.checkbox("🔑 Confirm Permanent Trip Purge", key="chk_purge_audit")
-        with del_log3:
-            st.write("")
-            if st.button("🗑️ Purge Trip from Registry", type="secondary", use_container_width=True):
-                if not confirm_purge_audit:
-                    show_error_toast("Check the confirmation key before purging trip.")
-                else:
-                    try:
-                        run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (del_target_id,), fetch=False)
-                        run_query("DELETE FROM trips WHERE trip_id = %s", (del_target_id,), fetch=False)
-                        get_cached_vehicles.clear()
-                        trigger_toast_and_rerun("SUCCESS", f"Trip #{del_target_id} purged from registry.")
-                    except Exception as e:
-                        show_error_toast(f"Purge error: {e}")
+        if st.session_state.user_role == "MASTER":
+            del_log1, del_log2, del_log3 = st.columns([2.5, 1.5, 1.0])
+            with del_log1:
+                del_target_id = st.selectbox(
+                    "Select Trip ID to Delete", 
+                    df_all['trip_id'].tolist(),
+                    format_func=lambda x: f"Trip ID #{x} - LR: {df_all.loc[df_all['trip_id'] == x, 'trip_number'].values[0]} ({df_all.loc[df_all['trip_id'] == x, 'vehicle_number'].values[0]})"
+                )
+            with del_log2:
+                confirm_purge_audit = st.checkbox("🔑 Confirm Permanent Trip Purge", key="chk_purge_audit")
+            with del_log3:
+                st.write("")
+                if st.button("🗑️ Purge Trip from Registry", type="secondary", use_container_width=True):
+                    if not confirm_purge_audit:
+                        show_error_toast("Check the confirmation key before purging trip.")
+                    else:
+                        try:
+                            run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (del_target_id,), fetch=False)
+                            run_query("DELETE FROM trips WHERE trip_id = %s", (del_target_id,), fetch=False)
+                            get_cached_vehicles.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Trip #{del_target_id} purged from registry.")
+                        except Exception as e:
+                            show_error_toast(f"Purge error: {e}")
     else:
         st.info("No records match the specified audit filter criteria.")
