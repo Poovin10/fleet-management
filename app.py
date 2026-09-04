@@ -472,6 +472,7 @@ if menu == "Trip Dispatch Entry":
     driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
     driver_keys_list = ["-- SELECT DRIVER --"] + list(driver_dict.keys())
     
+    # Pre-select last assigned driver in dropdown by default
     default_driver_sel = "-- SELECT DRIVER --"
     if old_drv_id:
         for k, d_obj in driver_dict.items():
@@ -516,13 +517,13 @@ if menu == "Trip Dispatch Entry":
         sel_driver_obj = driver_dict[chosen_driver_str] if chosen_driver_str != "-- SELECT DRIVER --" else None
 
     with r2_c3:
-        initial_weight_val = old_weight if old_weight > 0.0 else v_class_mt
+        # Defaults to the truck's maximum carrying capacity (v_class_mt)
         weighbridge_mt = st.number_input(
             "8. Loaded Weight (MT)*", 
             min_value=0.0, 
             max_value=65.0, 
             step=0.05, 
-            value=initial_weight_val, 
+            value=v_class_mt, 
             key=f"wmt_cnt_{cnt}"
         )
     with r2_c4:
@@ -1028,7 +1029,7 @@ elif menu == "Driver Advances":
                         trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. MODIFY TRIPS & CLAIMS
+# 6. MODIFY TRIPS & CLAIMS (LEAVES STATUS IN_TRANSIT UNLESS CHANGED TO COMPLETED)
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
     hm1, hm2 = st.columns([7.5, 2.5])
@@ -1158,6 +1159,7 @@ elif menu == "Modify Trips & Claims":
                     e_claims = st.number_input("Claims (₹)", value=float(t_data['enroute_repairs_maintenance'] or 0.0), step=50.0)
                 with p5:
                     status_choices = ["IN_TRANSIT", "COMPLETED"]
+                    # Retains current database status as default instead of forcing COMPLETED
                     curr_st_idx = status_choices.index(t_data['trip_status']) if t_data['trip_status'] in status_choices else 0
                     e_trip_status = st.selectbox("Trip Status", status_choices, index=curr_st_idx)
 
@@ -1504,6 +1506,8 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
+                    else:
+                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
