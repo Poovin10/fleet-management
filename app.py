@@ -86,6 +86,7 @@ st.markdown("""
     .stButton>button[kind="primary"]:hover { background: #4338CA !important; }
 
     div[data-testid="stDataFrame"] > div { border-radius: 10px !important; border: 1px solid #E2E8F0 !important; }
+    div[data-testid="stToast"] { font-size: 0.92rem !important; font-weight: 600 !important; border-radius: 8px !important; padding: 14px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -143,6 +144,56 @@ def ensure_schema_updates():
         run_query("ALTER TABLE driver_bata_master ADD COLUMN IF NOT EXISTS origin VARCHAR(100) DEFAULT 'ALL';", fetch=False)
     except Exception: pass
 ensure_schema_updates()
+
+def generate_settlement_pdf(driver_name, start_d, end_d, trips_df, adv_df, totals):
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 18); pdf.cell(0, 10, "KSS Roadways - Settlement Statement", ln=True, align='C')
+    pdf.set_font("Arial", '', 12); pdf.cell(0, 6, f"Driver Name: {driver_name}", ln=True, align='C')
+    pdf.cell(0, 6, f"Period: {start_d} to {end_d}", ln=True, align='C'); pdf.ln(5)
+    
+    pdf.set_font("Arial", 'B', 12); pdf.set_fill_color(240, 245, 255); pdf.cell(0, 10, " Overall Cycle Position", ln=True, fill=True)
+    pdf.set_font("Arial", '', 11)
+    pdf.cell(95, 8, f" Total Diesel Issued: {totals['diesel']:.1f} L", border=1); pdf.cell(95, 8, f" Total Bata Earned: Rs {totals['bata']:.2f}", border=1, ln=True)
+    pdf.cell(95, 8, f" Total Advances Deducted: Rs {totals['adv']:.2f}", border=1)
+    pdf.set_font("Arial", 'B', 11); pdf.cell(95, 8, f" Grand Balance Payable: Rs {totals['bal']:.2f}", border=1, ln=True); pdf.ln(10)
+    
+    pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, " Trip Details", ln=True)
+    if not trips_df.empty:
+        pdf.set_font("Arial", 'B', 9)
+        cols = ["Date", "LR No", "Truck", "Source", "Dest", "Diesel", "Bata", "Adv", "Bal"]
+        col_widths = [20, 18, 22, 22, 25, 15, 18, 20, 30]
+        for i in range(len(cols)): pdf.cell(col_widths[i], 8, cols[i], border=1, align='C')
+        pdf.ln()
+        pdf.set_font("Arial", '', 8)
+        for idx, row in trips_df.iterrows():
+            pdf.cell(col_widths[0], 8, str(row.get('trip_start_date', ''))[:10], border=1)
+            pdf.cell(col_widths[1], 8, str(row.get('lr_no', ''))[:8], border=1)
+            pdf.cell(col_widths[2], 8, str(row.get('vehicle_number', ''))[:10], border=1)
+            pdf.cell(col_widths[3], 8, str(row.get('source', ''))[:10], border=1)
+            pdf.cell(col_widths[4], 8, str(row.get('destination', ''))[:10], border=1)
+            pdf.cell(col_widths[5], 8, f"{row.get('diesel_litres', 0):.1f}", border=1, align='R')
+            pdf.cell(col_widths[6], 8, f"{row.get('total_bata', 0):.0f}", border=1, align='R')
+            pdf.cell(col_widths[7], 8, f"{row.get('advance_issued', 0):.0f}", border=1, align='R')
+            pdf.cell(col_widths[8], 8, f"{row.get('balance_amount', 0):.0f}", border=1, align='R'); pdf.ln()
+    else: pdf.set_font("Arial", '', 10); pdf.cell(0, 8, "No trips logged in this period.", ln=True)
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", 'B', 12); pdf.cell(0, 10, " Direct Cash & Salary Advances", ln=True)
+    if not adv_df.empty:
+        pdf.set_font("Arial", 'B', 9)
+        pdf.cell(30, 8, "Date", border=1, align='C'); pdf.cell(40, 8, "Amount (Rs)", border=1, align='C')
+        pdf.cell(50, 8, "Category", border=1, align='C'); pdf.cell(70, 8, "Remarks", border=1, align='C'); pdf.ln()
+        pdf.set_font("Arial", '', 9)
+        for idx, row in adv_df.iterrows():
+            pdf.cell(30, 8, str(row.get('advance_date', ''))[:10], border=1); pdf.cell(40, 8, f"{row.get('amount_inr', 0):.2f}", border=1, align='R')
+            pdf.cell(50, 8, str(row.get('advance_type', ''))[:20], border=1); pdf.cell(70, 8, str(row.get('reference_remarks', ''))[:35], border=1); pdf.ln()
+    else: pdf.set_font("Arial", '', 10); pdf.cell(0, 8, "No direct advances in this period.", ln=True)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        pdf.output(tmp.name); tmp.seek(0); data = tmp.read()
+    os.remove(tmp.name)
+    return data
 
 # ==============================================================================
 # 3. BUSINESS LOGIC & CACHING
@@ -573,7 +624,6 @@ elif menu == "Driver Advances":
 elif menu == "Modify Trips & Claims":
     drivers = get_cached_drivers()
     driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
-    driver_keys_list = ["-- SELECT DRIVER --"] + list(driver_dict.keys())
     
     hm1, hm2 = st.columns([7.5, 2.5])
     with hm1: st.markdown('<div class="section-header">Search, Edit Odometer KM, Route Slabs & POD Details</div>', unsafe_allow_html=True)
@@ -583,7 +633,7 @@ elif menu == "Modify Trips & Claims":
         if d_rate_fast != current_d_rate: set_saved_diesel_rate(d_rate_fast)
     
     f_c1, f_c2 = st.columns([2, 2])
-    with f_c1: search_query = st.text_input("🔍 Quick Search by LR Number or Truck", placeholder="e.g. KL43J6682").strip().upper()
+    with f_c1: search_query = st.text_input("🔍 Quick Search by LR Number or Truck").strip().upper()
     with f_c2: status_filter = st.selectbox("Filter by Trip Status", ["All Statuses", "IN_TRANSIT", "COMPLETED"])
 
     try: trip_sql = "SELECT t.*, v.vehicle_number, v.carrying_capacity_tons, d.full_name FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE 1=1"
@@ -895,12 +945,20 @@ elif menu == "Executive Retention Analytics":
 
     with tab_f:
         if fleet_data:
-            df_fl = pd.DataFrame(fleet_data).fillna(0.0).sort_values(by=[target_sort_col], ascending=[is_ascending]).reset_index(drop=True)
+            df_fl = pd.DataFrame(fleet_data).fillna(0.0)
+            
+            # --- THE FIX: Explicitly cast to float before math ---
+            tot_freight = float(df_fl['total_freight'].sum() or 0.0)
+            tot_diesel = float(df_fl['total_diesel_cost'].sum() or 0.0)
+            tot_ret = float(df_fl['net_retention'].sum() or 0.0)
+            ret_pct = round((tot_ret / max(1.0, tot_freight)) * 100.0, 2)
+            
+            df_fl = df_fl.sort_values(by=[target_sort_col], ascending=[is_ascending]).reset_index(drop=True)
             k1, k2, k3, k4 = st.columns(4)
-            k1.metric("Fleet Revenue", f"₹{df_fl['total_freight'].sum():,.2f}")
-            k2.metric("Fleet Diesel Cost", f"₹{df_fl['total_diesel_cost'].sum():,.2f}")
-            k3.metric("Net Margin", f"₹{df_fl['net_retention'].sum():,.2f}")
-            k4.metric("Retention %", f"{round((df_fl['net_retention'].sum() / max(1.0, df_fl['total_freight'].sum())) * 100.0, 2)}%")
+            k1.metric("Fleet Revenue", f"₹{tot_freight:,.2f}")
+            k2.metric("Fleet Diesel Cost", f"₹{tot_diesel:,.2f}")
+            k3.metric("Net Margin", f"₹{tot_ret:,.2f}")
+            k4.metric("Retention %", f"{ret_pct}%")
             st.dataframe(df_fl, hide_index=True, use_container_width=True, height=400)
 
     with tab_v:
