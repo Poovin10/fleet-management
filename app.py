@@ -376,7 +376,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. TRIP DISPATCH ENTRY (WITH BLANK SELECTORS BY DEFAULT)
+# 1. TRIP DISPATCH ENTRY
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -423,7 +423,6 @@ if menu == "Trip Dispatch Entry":
         for v in filtered_vehicles
     }
     
-    # Blank default selector option to prevent accidental pre-selection
     veh_labels_list = ["-- SELECT TRUCK --"] + list(vehicle_map.keys())
 
     with r1_c4:
@@ -445,7 +444,6 @@ if menu == "Trip Dispatch Entry":
             if open_trip_check:
                 st.error(f"🚫 Cannot Dispatch: Truck {active_veh['vehicle_number']} already has an active incomplete trip (LR: {open_trip_check['trip_number']}). Close it first.")
 
-    # Blank default selector option for Source Hub
     source_labels_list = ["-- SELECT SOURCE HUB --"] + STANDARD_SOURCES
 
     with r1_c5:
