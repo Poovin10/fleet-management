@@ -88,7 +88,7 @@ def show_success_toast(msg: str):
 def show_error_toast(msg: str):
     st.toast(f"❌ {msg}", icon="❌")
 
-# --- Authentication (user / user123) ---
+# --- Authentication ---
 USER_CREDENTIALS = {
     "admin": {"password": "admin123", "role": "MASTER"},
     "user": {"password": "user123", "role": "VIEWER"}
@@ -258,20 +258,21 @@ def set_saved_diesel_rate(new_rate):
     """, (str(new_rate),), fetch=False)
     get_cached_diesel_rate.clear()
 
-def get_last_driver_for_vehicle(vehicle_id):
+def get_last_driver_and_weight_for_vehicle(vehicle_id):
     try:
         res = run_query("""
-            SELECT primary_driver_id 
-            FROM trips 
-            WHERE vehicle_id = %s AND primary_driver_id IS NOT NULL 
-            ORDER BY trip_id DESC 
+            SELECT t.primary_driver_id, t.loaded_weight_mt, d.full_name
+            FROM trips t
+            JOIN drivers d ON t.primary_driver_id = d.driver_id
+            WHERE t.vehicle_id = %s AND t.primary_driver_id IS NOT NULL 
+            ORDER BY t.trip_id DESC 
             LIMIT 1;
         """, (vehicle_id,))
-        if res and res[0]['primary_driver_id']:
-            return int(res[0]['primary_driver_id'])
+        if res:
+            return res[0]['primary_driver_id'], float(res[0]['loaded_weight_mt'] or 0.0), res[0]['full_name']
     except Exception:
         pass
-    return None
+    return None, 0.0, None
 
 def check_lr_exists(trip_no, exclude_trip_id=None):
     if not trip_no or not trip_no.strip():
@@ -426,8 +427,12 @@ if menu == "Trip Dispatch Entry":
         sel_veh_label = st.selectbox(f"4. Assigned Truck ({cargo_category} Only)*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
         active_veh = vehicle_map[sel_veh_label]
         v_class_mt = float(active_veh['carrying_capacity_tons'])
-        last_drv_id = get_last_driver_for_vehicle(active_veh['vehicle_id'])
         
+        # Auto-fetch previous driver and weight category when truck is selected
+        old_drv_id, old_weight, old_drv_name = get_last_driver_and_weight_for_vehicle(active_veh['vehicle_id'])
+        if old_drv_name:
+            st.info(f"ℹ️ Last Assigned: **{old_drv_name}** ({old_weight} MT)")
+
         open_trip_check = check_vehicle_has_open_trip(active_veh['vehicle_id'])
         if open_trip_check:
             st.error(f"🚫 Cannot Dispatch: Truck {active_veh['vehicle_number']} already has an active incomplete trip (LR: {open_trip_check['trip_number']}). Close it first.")
@@ -447,9 +452,9 @@ if menu == "Trip Dispatch Entry":
     driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
     driver_keys_list = list(driver_dict.keys())
     default_driver_index = 0
-    if last_drv_id:
+    if old_drv_id:
         for idx, d_obj in enumerate(driver_dict.values()):
-            if int(d_obj['driver_id']) == int(last_drv_id):
+            if int(d_obj['driver_id']) == int(old_drv_id):
                 default_driver_index = idx
                 break
 
@@ -469,7 +474,7 @@ if menu == "Trip Dispatch Entry":
 
     with r2_c2:
         chosen_driver_str = st.selectbox(
-            "7. Designated Driver (Auto-Mapped to Truck)*", 
+            "7. Designated Driver*", 
             driver_keys_list, 
             index=default_driver_index, 
             key=f"drv_sel_for_veh_{active_veh['vehicle_id']}_{cnt}"
@@ -477,12 +482,13 @@ if menu == "Trip Dispatch Entry":
         sel_driver_obj = driver_dict[chosen_driver_str]
 
     with r2_c3:
+        initial_weight_val = old_weight if old_weight > 0.0 else v_class_mt
         weighbridge_mt = st.number_input(
             "8. Loaded Weight (MT)*", 
             min_value=0.0, 
             max_value=65.0, 
             step=0.05, 
-            value=v_class_mt, 
+            value=initial_weight_val, 
             key=f"wmt_veh_{active_veh['vehicle_id']}_{cnt}"
         )
     with r2_c4:
@@ -552,7 +558,7 @@ if menu == "Trip Dispatch Entry":
                 show_error_toast(f"Database Error: {e}")
 
 # ==============================================================================
-# 2. POD RECEIVE & TRIP CLOSURE (WITH START KM INCLUDED)
+# 2. POD RECEIVE & TRIP CLOSURE (WITH BLANK SELECTOR DEFAULT)
 # ==============================================================================
 elif menu == "POD Receive & Close":
     active_trips = run_query("""
@@ -569,54 +575,60 @@ elif menu == "POD Receive & Close":
     if not active_trips:
         st.info("No active trips awaiting POD reference closure.")
     else:
+        # Reconfigured selector with a blank default option so accidental clicks don't execute pre-filled data
         trip_opts = {f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | Driver: {t['driver_name']}": t for t in active_trips}
-        chosen_lr = st.selectbox("Select Active Trip to Close with POD Reference", list(trip_opts.keys()))
-        t_cur = trip_opts[chosen_lr]
+        trip_labels_list = ["-- SELECT ACTIVE TRIP TO CLOSE --"] + list(trip_opts.keys())
+        
+        chosen_lr_label = st.selectbox("Select Active Trip to Close with POD Reference", trip_labels_list, index=0)
 
-        with st.form("pod_closure_form"):
-            st.markdown('<div class="section-header">Record Closing Reference, Start KM & Release Vehicle</div>', unsafe_allow_html=True)
-            p1, p2, p3, p4 = st.columns([1.5, 1.5, 1.5, 1.5])
-            with p1:
-                pod_no = st.text_input("POD / Challan No*", placeholder="POD-XXXX").strip().upper()
-                close_d = st.date_input("Closing Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
-            with p2:
-                unloaded_wt = st.number_input("Customer Unloaded Weight (MT)", min_value=0.0, max_value=60.0, value=float(t_cur['loaded_weight_mt'] or 0.0), step=0.01)
-                shortage = max(0.0, float(t_cur['loaded_weight_mt']) - unloaded_wt)
-            with p3:
-                # Added Start KM input alongside Final KM as requested by trip sheet handovers
-                pod_start_km = st.number_input("Start Odometer KM*", min_value=0.0, value=float(t_cur['start_km'] or 0.0), step=10.0)
-                final_km = st.number_input("Closing Odometer KM*", min_value=pod_start_km, value=float(t_cur['end_km'] or (pod_start_km + float(t_cur['total_km_run'] or 0.0))), step=10.0)
-                tot_km = max(0.0, final_km - pod_start_km)
-            with p4:
-                halt_bata = st.number_input("Halt Bata (₹)", min_value=0.0, value=0.0, step=100.0)
-                claims = st.number_input("En-route Claims (₹)", min_value=0.0, value=0.0, step=50.0)
+        if chosen_lr_label == "-- SELECT ACTIVE TRIP TO CLOSE --":
+            st.info("👆 Please select an active trip from the dropdown above to open the closure form.")
+        else:
+            t_cur = trip_opts[chosen_lr_label]
 
-            st.write("")
-            confirm_close = st.checkbox("🔑 Confirm Trip Closure and Fleet Vehicle Release", key="chk_pod_close")
-            if st.form_submit_button("✅ Settle POD Reference & Release Truck", type="primary", use_container_width=True):
-                if not confirm_close:
-                    show_error_toast("Check the confirmation key checkbox before closing.")
-                elif not pod_no:
-                    show_error_toast("POD Number is required.")
-                else:
-                    try:
-                        run_query("""
-                            UPDATE trips
-                            SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, 
-                                start_km = %s, end_km = %s,
-                                total_km_run = CASE WHEN %s > 0 THEN %s ELSE total_km_run END,
-                                unloaded_weight_mt = %s, shortage_mt = %s, halt_bata = %s,
-                                driver_bata = driver_bata + %s,
-                                enroute_repairs_maintenance = enroute_repairs_maintenance + %s,
-                                trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
-                            WHERE trip_id = %s;
-                        """, (pod_no, close_d, close_d, pod_start_km, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
-                        run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
-                                  (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
-                        get_cached_vehicles.clear()
-                        trigger_toast_and_rerun("SUCCESS", f"Trip {t_cur['trip_number']} closed. Truck {t_cur['vehicle_number']} is now AVAILABLE.")
-                    except Exception as e:
-                        show_error_toast(f"Error closing trip: {e}")
+            with st.form("pod_closure_form"):
+                st.markdown('<div class="section-header">Record Closing Reference, Start KM & Release Vehicle</div>', unsafe_allow_html=True)
+                p1, p2, p3, p4 = st.columns([1.5, 1.5, 1.5, 1.5])
+                with p1:
+                    pod_no = st.text_input("POD / Challan No*", placeholder="POD-XXXX").strip().upper()
+                    close_d = st.date_input("Closing Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
+                with p2:
+                    unloaded_wt = st.number_input("Customer Unloaded Weight (MT)", min_value=0.0, max_value=60.0, value=float(t_cur['loaded_weight_mt'] or 0.0), step=0.01)
+                    shortage = max(0.0, float(t_cur['loaded_weight_mt']) - unloaded_wt)
+                with p3:
+                    pod_start_km = st.number_input("Start Odometer KM*", min_value=0.0, value=float(t_cur['start_km'] or 0.0), step=10.0)
+                    final_km = st.number_input("Closing Odometer KM*", min_value=pod_start_km, value=float(t_cur['end_km'] or (pod_start_km + float(t_cur['total_km_run'] or 0.0))), step=10.0)
+                    tot_km = max(0.0, final_km - pod_start_km)
+                with p4:
+                    halt_bata = st.number_input("Halt Bata (₹)", min_value=0.0, value=0.0, step=100.0)
+                    claims = st.number_input("En-route Claims (₹)", min_value=0.0, value=0.0, step=50.0)
+
+                st.write("")
+                confirm_close = st.checkbox("🔑 Confirm Trip Closure and Fleet Vehicle Release", key="chk_pod_close")
+                if st.form_submit_button("✅ Settle POD Reference & Release Truck", type="primary", use_container_width=True):
+                    if not confirm_close:
+                        show_error_toast("Check the confirmation key checkbox before closing.")
+                    elif not pod_no:
+                        show_error_toast("POD Number is required.")
+                    else:
+                        try:
+                            run_query("""
+                                UPDATE trips
+                                SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, 
+                                    start_km = %s, end_km = %s,
+                                    total_km_run = CASE WHEN %s > 0 THEN %s ELSE total_km_run END,
+                                    unloaded_weight_mt = %s, shortage_mt = %s, halt_bata = %s,
+                                    driver_bata = driver_bata + %s,
+                                    enroute_repairs_maintenance = enroute_repairs_maintenance + %s,
+                                    trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
+                                WHERE trip_id = %s;
+                            """, (pod_no, close_d, close_d, pod_start_km, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
+                            run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
+                                      (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
+                            get_cached_vehicles.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Trip {t_cur['trip_number']} closed. Truck {t_cur['vehicle_number']} is now AVAILABLE.")
+                        except Exception as e:
+                            show_error_toast(f"Error closing trip: {e}")
 
 # ==============================================================================
 # 3. FLEET STATUS BOARD
@@ -748,81 +760,85 @@ elif menu == "Diesel Logs":
                 f"Log #{f['fuel_log_id']} | Date: {f['fuel_date']} | Truck: {f['vehicle_number']} | Litres: {f['litres_filled']} L | LR: {f['lr_number']}": f 
                 for f in all_fuel_entries
             }
-            
-            chosen_fuel_key = st.selectbox("Select Diesel Record to Edit", list(fuel_map.keys()))
-            target_fuel = fuel_map[chosen_fuel_key]
-            
-            v_keys = list(v_dict.keys())
-            def_v_idx = 0
-            for idx, k in enumerate(v_keys):
-                if v_dict[k]['vehicle_id'] == target_fuel['vehicle_id']:
-                    def_v_idx = idx
-                    break
+            fuel_labels_list = ["-- SELECT DIESEL LOG TO EDIT --"] + list(fuel_map.keys())
+            chosen_fuel_label = st.selectbox("Select Diesel Record to Edit", fuel_labels_list, index=0)
 
-            with st.form("edit_diesel_form"):
-                ed1, ed2, ed3, ed4, ed5 = st.columns(5)
-                with ed1:
-                    e_fuel_date = st.date_input("Fuel Date*", target_fuel['fuel_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
-                with ed2:
-                    e_fuel_veh_str = st.selectbox("Vehicle*", v_keys, index=def_v_idx)
-                    e_target_veh_id = v_dict[e_fuel_veh_str]['vehicle_id']
-                with ed3:
-                    cat_opts = ["TRIP_DIESEL", "SUNDRY_DIESEL"]
-                    cur_cat_idx = cat_opts.index(target_fuel['diesel_category']) if target_fuel['diesel_category'] in cat_opts else 0
-                    e_cat = st.selectbox("Category*", cat_opts, index=cur_cat_idx)
-                with ed4:
-                    e_lr_val = st.text_input("Trip LR No", value=target_fuel['lr_number'] or "").strip().upper()
-                with ed5:
-                    e_filling_km = st.number_input("Filling Odometer (KM)*", min_value=0.0, value=float(target_fuel['filling_odometer_km'] or 0.0), step=10.0)
+            if chosen_fuel_label == "-- SELECT DIESEL LOG TO EDIT --":
+                st.info("👆 Please select a diesel log from the dropdown above to open the editor.")
+            else:
+                target_fuel = fuel_map[chosen_fuel_label]
+                
+                v_keys = list(v_dict.keys())
+                def_v_idx = 0
+                for idx, k in enumerate(v_keys):
+                    if v_dict[k]['vehicle_id'] == target_fuel['vehicle_id']:
+                        def_v_idx = idx
+                        break
 
-                ed6, ed7, ed8 = st.columns(3)
-                with ed6:
-                    e_litres = st.number_input("Litres Filled*", min_value=0.0, value=float(target_fuel['litres_filled'] or 0.0), step=5.0)
-                with ed7:
-                    e_rate = st.number_input("Diesel Rate (₹/L)*", min_value=50.0, max_value=150.0, value=float(target_fuel['diesel_rate_per_litre'] or d_rate_fast), step=0.05)
-                with ed8:
-                    e_cost = round(e_litres * e_rate, 2)
-                    st.metric("Recalculated Fuel Cost", f"₹{e_cost:,.2f}")
+                with st.form("edit_diesel_form"):
+                    ed1, ed2, ed3, ed4, ed5 = st.columns(5)
+                    with ed1:
+                        e_fuel_date = st.date_input("Fuel Date*", target_fuel['fuel_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
+                    with ed2:
+                        e_fuel_veh_str = st.selectbox("Vehicle*", v_keys, index=def_v_idx)
+                        e_target_veh_id = v_dict[e_fuel_veh_str]['vehicle_id']
+                    with ed3:
+                        cat_opts = ["TRIP_DIESEL", "SUNDRY_DIESEL"]
+                        cur_cat_idx = cat_opts.index(target_fuel['diesel_category']) if target_fuel['diesel_category'] in cat_opts else 0
+                        e_cat = st.selectbox("Category*", cat_opts, index=cur_cat_idx)
+                    with ed4:
+                        e_lr_val = st.text_input("Trip LR No", value=target_fuel['lr_number'] or "").strip().upper()
+                    with ed5:
+                        e_filling_km = st.number_input("Filling Odometer (KM)*", min_value=0.0, value=float(target_fuel['filling_odometer_km'] or 0.0), step=10.0)
 
-                st.write("")
-                confirm_fuel_edit = st.checkbox("🔑 Confirm Diesel Log Modifications", key="chk_fuel_edit")
-                if st.form_submit_button("💾 Commit Diesel Log Updates", type="primary", use_container_width=True):
-                    if not confirm_fuel_edit:
-                        show_error_toast("Check the confirmation key before saving fuel edits.")
-                    elif e_litres <= 0:
-                        show_error_toast("Fuel quantity must be greater than zero.")
-                    elif check_duplicate_diesel_entry(e_target_veh_id, e_fuel_date, e_litres, filling_km=e_filling_km, lr_number=e_lr_val, exclude_fuel_log_id=target_fuel['fuel_log_id']):
-                        show_error_toast("Duplicate Violation: Another matching log for this vehicle, date, and litres/KM already exists.")
-                    else:
-                        try:
-                            run_query("""
-                                UPDATE diesel_fuel_logs 
-                                SET fuel_date = %s,
-                                    vehicle_id = %s,
-                                    diesel_category = %s,
-                                    lr_number = %s,
-                                    filling_odometer_km = %s,
-                                    litres_filled = %s,
-                                    diesel_rate_per_litre = %s,
-                                    total_fuel_cost = %s
-                                WHERE fuel_log_id = %s;
-                            """, (
-                                e_fuel_date, e_target_veh_id, e_cat, e_lr_val or "SUNDRY",
-                                e_filling_km, e_litres, e_rate, e_cost, target_fuel['fuel_log_id']
-                            ), fetch=False)
+                    ed6, ed7, ed8 = st.columns(3)
+                    with ed6:
+                        e_litres = st.number_input("Litres Filled*", min_value=0.0, value=float(target_fuel['litres_filled'] or 0.0), step=5.0)
+                    with ed7:
+                        e_rate = st.number_input("Diesel Rate (₹/L)*", min_value=50.0, max_value=150.0, value=float(target_fuel['diesel_rate_per_litre'] or d_rate_fast), step=0.05)
+                    with ed8:
+                        e_cost = round(e_litres * e_rate, 2)
+                        st.metric("Recalculated Fuel Cost", f"₹{e_cost:,.2f}")
 
-                            if target_fuel['trip_id']:
+                    st.write("")
+                    confirm_fuel_edit = st.checkbox("🔑 Confirm Diesel Log Modifications", key="chk_fuel_edit")
+                    if st.form_submit_button("💾 Commit Diesel Log Updates", type="primary", use_container_width=True):
+                        if not confirm_fuel_edit:
+                            show_error_toast("Check the confirmation key before saving fuel edits.")
+                        elif e_litres <= 0:
+                            show_error_toast("Fuel quantity must be greater than zero.")
+                        elif check_duplicate_diesel_entry(e_target_veh_id, e_fuel_date, e_litres, filling_km=e_filling_km, lr_number=e_lr_val, exclude_fuel_log_id=target_fuel['fuel_log_id']):
+                            show_error_toast("Duplicate Violation: Another matching log for this vehicle, date, and litres/KM already exists.")
+                        else:
+                            try:
                                 run_query("""
-                                    UPDATE trips 
-                                    SET fuel_litres = %s, 
-                                        fuel_expense = %s,
-                                        start_km = CASE WHEN start_km = 0 THEN %s ELSE start_km END
-                                    WHERE trip_id = %s;
-                                """, (e_litres, e_cost, e_filling_km, target_fuel['trip_id']), fetch=False)
+                                    UPDATE diesel_fuel_logs 
+                                    SET fuel_date = %s,
+                                        vehicle_id = %s,
+                                        diesel_category = %s,
+                                        lr_number = %s,
+                                        filling_odometer_km = %s,
+                                        litres_filled = %s,
+                                        diesel_rate_per_litre = %s,
+                                        total_fuel_cost = %s
+                                    WHERE fuel_log_id = %s;
+                                """, (
+                                    e_fuel_date, e_target_veh_id, e_cat, e_lr_val or "SUNDRY",
+                                    e_filling_km, e_litres, e_rate, e_cost, target_fuel['fuel_log_id']
+                                ), fetch=False)
 
-                            trigger_toast_and_rerun("SUCCESS", f"Fuel Log #{target_fuel['fuel_log_id']} updated successfully.")
-                        except Exception as e:
-                            show_error_toast(f"Update error: {e}")
+                                if target_fuel['trip_id']:
+                                    run_query("""
+                                        UPDATE trips 
+                                        SET fuel_litres = %s, 
+                                            fuel_expense = %s,
+                                            start_km = CASE WHEN start_km = 0 THEN %s ELSE start_km END
+                                        WHERE trip_id = %s;
+                                    """, (e_litres, e_cost, e_filling_km, target_fuel['trip_id']), fetch=False)
+
+                                trigger_toast_and_rerun("SUCCESS", f"Fuel Log #{target_fuel['fuel_log_id']} updated successfully.")
+                            except Exception as e:
+                                show_error_toast(f"Update error: {e}")
 
     with tab_audit_fuel:
         st.markdown('<div class="section-header">Multi-Parameter Diesel Log Filter</div>', unsafe_allow_html=True)
@@ -971,12 +987,12 @@ elif menu == "Driver Advances":
                         trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. MODIFY TRIPS & CLAIMS
+# 6. MODIFY TRIPS & CLAIMS (WITH BLANK SELECTOR DEFAULT)
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
     hm1, hm2 = st.columns([7.5, 2.5])
     with hm1:
-        st.markdown('<div class="section-header">Search, Edit Odometer KM, POD Details & Manage Master Trip Records</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">Search, Edit Odometer KM, Route Slabs & POD Details</div>', unsafe_allow_html=True)
     with hm2:
         current_d_rate = get_cached_diesel_rate()
         d_rate_fast = st.number_input("⛽ Active Diesel Rate (₹/L)*", value=current_d_rate, step=0.1, key="drate_modtrip")
@@ -990,7 +1006,7 @@ elif menu == "Modify Trips & Claims":
         status_filter = st.selectbox("Filter by Trip Status", ["All Statuses", "IN_TRANSIT", "COMPLETED"])
 
     trip_sql = """
-        SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, d.full_name, t.origin, t.destination, 
+        SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, v.carrying_capacity_tons, d.full_name, t.origin, t.destination, 
                t.trip_start_date, t.trip_end_date, t.start_km, t.end_km, t.total_km_run, 
                t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, 
                t.fuel_expense, t.driver_bata, t.halt_bata, t.cash_advance_issued, 
@@ -1014,151 +1030,183 @@ elif menu == "Modify Trips & Claims":
     if not all_matched_trips:
         st.info("No trips found matching your search query.")
     else:
+        # Reconfigured with a blank default option matching your requested format: [LR NO] | [TRUCK NO] | [SOURCE] ➔ [DESTINATION]
         trip_map = {
-            f"Trip ID #{t['trip_id']} | LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | {t['full_name']} [{t['trip_status']}]": t 
+            f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} (ID #{t['trip_id']})": t 
             for t in all_matched_trips
         }
-        sel_t_key = st.selectbox("Select Target Trip Record to Edit", list(trip_map.keys()))
-        t_data = trip_map[sel_t_key]
+        trip_labels_list = ["-- SELECT TRIP TO EDIT --"] + list(trip_map.keys())
+        
+        sel_t_key_label = st.selectbox("Select Target Trip Record to Edit", trip_labels_list, index=0)
 
-        with st.form("mod_full_form"):
-            st.markdown('<div class="section-header">1. Trip Routing, Dates & Status</div>', unsafe_allow_html=True)
-            m1, m2, m3, m4, m5 = st.columns(5)
-            with m1:
-                e_sdate = st.date_input("Trip Start Date", t_data['trip_start_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
-            with m2:
-                e_edate = st.date_input("Trip Closing Date", t_data['trip_end_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
-            with m3:
-                e_lr = st.text_input("Trip LR No", value=t_data['trip_number']).strip().upper()
-            with m4:
-                e_orig = st.text_input("Origin Hub", value=t_data['origin'])
-            with m5:
-                e_dest = st.text_input("Destination", value=t_data['destination'])
+        if sel_t_key_label == "-- SELECT TRIP TO EDIT --":
+            st.info("👆 Please select a trip record from the dropdown above to open the editor form.")
+        else:
+            t_data = trip_map[sel_t_key_label]
 
-            st.markdown('<div class="section-header">2. Odometer Readings & Distance Tracking</div>', unsafe_allow_html=True)
-            ok1, ok2, ok3 = st.columns(3)
-            with ok1:
-                e_start_km = st.number_input("Start Odometer KM*", min_value=0.0, value=float(t_data['start_km'] or 0.0), step=10.0)
-            with ok2:
-                e_end_km = st.number_input("End Odometer KM", min_value=0.0, value=float(t_data['end_km'] or 0.0), step=10.0)
-            with ok3:
-                calc_km = max(0.0, e_end_km - e_start_km) if (e_end_km >= e_start_km and e_end_km > 0) else float(t_data['total_km_run'] or 0.0)
-                e_total_km = st.number_input("Total Distance (KM)*", min_value=0.0, value=calc_km, step=10.0)
+            with st.form("mod_full_form"):
+                st.markdown('<div class="section-header">1. Route Hubs & Master Slab Selection</div>', unsafe_allow_html=True)
+                
+                v_class_mt = float(t_data['carrying_capacity_tons'] or 30.0)
+                all_routes = run_query("SELECT * FROM destinations_freight_master WHERE is_active = TRUE ORDER BY destination_name ASC")
+                
+                route_labels = []
+                route_map_dict = {}
+                if all_routes:
+                    for r in all_routes:
+                        lbl = f"{r['origin']} ➔ {r['destination_name']} [{r['capacity_tons']} MT | ₹{r['freight_rate_per_ton']}/MT]"
+                        route_labels.append(lbl)
+                        route_map_dict[lbl] = r
+                route_labels.append("-- MANUAL / SPOT ROUTE --")
 
-            st.markdown('<div class="section-header">3. Tonnage, Freight, Allowances & Fuel</div>', unsafe_allow_html=True)
-            f1, f2, f3, f4, f5 = st.columns(5)
-            with f1:
-                e_ton = st.number_input("Loaded MT*", value=float(t_data['loaded_weight_mt'] or 0.0), step=0.05)
-            with f2:
-                e_freight = st.number_input("Freight Revenue (₹)", value=float(t_data['freight_revenue'] or 0.0), step=100.0)
-            with f3:
-                e_bata = st.number_input("Driver Bata (₹)", value=float(t_data['driver_bata'] or 0.0), step=100.0)
-            with f4:
-                e_adv = st.number_input("Advance (₹)", value=float(t_data['cash_advance_issued'] or 0.0), step=500.0)
-            with f5:
-                e_fuel_l = st.number_input("Fuel Litres", value=float(t_data['fuel_litres'] or 0.0), step=5.0)
-
-            st.markdown('<div class="section-header">4. POD Reference & Closing Parameters (Editable)</div>', unsafe_allow_html=True)
-            p1, p2, p3, p4, p5 = st.columns(5)
-            with p1:
-                e_pod_no = st.text_input("POD / Challan No", value=t_data['pod_number'] or "")
-            with p2:
-                e_unloaded_mt = st.number_input("Unloaded MT", value=float(t_data['unloaded_weight_mt'] or t_data['loaded_weight_mt'] or 0.0), step=0.01)
-            with p3:
-                e_halt_bata = st.number_input("Halt Bata (₹)", value=float(t_data['halt_bata'] or 0.0), step=100.0)
-            with p4:
-                e_claims = st.number_input("Claims (₹)", value=float(t_data['enroute_repairs_maintenance'] or 0.0), step=50.0)
-            with p5:
-                status_choices = ["IN_TRANSIT", "COMPLETED"]
-                curr_st_idx = status_choices.index(t_data['trip_status']) if t_data['trip_status'] in status_choices else 0
-                e_trip_status = st.selectbox("Trip Status", status_choices, index=curr_st_idx)
-
-            st.write("")
-            confirm_mod_trip = st.checkbox("🔑 Confirm Master Trip Record Changes", key="chk_mod_trip")
-            if st.form_submit_button("💾 Commit Updates to Trip & POD Record", type="primary", use_container_width=True):
-                if not confirm_mod_trip:
-                    show_error_toast("Check the confirmation key before saving changes.")
+                m1, m2 = st.columns([2.5, 2.5])
+                with m1:
+                    e_sdate = st.date_input("Trip Start Date", t_data['trip_start_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
+                    e_lr = st.text_input("Trip LR No", value=t_data['trip_number']).strip().upper()
+                with m2:
+                    e_edate = st.date_input("Trip Closing Date", t_data['trip_end_date'] or date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
+                    
+                sel_route_choice = st.selectbox("Select Route from Master Slabs (Auto-fills Rate & KM)", route_labels)
+                
+                if sel_route_choice != "-- MANUAL / SPOT ROUTE --":
+                    active_slab = route_map_dict[sel_route_choice]
+                    e_orig = active_slab['origin']
+                    e_dest = active_slab['destination_name']
+                    auto_rate_mt = float(active_slab['freight_rate_per_ton'])
+                    auto_km = float(active_slab['standard_km'])
                 else:
-                    try:
-                        recalculated_fuel_cost = round(e_fuel_l * d_rate_fast, 2)
-                        shortage_val = max(0.0, e_ton - e_unloaded_mt)
-                        
-                        run_query("""
-                            UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s,
-                                             start_km=%s, end_km=%s, total_km_run=%s,
-                                             loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, shortage_mt=%s,
-                                             freight_revenue=%s, fuel_litres=%s, fuel_expense=%s, driver_bata=%s, 
-                                             halt_bata=%s, cash_advance_issued=%s, enroute_repairs_maintenance=%s,
-                                             pod_number=%s, trip_status=%s
-                            WHERE trip_id=%s;
-                        """, (
-                            e_sdate, e_edate, e_lr, e_orig, e_dest, 
-                            e_start_km, e_end_km, e_total_km,
-                            e_ton, e_unloaded_mt, e_ton, shortage_val,
-                            e_freight, e_fuel_l, recalculated_fuel_cost, e_bata, 
-                            e_halt_bata, e_adv, e_claims,
-                            e_pod_no or None, e_trip_status, t_data['trip_id']
-                        ), fetch=False)
-                        
-                        if e_trip_status == "COMPLETED":
-                            run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
-                                      (f"Completed Trip {e_lr}", t_data['vehicle_id']), fetch=False)
-                        else:
-                            run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s",
-                                      (f"Trip {e_lr}: {e_orig} ➔ {e_dest}", t_data['vehicle_id']), fetch=False)
+                    c_spot1, c_spot2 = st.columns(2)
+                    with c_spot1:
+                        e_orig = st.text_input("Origin Hub", value=t_data['origin']).strip().upper()
+                        e_dest = st.text_input("Destination Terminal", value=t_data['destination']).strip().upper()
+                    with c_spot2:
+                        auto_rate_mt = st.number_input("Spot Freight Rate/MT*", min_value=0.0, step=25.0, value=0.0)
+                        auto_km = st.number_input("Standard KM", min_value=0.0, step=10.0, value=float(t_data['total_km_run'] or 0.0))
 
-                        existing_fuel_log = run_query("SELECT fuel_log_id FROM diesel_fuel_logs WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s)", (t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id']))
-                        if existing_fuel_log:
-                            run_query("""
-                                UPDATE diesel_fuel_logs 
-                                SET fuel_date = %s, lr_number = %s, litres_filled = %s, total_fuel_cost = %s, filling_odometer_km = %s, trip_id = %s
-                                WHERE fuel_log_id = %s;
-                            """, (e_sdate, e_lr, e_fuel_l, recalculated_fuel_cost, e_start_km, t_data['trip_id'], existing_fuel_log[0]['fuel_log_id']), fetch=False)
+                st.markdown('<div class="section-header">2. Odometer Readings & Distance Tracking</div>', unsafe_allow_html=True)
+                ok1, ok2, ok3 = st.columns(3)
+                with ok1:
+                    e_start_km = st.number_input("Start Odometer KM*", min_value=0.0, value=float(t_data['start_km'] or 0.0), step=10.0)
+                with ok2:
+                    e_end_km = st.number_input("End Odometer KM", min_value=0.0, value=float(t_data['end_km'] or 0.0), step=10.0)
+                with ok3:
+                    calc_km = max(0.0, e_end_km - e_start_km) if (e_end_km >= e_start_km and e_end_km > 0) else auto_km
+                    e_total_km = st.number_input("Total Distance (KM)*", min_value=0.0, value=calc_km, step=10.0)
 
-                        get_cached_vehicles.clear()
-                        trigger_toast_and_rerun("SUCCESS", f"Trip #{e_lr} & Odometer KM updated successfully.")
-                    except Exception as e:
-                        show_error_toast(f"Update failed: {e}")
+                st.markdown('<div class="section-header">3. Tonnage, Auto-Calculated Freight & Fuel</div>', unsafe_allow_html=True)
+                f1, f2, f3, f4, f5 = st.columns(5)
+                with f1:
+                    e_ton = st.number_input("Loaded MT*", value=float(t_data['loaded_weight_mt'] or v_class_mt), step=0.05)
+                with f2:
+                    e_freight = st.number_input("Freight Revenue (₹) [Auto-Calculated]", value=round(e_ton * auto_rate_mt, 2), step=100.0)
+                with f3:
+                    e_bata = st.number_input("Driver Bata (₹)", value=float(t_data['driver_bata'] or 0.0), step=100.0)
+                with f4:
+                    e_adv = st.number_input("Advance (₹)", value=float(t_data['cash_advance_issued'] or 0.0), step=500.0)
+                with f5:
+                    e_fuel_l = st.number_input("Fuel Litres", value=float(t_data['fuel_litres'] or 0.0), step=5.0)
 
-        st.markdown("<hr style='margin: 10px 0;' />", unsafe_allow_html=True)
-        act1, act2 = st.columns(2)
-        with act1:
-            if t_data['trip_status'] == 'COMPLETED':
-                confirm_reopen = st.checkbox("🔑 Confirm Trip Reopening", key="chk_reopen")
-                if st.button("🔓 Reopen Trip (Set back to IN_TRANSIT)", use_container_width=True):
-                    if not confirm_reopen:
-                        show_error_toast("Check the confirmation key before reopening.")
+                st.markdown('<div class="section-header">4. POD Reference & Closing Parameters</div>', unsafe_allow_html=True)
+                p1, p2, p3, p4, p5 = st.columns(5)
+                with p1:
+                    e_pod_no = st.text_input("POD / Challan No", value=t_data['pod_number'] or "")
+                with p2:
+                    e_unloaded_mt = st.number_input("Unloaded MT", value=float(t_data['unloaded_weight_mt'] or e_ton), step=0.01)
+                with p3:
+                    e_halt_bata = st.number_input("Halt Bata (₹)", value=float(t_data['halt_bata'] or 0.0), step=100.0)
+                with p4:
+                    e_claims = st.number_input("Claims (₹)", value=float(t_data['enroute_repairs_maintenance'] or 0.0), step=50.0)
+                with p5:
+                    status_choices = ["IN_TRANSIT", "COMPLETED"]
+                    curr_st_idx = status_choices.index(t_data['trip_status']) if t_data['trip_status'] in status_choices else 0
+                    e_trip_status = st.selectbox("Trip Status", status_choices, index=curr_st_idx)
+
+                st.write("")
+                confirm_mod_trip = st.checkbox("🔑 Confirm Master Trip Record Changes", key="chk_mod_trip")
+                if st.form_submit_button("💾 Commit Updates to Trip & POD Record", type="primary", use_container_width=True):
+                    if not confirm_mod_trip:
+                        show_error_toast("Check the confirmation key before saving changes.")
                     else:
                         try:
+                            recalculated_fuel_cost = round(e_fuel_l * d_rate_fast, 2)
+                            shortage_val = max(0.0, e_ton - e_unloaded_mt)
+                            
                             run_query("""
-                                UPDATE trips 
-                                SET trip_status = 'IN_TRANSIT', pod_number = NULL, trip_closed_at = NULL 
-                                WHERE trip_id = %s;
-                            """, (t_data['trip_id'],), fetch=False)
-                            run_query("""
-                                UPDATE vehicles 
-                                SET current_status = 'IN_TRANSIT', status_remarks = %s 
-                                WHERE vehicle_id = %s;
-                            """, (f"Reopened Trip {t_data['trip_number']}", t_data['vehicle_id']), fetch=False)
-                            get_cached_vehicles.clear()
-                            trigger_toast_and_rerun("SUCCESS", f"Trip {t_data['trip_number']} reopened! Truck is now IN_TRANSIT.")
-                        except Exception as e:
-                            show_error_toast(f"Reopen failed: {e}")
+                                UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s,
+                                                 start_km=%s, end_km=%s, total_km_run=%s,
+                                                 loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, shortage_mt=%s,
+                                                 freight_revenue=%s, fuel_litres=%s, fuel_expense=%s, driver_bata=%s, 
+                                                 halt_bata=%s, cash_advance_issued=%s, enroute_repairs_maintenance=%s,
+                                                 pod_number=%s, trip_status=%s
+                                WHERE trip_id=%s;
+                            """, (
+                                e_sdate, e_edate, e_lr, e_orig, e_dest, 
+                                e_start_km, e_end_km, e_total_km,
+                                e_ton, e_unloaded_mt, e_ton, shortage_val,
+                                e_freight, e_fuel_l, recalculated_fuel_cost, e_bata, 
+                                e_halt_bata, e_adv, e_claims,
+                                e_pod_no or None, e_trip_status, t_data['trip_id']
+                            ), fetch=False)
+                            
+                            if e_trip_status == "COMPLETED":
+                                run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
+                                          (f"Completed Trip {e_lr}", t_data['vehicle_id']), fetch=False)
+                            else:
+                                run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s",
+                                          (f"Trip {e_lr}: {e_orig} ➔ {e_dest}", t_data['vehicle_id']), fetch=False)
 
-        with act2:
-            confirm_del_trip = st.checkbox("🔑 Confirm Permanent Deletion", key="chk_del_trip")
-            if st.button(f"🗑️ Delete Trip {t_data['trip_number']}", type="secondary", use_container_width=True):
-                if not confirm_del_trip:
-                    show_error_toast("Check the confirmation key before deleting.")
-                else:
-                    try:
-                        run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
-                        run_query("DELETE FROM trips WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
-                        run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = 'Available' WHERE vehicle_id = %s AND current_status = 'IN_TRANSIT'", (t_data['vehicle_id'],), fetch=False)
-                        get_cached_vehicles.clear()
-                        trigger_toast_and_rerun("SUCCESS", f"Trip {t_data['trip_number']} permanently deleted.")
-                    except Exception as e:
-                        show_error_toast(f"Delete failed: {e}")
+                            existing_fuel_log = run_query("SELECT fuel_log_id FROM diesel_fuel_logs WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s)", (t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id']))
+                            if existing_fuel_log:
+                                run_query("""
+                                    UPDATE diesel_fuel_logs 
+                                    SET fuel_date = %s, lr_number = %s, litres_filled = %s, total_fuel_cost = %s, filling_odometer_km = %s, trip_id = %s
+                                    WHERE fuel_log_id = %s;
+                                """, (e_sdate, e_lr, e_fuel_l, recalculated_fuel_cost, e_start_km, t_data['trip_id'], existing_fuel_log[0]['fuel_log_id']), fetch=False)
+
+                            get_cached_vehicles.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Trip #{e_lr} & Route Slabs updated successfully.")
+                        except Exception as e:
+                            show_error_toast(f"Update failed: {e}")
+
+            st.markdown("<hr style='margin: 10px 0;' />", unsafe_allow_html=True)
+            act1, act2 = st.columns(2)
+            with act1:
+                if t_data['trip_status'] == 'COMPLETED':
+                    confirm_reopen = st.checkbox("🔑 Confirm Trip Reopening", key="chk_reopen")
+                    if st.button("🔓 Reopen Trip (Set back to IN_TRANSIT)", use_container_width=True):
+                        if not confirm_reopen:
+                            show_error_toast("Check the confirmation key before reopening.")
+                        else:
+                            try:
+                                run_query("""
+                                    UPDATE trips 
+                                    SET trip_status = 'IN_TRANSIT', pod_number = NULL, trip_closed_at = NULL 
+                                    WHERE trip_id = %s;
+                                """, (t_data['trip_id'],), fetch=False)
+                                run_query("""
+                                    UPDATE vehicles 
+                                    SET current_status = 'IN_TRANSIT', status_remarks = %s 
+                                    WHERE vehicle_id = %s;
+                                """, (f"Reopened Trip {t_data['trip_number']}", t_data['vehicle_id']), fetch=False)
+                                get_cached_vehicles.clear()
+                                trigger_toast_and_rerun("SUCCESS", f"Trip {t_data['trip_number']} reopened! Truck is now IN_TRANSIT.")
+                            except Exception as e:
+                                show_error_toast(f"Reopen failed: {e}")
+
+            with act2:
+                confirm_del_trip = st.checkbox("🔑 Confirm Permanent Deletion", key="chk_del_trip")
+                if st.button(f"🗑️ Delete Trip {t_data['trip_number']}", type="secondary", use_container_width=True):
+                    if not confirm_del_trip:
+                        show_error_toast("Check the confirmation key before deleting.")
+                    else:
+                        try:
+                            run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
+                            run_query("DELETE FROM trips WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
+                            run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = 'Available' WHERE vehicle_id = %s AND current_status = 'IN_TRANSIT'", (t_data['vehicle_id'],), fetch=False)
+                            get_cached_vehicles.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Trip {t_data['trip_number']} permanently deleted.")
+                        except Exception as e:
+                            show_error_toast(f"Delete failed: {e}")
 
 # ==============================================================================
 # 7. DRIVER SETTLEMENT REPORT
