@@ -14,63 +14,132 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- Professional Widescreen ERP CSS ---
+# --- Commercial SaaS ERP CSS Injection ---
 st.markdown("""
 <style>
-    .main .block-container, div[data-testid="stAppViewBlockContainer"] {
-        padding-top: 0.8rem !important;
-        padding-bottom: 1rem !important;
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
-        max-width: 100vw !important;
-        width: 100% !important;
+    /* Base Background and Typography */
+    .stApp {
+        background-color: #F8FAFC !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
+    
+    /* Clean up default Streamlit UI elements */
     header {visibility: hidden; display: none !important;}
     #MainMenu {visibility: hidden; display: none !important;}
     footer {visibility: hidden; display: none !important;}
     
+    /* Layout padding constraint */
+    .main .block-container, div[data-testid="stAppViewBlockContainer"] {
+        padding-top: 1.5rem !important;
+        padding-bottom: 2rem !important;
+        padding-left: 2.5rem !important;
+        padding-right: 2.5rem !important;
+        max-width: 1600px !important;
+    }
+
+    /* Elevated Material Cards for Forms */
+    div[data-testid="stForm"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 12px !important;
+        padding: 24px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+    }
+
+    /* Polished KPI Metric Cards */
+    div[data-testid="metric-container"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 10px !important;
+        padding: 16px 20px !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08) !important;
+        border-left: 5px solid #2563EB !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    div[data-testid="metric-container"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.12) !important;
+    }
     div[data-testid="stMetricValue"] {
-        font-size: 1.20rem !important;
-        font-weight: 700 !important;
+        font-size: 1.6rem !important;
+        font-weight: 800 !important;
         color: #0F172A !important;
     }
     div[data-testid="stMetricLabel"] {
-        font-size: 0.76rem !important;
-        font-weight: 600 !important;
-        color: #475569 !important;
+        font-size: 0.78rem !important;
+        font-weight: 700 !important;
+        color: #64748B !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
     }
+
+    /* Section Headers */
     .section-header {
-        font-size: 0.95rem !important;
+        font-size: 1.05rem !important;
         font-weight: 700 !important;
         color: #1E293B !important;
-        border-bottom: 2px solid #CBD5E1 !important;
-        padding-bottom: 4px !important;
-        margin-top: 8px !important;
-        margin-bottom: 10px !important;
+        border-bottom: 2px solid #E2E8F0 !important;
+        padding-bottom: 6px !important;
+        margin-top: 16px !important;
+        margin-bottom: 16px !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
     }
+
+    /* Modern Input Fields */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
-        height: 38px !important;
-        font-size: 0.92rem !important;
-        border-radius: 4px !important;
-    }
-    .stButton>button {
-        height: 40px !important;
-        font-size: 0.92rem !important;
-        font-weight: 600 !important;
-        border-radius: 4px !important;
-    }
-    div[data-testid="stForm"] {
-        padding: 14px 18px !important;
-        border: 1px solid #E2E8F0 !important;
+        height: 42px !important;
+        font-size: 0.95rem !important;
         border-radius: 6px !important;
-        background-color: #FAFAFA !important;
+        background-color: #F8FAFC !important;
+        border: 1px solid #CBD5E1 !important;
+        color: #1E293B !important;
     }
+    .stTextInput>div>div>input:focus, .stSelectbox>div>div>div:focus {
+        border-color: #2563EB !important;
+        box-shadow: 0 0 0 1px #2563EB !important;
+    }
+
+    /* Commercial Primary Buttons */
+    .stButton>button {
+        height: 44px !important;
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        border-radius: 6px !important;
+        transition: all 0.2s ease;
+    }
+    .stButton>button[kind="primary"] {
+        background-color: #2563EB !important;
+        color: #FFFFFF !important;
+        border: none !important;
+    }
+    .stButton>button[kind="primary"]:hover {
+        background-color: #1D4ED8 !important;
+        box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2) !important;
+    }
+
+    /* Tabs Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        background-color: transparent;
+        border-radius: 4px 4px 0px 0px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-size: 1rem !important;
+    }
+    .stTabs [aria-selected="true"] {
+        border-bottom: 3px solid #2563EB !important;
+        color: #2563EB !important;
+        font-weight: 700 !important;
+    }
+
     div[data-testid="stDataFrame"] {
         width: 100% !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
     }
     div[data-testid="stToast"] {
         font-size: 0.90rem !important;
@@ -100,15 +169,15 @@ if "authenticated" not in st.session_state:
     st.session_state.user_role = None
 
 if not st.session_state.authenticated:
-    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
     c_l1, c_l2, c_l3 = st.columns([3, 4, 3])
     with c_l2:
-        st.markdown("<h2 style='text-align: center; color: #0F172A;'>Fleet Operations ERP</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #64748B;'>Please sign in to access fleet operations and reports</p>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #0F172A; font-weight: 800;'>Fleet Operations ERP</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #64748B; margin-bottom: 24px;'>Please sign in to access your dashboard</p>", unsafe_allow_html=True)
         with st.form("login_form"):
             in_user = st.text_input("Username").strip().lower()
             in_pass = st.text_input("Password", type="password").strip()
-            btn_login = st.form_submit_button("Sign In", type="primary", use_container_width=True)
+            btn_login = st.form_submit_button("Secure Sign In", type="primary", use_container_width=True)
             if btn_login:
                 if in_user in USER_CREDENTIALS and USER_CREDENTIALS[in_user]["password"] == in_pass:
                     st.session_state.authenticated = True
@@ -295,7 +364,7 @@ def check_duplicate_diesel_entry(vehicle_id, fuel_date, litres, filling_km=None,
     query = """
         SELECT fuel_log_id FROM diesel_fuel_logs 
         WHERE vehicle_id = %s 
-          AND fuel_date = %s 
+          AND fuel_date::date = %s 
           AND ABS(litres_filled - %s) < 0.01
     """
     params = [vehicle_id, fuel_date, litres]
@@ -346,7 +415,7 @@ STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TU
 nav1, nav2, nav3 = st.columns([3.0, 5.8, 1.2])
 with nav1:
     role_badge = "👑 MASTER" if st.session_state.user_role == "MASTER" else "👁️ REPORTS ONLY"
-    st.markdown(f"<h3 style='margin:0; padding:0; font-size:1.25rem; color:#0F172A; font-weight:700;'>Fleet Operations <span style='font-size:0.75rem; background:#E2E8F0; padding:3px 8px; border-radius:4px; margin-left:6px;'>{role_badge}</span></h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='margin:0; padding:0; font-size:1.35rem; color:#0F172A; font-weight:800;'>Fleet Operations <span style='font-size:0.75rem; background:#E2E8F0; color:#1E293B; padding:4px 8px; border-radius:6px; margin-left:8px; vertical-align: middle;'>{role_badge}</span></h3>", unsafe_allow_html=True)
 
 with nav2:
     if st.session_state.user_role == "MASTER":
@@ -377,7 +446,7 @@ with nav3:
         st.session_state.user_role = None
         st.rerun()
 
-st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
+st.markdown("<hr style='margin: 12px 0 20px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
 # 1. TRIP DISPATCH ENTRY
@@ -694,7 +763,7 @@ elif menu == "Fleet Status Board":
         with v_col1:
             st.dataframe(df_v[['vehicle_number', 'truck_type', 'carrying_capacity_tons', 'status_lbl', 'status_remarks']],
                          column_config={"vehicle_number": "Truck No", "truck_type": "Variant", "carrying_capacity_tons": "Capacity MT", "status_lbl": "Operational Status", "status_remarks": "Location / Note"},
-                         hide_index=True, use_container_width=True, height=350)
+                         hide_index=True, use_container_width=True, height=450)
         with v_col2:
             if st.session_state.user_role == "MASTER":
                 with st.form("quick_stat_form"):
@@ -781,7 +850,7 @@ elif menu == "Diesel Logs":
                 LIMIT 50;
             """)
             if d_recent:
-                st.dataframe(pd.DataFrame(d_recent), hide_index=True, use_container_width=True, height=320)
+                st.dataframe(pd.DataFrame(d_recent), hide_index=True, use_container_width=True, height=450)
 
     with tab_edit_fuel:
         st.markdown('<div class="section-header">Search & Edit Specific Diesel Log</div>', unsafe_allow_html=True)
@@ -903,7 +972,7 @@ elif menu == "Diesel Logs":
             c_d1, _ = st.columns([2, 2])
             with c_d1:
                 single_fl_d = st.date_input("Select Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="fl_single_d")
-                date_q_cond = " AND f.fuel_date = %s"
+                date_q_cond = " AND f.fuel_date::date = %s"
                 fl_params.append(single_fl_d)
         elif fuel_filter_mode == "Custom Date Range":
             c_d1, c_d2 = st.columns(2)
@@ -911,7 +980,7 @@ elif menu == "Diesel Logs":
                 from_fl_d = st.date_input("From Date", date.today().replace(day=1), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="fl_from_d")
             with c_d2:
                 to_fl_d = st.date_input("To Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="fl_to_d")
-                date_q_cond = " AND f.fuel_date >= %s AND f.fuel_date <= %s"
+                date_q_cond = " AND f.fuel_date::date >= %s AND f.fuel_date::date <= %s"
                 fl_params.extend([from_fl_d, to_fl_d])
 
         d_filter_sql = f"""
@@ -1012,7 +1081,7 @@ elif menu == "Driver Advances":
         adv_recs = run_query("SELECT a.advance_id, a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
         if adv_recs:
             df_adv_recs = pd.DataFrame(adv_recs)
-            st.dataframe(df_adv_recs, hide_index=True, use_container_width=True, height=280)
+            st.dataframe(df_adv_recs, hide_index=True, use_container_width=True, height=450)
             
             del_a1, del_a2, del_a3 = st.columns([2.5, 1.5, 1.0])
             with del_a1:
@@ -1267,6 +1336,7 @@ elif menu == "Driver Settlement":
         with s3:
             s_to = st.date_input("To Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
 
+        # FIXED MIDNIGHT BUG: Added ::date casting to ignore timestamps
         trips_drv = run_query("""
             SELECT 
                 t.trip_start_date,
@@ -1281,17 +1351,18 @@ elif menu == "Driver Settlement":
             FROM trips t
             JOIN vehicles v ON t.vehicle_id = v.vehicle_id
             WHERE t.primary_driver_id = %s 
-              AND t.trip_start_date >= %s 
-              AND t.trip_start_date <= %s
+              AND t.trip_start_date::date >= %s 
+              AND t.trip_start_date::date <= %s
             ORDER BY v.vehicle_number ASC, t.trip_start_date ASC;
         """, (d_id, s_from, s_to))
 
+        # FIXED MIDNIGHT BUG: Added ::date casting to ignore timestamps
         adv_drv = run_query("""
             SELECT advance_date, amount_inr, advance_type, reference_remarks 
             FROM driver_direct_advances 
             WHERE driver_id = %s 
-              AND advance_date >= %s 
-              AND advance_date <= %s
+              AND advance_date::date >= %s 
+              AND advance_date::date <= %s
             ORDER BY advance_date ASC;
         """, (d_id, s_from, s_to))
 
@@ -1383,8 +1454,9 @@ elif menu == "Driver Settlement":
                         show_error_toast("Check the confirmation key before finalizing settlement.")
                     else:
                         try:
-                            run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date>=%s AND trip_start_date<=%s", (d_id, s_from, s_to), fetch=False)
-                            run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date>=%s AND advance_date<=%s", (d_id, s_from, s_to), fetch=False)
+                            # FIXED MIDNIGHT BUG
+                            run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date::date>=%s AND trip_start_date::date<=%s", (d_id, s_from, s_to), fetch=False)
+                            run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date::date>=%s AND advance_date::date<=%s", (d_id, s_from, s_to), fetch=False)
                             trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {selected_driver['full_name']}.")
                         except Exception as e:
                             show_error_toast(f"Settlement failed: {e}")
@@ -1423,7 +1495,7 @@ elif menu == "Master Configuration":
             if v_recs:
                 df_v = pd.DataFrame(v_recs)
                 cols = [c for c in ['vehicle_number', 'truck_type', 'carrying_capacity_tons', 'current_status'] if c in df_v.columns]
-                st.dataframe(df_v[cols], hide_index=True, use_container_width=True, height=300)
+                st.dataframe(df_v[cols], hide_index=True, use_container_width=True, height=450)
 
     with t_d:
         c1, c2 = st.columns([1.5, 3.5])
@@ -1471,7 +1543,7 @@ elif menu == "Master Configuration":
             if d_recs:
                 df_d = pd.DataFrame(d_recs)
                 cols = [c for c in ['driver_code', 'full_name', 'phone_number', 'license_number'] if c in df_d.columns]
-                st.dataframe(df_d[cols], hide_index=True, use_container_width=True, height=300)
+                st.dataframe(df_d[cols], hide_index=True, use_container_width=True, height=450)
 
     with t_r:
         c1, c2 = st.columns([1.5, 3.5])
@@ -1511,7 +1583,7 @@ elif menu == "Master Configuration":
             if r_recs:
                 df_r = pd.DataFrame(r_recs)
                 cols = [c for c in ['cargo_type', 'origin', 'destination_name', 'capacity_tons', 'freight_rate_per_ton', 'standard_km'] if c in df_r.columns]
-                st.dataframe(df_r[cols], hide_index=True, use_container_width=True, height=300)
+                st.dataframe(df_r[cols], hide_index=True, use_container_width=True, height=450)
 
     # 4. SLAB-BASED DRIVER BATA MASTER
     with t_b:
@@ -1574,7 +1646,7 @@ elif menu == "Master Configuration":
                     },
                     hide_index=True, 
                     use_container_width=True, 
-                    height=300
+                    height=450
                 )
             else:
                 st.info("No Driver Bata rules configured yet.")
@@ -1654,6 +1726,7 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
+    # FIXED MIDNIGHT BUG: Added ::date cast to fuel_date and trip_start_date queries
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -1662,7 +1735,7 @@ elif menu == "Executive Retention Analytics":
                     COALESCE(SUM(litres_filled), 0.00) AS total_litres_pumped,
                     COALESCE(SUM(total_fuel_cost), 0.00) AS total_diesel_expense
                 FROM diesel_fuel_logs
-                WHERE fuel_date >= %s AND fuel_date <= %s
+                WHERE fuel_date::date >= %s AND fuel_date::date <= %s
                 GROUP BY vehicle_id
             ),
             vehicle_trip_summary AS (
@@ -1684,7 +1757,7 @@ elif menu == "Executive Retention Analytics":
                         COALESCE(t.misc_trip_expense, 0.00)
                     ), 0.00) AS non_fuel_trip_costs
                 FROM trips t
-                WHERE t.trip_start_date >= %s AND t.trip_start_date <= %s
+                WHERE t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s
                 GROUP BY t.vehicle_id
             )
             SELECT 
@@ -1850,7 +1923,8 @@ elif menu == "Executive Retention Analytics":
             date_filter_cond = ""
             sub_params = []
             if start_filter_date and end_filter_date:
-                date_filter_cond = "AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
+                # FIXED MIDNIGHT BUG
+                date_filter_cond = "AND t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s"
                 sub_params.extend([start_filter_date, end_filter_date])
 
             pending_trips = run_query(f"""
@@ -1863,7 +1937,7 @@ elif menu == "Executive Retention Analytics":
                     t.origin AS source,
                     t.destination,
                     t.trip_start_date,
-                    CURRENT_DATE - t.trip_start_date AS days_pending,
+                    CURRENT_DATE - t.trip_start_date::date AS days_pending,
                     t.tonnage_loaded
                 FROM trips t
                 JOIN vehicles v ON t.vehicle_id = v.vehicle_id
@@ -1896,7 +1970,7 @@ elif menu == "Executive Retention Analytics":
                     },
                     hide_index=True,
                     use_container_width=True,
-                    height=260
+                    height=300
                 )
             else:
                 st.success("All dispatched trips for this window have their PODs received and closed.")
@@ -1955,6 +2029,7 @@ elif menu == "Executive Retention Analytics":
 
     with tab_d:
         if start_filter_date and end_filter_date:
+            # FIXED MIDNIGHT BUG
             drv_sql = """
                 SELECT 
                     d.driver_code, 
@@ -1975,7 +2050,7 @@ elif menu == "Executive Retention Analytics":
                     COALESCE(SUM(COALESCE(t.driver_bata, 0.00)), 0.00) AS bata_earned
                 FROM drivers d 
                 LEFT JOIN trips t ON d.driver_id = t.primary_driver_id 
-                    AND t.trip_start_date >= %s AND t.trip_start_date <= %s
+                    AND t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s
                 WHERE d.is_active = TRUE 
                 GROUP BY d.driver_code, d.full_name;
             """
@@ -2015,7 +2090,7 @@ elif menu == "Executive Retention Analytics":
                     df_drv[c] = pd.to_numeric(df_drv[c], errors='coerce').fillna(0.0)
 
             df_drv = df_drv.sort_values(by=['revenue'], ascending=[False]).reset_index(drop=True)
-            st.dataframe(df_drv, hide_index=True, use_container_width=True, height=380)
+            st.dataframe(df_drv, hide_index=True, use_container_width=True, height=450)
 
 # ==============================================================================
 # 10. AUDIT LOG
@@ -2047,7 +2122,7 @@ elif menu == "Audit Log":
         ad_c1, _ = st.columns([2, 2])
         with ad_c1:
             aud_single_d = st.date_input("Filter Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_single_d")
-            aud_date_q = " AND t.trip_start_date = %s"
+            aud_date_q = " AND t.trip_start_date::date = %s" # FIXED MIDNIGHT BUG
             aud_params.append(aud_single_d)
     elif aud_date_mode == "Custom Date Range":
         ad_c1, ad_c2 = st.columns(2)
@@ -2055,7 +2130,7 @@ elif menu == "Audit Log":
             aud_from_d = st.date_input("From Date", date.today().replace(day=1), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_from_d")
         with ad_c2:
             aud_to_d = st.date_input("To Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_to_d")
-            aud_date_q = " AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
+            aud_date_q = " AND t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s" # FIXED MIDNIGHT BUG
             aud_params.extend([aud_from_d, aud_to_d])
 
     aud_sql = f"""
