@@ -274,14 +274,18 @@ def get_last_driver_and_weight_for_vehicle(vehicle_id):
         pass
     return None, 0.0, None
 
-def check_lr_exists(trip_no, exclude_trip_id=None):
+def check_lr_exists(trip_no):
     if not trip_no or not trip_no.strip():
-        return False
-    if exclude_trip_id:
-        res = run_query("SELECT trip_id FROM trips WHERE LOWER(trip_number) = LOWER(%s) AND trip_id != %s", (trip_no.strip(), exclude_trip_id))
-    else:
-        res = run_query("SELECT trip_id FROM trips WHERE LOWER(trip_number) = LOWER(%s)", (trip_no.strip(),))
-    return len(res) > 0
+        return None
+    res = run_query("""
+        SELECT t.trip_id, t.trip_number, t.trip_status, t.trip_start_date, v.vehicle_number, d.full_name AS driver_name
+        FROM trips t
+        JOIN vehicles v ON t.vehicle_id = v.vehicle_id
+        JOIN drivers d ON t.primary_driver_id = d.driver_id
+        WHERE LOWER(t.trip_number) = LOWER(%s)
+        LIMIT 1;
+    """, (trip_no.strip(),))
+    return res[0] if res else None
 
 def check_vehicle_has_open_trip(vehicle_id):
     res = run_query("SELECT trip_id, trip_number FROM trips WHERE vehicle_id = %s AND trip_status != 'COMPLETED' LIMIT 1;", (vehicle_id,))
@@ -376,7 +380,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. TRIP DISPATCH ENTRY
+# 1. TRIP DISPATCH ENTRY (WITH LR DUPLICATION & UNCLOSED TRIP WARNING)
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -403,10 +407,18 @@ if menu == "Trip Dispatch Entry":
     r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.4, 1.3, 2.6, 1.5])
     with r1_c1:
         start_date = st.date_input("1. Trip Start Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key=f"sdate_{cnt}")
+    
     with r1_c2:
         lr_no = st.text_input("2. LR Number*", placeholder="LR-XXXX", key=f"lr_{cnt}").strip().upper()
-        if lr_no and check_lr_exists(lr_no):
-            show_error_toast(f"Duplicate Alert: LR Number '{lr_no}' already exists!")
+        
+        # Real-time duplicate & unclosed trip check against entered LR No
+        lr_check_res = check_lr_exists(lr_no) if lr_no else None
+        if lr_check_res:
+            if lr_check_res['trip_status'] != 'COMPLETED':
+                st.warning(f"⚠️ **Unclosed Trip Alert**: LR `{lr_no}` is currently **IN TRANSIT** (Truck: {lr_check_res['vehicle_number']} | Driver: {lr_check_res['driver_name']} | Started: {lr_check_res['trip_start_date']})")
+            else:
+                st.error(f"❌ **Duplicate LR Alert**: LR `{lr_no}` already exists and is marked as COMPLETED.")
+
     with r1_c3:
         cargo_category = st.selectbox("3. Cargo Category*", ["BULK", "BAG"], key=f"cargo_sel_{cnt}")
 
@@ -555,8 +567,8 @@ if menu == "Trip Dispatch Entry":
             show_error_toast(f"Action Blocked: Truck {active_veh['vehicle_number']} already has active trip {open_trip_check['trip_number']}.")
         elif not lr_no or not dest_terminal or not origin_terminal:
             show_error_toast("Validation Failure: LR Number, Source, and Destination are required.")
-        elif check_lr_exists(lr_no):
-            show_error_toast(f"Cannot dispatch trip. LR Number '{lr_no}' already exists.")
+        elif lr_check_res and lr_check_res['trip_status'] == 'COMPLETED':
+            show_error_toast(f"Cannot dispatch trip. LR Number '{lr_no}' already exists and is closed.")
         else:
             try:
                 new_t = run_query("""
@@ -1494,6 +1506,8 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
+                    else:
+                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
