@@ -1,3 +1,10 @@
+To implement professional PDF reporting directly inside Streamlit without breaking the UI fluidity, we need to use a lightweight Python library called fpdf.
+I have built a robust PDF generator directly into the Driver Settlement tab. It perfectly formats the driver's trips, advances, diesel usage, and final balances into a beautiful, printable A4 document that you can hand to your drivers or share via WhatsApp.
+⚠️ Important Prerequisite
+Before running the code below, open your terminal/command prompt and run this command to install the PDF library:
+pip install fpdf
+
+Here is the complete, updated commercial-grade application. You can copy and replace your entire script:
 import streamlit as st
 import pandas as pd
 import psycopg2
@@ -6,6 +13,15 @@ from psycopg2.extras import RealDictCursor
 from datetime import date
 import io
 import time
+import os
+import tempfile
+
+# --- Safely Import FPDF ---
+try:
+    from fpdf import FPDF
+    HAS_FPDF = True
+except ImportError:
+    HAS_FPDF = False
 
 # --- Full Widescreen Page Configuration ---
 st.set_page_config(
@@ -206,6 +222,92 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# --- PDF Generation Function ---
+def generate_settlement_pdf(driver_name, start_d, end_d, trips_df, adv_df, totals):
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
+    pdf.add_page()
+    
+    # Header
+    pdf.set_font("Arial", 'B', 18)
+    pdf.cell(0, 10, "KSS Roadways - Settlement Statement", ln=True, align='C')
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(0, 6, f"Driver Name: {driver_name}", ln=True, align='C')
+    pdf.cell(0, 6, f"Period: {start_d} to {end_d}", ln=True, align='C')
+    pdf.ln(5)
+    
+    # Financial Summary Card
+    pdf.set_font("Arial", 'B', 12)
+    pdf.set_fill_color(240, 245, 255)
+    pdf.cell(0, 10, " Overall Cycle Position", ln=True, fill=True)
+    pdf.set_font("Arial", '', 11)
+    pdf.cell(95, 8, f" Total Diesel Issued: {totals['diesel']:.1f} L", border=1)
+    pdf.cell(95, 8, f" Total Bata Earned: Rs {totals['bata']:.2f}", border=1, ln=True)
+    pdf.cell(95, 8, f" Total Advances Deducted: Rs {totals['adv']:.2f}", border=1)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(95, 8, f" Grand Balance Payable: Rs {totals['bal']:.2f}", border=1, ln=True)
+    pdf.ln(10)
+    
+    # Trips Table
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, " Trip Details", ln=True)
+    
+    if not trips_df.empty:
+        pdf.set_font("Arial", 'B', 9)
+        cols = ["Date", "LR No", "Truck", "Source", "Dest", "Diesel", "Bata", "Adv", "Bal"]
+        # Total width = 190mm for A4 inside margins
+        col_widths = [20, 18, 22, 22, 25, 15, 18, 20, 30]
+        for i in range(len(cols)):
+            pdf.cell(col_widths[i], 8, cols[i], border=1, align='C')
+        pdf.ln()
+        
+        pdf.set_font("Arial", '', 8)
+        for idx, row in trips_df.iterrows():
+            pdf.cell(col_widths[0], 8, str(row.get('trip_start_date', ''))[:10], border=1)
+            pdf.cell(col_widths[1], 8, str(row.get('lr_no', ''))[:8], border=1)
+            pdf.cell(col_widths[2], 8, str(row.get('vehicle_number', ''))[:10], border=1)
+            pdf.cell(col_widths[3], 8, str(row.get('source', ''))[:10], border=1)
+            pdf.cell(col_widths[4], 8, str(row.get('destination', ''))[:10], border=1)
+            pdf.cell(col_widths[5], 8, f"{row.get('diesel_litres', 0):.1f}", border=1, align='R')
+            pdf.cell(col_widths[6], 8, f"{row.get('total_bata', 0):.0f}", border=1, align='R')
+            pdf.cell(col_widths[7], 8, f"{row.get('advance_issued', 0):.0f}", border=1, align='R')
+            pdf.cell(col_widths[8], 8, f"{row.get('balance_amount', 0):.0f}", border=1, align='R')
+            pdf.ln()
+    else:
+        pdf.set_font("Arial", '', 10)
+        pdf.cell(0, 8, "No trips logged in this period.", ln=True)
+        
+    pdf.ln(5)
+    
+    # Advances Table
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, " Direct Cash & Salary Advances", ln=True)
+    if not adv_df.empty:
+        pdf.set_font("Arial", 'B', 9)
+        pdf.cell(30, 8, "Date", border=1, align='C')
+        pdf.cell(40, 8, "Amount (Rs)", border=1, align='C')
+        pdf.cell(50, 8, "Category", border=1, align='C')
+        pdf.cell(70, 8, "Remarks", border=1, align='C')
+        pdf.ln()
+        
+        pdf.set_font("Arial", '', 9)
+        for idx, row in adv_df.iterrows():
+            pdf.cell(30, 8, str(row.get('advance_date', ''))[:10], border=1)
+            pdf.cell(40, 8, f"{row.get('amount_inr', 0):.2f}", border=1, align='R')
+            pdf.cell(50, 8, str(row.get('advance_type', ''))[:20], border=1)
+            pdf.cell(70, 8, str(row.get('reference_remarks', ''))[:35], border=1)
+            pdf.ln()
+    else:
+        pdf.set_font("Arial", '', 10)
+        pdf.cell(0, 8, "No direct advances in this period.", ln=True)
+
+    # Securely extract PDF bytes
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        pdf.output(tmp.name)
+        tmp.seek(0)
+        data = tmp.read()
+    os.remove(tmp.name)
+    return data
 
 # --- Toast Functions ---
 def show_success_toast(msg: str):
@@ -908,7 +1010,7 @@ elif menu == "Diesel Logs":
                 f_cost = round(f_l * d_rate_fast, 2)
                 st.metric("Total Fuel Cost", f"₹{f_cost:,.2f}")
                 st.write("")
-                if st.form_submit_button("Record Diesel Entry", type="primary", use_container_width=True):
+                if st.form_submit_button("Record Diesel Entry", type="primary"):
                     if f_l <= 0:
                         show_error_toast("Fuel quantity must be greater than zero.")
                     elif check_duplicate_diesel_entry(target_veh_id, f_date, f_l, filling_km=filling_km, lr_number=f_lr):
@@ -998,7 +1100,7 @@ elif menu == "Diesel Logs":
                         st.metric("Recalculated Fuel Cost", f"₹{e_cost:,.2f}")
 
                     st.write("")
-                    if st.form_submit_button("💾 Commit Diesel Log Updates", type="primary", use_container_width=True):
+                    if st.form_submit_button("💾 Commit Diesel Log Updates", type="primary"):
                         if e_litres <= 0:
                             show_error_toast("Fuel quantity must be greater than zero.")
                         elif check_duplicate_diesel_entry(e_target_veh_id, e_fuel_date, e_litres, filling_km=e_filling_km, lr_number=e_lr_val, exclude_fuel_log_id=target_fuel['fuel_log_id']):
@@ -1490,6 +1592,7 @@ elif menu == "Driver Settlement":
                 sb4.caption(f"**Truck {trk} Subtotal Balance:** ₹{sub_bal:,.2f}")
                 st.markdown("<hr style='margin: 6px 0 12px 0;' />", unsafe_allow_html=True)
         else:
+            df_all_trips = pd.DataFrame()
             st.info("No trips logged for this driver in the selected period.")
 
         direct_adv_sum = 0.0
@@ -1510,6 +1613,8 @@ elif menu == "Driver Settlement":
                 hide_index=True,
                 use_container_width=True
             )
+        else:
+            df_direct_adv = pd.DataFrame()
 
         final_balance_payable = grand_total_bata - grand_total_adv
 
@@ -1520,18 +1625,41 @@ elif menu == "Driver Settlement":
         g3.metric("Total Advances Deducted", f"₹{grand_total_adv:,.2f}")
         g4.metric("Grand Total Balance Payable", f"₹{final_balance_payable:,.2f}")
 
-        if st.session_state.user_role == "MASTER":
-            st.write("")
-            if st.button("Mark Period Settled", type="primary"):
-                def execute_settle_period():
-                    try:
-                        run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date::date>=%s AND trip_start_date::date<=%s", (d_id, s_from, s_to), fetch=False)
-                        run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date::date>=%s AND advance_date::date<=%s", (d_id, s_from, s_to), fetch=False)
-                        trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {selected_driver['full_name']}.")
-                    except Exception as e:
-                        show_error_toast(f"Settlement failed: {e}")
-                        
-                confirm_action_dialog(f"mark all records for {selected_driver['full_name']} from {s_from} to {s_to} as SETTLED", execute_settle_period)
+        st.write("")
+        act_col1, act_col2, act_col3 = st.columns([2, 1.2, 1.2])
+        
+        with act_col2:
+            if not HAS_FPDF:
+                st.error("⚠️ Install `fpdf` via terminal (`pip install fpdf`) to enable PDF downloads.")
+            else:
+                totals_dict = {
+                    'diesel': grand_total_diesel,
+                    'bata': grand_total_bata,
+                    'adv': grand_total_adv,
+                    'bal': final_balance_payable
+                }
+                pdf_data = generate_settlement_pdf(selected_driver['full_name'], s_from, s_to, df_all_trips, df_direct_adv, totals_dict)
+                st.download_button(
+                    label="📄 Download PDF Statement",
+                    data=pdf_data,
+                    file_name=f"Settlement_{selected_driver['driver_code']}_{s_from}.pdf",
+                    mime="application/pdf",
+                    type="secondary",
+                    use_container_width=True
+                )
+                
+        with act_col3:
+            if st.session_state.user_role == "MASTER":
+                if st.button("Mark Period Settled", type="primary", use_container_width=True):
+                    def execute_settle_period():
+                        try:
+                            run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date::date>=%s AND trip_start_date::date<=%s", (d_id, s_from, s_to), fetch=False)
+                            run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date::date>=%s AND advance_date::date<=%s", (d_id, s_from, s_to), fetch=False)
+                            trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {selected_driver['full_name']}.")
+                        except Exception as e:
+                            show_error_toast(f"Settlement failed: {e}")
+                            
+                    confirm_action_dialog(f"mark all records for {selected_driver['full_name']} from {s_from} to {s_to} as SETTLED", execute_settle_period)
 
 # ==============================================================================
 # 8. MASTER CONFIGURATION
@@ -2302,3 +2430,4 @@ elif menu == "Audit Log":
                     confirm_action_dialog(f"permanently purge Trip ID #{del_target_id} from the audit registry", execute_purge_audit)
     else:
         st.info("No records match the specified audit filter criteria.")
+
