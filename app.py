@@ -14,138 +14,195 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- Commercial SaaS ERP CSS Injection ---
+# --- Hyper-Polished Commercial SaaS UI ---
 st.markdown("""
 <style>
     /* Base Background and Typography */
-    .stApp {
-        background-color: #F8FAFC !important;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    html, body, [class*="css"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
     
-    /* Clean up default Streamlit UI elements */
+    .stApp {
+        background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%) !important;
+    }
+    
+    /* Hide Streamlit elements */
     header {visibility: hidden; display: none !important;}
     #MainMenu {visibility: hidden; display: none !important;}
     footer {visibility: hidden; display: none !important;}
     
+    /* Fade-in Animation for Fluidity */
+    @keyframes fadeInScale {
+        0% { opacity: 0; transform: translateY(15px) scale(0.99); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
     /* Layout padding constraint */
     .main .block-container, div[data-testid="stAppViewBlockContainer"] {
+        animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         padding-top: 1.5rem !important;
         padding-bottom: 2rem !important;
-        padding-left: 2.5rem !important;
-        padding-right: 2.5rem !important;
+        padding-left: 3rem !important;
+        padding-right: 3rem !important;
         max-width: 1600px !important;
     }
 
-    /* Elevated Material Cards for Forms */
+    /* Glassmorphic Material Cards for Forms */
     div[data-testid="stForm"] {
-        background-color: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
-        border-radius: 12px !important;
-        padding: 24px !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+        background: rgba(255, 255, 255, 0.8) !important;
+        backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.5) !important;
+        border-radius: 16px !important;
+        padding: 28px !important;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.01) !important;
+        transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+    }
+    div[data-testid="stForm"]:hover {
+        box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 10px 10px -5px rgba(15, 23, 42, 0.02) !important;
     }
 
     /* Polished KPI Metric Cards */
     div[data-testid="metric-container"] {
         background-color: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
-        border-radius: 10px !important;
-        padding: 16px 20px !important;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08) !important;
-        border-left: 5px solid #2563EB !important;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 1px solid #F1F5F9 !important;
+        border-radius: 12px !important;
+        padding: 20px 24px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -2px rgba(0, 0, 0, 0.03) !important;
+        border-left: 6px solid #3B82F6 !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        position: relative;
+        overflow: hidden;
     }
     div[data-testid="metric-container"]:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.12) !important;
+        transform: translateY(-4px) !important;
+        box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+        border-left-color: #2563EB !important;
     }
     div[data-testid="stMetricValue"] {
-        font-size: 1.6rem !important;
+        font-size: 1.75rem !important;
         font-weight: 800 !important;
         color: #0F172A !important;
+        letter-spacing: -0.5px !important;
     }
     div[data-testid="stMetricLabel"] {
-        font-size: 0.78rem !important;
+        font-size: 0.80rem !important;
         font-weight: 700 !important;
         color: #64748B !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
+        letter-spacing: 0.8px !important;
     }
 
     /* Section Headers */
     .section-header {
-        font-size: 1.05rem !important;
-        font-weight: 700 !important;
-        color: #1E293B !important;
+        font-size: 1.1rem !important;
+        font-weight: 800 !important;
+        color: #0F172A !important;
         border-bottom: 2px solid #E2E8F0 !important;
-        padding-bottom: 6px !important;
-        margin-top: 16px !important;
-        margin-bottom: 16px !important;
+        padding-bottom: 8px !important;
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
     }
 
-    /* Modern Input Fields */
+    /* Modern Fluid Input Fields */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
-        height: 42px !important;
+        height: 46px !important;
         font-size: 0.95rem !important;
-        border-radius: 6px !important;
+        font-weight: 500 !important;
+        border-radius: 8px !important;
         background-color: #F8FAFC !important;
-        border: 1px solid #CBD5E1 !important;
+        border: 1.5px solid #CBD5E1 !important;
         color: #1E293B !important;
+        transition: all 0.25s ease !important;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.01) !important;
     }
-    .stTextInput>div>div>input:focus, .stSelectbox>div>div>div:focus {
-        border-color: #2563EB !important;
-        box-shadow: 0 0 0 1px #2563EB !important;
+    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, .stSelectbox>div>div>div:focus {
+        background-color: #FFFFFF !important;
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important;
     }
 
-    /* Commercial Primary Buttons */
+    /* Fluid High-End Buttons */
     .stButton>button {
-        height: 44px !important;
+        height: 48px !important;
         font-size: 0.95rem !important;
         font-weight: 600 !important;
-        border-radius: 6px !important;
-        transition: all 0.2s ease;
+        border-radius: 8px !important;
+        letter-spacing: 0.3px !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     .stButton>button[kind="primary"] {
-        background-color: #2563EB !important;
+        background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%) !important;
         color: #FFFFFF !important;
         border: none !important;
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25) !important;
     }
     .stButton>button[kind="primary"]:hover {
-        background-color: #1D4ED8 !important;
-        box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2) !important;
+        background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%) !important;
+        box-shadow: 0 6px 15px rgba(37, 99, 235, 0.35) !important;
+        transform: translateY(-1px) !important;
+    }
+    .stButton>button[kind="primary"]:active {
+        transform: translateY(1px) !important;
+        box-shadow: 0 2px 5px rgba(37, 99, 235, 0.2) !important;
     }
 
-    /* Tabs Styling */
+    /* iOS Style Segmented Control Tabs */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 24px;
+        background-color: #E2E8F0;
+        border-radius: 12px;
+        padding: 4px;
+        gap: 4px;
+        border: none !important;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
         background-color: transparent;
-        border-radius: 4px 4px 0px 0px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        font-size: 1rem !important;
+        border-radius: 8px;
+        padding: 12px 24px;
+        color: #64748B !important;
+        font-weight: 600 !important;
+        border: none !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        height: 48px;
+        margin: 0 !important;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #0F172A !important;
     }
     .stTabs [aria-selected="true"] {
-        border-bottom: 3px solid #2563EB !important;
-        color: #2563EB !important;
-        font-weight: 700 !important;
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08) !important;
+    }
+    .stTabs [data-baseweb="tab-highlight"] {
+        display: none !important; /* Hides the native bottom bar */
     }
 
-    div[data-testid="stDataFrame"] {
-        width: 100% !important;
+    /* Dataframe Polish */
+    div[data-testid="stDataFrame"] > div {
+        border-radius: 12px !important;
+        overflow: hidden !important;
         border: 1px solid #E2E8F0 !important;
-        border-radius: 8px !important;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03) !important;
     }
+    
+    /* Custom Notification Banners */
+    div[data-testid="stAlert"] {
+        border-radius: 10px !important;
+        border: none !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        font-weight: 500 !important;
+    }
+    
     div[data-testid="stToast"] {
-        font-size: 0.90rem !important;
+        font-size: 0.95rem !important;
         font-weight: 600 !important;
-        border-radius: 6px !important;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2) !important;
+        padding: 16px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -185,14 +242,15 @@ if "authenticated" not in st.session_state:
     st.session_state.user_role = None
 
 if not st.session_state.authenticated:
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     c_l1, c_l2, c_l3 = st.columns([3, 4, 3])
     with c_l2:
-        st.markdown("<h2 style='text-align: center; color: #0F172A; font-weight: 800;'>Fleet Operations ERP</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #64748B; margin-bottom: 24px;'>Please sign in to access your dashboard</p>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; color: #0F172A; font-weight: 800; letter-spacing: -1px;'>Fleet Operations ERP</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #64748B; margin-bottom: 32px; font-size: 1.1rem;'>Log in to access your secure dashboard</p>", unsafe_allow_html=True)
         with st.form("login_form"):
             in_user = st.text_input("Username").strip().lower()
             in_pass = st.text_input("Password", type="password").strip()
+            st.write("")
             btn_login = st.form_submit_button("Secure Sign In", type="primary", use_container_width=True)
             if btn_login:
                 if in_user in USER_CREDENTIALS and USER_CREDENTIALS[in_user]["password"] == in_pass:
@@ -431,10 +489,10 @@ STATUS_OPTIONS = {
 STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"]
 
 # --- Clean Header Navigation Ribbon ---
-nav1, nav2, nav3 = st.columns([3.0, 5.8, 1.2])
+nav1, nav2, nav3 = st.columns([3.0, 6.0, 1.0])
 with nav1:
     role_badge = "👑 MASTER" if st.session_state.user_role == "MASTER" else "👁️ REPORTS ONLY"
-    st.markdown(f"<h3 style='margin:0; padding:0; font-size:1.35rem; color:#0F172A; font-weight:800;'>Fleet Operations <span style='font-size:0.75rem; background:#E2E8F0; color:#1E293B; padding:4px 8px; border-radius:6px; margin-left:8px; vertical-align: middle;'>{role_badge}</span></h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='margin:0; padding:0; font-size:1.45rem; color:#0F172A; font-weight:800; letter-spacing:-0.5px;'>Fleet Operations <span style='font-size:0.75rem; background:#DBEAFE; color:#1E40AF; padding:4px 10px; border-radius:8px; margin-left:8px; vertical-align: middle; border: 1px solid #BFDBFE;'>{role_badge}</span></h3>", unsafe_allow_html=True)
 
 with nav2:
     if st.session_state.user_role == "MASTER":
@@ -465,7 +523,7 @@ with nav3:
         st.session_state.user_role = None
         st.rerun()
 
-st.markdown("<hr style='margin: 12px 0 20px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
+st.markdown("<hr style='margin: 16px 0 24px 0; border: none; border-top: 1.5px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
 # 1. TRIP DISPATCH ENTRY
@@ -641,7 +699,7 @@ if menu == "Trip Dispatch Entry":
         computed_km = max(0.0, end_km - start_km) if (end_km >= start_km and end_km > 0) else standard_route_km
 
     st.write("")
-    if st.button("🚀 Save & Dispatch Trip Record", type="primary", use_container_width=True):
+    if st.button("🚀 Save & Dispatch Trip Record", type="primary"):
         if sel_veh_label == "-- SELECT TRUCK --":
             show_error_toast("Please select an assigned truck.")
         elif chosen_source_opt == "-- SELECT SOURCE HUB --":
@@ -737,7 +795,7 @@ elif menu == "POD Receive & Close":
                     claims = st.number_input("En-route Claims (₹)", min_value=0.0, value=0.0, step=50.0)
 
                 st.write("")
-                if st.form_submit_button("✅ Settle POD Reference & Release Truck", type="primary", use_container_width=True):
+                if st.form_submit_button("✅ Settle POD Reference & Release Truck", type="primary"):
                     if not pod_no:
                         show_error_toast("POD Number is required.")
                     else:
