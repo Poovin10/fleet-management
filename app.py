@@ -1,10 +1,3 @@
-To implement professional PDF reporting directly inside Streamlit without breaking the UI fluidity, we need to use a lightweight Python library called fpdf.
-I have built a robust PDF generator directly into the Driver Settlement tab. It perfectly formats the driver's trips, advances, diesel usage, and final balances into a beautiful, printable A4 document that you can hand to your drivers or share via WhatsApp.
-⚠️ Important Prerequisite
-Before running the code below, open your terminal/command prompt and run this command to install the PDF library:
-pip install fpdf
-
-Here is the complete, updated commercial-grade application. You can copy and replace your entire script:
 import streamlit as st
 import pandas as pd
 import psycopg2
@@ -2430,4 +2423,3 @@ elif menu == "Audit Log":
                     confirm_action_dialog(f"permanently purge Trip ID #{del_target_id} from the audit registry", execute_purge_audit)
     else:
         st.info("No records match the specified audit filter criteria.")
-
