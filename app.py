@@ -1487,32 +1487,149 @@ elif menu == "Master Configuration":
                 km = st.number_input("Standard KM", min_value=0.0, step=10.0)
                 st.write("")
                 confirm_route_save = st.checkbox("🔑 Confirm Freight Slab Save", key="chk_save_route")
-                if st.form_submit_button("Save Freight Slab", type="primary", use_container_width=True):
-                    if not confirm_route_save:
-                        show_error_toast("Check the confirmation key before saving.")
-                    elif not dt or rt <= 0:
-                        show_error_toast("Destination and freight rate are required.")
+                # ==============================================================================
+# 10. AUDIT LOG
+# ==============================================================================
+elif menu == "Audit Log":
+    st.markdown('<div class="section-header">Complete System Audit Log & Multi-Parameter Filter</div>', unsafe_allow_html=True)
+    
+    vehicles = get_cached_vehicles()
+    drivers = get_cached_drivers()
+
+    af_col1, af_col2, af_col3, af_col4, af_col5 = st.columns([1.8, 1.8, 1.8, 1.8, 2.0])
+    with af_col1:
+        aud_date_mode = st.selectbox("Date Mode", ["All Dates", "Specific Single Date", "Custom Date Range"], key="aud_d_mode")
+    with af_col2:
+        all_trks = ["All Trucks"] + sorted([v['vehicle_number'] for v in vehicles])
+        sel_aud_trk = st.selectbox("Select Truck", all_trks, key="aud_trk_sel")
+    with af_col3:
+        sel_aud_stat = st.selectbox("Trip Status", ["All Statuses", "IN_TRANSIT (Open / Pending POD)", "COMPLETED (Closed)"], key="aud_stat_sel")
+    with af_col4:
+        all_drvs = ["All Drivers"] + sorted([f"{d['driver_code']} - {d['full_name']}" for d in drivers])
+        sel_aud_drv = st.selectbox("Assigned Driver", all_drvs, key="aud_drv_sel")
+    with af_col5:
+        search_aud_text = st.text_input("Search LR / Destination", placeholder="e.g. LR-401 or SANKARI", key="aud_search_txt").strip().upper()
+
+    aud_date_q = ""
+    aud_params = []
+
+    if aud_date_mode == "Specific Single Date":
+        ad_c1, _ = st.columns([2, 2])
+        with ad_c1:
+            aud_single_d = st.date_input("Filter Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_single_d")
+            aud_date_q = " AND t.trip_start_date = %s"
+            aud_params.append(aud_single_d)
+    elif aud_date_mode == "Custom Date Range":
+        ad_c1, ad_c2 = st.columns(2)
+        with ad_c1:
+            aud_from_d = st.date_input("From Date", date.today().replace(day=1), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_from_d")
+        with ad_c2:
+            aud_to_d = st.date_input("To Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_to_d")
+            aud_date_q = " AND t.trip_start_date >= %s AND t.trip_start_date <= %s"
+            aud_params.extend([aud_from_d, aud_to_d])
+
+    aud_sql = f"""
+        SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, t.trip_end_date,
+               v.vehicle_number, d.full_name AS driver, d.phone_number AS driver_phone,
+               t.origin, t.destination, t.start_km, t.end_km, t.total_km_run,
+               t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, t.fuel_expense, 
+               t.driver_bata, t.halt_bata, t.cash_advance_issued,
+               (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.halt_bata + t.enroute_repairs_maintenance)) AS net_profit, 
+               t.trip_status
+        FROM trips t 
+        JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
+        JOIN drivers d ON t.primary_driver_id = d.driver_id 
+        WHERE 1=1 {aud_date_q}
+    """
+
+    if sel_aud_trk != "All Trucks":
+        aud_sql += " AND v.vehicle_number = %s"
+        aud_params.append(sel_aud_trk)
+
+    if sel_aud_stat == "IN_TRANSIT (Open / Pending POD)":
+        aud_sql += " AND t.trip_status != 'COMPLETED'"
+    elif sel_aud_stat == "COMPLETED (Closed)":
+        aud_sql += " AND t.trip_status = 'COMPLETED'"
+
+    if sel_aud_drv != "All Drivers":
+        drv_code_extracted = sel_aud_drv.split(" - ")[0].strip()
+        aud_sql += " AND d.driver_code = %s"
+        aud_params.append(drv_code_extracted)
+
+    if search_aud_text:
+        aud_sql += " AND (UPPER(t.trip_number) LIKE %s OR UPPER(t.destination) LIKE %s OR UPPER(t.origin) LIKE %s)"
+        aud_params.extend([f"%{search_aud_text}%", f"%{search_aud_text}%", f"%{search_aud_text}%"])
+
+    aud_sql += " ORDER BY t.trip_id DESC;"
+
+    all_trips = run_query(aud_sql, tuple(aud_params) if aud_params else None)
+    
+    if all_trips:
+        df_all = pd.DataFrame(all_trips)
+        
+        af_k1, af_k2, af_k3, af_k4 = st.columns(4)
+        af_k1.metric("Filtered Trips", len(df_all))
+        af_k2.metric("Total Loaded Tonnage", f"{float(df_all['loaded_weight_mt'].sum() or 0.0):,.2f} MT")
+        af_k3.metric("Freight Revenue", f"₹{float(df_all['freight_revenue'].sum() or 0.0):,.2f}")
+        af_k4.metric("Net Margin Retained", f"₹{float(df_all['net_profit'].sum() or 0.0):,.2f}")
+
+        st.dataframe(
+            df_all,
+            column_config={
+                "trip_id": "Trip ID",
+                "trip_number": "LR Number",
+                "pod_number": "POD No",
+                "trip_start_date": "Start Date",
+                "trip_end_date": "Closing Date",
+                "vehicle_number": "Truck No",
+                "driver": "Driver",
+                "driver_phone": "Driver Phone",
+                "origin": "Origin",
+                "destination": "Destination",
+                "start_km": "Start KM",
+                "end_km": "End KM",
+                "total_km_run": "Total KM",
+                "loaded_weight_mt": "Loaded MT",
+                "unloaded_weight_mt": "Unloaded MT",
+                "freight_revenue": "Revenue (₹)",
+                "fuel_litres": "Diesel (L)",
+                "fuel_expense": "Diesel Cost (₹)",
+                "driver_bata": "Bata (₹)",
+                "halt_bata": "Halt (₹)",
+                "cash_advance_issued": "Advance (₹)",
+                "net_profit": "Net Margin (₹)",
+                "trip_status": "Status"
+            },
+            hide_index=True,
+            use_container_width=True,
+            height=350
+        )
+        
+        if st.session_state.user_role == "MASTER":
+            del_log1, del_log2, del_log3 = st.columns([2.5, 1.5, 1.0])
+            with del_log1:
+                del_target_id = st.selectbox(
+                    "Select Trip ID to Delete", 
+                    df_all['trip_id'].tolist(),
+                    format_func=lambda x: f"Trip ID #{x} - LR: {df_all.loc[df_all['trip_id'] == x, 'trip_number'].values[0]} ({df_all.loc[df_all['trip_id'] == x, 'vehicle_number'].values[0]})"
+                )
+            with del_log2:
+                confirm_purge_audit = st.checkbox("🔑 Confirm Permanent Trip Purge", key="chk_purge_audit")
+            with del_log3:
+                st.write("")
+                if st.button("🗑️ Purge Trip from Registry", type="secondary", use_container_width=True):
+                    if not confirm_purge_audit:
+                        show_error_toast("Check the confirmation key before purging trip.")
                     else:
                         try:
-                            target_capacities = [25.0, 30.0] if cg == "BAG" else [cl]
-                            for c_val in target_capacities:
-                                run_query("""
-                                    INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km) 
-                                    VALUES (%s, %s, %s, %s, %s, %s) 
-                                    ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) 
-                                    DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;
-                                """, (cg, so, dt, c_val, rt, km), fetch=False)
-                            get_cached_routes.clear()
-                            trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
+                            run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (del_target_id,), fetch=False)
+                            run_query("DELETE FROM trips WHERE trip_id = %s", (del_target_id,), fetch=False)
+                            get_cached_vehicles.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Trip #{del_target_id} purged from registry.")
                         except Exception as e:
-                            show_error_toast(f"Route slab save failed: {e}")
-                    else:
-                        show_error_toast("Destination and freight rate are required.")
-        with c2:
-            st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
-            r_recs = get_cached_routes()
-            if r_recs:
-                df_r = pd.DataFrame(r_recs)
+                            show_error_toast(f"Update error: {e}")
+    else:
+      st.info("No records match the specified audit filter criteria.")
                 cols = [c for c in ['cargo_type', 'origin', 'destination_name', 'capacity_tons', 'freight_rate_per_ton', 'standard_km'] if c in df_r.columns]
                 st.dataframe(df_r[cols], hide_index=True, use_container_width=True, height=300)
 
