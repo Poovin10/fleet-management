@@ -380,7 +380,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. TRIP DISPATCH ENTRY (WITH LR DUPLICATION & UNCLOSED TRIP WARNING)
+# 1. TRIP DISPATCH ENTRY
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -407,11 +407,9 @@ if menu == "Trip Dispatch Entry":
     r1_c1, r1_c2, r1_c3, r1_c4, r1_c5 = st.columns([1.2, 1.4, 1.3, 2.6, 1.5])
     with r1_c1:
         start_date = st.date_input("1. Trip Start Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key=f"sdate_{cnt}")
-    
     with r1_c2:
         lr_no = st.text_input("2. LR Number*", placeholder="LR-XXXX", key=f"lr_{cnt}").strip().upper()
         
-        # Real-time duplicate & unclosed trip check against entered LR No
         lr_check_res = check_lr_exists(lr_no) if lr_no else None
         if lr_check_res:
             if lr_check_res['trip_status'] != 'COMPLETED':
@@ -1506,8 +1504,6 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
-                    else:
-                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
