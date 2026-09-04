@@ -167,7 +167,6 @@ def confirm_action_dialog(message: str, action_callback):
     with c1:
         if st.button("✅ Yes, Confirm", use_container_width=True, type="primary"):
             action_callback()
-            # If callback doesn't inherently rerun, force a rerun to close modal
             if "pending_toast" not in st.session_state or not st.session_state.pending_toast:
                 st.rerun()
     with c2:
@@ -277,7 +276,10 @@ BATA_SLAB_DEFINITIONS = {
 # --- Caching ---
 @st.cache_data(ttl=60)
 def get_cached_vehicles():
-    return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
+    try:
+        return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks, odometer_working FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
+    except Exception:
+        return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
 
 @st.cache_data(ttl=60)
 def get_cached_drivers(include_inactive=False):
@@ -364,7 +366,7 @@ def check_lr_exists(trip_no):
     if not trip_no or not trip_no.strip():
         return None
     res = run_query("""
-        SELECT t.trip_id, t.trip_number, t.trip_status, t.trip_start_date, v.vehicle_number, d.full_name AS driver_name
+        SELECT t.trip_id, t.trip_number, t.trip_status, t.trip_start_date, t.start_km, v.vehicle_number, d.full_name AS driver_name
         FROM trips t
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id
         JOIN drivers d ON t.primary_driver_id = d.driver_id
@@ -548,6 +550,9 @@ if menu == "Trip Dispatch Entry":
             open_trip_check = check_vehicle_has_open_trip(active_veh['vehicle_id'])
             if open_trip_check:
                 st.error(f"🚫 Cannot Dispatch: Truck {active_veh['vehicle_number']} already has an active incomplete trip (LR: {open_trip_check['trip_number']}). Close it first.")
+            
+            if not active_veh.get('odometer_working', True):
+                st.warning("⚠️ **Note:** This truck's odometer is marked as FAULTY. Please rely on the Standard Route KM logic.")
 
     source_labels_list = ["-- SELECT SOURCE HUB --"] + STANDARD_SOURCES
 
@@ -833,7 +838,14 @@ elif menu == "Diesel Logs":
                 f_cat = st.selectbox("Diesel Category*", ["TRIP_DIESEL", "SUNDRY_DIESEL"])
                 f_lr = st.text_input("Trip LR No (Optional)", placeholder="LR-XXXX").strip().upper()
                 
-                filling_km = st.number_input("Filling Odometer (KM)*", min_value=0.0, step=10.0, value=0.0)
+                auto_km = 0.0
+                if f_lr:
+                    lr_check = check_lr_exists(f_lr)
+                    if lr_check and lr_check.get('start_km'):
+                        auto_km = float(lr_check['start_km'])
+                        st.caption(f"ℹ️ Active trip found. Defaulting Filling KM to Trip Start KM: **{auto_km}**")
+                
+                filling_km = st.number_input("Filling Odometer (KM)*", min_value=0.0, step=10.0, value=auto_km)
                 f_l = st.number_input("Litres Filled*", min_value=0.0, step=10.0)
                 f_cost = round(f_l * d_rate_fast, 2)
                 st.metric("Total Fuel Cost", f"₹{f_cost:,.2f}")
@@ -1049,7 +1061,7 @@ elif menu == "Diesel Logs":
                 height=300
             )
             
-            del_c1, del_c2, del_c3 = st.columns([2.5, 1.5, 1.0])
+            del_c1, del_c3 = st.columns([3.0, 1.0])
             with del_c1:
                 del_fuel_id = st.selectbox("Select Fuel Entry ID to Remove", df_d_logs['fuel_log_id'].tolist(), format_func=lambda x: f"Fuel Log #{x}")
             with del_c3:
@@ -1097,7 +1109,7 @@ elif menu == "Driver Advances":
             df_adv_recs = pd.DataFrame(adv_recs)
             st.dataframe(df_adv_recs, hide_index=True, use_container_width=True, height=450)
             
-            del_a1, del_a2, del_a3 = st.columns([2.5, 1.5, 1.0])
+            del_a1, del_a3 = st.columns([3.0, 1.0])
             with del_a1:
                 del_adv_id = st.selectbox("Select Advance Entry to Remove", df_adv_recs['advance_id'].tolist(), format_func=lambda x: f"Advance Record #{x}")
             with del_a3:
@@ -1345,7 +1357,6 @@ elif menu == "Driver Settlement":
         with s3:
             s_to = st.date_input("To Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
 
-        # FIXED MIDNIGHT BUG
         trips_drv = run_query("""
             SELECT 
                 t.trip_start_date,
@@ -1365,7 +1376,6 @@ elif menu == "Driver Settlement":
             ORDER BY v.vehicle_number ASC, t.trip_start_date ASC;
         """, (d_id, s_from, s_to))
 
-        # FIXED MIDNIGHT BUG
         adv_drv = run_query("""
             SELECT advance_date, amount_inr, advance_type, reference_remarks 
             FROM driver_direct_advances 
@@ -1479,6 +1489,7 @@ elif menu == "Master Configuration":
                 nv = st.text_input("Truck Registration No*", placeholder="KL43Q3608").upper().strip()
                 vt = st.selectbox("Truck Variant", ["Bulker (16-Wheel)", "Bulker (14-Wheel)", "Bulker", "Body Truck"])
                 vc = st.selectbox("Capacity Class (MT)", [25.0, 30.0, 35.0], index=2)
+                odo_working = st.checkbox("✅ Odometer is Working Correctly", value=True)
                 st.write("")
                 if st.form_submit_button("Save Truck Master", type="primary", use_container_width=True):
                     if not nv:
@@ -1486,11 +1497,11 @@ elif menu == "Master Configuration":
                     else:
                         def execute_save_truck():
                             try:
+                                run_query("INSERT INTO vehicles (vehicle_number, truck_type, carrying_capacity_tons, current_status, odometer_working) VALUES (%s, %s, %s, 'AVAILABLE_FOR_LOAD', %s)", (nv, vt, vc, odo_working), fetch=False)
+                            except Exception:
                                 run_query("INSERT INTO vehicles (vehicle_number, truck_type, carrying_capacity_tons, current_status) VALUES (%s, %s, %s, 'AVAILABLE_FOR_LOAD')", (nv, vt, vc), fetch=False)
-                                get_cached_vehicles.clear()
-                                trigger_toast_and_rerun("SUCCESS", f"Truck {nv} added to registry.")
-                            except Exception as e:
-                                show_error_toast(f"Truck insert failed: {e}")
+                            get_cached_vehicles.clear()
+                            trigger_toast_and_rerun("SUCCESS", f"Truck {nv} added to registry.")
                                 
                         confirm_action_dialog(f"register new truck {nv}", execute_save_truck)
         with c2:
@@ -1729,7 +1740,6 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
-    # FIXED MIDNIGHT BUG
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -1926,7 +1936,6 @@ elif menu == "Executive Retention Analytics":
             date_filter_cond = ""
             sub_params = []
             if start_filter_date and end_filter_date:
-                # FIXED MIDNIGHT BUG
                 date_filter_cond = "AND t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s"
                 sub_params.extend([start_filter_date, end_filter_date])
 
@@ -2032,7 +2041,6 @@ elif menu == "Executive Retention Analytics":
 
     with tab_d:
         if start_filter_date and end_filter_date:
-            # FIXED MIDNIGHT BUG
             drv_sql = """
                 SELECT 
                     d.driver_code, 
@@ -2125,7 +2133,7 @@ elif menu == "Audit Log":
         ad_c1, _ = st.columns([2, 2])
         with ad_c1:
             aud_single_d = st.date_input("Filter Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_single_d")
-            aud_date_q = " AND t.trip_start_date::date = %s" # FIXED MIDNIGHT BUG
+            aud_date_q = " AND t.trip_start_date::date = %s"
             aud_params.append(aud_single_d)
     elif aud_date_mode == "Custom Date Range":
         ad_c1, ad_c2 = st.columns(2)
@@ -2133,7 +2141,7 @@ elif menu == "Audit Log":
             aud_from_d = st.date_input("From Date", date.today().replace(day=1), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_from_d")
         with ad_c2:
             aud_to_d = st.date_input("To Date", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31), key="aud_to_d")
-            aud_date_q = " AND t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s" # FIXED MIDNIGHT BUG
+            aud_date_q = " AND t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s"
             aud_params.extend([aud_from_d, aud_to_d])
 
     aud_sql = f"""
