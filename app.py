@@ -157,6 +157,23 @@ def show_success_toast(msg: str):
 def show_error_toast(msg: str):
     st.toast(f"❌ {msg}", icon="❌")
 
+# --- Centralized Confirmation Dialog ---
+@st.dialog("⚠️ Action Confirmation")
+def confirm_action_dialog(message: str, action_callback):
+    st.markdown(f"You are about to **{message}**.")
+    st.markdown("Are you sure you want to proceed? This action cannot be easily undone.")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("✅ Yes, Confirm", use_container_width=True, type="primary"):
+            action_callback()
+            # If callback doesn't inherently rerun, force a rerun to close modal
+            if "pending_toast" not in st.session_state or not st.session_state.pending_toast:
+                st.rerun()
+    with c2:
+        if st.button("❌ Cancel", use_container_width=True):
+            st.rerun()
+
 # --- Authentication ---
 USER_CREDENTIALS = {
     "admin": {"password": "admin123", "role": "MASTER"},
@@ -619,11 +636,8 @@ if menu == "Trip Dispatch Entry":
         computed_km = max(0.0, end_km - start_km) if (end_km >= start_km and end_km > 0) else standard_route_km
 
     st.write("")
-    confirm_dispatch = st.checkbox("🔑 Confirm Trip Dispatch Record", key=f"chk_dispatch_{cnt}")
     if st.button("🚀 Save & Dispatch Trip Record", type="primary", use_container_width=True):
-        if not confirm_dispatch:
-            show_error_toast("Check the confirmation key before dispatching.")
-        elif sel_veh_label == "-- SELECT TRUCK --":
+        if sel_veh_label == "-- SELECT TRUCK --":
             show_error_toast("Please select an assigned truck.")
         elif chosen_source_opt == "-- SELECT SOURCE HUB --":
             show_error_toast("Please select a source hub.")
@@ -638,36 +652,39 @@ if menu == "Trip Dispatch Entry":
         elif lr_check_res and lr_check_res['trip_status'] == 'COMPLETED':
             show_error_toast(f"Cannot dispatch trip. LR Number '{lr_no}' already exists and is closed.")
         else:
-            try:
-                new_t = run_query("""
-                    INSERT INTO trips (
-                        trip_number, branch_id, vehicle_id, primary_driver_id,
-                        trip_start_date, trip_end_date, origin, destination,
-                        start_km, end_km, total_km_run, tonnage_loaded, loaded_weight_mt, unloaded_weight_mt,
-                        freight_revenue, fuel_litres, fuel_expense, driver_bata, cash_advance_issued, trip_status
-                    ) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT')
-                    RETURNING trip_id;
-                """, (
-                    lr_no, active_veh['vehicle_id'], sel_driver_obj['driver_id'],
-                    start_date, start_date, origin_terminal, dest_terminal,
-                    start_km, end_km, computed_km, weighbridge_mt, weighbridge_mt, weighbridge_mt,
-                    gross_freight, fuel_qty, gross_fuel_cost, driver_bata, cash_advance
-                ))
-                trip_id_created = new_t[0]['trip_id'] if new_t else None
+            def execute_dispatch():
+                try:
+                    new_t = run_query("""
+                        INSERT INTO trips (
+                            trip_number, branch_id, vehicle_id, primary_driver_id,
+                            trip_start_date, trip_end_date, origin, destination,
+                            start_km, end_km, total_km_run, tonnage_loaded, loaded_weight_mt, unloaded_weight_mt,
+                            freight_revenue, fuel_litres, fuel_expense, driver_bata, cash_advance_issued, trip_status
+                        ) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT')
+                        RETURNING trip_id;
+                    """, (
+                        lr_no, active_veh['vehicle_id'], sel_driver_obj['driver_id'],
+                        start_date, start_date, origin_terminal, dest_terminal,
+                        start_km, end_km, computed_km, weighbridge_mt, weighbridge_mt, weighbridge_mt,
+                        gross_freight, fuel_qty, gross_fuel_cost, driver_bata, cash_advance
+                    ))
+                    trip_id_created = new_t[0]['trip_id'] if new_t else None
 
-                if fuel_qty > 0 and trip_id_created:
-                    run_query("""
-                        INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km)
-                        VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s);
-                    """, (start_date, active_veh['vehicle_id'], trip_id_created, lr_no, fuel_qty, d_rate_fast, gross_fuel_cost, start_km), fetch=False)
+                    if fuel_qty > 0 and trip_id_created:
+                        run_query("""
+                            INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km)
+                            VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s);
+                        """, (start_date, active_veh['vehicle_id'], trip_id_created, lr_no, fuel_qty, d_rate_fast, gross_fuel_cost, start_km), fetch=False)
 
-                run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s",
-                          (f"Trip {lr_no}: {origin_terminal} ➔ {dest_terminal}", active_veh['vehicle_id']), fetch=False)
-                get_cached_vehicles.clear()
-                st.session_state.form_reset_counter += 1
-                trigger_toast_and_rerun("SUCCESS", f"Trip {lr_no} dispatched successfully.")
-            except Exception as e:
-                show_error_toast(f"Database Error: {e}")
+                    run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s",
+                              (f"Trip {lr_no}: {origin_terminal} ➔ {dest_terminal}", active_veh['vehicle_id']), fetch=False)
+                    get_cached_vehicles.clear()
+                    st.session_state.form_reset_counter += 1
+                    trigger_toast_and_rerun("SUCCESS", f"Trip {lr_no} dispatched successfully.")
+                except Exception as e:
+                    show_error_toast(f"Database Error: {e}")
+                    
+            confirm_action_dialog(f"dispatch trip {lr_no} assigned to truck {active_veh['vehicle_number']}", execute_dispatch)
 
 # ==============================================================================
 # 2. POD RECEIVE & TRIP CLOSURE
@@ -715,31 +732,31 @@ elif menu == "POD Receive & Close":
                     claims = st.number_input("En-route Claims (₹)", min_value=0.0, value=0.0, step=50.0)
 
                 st.write("")
-                confirm_close = st.checkbox("🔑 Confirm Trip Closure and Fleet Vehicle Release", key="chk_pod_close")
                 if st.form_submit_button("✅ Settle POD Reference & Release Truck", type="primary", use_container_width=True):
-                    if not confirm_close:
-                        show_error_toast("Check the confirmation key checkbox before closing.")
-                    elif not pod_no:
+                    if not pod_no:
                         show_error_toast("POD Number is required.")
                     else:
-                        try:
-                            run_query("""
-                                UPDATE trips
-                                SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, 
-                                    start_km = %s, end_km = %s,
-                                    total_km_run = CASE WHEN %s > 0 THEN %s ELSE total_km_run END,
-                                    unloaded_weight_mt = %s, shortage_mt = %s, halt_bata = %s,
-                                    driver_bata = driver_bata + %s,
-                                    enroute_repairs_maintenance = enroute_repairs_maintenance + %s,
-                                    trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
-                                WHERE trip_id = %s;
-                            """, (pod_no, close_d, close_d, pod_start_km, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
-                            run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
-                                      (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
-                            get_cached_vehicles.clear()
-                            trigger_toast_and_rerun("SUCCESS", f"Trip {t_cur['trip_number']} closed. Truck {t_cur['vehicle_number']} is now AVAILABLE.")
-                        except Exception as e:
-                            show_error_toast(f"Error closing trip: {e}")
+                        def execute_close_trip():
+                            try:
+                                run_query("""
+                                    UPDATE trips
+                                    SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, 
+                                        start_km = %s, end_km = %s,
+                                        total_km_run = CASE WHEN %s > 0 THEN %s ELSE total_km_run END,
+                                        unloaded_weight_mt = %s, shortage_mt = %s, halt_bata = %s,
+                                        driver_bata = driver_bata + %s,
+                                        enroute_repairs_maintenance = enroute_repairs_maintenance + %s,
+                                        trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
+                                    WHERE trip_id = %s;
+                                """, (pod_no, close_d, close_d, pod_start_km, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
+                                run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
+                                          (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
+                                get_cached_vehicles.clear()
+                                trigger_toast_and_rerun("SUCCESS", f"Trip {t_cur['trip_number']} closed. Truck {t_cur['vehicle_number']} is now AVAILABLE.")
+                            except Exception as e:
+                                show_error_toast(f"Error closing trip: {e}")
+                                
+                        confirm_action_dialog(f"close LR {t_cur['trip_number']} and record POD {pod_no}", execute_close_trip)
 
 # ==============================================================================
 # 3. FLEET STATUS BOARD
@@ -773,14 +790,13 @@ elif menu == "Fleet Status Board":
                     new_st = st.selectbox("New Operational Status", list(STATUS_OPTIONS.keys()), format_func=lambda x: STATUS_OPTIONS[x])
                     new_rem = st.text_input("Current Location / Breakdown Details", value=target_v['status_remarks'] or "")
                     st.write("")
-                    confirm_v_upd = st.checkbox("🔑 Confirm Vehicle Status Change", key="chk_v_stat")
                     if st.form_submit_button("Update Status", type="primary", use_container_width=True):
-                        if not confirm_v_upd:
-                            show_error_toast("Check the confirmation key before updating status.")
-                        else:
+                        def execute_status_update():
                             run_query("UPDATE vehicles SET current_status = %s, status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP WHERE vehicle_id = %s", (new_st, new_rem, target_v['vehicle_id']), fetch=False)
                             get_cached_vehicles.clear()
                             trigger_toast_and_rerun("SUCCESS", f"Status for {target_v['vehicle_number']} updated.")
+                            
+                        confirm_action_dialog(f"update the operational status of {target_v['vehicle_number']} to '{STATUS_OPTIONS[new_st]}'", execute_status_update)
             else:
                 st.info("ℹ️ Status modifications are restricted to Master accounts.")
 
@@ -822,23 +838,23 @@ elif menu == "Diesel Logs":
                 f_cost = round(f_l * d_rate_fast, 2)
                 st.metric("Total Fuel Cost", f"₹{f_cost:,.2f}")
                 st.write("")
-                confirm_issue = st.checkbox("🔑 Confirm Fuel Disbursement Entry", key="chk_fuel_iss")
                 if st.form_submit_button("Record Diesel Entry", type="primary", use_container_width=True):
-                    if not confirm_issue:
-                        show_error_toast("Check the confirmation key before recording fuel.")
-                    elif f_l <= 0:
+                    if f_l <= 0:
                         show_error_toast("Fuel quantity must be greater than zero.")
                     elif check_duplicate_diesel_entry(target_veh_id, f_date, f_l, filling_km=filling_km, lr_number=f_lr):
                         show_error_toast(f"Duplicate Entry: A matching fuel log for {f_veh} on {f_date} ({f_l}L) already exists.")
                     else:
-                        try:
-                            run_query("""
-                                INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km) 
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                            """, (f_date, target_veh_id, f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, f_cost, filling_km), fetch=False)
-                            trigger_toast_and_rerun("SUCCESS", f"Recorded {f_l}L fuel for {f_veh} at {filling_km} KM.")
-                        except Exception as e:
-                            show_error_toast(f"Diesel log error: {e}")
+                        def execute_fuel_record():
+                            try:
+                                run_query("""
+                                    INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km) 
+                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                """, (f_date, target_veh_id, f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, f_cost, filling_km), fetch=False)
+                                trigger_toast_and_rerun("SUCCESS", f"Recorded {f_l}L fuel for {f_veh} at {filling_km} KM.")
+                            except Exception as e:
+                                show_error_toast(f"Diesel log error: {e}")
+                                
+                        confirm_action_dialog(f"record an issue of {f_l} Litres of diesel to truck {v_dict[f_veh]['vehicle_number']}", execute_fuel_record)
         with col_d2:
             st.markdown('<div class="section-header">Recent Fuel Entries (Last 50)</div>', unsafe_allow_html=True)
             d_recent = run_query("""
@@ -912,44 +928,44 @@ elif menu == "Diesel Logs":
                         st.metric("Recalculated Fuel Cost", f"₹{e_cost:,.2f}")
 
                     st.write("")
-                    confirm_fuel_edit = st.checkbox("🔑 Confirm Diesel Log Modifications", key="chk_fuel_edit")
                     if st.form_submit_button("💾 Commit Diesel Log Updates", type="primary", use_container_width=True):
-                        if not confirm_fuel_edit:
-                            show_error_toast("Check the confirmation key before saving fuel edits.")
-                        elif e_litres <= 0:
+                        if e_litres <= 0:
                             show_error_toast("Fuel quantity must be greater than zero.")
                         elif check_duplicate_diesel_entry(e_target_veh_id, e_fuel_date, e_litres, filling_km=e_filling_km, lr_number=e_lr_val, exclude_fuel_log_id=target_fuel['fuel_log_id']):
                             show_error_toast("Duplicate Violation: Another matching log for this vehicle, date, and litres/KM already exists.")
                         else:
-                            try:
-                                run_query("""
-                                    UPDATE diesel_fuel_logs 
-                                    SET fuel_date = %s,
-                                        vehicle_id = %s,
-                                        diesel_category = %s,
-                                        lr_number = %s,
-                                        filling_odometer_km = %s,
-                                        litres_filled = %s,
-                                        diesel_rate_per_litre = %s,
-                                        total_fuel_cost = %s
-                                    WHERE fuel_log_id = %s;
-                                """, (
-                                    e_fuel_date, e_target_veh_id, e_cat, e_lr_val or "SUNDRY",
-                                    e_filling_km, e_litres, e_rate, e_cost, target_fuel['fuel_log_id']
-                                ), fetch=False)
-
-                                if target_fuel['trip_id']:
+                            def execute_fuel_edit():
+                                try:
                                     run_query("""
-                                        UPDATE trips 
-                                        SET fuel_litres = %s, 
-                                            fuel_expense = %s,
-                                            start_km = CASE WHEN start_km = 0 THEN %s ELSE start_km END
-                                        WHERE trip_id = %s;
-                                    """, (e_litres, e_cost, e_filling_km, target_fuel['trip_id']), fetch=False)
+                                        UPDATE diesel_fuel_logs 
+                                        SET fuel_date = %s,
+                                            vehicle_id = %s,
+                                            diesel_category = %s,
+                                            lr_number = %s,
+                                            filling_odometer_km = %s,
+                                            litres_filled = %s,
+                                            diesel_rate_per_litre = %s,
+                                            total_fuel_cost = %s
+                                        WHERE fuel_log_id = %s;
+                                    """, (
+                                        e_fuel_date, e_target_veh_id, e_cat, e_lr_val or "SUNDRY",
+                                        e_filling_km, e_litres, e_rate, e_cost, target_fuel['fuel_log_id']
+                                    ), fetch=False)
 
-                                trigger_toast_and_rerun("SUCCESS", f"Fuel Log #{target_fuel['fuel_log_id']} updated successfully.")
-                            except Exception as e:
-                                show_error_toast(f"Update error: {e}")
+                                    if target_fuel['trip_id']:
+                                        run_query("""
+                                            UPDATE trips 
+                                            SET fuel_litres = %s, 
+                                                fuel_expense = %s,
+                                                start_km = CASE WHEN start_km = 0 THEN %s ELSE start_km END
+                                            WHERE trip_id = %s;
+                                        """, (e_litres, e_cost, e_filling_km, target_fuel['trip_id']), fetch=False)
+
+                                    trigger_toast_and_rerun("SUCCESS", f"Fuel Log #{target_fuel['fuel_log_id']} updated successfully.")
+                                except Exception as e:
+                                    show_error_toast(f"Update error: {e}")
+                                    
+                            confirm_action_dialog(f"modify the details of Fuel Log #{target_fuel['fuel_log_id']}", execute_fuel_edit)
 
     with tab_audit_fuel:
         st.markdown('<div class="section-header">Multi-Parameter Diesel Log Filter</div>', unsafe_allow_html=True)
@@ -1036,16 +1052,14 @@ elif menu == "Diesel Logs":
             del_c1, del_c2, del_c3 = st.columns([2.5, 1.5, 1.0])
             with del_c1:
                 del_fuel_id = st.selectbox("Select Fuel Entry ID to Remove", df_d_logs['fuel_log_id'].tolist(), format_func=lambda x: f"Fuel Log #{x}")
-            with del_c2:
-                confirm_del_f = st.checkbox("🔑 Confirm Fuel Log Deletion", key="chk_del_fuel")
             with del_c3:
                 st.write("")
                 if st.button("🗑️ Delete Fuel Log Record", type="secondary", use_container_width=True):
-                    if not confirm_del_f:
-                        show_error_toast("Check the confirmation key before deleting.")
-                    else:
+                    def execute_delete_fuel():
                         run_query("DELETE FROM diesel_fuel_logs WHERE fuel_log_id = %s", (del_fuel_id,), fetch=False)
                         trigger_toast_and_rerun("SUCCESS", f"Fuel log #{del_fuel_id} deleted.")
+                        
+                    confirm_action_dialog(f"permanently delete Fuel Log #{del_fuel_id}", execute_delete_fuel)
         else:
             st.info("No diesel logs match the selected parameters.")
 
@@ -1066,16 +1080,16 @@ elif menu == "Driver Advances":
             ad_cat = st.selectbox("Category", ["BATA_ADVANCE", "GENERAL_ADVANCE", "EMERGENCY_MEDICAL", "SALARY_ADVANCE"])
             ad_ref = st.text_input("Reference Note", placeholder="UPI / Voucher No")
             st.write("")
-            confirm_iss_adv = st.checkbox("🔑 Confirm Advance Issuance", key="chk_iss_adv")
             if st.form_submit_button("Issue Advance", type="primary", use_container_width=True):
-                if not confirm_iss_adv:
-                    show_error_toast("Check the confirmation key before issuing.")
-                elif ad_amt <= 0:
+                if ad_amt <= 0:
                     show_error_toast("Advance amount must be greater than zero.")
                 else:
-                    run_query("INSERT INTO driver_direct_advances (advance_date, driver_id, amount_inr, advance_type, reference_remarks) VALUES (%s, %s, %s, %s, %s)",
-                              (ad_date, d_map[ad_drv]['driver_id'], ad_amt, ad_cat, ad_ref), fetch=False)
-                    trigger_toast_and_rerun("SUCCESS", f"Advance of ₹{ad_amt:,.2f} recorded.")
+                    def execute_issue_advance():
+                        run_query("INSERT INTO driver_direct_advances (advance_date, driver_id, amount_inr, advance_type, reference_remarks) VALUES (%s, %s, %s, %s, %s)",
+                                  (ad_date, d_map[ad_drv]['driver_id'], ad_amt, ad_cat, ad_ref), fetch=False)
+                        trigger_toast_and_rerun("SUCCESS", f"Advance of ₹{ad_amt:,.2f} recorded.")
+                        
+                    confirm_action_dialog(f"issue an advance of ₹{ad_amt:,.2f} to {d_map[ad_drv]['full_name']}", execute_issue_advance)
     with col_a2:
         st.markdown('<div class="section-header">Direct Advance History</div>', unsafe_allow_html=True)
         adv_recs = run_query("SELECT a.advance_id, a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
@@ -1086,16 +1100,14 @@ elif menu == "Driver Advances":
             del_a1, del_a2, del_a3 = st.columns([2.5, 1.5, 1.0])
             with del_a1:
                 del_adv_id = st.selectbox("Select Advance Entry to Remove", df_adv_recs['advance_id'].tolist(), format_func=lambda x: f"Advance Record #{x}")
-            with del_a2:
-                confirm_del_adv = st.checkbox("🔑 Confirm Advance Deletion", key="chk_del_adv")
             with del_a3:
                 st.write("")
                 if st.button("🗑️ Delete Advance Record", type="secondary", use_container_width=True):
-                    if not confirm_del_adv:
-                        show_error_toast("Check the confirmation key before deleting.")
-                    else:
+                    def execute_delete_advance():
                         run_query("DELETE FROM driver_direct_advances WHERE advance_id = %s", (del_adv_id,), fetch=False)
                         trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
+                        
+                    confirm_action_dialog(f"permanently delete Advance Record #{del_adv_id}", execute_delete_advance)
 
 # ==============================================================================
 # 6. MODIFY TRIPS & CLAIMS
@@ -1232,11 +1244,8 @@ elif menu == "Modify Trips & Claims":
                     e_trip_status = st.selectbox("Trip Status", status_choices, index=curr_st_idx)
 
                 st.write("")
-                confirm_mod_trip = st.checkbox("🔑 Confirm Master Trip Record Changes", key="chk_mod_trip")
                 if st.form_submit_button("💾 Commit Updates to Trip & POD Record", type="primary", use_container_width=True):
-                    if not confirm_mod_trip:
-                        show_error_toast("Check the confirmation key before saving changes.")
-                    else:
+                    def execute_mod_trip():
                         try:
                             recalculated_fuel_cost = round(e_fuel_l * d_rate_fast, 2)
                             shortage_val = max(0.0, e_ton - e_unloaded_mt)
@@ -1277,16 +1286,15 @@ elif menu == "Modify Trips & Claims":
                             trigger_toast_and_rerun("SUCCESS", f"Trip #{e_lr} updated successfully (Status: {e_trip_status}).")
                         except Exception as e:
                             show_error_toast(f"Update failed: {e}")
+                            
+                    confirm_action_dialog(f"commit modifications to Trip {e_lr}", execute_mod_trip)
 
             st.markdown("<hr style='margin: 10px 0;' />", unsafe_allow_html=True)
             act1, act2 = st.columns(2)
             with act1:
                 if t_data['trip_status'] == 'COMPLETED':
-                    confirm_reopen = st.checkbox("🔑 Confirm Trip Reopening", key="chk_reopen")
                     if st.button("🔓 Reopen Trip (Set back to IN_TRANSIT)", use_container_width=True):
-                        if not confirm_reopen:
-                            show_error_toast("Check the confirmation key before reopening.")
-                        else:
+                        def execute_reopen_trip():
                             try:
                                 run_query("""
                                     UPDATE trips 
@@ -1302,13 +1310,12 @@ elif menu == "Modify Trips & Claims":
                                 trigger_toast_and_rerun("SUCCESS", f"Trip {t_data['trip_number']} reopened! Truck is now IN_TRANSIT.")
                             except Exception as e:
                                 show_error_toast(f"Reopen failed: {e}")
+                                
+                        confirm_action_dialog(f"reopen Trip {t_data['trip_number']}", execute_reopen_trip)
 
             with act2:
-                confirm_del_trip = st.checkbox("🔑 Confirm Permanent Deletion", key="chk_del_trip")
                 if st.button(f"🗑️ Delete Trip {t_data['trip_number']}", type="secondary", use_container_width=True):
-                    if not confirm_del_trip:
-                        show_error_toast("Check the confirmation key before deleting.")
-                    else:
+                    def execute_delete_trip():
                         try:
                             run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
                             run_query("DELETE FROM trips WHERE trip_id = %s", (t_data['trip_id'],), fetch=False)
@@ -1317,6 +1324,8 @@ elif menu == "Modify Trips & Claims":
                             trigger_toast_and_rerun("SUCCESS", f"Trip {t_data['trip_number']} permanently deleted.")
                         except Exception as e:
                             show_error_toast(f"Delete failed: {e}")
+                            
+                    confirm_action_dialog(f"permanently delete Trip {t_data['trip_number']}", execute_delete_trip)
 
 # ==============================================================================
 # 7. DRIVER SETTLEMENT REPORT
@@ -1336,7 +1345,7 @@ elif menu == "Driver Settlement":
         with s3:
             s_to = st.date_input("To Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
 
-        # FIXED MIDNIGHT BUG: Added ::date casting to ignore timestamps
+        # FIXED MIDNIGHT BUG
         trips_drv = run_query("""
             SELECT 
                 t.trip_start_date,
@@ -1356,7 +1365,7 @@ elif menu == "Driver Settlement":
             ORDER BY v.vehicle_number ASC, t.trip_start_date ASC;
         """, (d_id, s_from, s_to))
 
-        # FIXED MIDNIGHT BUG: Added ::date casting to ignore timestamps
+        # FIXED MIDNIGHT BUG
         adv_drv = run_query("""
             SELECT advance_date, amount_inr, advance_type, reference_remarks 
             FROM driver_direct_advances 
@@ -1445,21 +1454,16 @@ elif menu == "Driver Settlement":
 
         if st.session_state.user_role == "MASTER":
             st.write("")
-            col_set1, col_set2 = st.columns([3, 1])
-            with col_set1:
-                confirm_settle = st.checkbox("🔑 Confirm Settlement & Reconcile Period", key="chk_settle_period")
-            with col_set2:
-                if st.button("Mark Period Settled", type="primary", use_container_width=True):
-                    if not confirm_settle:
-                        show_error_toast("Check the confirmation key before finalizing settlement.")
-                    else:
-                        try:
-                            # FIXED MIDNIGHT BUG
-                            run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date::date>=%s AND trip_start_date::date<=%s", (d_id, s_from, s_to), fetch=False)
-                            run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date::date>=%s AND advance_date::date<=%s", (d_id, s_from, s_to), fetch=False)
-                            trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {selected_driver['full_name']}.")
-                        except Exception as e:
-                            show_error_toast(f"Settlement failed: {e}")
+            if st.button("Mark Period Settled", type="primary"):
+                def execute_settle_period():
+                    try:
+                        run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date::date>=%s AND trip_start_date::date<=%s", (d_id, s_from, s_to), fetch=False)
+                        run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date::date>=%s AND advance_date::date<=%s", (d_id, s_from, s_to), fetch=False)
+                        trigger_toast_and_rerun("SUCCESS", f"Settlement reconciled for {selected_driver['full_name']}.")
+                    except Exception as e:
+                        show_error_toast(f"Settlement failed: {e}")
+                        
+                confirm_action_dialog(f"mark all records for {selected_driver['full_name']} from {s_from} to {s_to} as SETTLED", execute_settle_period)
 
 # ==============================================================================
 # 8. MASTER CONFIGURATION
@@ -1476,19 +1480,19 @@ elif menu == "Master Configuration":
                 vt = st.selectbox("Truck Variant", ["Bulker (16-Wheel)", "Bulker (14-Wheel)", "Bulker", "Body Truck"])
                 vc = st.selectbox("Capacity Class (MT)", [25.0, 30.0, 35.0], index=2)
                 st.write("")
-                confirm_trk_save = st.checkbox("🔑 Confirm Truck Master Save", key="chk_save_trk")
                 if st.form_submit_button("Save Truck Master", type="primary", use_container_width=True):
-                    if not confirm_trk_save:
-                        show_error_toast("Check the confirmation key before saving.")
-                    elif not nv:
+                    if not nv:
                         show_error_toast("Truck registration number is mandatory.")
                     else:
-                        try:
-                            run_query("INSERT INTO vehicles (vehicle_number, truck_type, carrying_capacity_tons, current_status) VALUES (%s, %s, %s, 'AVAILABLE_FOR_LOAD')", (nv, vt, vc), fetch=False)
-                            get_cached_vehicles.clear()
-                            trigger_toast_and_rerun("SUCCESS", f"Truck {nv} added to registry.")
-                        except Exception as e:
-                            show_error_toast(f"Truck insert failed: {e}")
+                        def execute_save_truck():
+                            try:
+                                run_query("INSERT INTO vehicles (vehicle_number, truck_type, carrying_capacity_tons, current_status) VALUES (%s, %s, %s, 'AVAILABLE_FOR_LOAD')", (nv, vt, vc), fetch=False)
+                                get_cached_vehicles.clear()
+                                trigger_toast_and_rerun("SUCCESS", f"Truck {nv} added to registry.")
+                            except Exception as e:
+                                show_error_toast(f"Truck insert failed: {e}")
+                                
+                        confirm_action_dialog(f"register new truck {nv}", execute_save_truck)
         with c2:
             st.markdown('<div class="section-header">Registered Fleet Registry</div>', unsafe_allow_html=True)
             v_recs = get_cached_vehicles()
@@ -1508,35 +1512,35 @@ elif menu == "Master Configuration":
                 nd_l = st.text_input("License No*").strip().upper()
                 nd_exp = st.date_input("License Expiry Date", date(2030, 1, 1), min_value=date(2000, 1, 1), max_value=date(2050, 12, 31))
                 st.write("")
-                confirm_drv_save = st.checkbox("🔑 Confirm Driver Master Save", key="chk_save_drv")
                 if st.form_submit_button("Save Driver Master", type="primary", use_container_width=True):
-                    if not confirm_drv_save:
-                        show_error_toast("Check the confirmation key before saving.")
-                    elif not nd_n or not nd_p:
+                    if not nd_n or not nd_p:
                         show_error_toast("Driver Name and Phone Number are mandatory.")
                     else:
-                        try:
-                            final_code = nd_c
-                            existing_code = run_query("SELECT driver_id FROM drivers WHERE LOWER(driver_code) = LOWER(%s)", (final_code,))
-                            if existing_code:
-                                max_drv = run_query("SELECT driver_id FROM drivers ORDER BY driver_id DESC LIMIT 1")
-                                next_id = (max_drv[0]['driver_id'] + 1) if max_drv else 1
-                                final_code = f"DRV-{next_id:03d}"
+                        def execute_save_driver():
+                            try:
+                                final_code = nd_c
+                                existing_code = run_query("SELECT driver_id FROM drivers WHERE LOWER(driver_code) = LOWER(%s)", (final_code,))
+                                if existing_code:
+                                    max_drv = run_query("SELECT driver_id FROM drivers ORDER BY driver_id DESC LIMIT 1")
+                                    next_id = (max_drv[0]['driver_id'] + 1) if max_drv else 1
+                                    final_code = f"DRV-{next_id:03d}"
 
-                            run_query("""
-                                INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id) 
-                                VALUES (%s, %s, %s, %s, %s, 1)
-                                ON CONFLICT (driver_code) DO UPDATE 
-                                SET full_name = EXCLUDED.full_name,
-                                    phone_number = EXCLUDED.phone_number,
-                                    license_number = EXCLUDED.license_number,
-                                    license_expiry_date = EXCLUDED.license_expiry_date,
-                                    is_active = TRUE;
-                            """, (final_code, nd_n, nd_p, nd_l, nd_exp), fetch=False)
-                            get_cached_drivers.clear()
-                            trigger_toast_and_rerun("SUCCESS", f"Driver '{nd_n}' saved as {final_code}.")
-                        except Exception as e:
-                            show_error_toast(f"Error saving driver: {e}")
+                                run_query("""
+                                    INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id) 
+                                    VALUES (%s, %s, %s, %s, %s, 1)
+                                    ON CONFLICT (driver_code) DO UPDATE 
+                                    SET full_name = EXCLUDED.full_name,
+                                        phone_number = EXCLUDED.phone_number,
+                                        license_number = EXCLUDED.license_number,
+                                        license_expiry_date = EXCLUDED.license_expiry_date,
+                                        is_active = TRUE;
+                                """, (final_code, nd_n, nd_p, nd_l, nd_exp), fetch=False)
+                                get_cached_drivers.clear()
+                                trigger_toast_and_rerun("SUCCESS", f"Driver '{nd_n}' saved as {final_code}.")
+                            except Exception as e:
+                                show_error_toast(f"Error saving driver: {e}")
+                                
+                        confirm_action_dialog(f"register driver {nd_n}", execute_save_driver)
         with c2:
             st.markdown('<div class="section-header">Active Driver Directory</div>', unsafe_allow_html=True)
             d_recs = get_cached_drivers(True)
@@ -1557,26 +1561,26 @@ elif menu == "Master Configuration":
                 rt = st.number_input("Rate per MT (₹)*", min_value=0.0, step=25.0)
                 km = st.number_input("Standard KM", min_value=0.0, step=10.0)
                 st.write("")
-                confirm_route_save = st.checkbox("🔑 Confirm Freight Slab Save", key="chk_save_route")
                 if st.form_submit_button("Save Freight Slab", type="primary", use_container_width=True):
-                    if not confirm_route_save:
-                        show_error_toast("Check the confirmation key before saving.")
-                    elif not dt or rt <= 0:
+                    if not dt or rt <= 0:
                         show_error_toast("Destination and freight rate are required.")
                     else:
-                        try:
-                            target_capacities = [25.0, 30.0] if cg == "BAG" else [cl]
-                            for c_val in target_capacities:
-                                run_query("""
-                                    INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km) 
-                                    VALUES (%s, %s, %s, %s, %s, %s) 
-                                    ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) 
-                                    DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;
-                                """, (cg, so, dt, c_val, rt, km), fetch=False)
-                            get_cached_routes.clear()
-                            trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
-                        except Exception as e:
-                            show_error_toast(f"Route slab save failed: {e}")
+                        def execute_save_route():
+                            try:
+                                target_capacities = [25.0, 30.0] if cg == "BAG" else [cl]
+                                for c_val in target_capacities:
+                                    run_query("""
+                                        INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km) 
+                                        VALUES (%s, %s, %s, %s, %s, %s) 
+                                        ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) 
+                                        DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;
+                                    """, (cg, so, dt, c_val, rt, km), fetch=False)
+                                get_cached_routes.clear()
+                                trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
+                            except Exception as e:
+                                show_error_toast(f"Route slab save failed: {e}")
+                                
+                        confirm_action_dialog(f"save freight slab {so} ➔ {dt}", execute_save_route)
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
@@ -1601,27 +1605,26 @@ elif menu == "Master Configuration":
                 
                 ba = st.number_input("Standard Bata (₹)*", min_value=0.0, step=100.0, value=3000.0)
                 st.write("")
-                confirm_bata_save = st.checkbox("🔑 Confirm Bata Rule Save", key="chk_save_bata")
-                
                 if st.form_submit_button("Save Driver Bata Slab", type="primary", use_container_width=True):
-                    if not confirm_bata_save:
-                        show_error_toast("Check the confirmation key before saving.")
-                    elif not bd:
+                    if not bd:
                         show_error_toast("Destination is required.")
                     elif ba <= 0:
                         show_error_toast("Bata amount must be greater than zero.")
                     else:
-                        try:
-                            run_query("""
-                                INSERT INTO driver_bata_master (destination_name, cargo_type, capacity_tons, standard_bata_inr) 
-                                VALUES (%s, %s, %s, %s) 
-                                ON CONFLICT (destination_name, cargo_type, capacity_tons) 
-                                DO UPDATE SET standard_bata_inr = EXCLUDED.standard_bata_inr;
-                            """, (bd, slab_meta["cargo_type"], slab_meta["capacity_tons"], ba), fetch=False)
-                            get_cached_bata_rules.clear()
-                            trigger_toast_and_rerun("SUCCESS", f"Bata for {bd} ({selected_slab_label}) saved as ₹{ba:,.2f}.")
-                        except Exception as e:
-                            show_error_toast(f"Bata rule save failed: {e}")
+                        def execute_save_bata():
+                            try:
+                                run_query("""
+                                    INSERT INTO driver_bata_master (destination_name, cargo_type, capacity_tons, standard_bata_inr) 
+                                    VALUES (%s, %s, %s, %s) 
+                                    ON CONFLICT (destination_name, cargo_type, capacity_tons) 
+                                    DO UPDATE SET standard_bata_inr = EXCLUDED.standard_bata_inr;
+                                """, (bd, slab_meta["cargo_type"], slab_meta["capacity_tons"], ba), fetch=False)
+                                get_cached_bata_rules.clear()
+                                trigger_toast_and_rerun("SUCCESS", f"Bata for {bd} ({selected_slab_label}) saved as ₹{ba:,.2f}.")
+                            except Exception as e:
+                                show_error_toast(f"Bata rule save failed: {e}")
+                                
+                        confirm_action_dialog(f"save Bata slab for {bd}", execute_save_bata)
         with c2:
             st.markdown('<div class="section-header">Configured Driver Bata Slabs Master</div>', unsafe_allow_html=True)
             bata_list = get_cached_bata_rules()
@@ -1726,7 +1729,7 @@ elif menu == "Executive Retention Analytics":
         "👨‍✈️ Driver Performance Scorecard"
     ])
     
-    # FIXED MIDNIGHT BUG: Added ::date cast to fuel_date and trip_start_date queries
+    # FIXED MIDNIGHT BUG
     if start_filter_date and end_filter_date:
         fleet_sql = """
             WITH vehicle_fuel_summary AS (
@@ -2211,21 +2214,17 @@ elif menu == "Audit Log":
         )
         
         if st.session_state.user_role == "MASTER":
-            del_log1, del_log2, del_log3 = st.columns([2.5, 1.5, 1.0])
+            del_log1, del_log3 = st.columns([3.0, 1.0])
             with del_log1:
                 del_target_id = st.selectbox(
                     "Select Trip ID to Delete", 
                     df_all['trip_id'].tolist(),
                     format_func=lambda x: f"Trip ID #{x} - LR: {df_all.loc[df_all['trip_id'] == x, 'trip_number'].values[0]} ({df_all.loc[df_all['trip_id'] == x, 'vehicle_number'].values[0]})"
                 )
-            with del_log2:
-                confirm_purge_audit = st.checkbox("🔑 Confirm Permanent Trip Purge", key="chk_purge_audit")
             with del_log3:
                 st.write("")
                 if st.button("🗑️ Purge Trip from Registry", type="secondary", use_container_width=True):
-                    if not confirm_purge_audit:
-                        show_error_toast("Check the confirmation key before purging trip.")
-                    else:
+                    def execute_purge_audit():
                         try:
                             run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (del_target_id,), fetch=False)
                             run_query("DELETE FROM trips WHERE trip_id = %s", (del_target_id,), fetch=False)
@@ -2233,5 +2232,7 @@ elif menu == "Audit Log":
                             trigger_toast_and_rerun("SUCCESS", f"Trip #{del_target_id} purged from registry.")
                         except Exception as e:
                             show_error_toast(f"Update error: {e}")
+                            
+                    confirm_action_dialog(f"permanently purge Trip ID #{del_target_id} from the audit registry", execute_purge_audit)
     else:
         st.info("No records match the specified audit filter criteria.")
