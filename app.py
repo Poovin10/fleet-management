@@ -24,91 +24,68 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     
-    html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !important; color: #111827 !important; background: #F9FAFB !important; }
+    html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !important; color: #111827 !important; background: #F4F7F9 !important; }
     header, #MainMenu, footer { visibility: hidden; display: none !important; }
     
     /* Layout Constraints */
     .main .block-container {
-        padding-top: 1.5rem !important; padding-bottom: 3rem !important;
+        padding-top: 1rem !important; padding-bottom: 3rem !important;
         padding-left: 2rem !important; padding-right: 2rem !important;
-        max-width: 1400px !important; margin: 0 auto;
+        max-width: 1450px !important; margin: 0 auto;
     }
 
     /* Transform Native Radio into a Sleek Top Navigation Bar */
     div[role="radiogroup"] {
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
-        gap: 0px !important;
-        border-bottom: 2px solid #E5E7EB;
-        padding-bottom: 0px;
-        margin-bottom: 24px;
+        flex-direction: row !important; flex-wrap: wrap !important; gap: 0px !important;
+        border-bottom: 2px solid #E5E7EB; padding-bottom: 0px; margin-bottom: 24px;
     }
     div[role="radiogroup"] > label {
-        padding: 12px 20px !important;
-        background: transparent !important;
-        border-radius: 0px !important;
-        border: none !important;
-        border-bottom: 3px solid transparent !important;
-        margin-right: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
+        padding: 12px 20px !important; background: transparent !important;
+        border-radius: 0px !important; border: none !important; border-bottom: 3px solid transparent !important;
+        margin-right: 8px; cursor: pointer; transition: all 0.2s ease;
     }
     div[role="radiogroup"] > label:hover { color: #4F46E5 !important; }
     div[role="radiogroup"] > label[data-checked="true"] {
-        border-bottom: 3px solid #4F46E5 !important;
-        color: #4F46E5 !important;
-        font-weight: 700 !important;
+        border-bottom: 3px solid #4F46E5 !important; color: #4F46E5 !important; font-weight: 700 !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; } /* Hide the circle */
     div[role="radiogroup"] > label > div:last-child { font-size: 0.95rem !important; font-weight: 600; margin-left: 0 !important; }
 
-    /* Form & Data Cards */
-    div[data-testid="stForm"] {
-        background: #FFFFFF !important;
-        border: 1px solid #EAEAEA !important;
-        border-radius: 12px !important;
-        padding: 24px !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    /* Wondermove Cards */
+    .wm-card {
+        background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 12px;
+        padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
     }
+    .wm-card-title { font-size: 1rem; font-weight: 700; color: #111827; margin-bottom: 16px; }
+    .wm-flex-row { display: flex; flex-wrap: wrap; gap: 16px; }
+    .wm-metric-box { flex: 1; min-width: 150px; border: 1px solid #F3F4F6; border-radius: 8px; padding: 16px; background: #FFFFFF; }
+    .wm-metric-box.blue-tint { background: #EEF2FF; border-color: #E0E7FF; }
+    .wm-metric-box.red-tint { background: #FEF2F2; border-color: #FEE2E2; }
+    .wm-metric-label { font-size: 0.75rem; font-weight: 600; color: #6B7280; text-transform: uppercase; margin-bottom: 8px; }
+    .wm-metric-val { font-size: 1.5rem; font-weight: 700; color: #111827; }
+    
+    .wm-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .wm-status-pill { display: flex; align-items: center; border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 12px; background: #FFFFFF; font-size: 0.85rem; font-weight: 500; color: #374151; }
+    .wm-status-badge { background: #F3F4F6; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: 12px; color: #111827; border: 1px solid #E5E7EB; }
+    
+    .wm-workshop-box { background: #FAFAFA; border: 1px solid #EAEAEA; border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .wm-workshop-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EAEAEA; font-size: 0.85rem; font-weight: 600; }
+    .wm-workshop-row:last-child { border-bottom: none; }
+    .text-orange { color: #D97706; } .text-blue { color: #2563EB; }
 
-    /* KPI Metrics (Wondermove Style) */
-    div[data-testid="metric-container"] {
-        background: #FFFFFF !important;
-        border: 1px solid #E5E7EB !important;
-        border-radius: 12px !important;
-        padding: 16px 20px !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
-        transition: transform 0.2s ease !important;
-    }
-    div[data-testid="metric-container"]:hover { transform: translateY(-2px) !important; box-shadow: 0 4px 6px rgba(0,0,0,0.06) !important; }
+    /* Form UI Override */
+    div[data-testid="stForm"] { background: #FFFFFF !important; border: 1px solid #EAEAEA !important; border-radius: 12px !important; padding: 24px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; }
     div[data-testid="stMetricValue"] { font-size: 1.6rem !important; font-weight: 800 !important; color: #111827 !important; }
     div[data-testid="stMetricLabel"] { font-size: 0.75rem !important; font-weight: 600 !important; color: #6B7280 !important; text-transform: uppercase !important; }
-
-    /* Custom Headers */
-    .section-header {
-        font-size: 1.05rem !important; font-weight: 700 !important; color: #111827 !important;
-        border-bottom: 1px solid #E5E7EB !important; padding-bottom: 6px !important;
-        margin: 20px 0 16px 0 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important;
-    }
-
-    /* Inputs */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
-        height: 42px !important; font-size: 0.9rem !important; font-weight: 500 !important;
-        border-radius: 6px !important; background-color: #FFFFFF !important;
-        border: 1px solid #D1D5DB !important; color: #111827 !important; 
-    }
-    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, .stSelectbox>div>div>div:focus {
-        border-color: #4F46E5 !important; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1) !important;
-    }
-
-    /* Buttons */
+    .section-header { font-size: 1.05rem !important; font-weight: 700 !important; color: #111827 !important; border-bottom: 1px solid #E5E7EB !important; padding-bottom: 6px !important; margin: 20px 0 16px 0 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; }
+    .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { height: 42px !important; font-size: 0.9rem !important; font-weight: 500 !important; border-radius: 6px !important; background-color: #FFFFFF !important; border: 1px solid #D1D5DB !important; color: #111827 !important; }
+    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, .stSelectbox>div>div>div:focus { border-color: #4F46E5 !important; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1) !important; }
+    .stTextInput>div>div>input:disabled { background-color: #F3F4F6 !important; color: #6B7280 !important; font-weight: 600 !important; }
     .stButton>button { height: 42px !important; font-weight: 600 !important; border-radius: 6px !important; }
     .stButton>button[kind="primary"] { background: #111827 !important; color: #FFFFFF !important; border: none !important; }
     .stButton>button[kind="primary"]:hover { background: #374151 !important; }
-
-    /* Tabs within pages */
-    .stTabs [data-baseweb="tab"] { font-weight: 600 !important; color: #6B7280 !important; }
-    .stTabs [aria-selected="true"] { color: #111827 !important; }
+    div[data-testid="stDataFrame"] > div { border-radius: 8px !important; border: 1px solid #E5E7EB !important; }
+    .stTabs [data-baseweb="tab"] { font-weight: 600 !important; color: #6B7280 !important; } .stTabs [aria-selected="true"] { color: #111827 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -164,30 +141,17 @@ def ensure_schema_updates():
         run_query("ALTER TABLE diesel_fuel_logs ADD COLUMN IF NOT EXISTS is_tank_full BOOLEAN DEFAULT FALSE;", fetch=False)
         run_query("ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_tank_full BOOLEAN DEFAULT FALSE;", fetch=False)
         run_query("ALTER TABLE driver_bata_master ADD COLUMN IF NOT EXISTS origin VARCHAR(100) DEFAULT 'ALL';", fetch=False)
-        
-        # New Tables for Tyres and Workshop
         run_query("""
             CREATE TABLE IF NOT EXISTS fleet_tyres (
-                tyre_id SERIAL PRIMARY KEY,
-                vehicle_id INT,
-                serial_number VARCHAR(100),
-                brand_model VARCHAR(100),
-                placement_position VARCHAR(50),
-                tyre_type VARCHAR(50),
-                condition_status VARCHAR(50),
-                nsd_measurement NUMERIC(5,2),
-                recorded_date DATE DEFAULT CURRENT_DATE
+                tyre_id SERIAL PRIMARY KEY, vehicle_id INT, serial_number VARCHAR(100), brand_model VARCHAR(100),
+                placement_position VARCHAR(50), tyre_type VARCHAR(50), condition_status VARCHAR(50),
+                nsd_measurement NUMERIC(5,2), recorded_date DATE DEFAULT CURRENT_DATE
             );
         """, fetch=False)
         run_query("""
             CREATE TABLE IF NOT EXISTS workshop_spares_bills (
-                bill_id SERIAL PRIMARY KEY,
-                vehicle_id INT,
-                bill_date DATE DEFAULT CURRENT_DATE,
-                vendor_name VARCHAR(150),
-                invoice_number VARCHAR(100),
-                spare_parts_details TEXT,
-                total_bill_amount NUMERIC(10,2)
+                bill_id SERIAL PRIMARY KEY, vehicle_id INT, bill_date DATE DEFAULT CURRENT_DATE,
+                vendor_name VARCHAR(150), invoice_number VARCHAR(100), spare_parts_details TEXT, total_bill_amount NUMERIC(10,2)
             );
         """, fetch=False)
     except Exception: pass
@@ -226,10 +190,15 @@ def generate_settlement_pdf(driver_name, start_d, end_d, trips_df, adv_df, total
     return data
 
 # ==============================================================================
-# 3. BUSINESS LOGIC CACHING
+# 3. DATA CACHING & UTILS
 # ==============================================================================
 STATUS_OPTIONS = {"AVAILABLE_FOR_LOAD": "Ready / Available", "WAITING_FOR_LOAD": "Plant Loading", "IN_TRANSIT": "In Transit", "WAITING_FOR_UNLOAD": "Site Unloading", "WORKSHOP_MAINTENANCE": "Workshop", "DRIVER_UNAVAILABLE": "No Driver / Leave"}
 STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN"]
+BATA_SLAB_DEFINITIONS = {
+    "25MT Body (Bag)": {"cargo_type": "BAG", "capacity_tons": 25.0}, "30MT Body (Bag)": {"cargo_type": "BAG", "capacity_tons": 30.0},
+    "25MT Bulk (Bulker)": {"cargo_type": "BULK", "capacity_tons": 25.0}, "30MT Bulk (Bulker)": {"cargo_type": "BULK", "capacity_tons": 30.0},
+    "35MT Bulk (Bulker)": {"cargo_type": "BULK", "capacity_tons": 35.0}
+}
 
 @st.cache_data(ttl=60)
 def get_cached_vehicles(): return run_query("SELECT vehicle_id, vehicle_number, truck_type, carrying_capacity_tons, current_status, status_remarks, odometer_working FROM vehicles WHERE is_active = TRUE ORDER BY vehicle_number")
@@ -249,12 +218,12 @@ def set_saved_diesel_rate(new_rate):
     get_cached_diesel_rate.clear()
 
 def get_latest_odometer_for_truck(vehicle_id):
-    res = run_query("SELECT start_km FROM trips WHERE vehicle_id = %s AND trip_status != 'COMPLETED' ORDER BY trip_id DESC LIMIT 1", (vehicle_id,))
-    if res and res[0].get('start_km'): return float(res[0]['start_km'])
-    res = run_query("SELECT filling_odometer_km FROM diesel_fuel_logs WHERE vehicle_id = %s ORDER BY fuel_date DESC, fuel_log_id DESC LIMIT 1", (vehicle_id,))
-    if res and res[0].get('filling_odometer_km'): return float(res[0]['filling_odometer_km'])
-    res = run_query("SELECT end_km FROM trips WHERE vehicle_id = %s AND trip_status = 'COMPLETED' ORDER BY trip_id DESC LIMIT 1", (vehicle_id,))
-    return float(res[0]['end_km']) if res and res[0].get('end_km') else 0.0
+    res1 = run_query("SELECT start_km FROM trips WHERE vehicle_id = %s AND trip_status != 'COMPLETED' ORDER BY trip_id DESC LIMIT 1", (vehicle_id,))
+    if res1 and res1[0].get('start_km'): return float(res1[0]['start_km'])
+    res2 = run_query("SELECT filling_odometer_km FROM diesel_fuel_logs WHERE vehicle_id = %s ORDER BY fuel_date DESC, fuel_log_id DESC LIMIT 1", (vehicle_id,))
+    if res2 and res2[0].get('filling_odometer_km'): return float(res2[0]['filling_odometer_km'])
+    res3 = run_query("SELECT end_km FROM trips WHERE vehicle_id = %s AND trip_status = 'COMPLETED' ORDER BY trip_id DESC LIMIT 1", (vehicle_id,))
+    return float(res3[0]['end_km']) if res3 and res3[0].get('end_km') else 0.0
 
 def lookup_driver_bata_slab(origin, dest_name, cargo_type, capacity_tons):
     if not origin or not dest_name: return 0.00
@@ -287,7 +256,7 @@ if not st.session_state.authenticated:
                 else: show_error_toast("Invalid Credentials.")
     st.stop()
 
-# --- Responsive Top-Bar Header ---
+# --- Application Header ---
 h1, h2 = st.columns([9, 1])
 with h1:
     role_badge = "👑 Master" if st.session_state.user_role == "MASTER" else "👁️ Viewer"
@@ -297,24 +266,28 @@ with h2:
         st.session_state.update({"authenticated": False, "username": None, "user_role": None})
         st.rerun()
 
-# --- CSS Styled Radio Buttons for Seamless Navigation ---
+# --- The Magic Seamless Navigation Bar ---
 if st.session_state.user_role == "MASTER":
     MODULE_LIST = ["🏠 Dashboard", "🚛 Operations", "⛽ Fuel & Adv", "🛠️ Workshop & Tyres", "📊 Financials", "⚙️ Setup"]
 else:
     MODULE_LIST = ["🏠 Dashboard", "📊 Financials"]
 
-# Horizontal radio renders as the top nav bar thanks to the CSS injected at the top
-selected_nav = st.radio("Navigation", MODULE_LIST, horizontal=True, label_visibility="collapsed")
+selected_nav = st.radio("Navigation Menu", MODULE_LIST, horizontal=True, label_visibility="collapsed")
+
+# Pre-fetch global lookups to prevent crashes in tabs
+global_vehicles = get_cached_vehicles()
+global_drivers = get_cached_drivers()
+v_dict = {f"{v['vehicle_number']} ({v['truck_type']})": v for v in global_vehicles} if global_vehicles else {}
+d_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in global_drivers} if global_drivers else {}
 
 # ==============================================================================
 # MODULE VIEWS
 # ==============================================================================
 
 if selected_nav == "🏠 Dashboard":
-    vehicles = get_cached_vehicles()
-    df_v = pd.DataFrame(vehicles) if vehicles else pd.DataFrame()
-    
+    df_v = pd.DataFrame(global_vehicles) if global_vehicles else pd.DataFrame()
     total_veh = len(df_v)
+    
     active_trips_data = run_query("SELECT COUNT(trip_id) as active_count FROM trips WHERE trip_status != 'COMPLETED';")
     active_trips = active_trips_data[0]['active_count'] if active_trips_data else 0
     
@@ -324,49 +297,73 @@ if selected_nav == "🏠 Dashboard":
     month_rev_data = run_query("SELECT SUM(freight_revenue) as total_rev FROM trips WHERE EXTRACT(MONTH FROM trip_start_date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM trip_start_date) = EXTRACT(YEAR FROM CURRENT_DATE);")
     month_rev = float(month_rev_data[0]['total_rev'] or 0.0) if month_rev_data else 0.0
 
-    st.markdown('<div class="section-header">Operations Summary (Current Month)</div>', unsafe_allow_html=True)
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Fleet Size", f"{total_veh} Trucks")
-    k2.metric("Active Trips", f"{active_trips} En-Route")
-    k3.metric("Dispatched Tonnage", f"{month_tons:,.1f} MT")
-    k4.metric("Pending PODs", f"{active_trips} Slips")
+    stat_counts = df_v['current_status'].value_counts().to_dict() if not df_v.empty else {}
+    def get_c(key): return stat_counts.get(key, 0)
 
-    st.markdown('<div class="section-header" style="color: #B91C1C; border-bottom-color: #FEE2E2;">Financial Overview</div>', unsafe_allow_html=True)
-    rev_col, _ = st.columns([1, 1])
-    with rev_col:
-        st.markdown(f"""
-        <div style="background: #FEF2F2; border: 1px solid #FEE2E2; border-radius: 12px; padding: 20px;">
-            <div style="font-size: 0.85rem; font-weight: 700; color: #991B1B; text-transform: uppercase;">Freight Generated</div>
-            <div style="font-size: 2.2rem; font-weight: 800; color: #7F1D1D;">₹ {month_rev:,.2f}</div>
+    html_dashboard = f"""
+    <div class="wm-card">
+        <div class="wm-card-title">Operations Summary ({date.today().strftime('%B %Y')})</div>
+        <div class="wm-flex-row">
+            <div class="wm-metric-box">
+                <div class="wm-metric-label">Fleet Size</div>
+                <div class="wm-metric-val">{total_veh}</div>
+            </div>
+            <div class="wm-metric-box">
+                <div class="wm-metric-label">Active Trips</div>
+                <div class="wm-metric-val">{active_trips}</div>
+            </div>
+            <div class="wm-metric-box blue-tint">
+                <div class="wm-metric-label" style="color: #4338CA;">Tonnage Dispatched</div>
+                <div class="wm-metric-val" style="color: #3730A3;">{month_tons:,.1f} MT</div>
+            </div>
+            <div class="wm-metric-box red-tint">
+                <div class="wm-metric-label" style="color: #B91C1C;">Pending PODs</div>
+                <div class="wm-metric-val" style="color: #991B1B;">{active_trips}</div>
+            </div>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
 
-    st.markdown('<div class="section-header">Live Vehicle Status</div>', unsafe_allow_html=True)
-    if not df_v.empty:
-        stat_counts = df_v['current_status'].value_counts().to_dict()
-        def get_c(key): return stat_counts.get(key, 0)
+    <div class="wm-card" style="background: #FEF2F2; border-color: #FEE2E2;">
+        <div class="wm-metric-label" style="color: #991B1B;">Month Freight Generated</div>
+        <div class="wm-metric-val" style="color: #7F1D1D; font-size: 2.2rem;">₹ {month_rev:,.2f}</div>
+    </div>
+
+    <div class="wm-card">
+        <div class="wm-card-title">Vehicle Status Monitor</div>
+        <div class="wm-status-grid">
+            <div class="wm-status-pill"><div class="wm-status-badge">{get_c('IN_TRANSIT')}</div> In Transit</div>
+            <div class="wm-status-pill"><div class="wm-status-badge">{get_c('WAITING_FOR_LOAD')}</div> Plant Loading</div>
+            <div class="wm-status-pill"><div class="wm-status-badge">{get_c('WAITING_FOR_UNLOAD')}</div> Site Unloading</div>
+            <div class="wm-status-pill"><div class="wm-status-badge">{get_c('AVAILABLE_FOR_LOAD')}</div> Ready / Available</div>
+            <div class="wm-status-pill"><div class="wm-status-badge">{get_c('DRIVER_UNAVAILABLE')}</div> No Driver / Leave</div>
+        </div>
         
-        s1, s2, s3, s4, s5, s6 = st.columns(6)
-        s1.metric("🟢 Ready / Available", get_c('AVAILABLE_FOR_LOAD'))
-        s2.metric("🟡 Plant Loading", get_c('WAITING_FOR_LOAD'))
-        s3.metric("🚚 In Transit", get_c('IN_TRANSIT'))
-        s4.metric("⏳ Site Unloading", get_c('WAITING_FOR_UNLOAD'))
-        s5.metric("🛠️ Workshop", get_c('WORKSHOP_MAINTENANCE'))
-        s6.metric("🚫 No Driver", get_c('DRIVER_UNAVAILABLE'))
-
-        with st.expander("🔍 View Detailed Truck Directory"):
+        <div class="wm-workshop-box">
+            <div class="wm-card-title" style="margin-bottom: 8px;">Workshop & Maintenance</div>
+            <div class="wm-workshop-row">
+                <span>Active Repairs</span>
+                <span class="text-orange">{get_c('WORKSHOP_MAINTENANCE')}</span>
+            </div>
+            <div class="wm-workshop-row">
+                <span>Available Assets</span>
+                <span class="text-blue">{max(0, total_veh - get_c('WORKSHOP_MAINTENANCE') - get_c('DRIVER_UNAVAILABLE'))}</span>
+            </div>
+        </div>
+    </div>
+    """
+    st.markdown(html_dashboard, unsafe_allow_html=True)
+    
+    with st.expander("🔍 View Detailed Truck Status Table"):
+        if not df_v.empty:
             df_v['status_lbl'] = df_v['current_status'].map(lambda x: STATUS_OPTIONS.get(x, x))
             st.dataframe(df_v[['vehicle_number', 'truck_type', 'carrying_capacity_tons', 'status_lbl', 'status_remarks']], hide_index=True, use_container_width=True)
 
-
 elif selected_nav == "🚛 Operations":
-    op_tabs = st.tabs(["🚀 Trip Dispatch", "📦 POD Receive & Close", "📍 Fleet Status Board"])
+    op_tabs = st.tabs(["🚀 Trip Dispatch", "📦 POD Receive & Close", "📍 Quick Status Update"])
     
     with op_tabs[0]:
         st.markdown('<div class="section-header">Initiate Trip Dispatch</div>', unsafe_allow_html=True)
-        vehicles, drivers = get_cached_vehicles(), get_cached_drivers()
-        if not vehicles or not drivers: st.error("Configure vehicles and drivers first."); st.stop()
-        driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
+        if not global_vehicles or not global_drivers: st.error("Configure vehicles and drivers first."); st.stop()
         
         with st.form("dispatch_form"):
             c1, c2, c3, c4 = st.columns([1.5, 2, 2, 1.5])
@@ -375,7 +372,7 @@ elif selected_nav == "🚛 Operations":
             with c3: cargo_category = st.selectbox("Cargo Type*", ["BULK", "BAG"])
             with c4: d_rate_fast = st.number_input("Diesel Rate (₹/L)*", value=get_cached_diesel_rate(), step=0.1)
 
-            v_map = {f"{v['vehicle_number']} [{v['truck_type']}]": v for v in vehicles if ("BULK" if cargo_category == "BULK" else "BAG") in str(v.get('truck_type', '')).upper() or (cargo_category == "BAG" and "BODY" in str(v.get('truck_type', '')).upper())}
+            v_map = {f"{v['vehicle_number']} [{v['truck_type']}]": v for v in global_vehicles if ("BULK" if cargo_category == "BULK" else "BAG") in str(v.get('truck_type', '')).upper() or (cargo_category == "BAG" and "BODY" in str(v.get('truck_type', '')).upper())}
             
             c5, c6, c7 = st.columns([2.5, 2.5, 2.5])
             with c5: 
@@ -404,7 +401,7 @@ elif selected_nav == "🚛 Operations":
 
             st.markdown("<hr style='margin:10px 0; border-color:#EAEAEA;'>", unsafe_allow_html=True)
             fc1, fc2, fc3, fc4 = st.columns(4)
-            with fc1: chosen_drv = st.selectbox("Driver*", ["-- SELECT DRIVER --"] + list(driver_dict.keys()))
+            with fc1: chosen_drv = st.selectbox("Driver*", ["-- SELECT DRIVER --"] + list(d_dict.keys()))
             with fc2: wmt = st.number_input("Loaded MT*", value=float(active_veh['carrying_capacity_tons']) if active_veh else 30.0)
             with fc3: bata = st.number_input("Driver Bata (₹)*", value=lookup_driver_bata_slab(origin_terminal, dest_terminal, cargo_category, float(active_veh['carrying_capacity_tons']) if active_veh else 0.0), step=100.0)
             with fc4: adv = st.number_input("Advance (₹)", min_value=0.0, step=500.0)
@@ -424,7 +421,7 @@ elif selected_nav == "🚛 Operations":
                     def run_dispatch():
                         calc_km = (end_km - start_km) if end_km > start_km else std_km
                         gross, f_cost = round(wmt * rate_mt, 2), round(fuel_l * d_rate_fast, 2)
-                        new_t = run_query("INSERT INTO trips (trip_number, branch_id, vehicle_id, primary_driver_id, trip_start_date, trip_end_date, origin, destination, start_km, end_km, total_km_run, tonnage_loaded, loaded_weight_mt, unloaded_weight_mt, freight_revenue, fuel_litres, fuel_expense, driver_bata, cash_advance_issued, trip_status, is_tank_full) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT', %s) RETURNING trip_id;", (lr_no, active_veh['vehicle_id'], driver_dict[chosen_drv]['driver_id'], start_date, start_date, origin_terminal, dest_terminal, start_km, end_km, calc_km, wmt, wmt, wmt, gross, fuel_l, f_cost, bata, adv, is_tank_full))
+                        new_t = run_query("INSERT INTO trips (trip_number, branch_id, vehicle_id, primary_driver_id, trip_start_date, trip_end_date, origin, destination, start_km, end_km, total_km_run, tonnage_loaded, loaded_weight_mt, unloaded_weight_mt, freight_revenue, fuel_litres, fuel_expense, driver_bata, cash_advance_issued, trip_status, is_tank_full) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT', %s) RETURNING trip_id;", (lr_no, active_veh['vehicle_id'], d_dict[chosen_drv]['driver_id'], start_date, start_date, origin_terminal, dest_terminal, start_km, end_km, calc_km, wmt, wmt, wmt, gross, fuel_l, f_cost, bata, adv, is_tank_full))
                         if fuel_l > 0 and new_t: run_query("INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full) VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s, %s);", (start_date, active_veh['vehicle_id'], new_t[0]['trip_id'], lr_no, fuel_l, d_rate_fast, f_cost, start_km, is_tank_full), fetch=False)
                         run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s", (f"Trip {lr_no}: {origin_terminal} ➔ {dest_terminal}", active_veh['vehicle_id']), fetch=False)
                         get_cached_vehicles.clear(); trigger_toast_and_rerun("SUCCESS", "Trip dispatched.")
@@ -433,10 +430,11 @@ elif selected_nav == "🚛 Operations":
     with op_tabs[1]:
         col_main, col_side = st.columns([6, 4])
         with col_side:
-            st.markdown('<div class="section-header" style="color:#B91C1C; border-color:#FEE2E2;">📞 Pending POD List</div>', unsafe_allow_html=True)
+            st.markdown('<div class="wm-card" style="background:#FEF2F2; border-color:#FEE2E2;"><div class="wm-card-title" style="color:#991B1B; margin-bottom: 8px;">Pending POD List</div>', unsafe_allow_html=True)
             pending = run_query("SELECT t.trip_number AS lr_no, v.vehicle_number, d.phone_number, t.destination, CURRENT_DATE - t.trip_start_date::date AS days FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE t.trip_status != 'COMPLETED' ORDER BY t.trip_start_date ASC;")
             if pending: st.dataframe(pd.DataFrame(pending), hide_index=True, use_container_width=True, height=450)
             else: st.success("All PODs settled.")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         with col_main:
             st.markdown('<div class="section-header">Record POD & Settle Trip</div>', unsafe_allow_html=True)
@@ -477,23 +475,23 @@ elif selected_nav == "🚛 Operations":
                                 confirm_action_dialog(f"Close POD for {t_cur['trip_number']}", execute_pod)
 
     with op_tabs[2]:
-        vehicles = get_cached_vehicles()
-        if vehicles:
-            df_v = pd.DataFrame(vehicles)
+        st.markdown('<div class="section-header">Manual Status Override</div>', unsafe_allow_html=True)
+        if not global_vehicles: st.info("No vehicles configured.")
+        else:
             with st.form("quick_stat_form"):
-                st.markdown('<div class="section-header">Quick Manual Status Override</div>', unsafe_allow_html=True)
-                v_map = {f"{v['vehicle_number']} ({v['truck_type']})": v for v in vehicles}
-                target_v = v_map[st.selectbox("Select Truck", list(v_map.keys()))]
+                target_v = v_dict[st.selectbox("Select Truck", list(v_dict.keys()))]
                 new_st = st.selectbox("New Operational Status", list(STATUS_OPTIONS.keys()), format_func=lambda x: STATUS_OPTIONS[x])
                 new_rem = st.text_input("Location / Breakdown Details", value=target_v['status_remarks'] or "")
                 st.write("")
                 if st.form_submit_button("Update Status", type="primary"):
-                    confirm_action_dialog(f"update status of {target_v['vehicle_number']}", lambda: (run_query("UPDATE vehicles SET current_status = %s, status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP WHERE vehicle_id = %s", (new_st, new_rem, target_v['vehicle_id']), fetch=False), get_cached_vehicles.clear(), trigger_toast_and_rerun("SUCCESS", "Status updated.")))
+                    def set_status():
+                        run_query("UPDATE vehicles SET current_status = %s, status_remarks = %s, status_updated_at = CURRENT_TIMESTAMP WHERE vehicle_id = %s", (new_st, new_rem, target_v['vehicle_id']), fetch=False)
+                        get_cached_vehicles.clear()
+                        trigger_toast_and_rerun("SUCCESS", "Status updated.")
+                    confirm_action_dialog(f"update status of {target_v['vehicle_number']}", set_status)
 
 elif selected_nav == "⛽ Fuel & Adv":
-    fa_tabs = st.tabs(["⛽ Issue Diesel", "📝 Edit Diesel Log", "💵 Driver Advances"])
-    vehicles = get_cached_vehicles()
-    v_dict = {f"{v['vehicle_number']} ({v['truck_type']})": v for v in vehicles}
+    fa_tabs = st.tabs(["⛽ Issue Diesel", "📝 Edit Diesel Log", "💵 Driver Advances", "📊 Fuel Audit"])
     
     with fa_tabs[0]:
         col_d1, col_d2 = st.columns([2.0, 3.0])
@@ -518,9 +516,11 @@ elif selected_nav == "⛽ Fuel & Adv":
                 st.write("")
                 if st.form_submit_button("Record Diesel Entry", type="primary"):
                     if f_l <= 0: show_error_toast("Fuel > 0 required.")
-                    elif check_duplicate_diesel_entry(target_veh_id, f_date, f_l, filling_km, f_lr): show_error_toast("Duplicate fuel log exists.")
                     else:
-                        confirm_action_dialog(f"record {f_l}L", lambda: (run_query("INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", (f_date, target_veh_id, f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, round(f_l * d_rate_fast, 2), filling_km, is_tank_full), fetch=False), trigger_toast_and_rerun("SUCCESS", "Recorded.")))
+                        def save_fuel():
+                            run_query("INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", (f_date, target_veh_id, f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, round(f_l * d_rate_fast, 2), filling_km, is_tank_full), fetch=False)
+                            trigger_toast_and_rerun("SUCCESS", "Recorded.")
+                        confirm_action_dialog(f"record {f_l}L", save_fuel)
         with col_d2:
             st.markdown('<div class="section-header">Recent Fuel Entries</div>', unsafe_allow_html=True)
             d_recent = run_query("SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, f.litres_filled, f.total_fuel_cost FROM diesel_fuel_logs f JOIN vehicles v ON f.vehicle_id = v.vehicle_id ORDER BY f.fuel_date DESC, f.fuel_log_id DESC LIMIT 50;")
@@ -568,22 +568,51 @@ elif selected_nav == "⛽ Fuel & Adv":
                 if st.button("🗑️ Delete Fuel Log", type="secondary"):
                     confirm_action_dialog("delete log", lambda: (run_query("DELETE FROM diesel_fuel_logs WHERE fuel_log_id = %s", (target_fuel['fuel_log_id'],), fetch=False), trigger_toast_and_rerun("SUCCESS", "Deleted.")))
 
+    with fa_tabs[3]:
+        df_col1, df_col2, df_col3, df_col4 = st.columns([2.0, 2.0, 2.0, 2.0])
+        with df_col1: fuel_filter_mode = st.selectbox("Date Mode", ["All Time", "Specific Date", "Date Range"])
+        with df_col2: sel_fl_trk = st.selectbox("Truck No", ["All Trucks"] + sorted([v['vehicle_number'] for v in global_vehicles]))
+        with df_col3: sel_fl_cat = st.selectbox("Category", ["All Categories", "TRIP_DIESEL", "SUNDRY_DIESEL"])
+        with df_col4: search_fl_lr = st.text_input("Search LR No").strip().upper()
+
+        date_q_cond, fl_params = "", []
+        if fuel_filter_mode == "Specific Date":
+            c_d1, _ = st.columns([2, 2]); single_fl_d = c_d1.date_input("Date", date.today()); date_q_cond = " AND f.fuel_date::date = %s"; fl_params.append(single_fl_d)
+        elif fuel_filter_mode == "Date Range":
+            c_d1, c_d2 = st.columns(2); from_fl_d = c_d1.date_input("From", date.today().replace(day=1)); to_fl_d = c_d2.date_input("To", date.today()); date_q_cond = " AND f.fuel_date::date >= %s AND f.fuel_date::date <= %s"; fl_params.extend([from_fl_d, to_fl_d])
+
+        d_filter_sql = f"SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, f.filling_odometer_km, f.litres_filled, f.total_fuel_cost FROM diesel_fuel_logs f JOIN vehicles v ON f.vehicle_id = v.vehicle_id WHERE 1=1 {date_q_cond}"
+        if sel_fl_trk != "All Trucks": d_filter_sql += " AND v.vehicle_number = %s"; fl_params.append(sel_fl_trk)
+        if sel_fl_cat != "All Categories": d_filter_sql += " AND f.diesel_category = %s"; fl_params.append(sel_fl_cat)
+        if search_fl_lr: d_filter_sql += " AND UPPER(f.lr_number) LIKE %s"; fl_params.append(f"%{search_fl_lr}%")
+        d_filter_sql += " ORDER BY f.fuel_date DESC, f.fuel_log_id DESC;"
+
+        d_filtered_logs = run_query(d_filter_sql, tuple(fl_params) if fl_params else None)
+        if d_filtered_logs:
+            df_d_logs = pd.DataFrame(d_filtered_logs)
+            st.dataframe(df_d_logs, hide_index=True, use_container_width=True, height=300)
+            del_c1, del_c3 = st.columns([3.0, 1.0])
+            with del_c1: del_fuel_id = st.selectbox("Select ID to Remove", df_d_logs['fuel_log_id'].tolist())
+            with del_c3:
+                st.write(""); 
+                if st.button("🗑️ Delete Log", type="secondary", use_container_width=True):
+                    confirm_action_dialog("delete Fuel Log", lambda: (run_query("DELETE FROM diesel_fuel_logs WHERE fuel_log_id = %s", (del_fuel_id,), fetch=False), trigger_toast_and_rerun("SUCCESS", f"Deleted.")))
+        else: st.info("No logs match parameters.")
+
     with fa_tabs[2]:
-        drivers = get_cached_drivers()
-        d_map = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
         col_a1, col_a2 = st.columns([1.5, 3.5])
         with col_a1:
             with st.form("adv_form", clear_on_submit=True):
                 st.markdown('<div class="section-header">Direct Cash Advance</div>', unsafe_allow_html=True)
                 ad_date = st.date_input("Advance Date*", date.today())
-                ad_drv = st.selectbox("Driver Account*", list(d_map.keys()))
+                ad_drv = st.selectbox("Driver Account*", list(d_dict.keys()))
                 ad_amt = st.number_input("Advance Amount (₹)*", min_value=0.0, step=500.0)
                 ad_cat = st.selectbox("Category", ["BATA_ADVANCE", "GENERAL_ADVANCE", "EMERGENCY_MEDICAL", "SALARY_ADVANCE"])
                 ad_ref = st.text_input("Reference Note")
                 st.write("")
-                if st.form_submit_button("Issue Advance", type="primary"):
+                if st.form_submit_button("Issue Advance", type="primary", use_container_width=True):
                     if ad_amt <= 0: show_error_toast("Amount must be > 0.")
-                    else: confirm_action_dialog(f"issue ₹{ad_amt:,.2f} to {d_map[ad_drv]['full_name']}", lambda: (run_query("INSERT INTO driver_direct_advances (advance_date, driver_id, amount_inr, advance_type, reference_remarks) VALUES (%s, %s, %s, %s, %s)", (ad_date, d_map[ad_drv]['driver_id'], ad_amt, ad_cat, ad_ref), fetch=False), trigger_toast_and_rerun("SUCCESS", "Recorded.")))
+                    else: confirm_action_dialog(f"issue ₹{ad_amt:,.2f} to {d_dict[ad_drv]['full_name']}", lambda: (run_query("INSERT INTO driver_direct_advances (advance_date, driver_id, amount_inr, advance_type, reference_remarks) VALUES (%s, %s, %s, %s, %s)", (ad_date, d_dict[ad_drv]['driver_id'], ad_amt, ad_cat, ad_ref), fetch=False), trigger_toast_and_rerun("SUCCESS", "Recorded.")))
         with col_a2:
             st.markdown('<div class="section-header">Advance History</div>', unsafe_allow_html=True)
             adv_recs = run_query("SELECT a.advance_id, a.advance_date, d.driver_code, d.full_name, a.amount_inr, a.advance_type, a.reference_remarks FROM driver_direct_advances a JOIN drivers d ON a.driver_id = d.driver_id ORDER BY a.advance_date DESC LIMIT 100")
@@ -591,7 +620,7 @@ elif selected_nav == "⛽ Fuel & Adv":
                 df_adv_recs = pd.DataFrame(adv_recs)
                 st.dataframe(df_adv_recs, hide_index=True, use_container_width=True, height=450)
                 del_a1, del_a3 = st.columns([3.0, 1.0])
-                with del_a1: del_adv_id = st.selectbox("Remove Entry", df_adv_recs['advance_id'].tolist())
+                with del_a1: del_adv_id = st.selectbox("Remove Entry", df_adv_recs['advance_id'].tolist(), format_func=lambda x: f"Advance Record #{x}")
                 with del_a3:
                     st.write(""); 
                     if st.button("🗑️ Delete", type="secondary", use_container_width=True):
@@ -599,8 +628,6 @@ elif selected_nav == "⛽ Fuel & Adv":
 
 elif selected_nav == "🛠️ Workshop & Tyres":
     wt_tabs = st.tabs(["🛞 Tyre Inventory & Tracking", "🛠️ Workshop & Spares Bill"])
-    vehicles = get_cached_vehicles()
-    v_dict = {f"{v['vehicle_number']} ({v['truck_type']})": v for v in vehicles}
     
     with wt_tabs[0]:
         st.markdown('<div class="section-header">Tyre Registration & Placement</div>', unsafe_allow_html=True)
@@ -609,7 +636,7 @@ elif selected_nav == "🛠️ Workshop & Tyres":
             with st.form("tyre_form", clear_on_submit=True):
                 t_veh = st.selectbox("Assign to Truck*", ["-- INVENTORY / NOT ASSIGNED --"] + list(v_dict.keys()))
                 t_veh_id = v_dict[t_veh]['vehicle_id'] if t_veh != "-- INVENTORY / NOT ASSIGNED --" else None
-                t_pos = st.selectbox("Placement Position*", ["Front", "Rear", "Spare"])
+                t_pos = st.selectbox("Placement Position*", ["Front", "Rear", "Spare", "Inventory"])
                 t_type = st.selectbox("Tyre Type*", ["Original", "Retread"])
                 t_status = st.selectbox("Condition Status*", ["Good", "Reject", "In Use"])
                 t_brand = st.text_input("Brand / Model*").strip()
@@ -619,7 +646,10 @@ elif selected_nav == "🛠️ Workshop & Tyres":
                 if st.form_submit_button("💾 Save Tyre Record", type="primary"):
                     if not t_serial or not t_brand: show_error_toast("Brand and Serial Number are required.")
                     else:
-                        confirm_action_dialog("save tyre record", lambda: (run_query("INSERT INTO fleet_tyres (vehicle_id, serial_number, brand_model, placement_position, tyre_type, condition_status, nsd_measurement) VALUES (%s, %s, %s, %s, %s, %s, %s)", (t_veh_id, t_serial, t_brand, t_pos, t_type, t_status, t_nsd), fetch=False), trigger_toast_and_rerun("SUCCESS", "Tyre Saved.")))
+                        def save_tyre():
+                            run_query("INSERT INTO fleet_tyres (vehicle_id, serial_number, brand_model, placement_position, tyre_type, condition_status, nsd_measurement) VALUES (%s, %s, %s, %s, %s, %s, %s)", (t_veh_id, t_serial, t_brand, t_pos, t_type, t_status, t_nsd), fetch=False)
+                            trigger_toast_and_rerun("SUCCESS", "Tyre Saved.")
+                        confirm_action_dialog("save tyre record", save_tyre)
         with col_t2:
             try:
                 tyres_db = run_query("SELECT t.tyre_id, COALESCE(v.vehicle_number, 'INVENTORY') as truck, t.placement_position, t.tyre_type, t.condition_status, t.brand_model, t.serial_number, t.nsd_measurement FROM fleet_tyres t LEFT JOIN vehicles v ON t.vehicle_id = v.vehicle_id ORDER BY t.tyre_id DESC;")
@@ -643,7 +673,10 @@ elif selected_nav == "🛠️ Workshop & Tyres":
                 if st.form_submit_button("💾 Record Workshop Bill", type="primary"):
                     if not w_vendor or not w_desc or w_amt <= 0: show_error_toast("Vendor, Description, and valid Amount are required.")
                     else:
-                        confirm_action_dialog("record workshop bill", lambda: (run_query("INSERT INTO workshop_spares_bills (vehicle_id, bill_date, vendor_name, invoice_number, spare_parts_details, total_bill_amount) VALUES (%s, %s, %s, %s, %s, %s)", (w_veh_id, w_date, w_vendor, w_inv, w_desc, w_amt), fetch=False), trigger_toast_and_rerun("SUCCESS", "Workshop Bill Saved.")))
+                        def save_workshop():
+                            run_query("INSERT INTO workshop_spares_bills (vehicle_id, bill_date, vendor_name, invoice_number, spare_parts_details, total_bill_amount) VALUES (%s, %s, %s, %s, %s, %s)", (w_veh_id, w_date, w_vendor, w_inv, w_desc, w_amt), fetch=False)
+                            trigger_toast_and_rerun("SUCCESS", "Workshop Bill Saved.")
+                        confirm_action_dialog("record workshop bill", save_workshop)
         with col_w2:
             try:
                 bills_db = run_query("SELECT b.bill_id, v.vehicle_number, b.bill_date, b.vendor_name, b.invoice_number, b.total_bill_amount FROM workshop_spares_bills b JOIN vehicles v ON b.vehicle_id = v.vehicle_id ORDER BY b.bill_date DESC LIMIT 50;")
@@ -651,13 +684,12 @@ elif selected_nav == "🛠️ Workshop & Tyres":
                 else: st.info("No workshop bills recorded yet.")
             except Exception: st.info("Workshop module initializing... Please refresh.")
 
+
 elif selected_nav == "📊 Financials":
     fin_tabs = st.tabs(["💵 Driver Settlement", "✏️ Modify Trips", "📈 Analytics & Margins"])
     
     with fin_tabs[0]:
-        drivers = get_cached_drivers()
-        if drivers:
-            d_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
+        if global_drivers:
             s1, s2, s3 = st.columns([2.5, 1.5, 1.5])
             with s1: sel_d_name = st.selectbox("Select Driver*", list(d_dict.keys())); d_id = d_dict[sel_d_name]['driver_id']
             with s2: s_from = st.date_input("From Date*", date.today().replace(day=1))
@@ -708,102 +740,102 @@ elif selected_nav == "📊 Financials":
                         confirm_action_dialog("mark records SETTLED", lambda: (run_query("UPDATE trips SET settlement_status='SETTLED' WHERE primary_driver_id=%s AND trip_start_date::date>=%s AND trip_start_date::date<=%s", (d_id, s_from, s_to), fetch=False), run_query("UPDATE driver_direct_advances SET is_settled=TRUE WHERE driver_id=%s AND advance_date::date>=%s AND advance_date::date<=%s", (d_id, s_from, s_to), fetch=False), trigger_toast_and_rerun("SUCCESS", "Settled.")))
 
     with fin_tabs[1]:
-        if st.session_state.user_role != "MASTER": st.warning("Restricted to MASTER.")
+        if st.session_state.user_role != "MASTER": st.warning("Restricted to MASTER."); st.stop()
+        
+        f_c1, f_c2 = st.columns([2, 2])
+        with f_c1: search_query = st.text_input("🔍 Quick Search by LR Number or Truck").strip().upper()
+        with f_c2: status_filter = st.selectbox("Filter Status", ["All Statuses", "IN_TRANSIT", "COMPLETED"])
+
+        try: trip_sql = "SELECT t.*, v.vehicle_number, v.carrying_capacity_tons, d.full_name FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE 1=1"
+        except Exception: trip_sql = "SELECT t.*, v.vehicle_number, v.carrying_capacity_tons, d.full_name FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE 1=1"
+        params = []
+        if search_query: trip_sql += " AND (UPPER(t.trip_number) LIKE %s OR UPPER(v.vehicle_number) LIKE %s)"; params.extend([f"%{search_query}%", f"%{search_query}%"])
+        if status_filter != "All Statuses": trip_sql += " AND t.trip_status = %s"; params.append(status_filter)
+        trip_sql += " ORDER BY t.trip_id DESC"
+        all_matched_trips = run_query(trip_sql, tuple(params) if params else None)
+
+        if not all_matched_trips: st.info("No trips found.")
         else:
-            f_c1, f_c2 = st.columns([2, 2])
-            with f_c1: search_query = st.text_input("🔍 Quick Search by LR Number or Truck").strip().upper()
-            with f_c2: status_filter = st.selectbox("Filter Status", ["All Statuses", "IN_TRANSIT", "COMPLETED"])
+            trip_map = {f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | Status: {t['trip_status']}": t for t in all_matched_trips}
+            sel_t_key_label = st.selectbox("Target Trip Record", ["-- SELECT TRIP --"] + list(trip_map.keys()), index=0)
 
-            try: trip_sql = "SELECT t.*, v.vehicle_number, v.carrying_capacity_tons, d.full_name FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE 1=1"
-            except Exception: trip_sql = "SELECT t.*, v.vehicle_number, v.carrying_capacity_tons, d.full_name FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE 1=1"
-            params = []
-            if search_query: trip_sql += " AND (UPPER(t.trip_number) LIKE %s OR UPPER(v.vehicle_number) LIKE %s)"; params.extend([f"%{search_query}%", f"%{search_query}%"])
-            if status_filter != "All Statuses": trip_sql += " AND t.trip_status = %s"; params.append(status_filter)
-            trip_sql += " ORDER BY t.trip_id DESC"
-            all_matched_trips = run_query(trip_sql, tuple(params) if params else None)
+            if sel_t_key_label != "-- SELECT TRIP --":
+                t_data = trip_map[sel_t_key_label]
+                with st.form("mod_full_form"):
+                    v_class_mt = float(t_data['carrying_capacity_tons'] or 30.0)
+                    all_routes = run_query("SELECT * FROM destinations_freight_master WHERE is_active = TRUE ORDER BY destination_name ASC")
+                    route_labels, route_map_dict, active_lbl = [], {}, "-- MANUAL / SPOT ROUTE --"
+                    if all_routes:
+                        for r in all_routes:
+                            lbl = f"{r['origin']} ➔ {r['destination_name']} [{r['capacity_tons']} MT | ₹{r['freight_rate_per_ton']}/MT]"
+                            route_labels.append(lbl); route_map_dict[lbl] = r
+                            if r['origin'].upper() == (t_data['origin'] or "").upper() and r['destination_name'].upper() == (t_data['destination'] or "").upper(): active_lbl = lbl
+                    route_labels.append("-- MANUAL / SPOT ROUTE --")
+                    def_route_idx = route_labels.index(active_lbl) if active_lbl in route_labels else len(route_labels) - 1
 
-            if not all_matched_trips: st.info("No trips found.")
-            else:
-                trip_map = {f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | Status: {t['trip_status']}": t for t in all_matched_trips}
-                sel_t_key_label = st.selectbox("Target Trip Record", ["-- SELECT TRIP --"] + list(trip_map.keys()), index=0)
+                    m1, m2 = st.columns([2.5, 2.5])
+                    with m1:
+                        e_sdate = st.date_input("Start Date", t_data['trip_start_date'] or date.today())
+                        e_lr = st.text_input("LR No", value=t_data['trip_number']).strip().upper()
+                    with m2:
+                        e_edate = st.date_input("Closing Date", t_data['trip_end_date'] or date.today())
+                        sel_route_choice = st.selectbox("Route Slab", route_labels, index=def_route_idx)
+                    
+                    if sel_route_choice != "-- MANUAL / SPOT ROUTE --":
+                        active_slab = route_map_dict[sel_route_choice]
+                        e_orig, e_dest, auto_rate_mt, auto_km = active_slab['origin'], active_slab['destination_name'], float(active_slab['freight_rate_per_ton']), float(active_slab['standard_km'])
+                    else:
+                        c_spot1, c_spot2 = st.columns(2)
+                        with c_spot1: e_orig = st.text_input("Origin", value=t_data['origin']).strip().upper(); e_dest = st.text_input("Destination", value=t_data['destination']).strip().upper()
+                        with c_spot2: auto_rate_mt = st.number_input("Spot Rate/MT*", min_value=0.0, step=25.0, value=0.0); auto_km = st.number_input("Standard KM", min_value=0.0, step=10.0, value=float(t_data['total_km_run'] or 0.0))
 
-                if sel_t_key_label != "-- SELECT TRIP --":
-                    t_data = trip_map[sel_t_key_label]
-                    with st.form("mod_full_form"):
-                        v_class_mt = float(t_data['carrying_capacity_tons'] or 30.0)
-                        all_routes = run_query("SELECT * FROM destinations_freight_master WHERE is_active = TRUE ORDER BY destination_name ASC")
-                        route_labels, route_map_dict, active_lbl = [], {}, "-- MANUAL / SPOT ROUTE --"
-                        if all_routes:
-                            for r in all_routes:
-                                lbl = f"{r['origin']} ➔ {r['destination_name']} [{r['capacity_tons']} MT | ₹{r['freight_rate_per_ton']}/MT]"
-                                route_labels.append(lbl); route_map_dict[lbl] = r
-                                if r['origin'].upper() == (t_data['origin'] or "").upper() and r['destination_name'].upper() == (t_data['destination'] or "").upper(): active_lbl = lbl
-                        route_labels.append("-- MANUAL / SPOT ROUTE --")
-                        def_route_idx = route_labels.index(active_lbl) if active_lbl in route_labels else len(route_labels) - 1
+                    st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
+                    ok1, ok2, ok3 = st.columns(3)
+                    with ok1: e_start_km = st.number_input("Start KM*", min_value=0.0, value=float(t_data['start_km'] or 0.0), step=10.0)
+                    with ok2: e_end_km = st.number_input("End KM", min_value=0.0, value=float(t_data['end_km'] or 0.0), step=10.0)
+                    with ok3:
+                        calc_km = (e_end_km - e_start_km) if e_end_km > e_start_km else (float(t_data['total_km_run']) if float(t_data['total_km_run'] or 0) > 0 else auto_km)
+                        st.text_input("Total Dist (KM)", value=f"{calc_km:.2f}", disabled=True)
+                        e_total_km = calc_km
 
-                        m1, m2 = st.columns([2.5, 2.5])
-                        with m1:
-                            e_sdate = st.date_input("Start Date", t_data['trip_start_date'] or date.today())
-                            e_lr = st.text_input("LR No", value=t_data['trip_number']).strip().upper()
-                        with m2:
-                            e_edate = st.date_input("Closing Date", t_data['trip_end_date'] or date.today())
-                            sel_route_choice = st.selectbox("Route Slab", route_labels, index=def_route_idx)
-                        
-                        if sel_route_choice != "-- MANUAL / SPOT ROUTE --":
-                            active_slab = route_map_dict[sel_route_choice]
-                            e_orig, e_dest, auto_rate_mt, auto_km = active_slab['origin'], active_slab['destination_name'], float(active_slab['freight_rate_per_ton']), float(active_slab['standard_km'])
-                        else:
-                            c_spot1, c_spot2 = st.columns(2)
-                            with c_spot1: e_orig = st.text_input("Origin", value=t_data['origin']).strip().upper(); e_dest = st.text_input("Destination", value=t_data['destination']).strip().upper()
-                            with c_spot2: auto_rate_mt = st.number_input("Spot Rate/MT*", min_value=0.0, step=25.0, value=0.0); auto_km = st.number_input("Standard KM", min_value=0.0, step=10.0, value=float(t_data['total_km_run'] or 0.0))
+                    f1, f2, f3, f4, f5 = st.columns(5)
+                    with f1: e_ton = st.number_input("Loaded MT*", value=float(t_data['loaded_weight_mt'] or v_class_mt), step=0.05)
+                    with f2: e_freight = st.number_input("Freight (₹)", value=round(e_ton * auto_rate_mt, 2), step=100.0)
+                    with f3: e_bata = st.number_input("Bata (₹)", value=float(t_data['driver_bata'] or 0.0), step=100.0)
+                    with f4: e_adv = st.number_input("Advance (₹)", value=float(t_data['cash_advance_issued'] or 0.0), step=500.0)
+                    with f5:
+                        e_fuel_l = st.number_input("Diesel (L)", value=float(t_data['fuel_litres'] or 0.0), step=5.0)
+                        e_is_tank_full = st.checkbox("⛽ Mark Tank Full", value=bool(t_data.get('is_tank_full', False)))
 
-                        st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
-                        ok1, ok2, ok3 = st.columns(3)
-                        with ok1: e_start_km = st.number_input("Start KM*", min_value=0.0, value=float(t_data['start_km'] or 0.0), step=10.0)
-                        with ok2: e_end_km = st.number_input("End KM", min_value=0.0, value=float(t_data['end_km'] or 0.0), step=10.0)
-                        with ok3:
-                            calc_km = (e_end_km - e_start_km) if e_end_km > e_start_km else (float(t_data['total_km_run']) if float(t_data['total_km_run'] or 0) > 0 else auto_km)
-                            st.text_input("Total Dist (KM)", value=f"{calc_km:.2f}", disabled=True)
-                            e_total_km = calc_km
+                    p1, p2, p3, p4, p5 = st.columns(5)
+                    with p1: e_pod_no = st.text_input("POD No", value=t_data['pod_number'] or "")
+                    with p2: e_unloaded_mt = st.number_input("Unloaded MT", value=float(t_data['unloaded_weight_mt'] or e_ton), step=0.01)
+                    with p3: e_halt_bata = st.number_input("Halt Bata (₹)", value=float(t_data['halt_bata'] or 0.0), step=100.0)
+                    with p4: e_claims = st.number_input("Claims (₹)", value=float(t_data['enroute_repairs_maintenance'] or 0.0), step=50.0)
+                    with p5: e_trip_status = st.selectbox("Status", ["IN_TRANSIT", "COMPLETED"], index=0 if t_data['trip_status'] == "IN_TRANSIT" else 1)
 
-                        f1, f2, f3, f4, f5 = st.columns(5)
-                        with f1: e_ton = st.number_input("Loaded MT*", value=float(t_data['loaded_weight_mt'] or v_class_mt), step=0.05)
-                        with f2: e_freight = st.number_input("Freight (₹)", value=round(e_ton * auto_rate_mt, 2), step=100.0)
-                        with f3: e_bata = st.number_input("Bata (₹)", value=float(t_data['driver_bata'] or 0.0), step=100.0)
-                        with f4: e_adv = st.number_input("Advance (₹)", value=float(t_data['cash_advance_issued'] or 0.0), step=500.0)
-                        with f5:
-                            e_fuel_l = st.number_input("Diesel (L)", value=float(t_data['fuel_litres'] or 0.0), step=5.0)
-                            e_is_tank_full = st.checkbox("⛽ Mark Tank Full", value=bool(t_data.get('is_tank_full', False)))
+                    st.write("")
+                    if st.form_submit_button("💾 Commit Updates", type="primary"):
+                        def execute_mod_trip():
+                            try:
+                                f_c = round(e_fuel_l * get_cached_diesel_rate(), 2)
+                                short = max(0.0, e_ton - e_unloaded_mt)
+                                run_query("UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s, start_km=%s, end_km=%s, total_km_run=%s, loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, shortage_mt=%s, freight_revenue=%s, fuel_litres=%s, fuel_expense=%s, driver_bata=%s, halt_bata=%s, cash_advance_issued=%s, enroute_repairs_maintenance=%s, pod_number=%s, trip_status=%s, is_tank_full=%s WHERE trip_id=%s;", (e_sdate, e_edate, e_lr, e_orig, e_dest, e_start_km, e_end_km, e_total_km, e_ton, e_unloaded_mt, e_ton, short, e_freight, e_fuel_l, f_c, e_bata, e_halt_bata, e_adv, e_claims, e_pod_no or None, e_trip_status, e_is_tank_full, t_data['trip_id']), fetch=False)
+                                st_u = "AVAILABLE_FOR_LOAD" if e_trip_status == "COMPLETED" else "IN_TRANSIT"
+                                run_query("UPDATE vehicles SET current_status = %s WHERE vehicle_id = %s", (st_u, t_data['vehicle_id']), fetch=False)
+                                if run_query("SELECT fuel_log_id FROM diesel_fuel_logs WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s)", (t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id'])):
+                                    run_query("UPDATE diesel_fuel_logs SET fuel_date=%s, lr_number=%s, litres_filled=%s, total_fuel_cost=%s, filling_odometer_km=%s, trip_id=%s, is_tank_full=%s WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s);", (e_sdate, e_lr, e_fuel_l, f_c, e_start_km, t_data['trip_id'], e_is_tank_full, t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id']), fetch=False)
+                                get_cached_vehicles.clear(); trigger_toast_and_rerun("SUCCESS", f"Updated.")
+                            except Exception as e: show_error_toast(f"Update failed: {e}")
+                        confirm_action_dialog(f"commit modifications", execute_mod_trip)
 
-                        p1, p2, p3, p4, p5 = st.columns(5)
-                        with p1: e_pod_no = st.text_input("POD No", value=t_data['pod_number'] or "")
-                        with p2: e_unloaded_mt = st.number_input("Unloaded MT", value=float(t_data['unloaded_weight_mt'] or e_ton), step=0.01)
-                        with p3: e_halt_bata = st.number_input("Halt Bata (₹)", value=float(t_data['halt_bata'] or 0.0), step=100.0)
-                        with p4: e_claims = st.number_input("Claims (₹)", value=float(t_data['enroute_repairs_maintenance'] or 0.0), step=50.0)
-                        with p5: e_trip_status = st.selectbox("Status", ["IN_TRANSIT", "COMPLETED"], index=0 if t_data['trip_status'] == "IN_TRANSIT" else 1)
-
-                        st.write("")
-                        if st.form_submit_button("💾 Commit Updates", type="primary"):
-                            def execute_mod_trip():
-                                try:
-                                    f_c = round(e_fuel_l * get_cached_diesel_rate(), 2)
-                                    short = max(0.0, e_ton - e_unloaded_mt)
-                                    run_query("UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s, start_km=%s, end_km=%s, total_km_run=%s, loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, shortage_mt=%s, freight_revenue=%s, fuel_litres=%s, fuel_expense=%s, driver_bata=%s, halt_bata=%s, cash_advance_issued=%s, enroute_repairs_maintenance=%s, pod_number=%s, trip_status=%s, is_tank_full=%s WHERE trip_id=%s;", (e_sdate, e_edate, e_lr, e_orig, e_dest, e_start_km, e_end_km, e_total_km, e_ton, e_unloaded_mt, e_ton, short, e_freight, e_fuel_l, f_c, e_bata, e_halt_bata, e_adv, e_claims, e_pod_no or None, e_trip_status, e_is_tank_full, t_data['trip_id']), fetch=False)
-                                    st_u = "AVAILABLE_FOR_LOAD" if e_trip_status == "COMPLETED" else "IN_TRANSIT"
-                                    run_query("UPDATE vehicles SET current_status = %s WHERE vehicle_id = %s", (st_u, t_data['vehicle_id']), fetch=False)
-                                    if run_query("SELECT fuel_log_id FROM diesel_fuel_logs WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s)", (t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id'])):
-                                        run_query("UPDATE diesel_fuel_logs SET fuel_date=%s, lr_number=%s, litres_filled=%s, total_fuel_cost=%s, filling_odometer_km=%s, trip_id=%s, is_tank_full=%s WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s);", (e_sdate, e_lr, e_fuel_l, f_c, e_start_km, t_data['trip_id'], e_is_tank_full, t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id']), fetch=False)
-                                    get_cached_vehicles.clear(); trigger_toast_and_rerun("SUCCESS", f"Updated.")
-                                except Exception as e: show_error_toast(f"Update failed: {e}")
-                            confirm_action_dialog(f"commit modifications", execute_mod_trip)
-
-                    act1, act2 = st.columns(2)
-                    with act1:
-                        if t_data['trip_status'] == 'COMPLETED' and st.button("🔓 Reopen Trip", use_container_width=True):
-                            confirm_action_dialog(f"reopen {t_data['trip_number']}", lambda: (run_query("UPDATE trips SET trip_status = 'IN_TRANSIT', pod_number = NULL WHERE trip_id = %s;", (t_data['trip_id'],), fetch=False), run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT' WHERE vehicle_id = %s;", (t_data['vehicle_id'],), fetch=False), get_cached_vehicles.clear(), trigger_toast_and_rerun("SUCCESS", "Reopened!")))
-                    with act2:
-                        if st.button(f"🗑️ Delete Trip", type="secondary", use_container_width=True):
-                            confirm_action_dialog(f"delete {t_data['trip_number']}", lambda: (run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (t_data['trip_id'],), fetch=False), run_query("DELETE FROM trips WHERE trip_id = %s", (t_data['trip_id'],), fetch=False), get_cached_vehicles.clear(), trigger_toast_and_rerun("SUCCESS", "Deleted.")))
+                act1, act2 = st.columns(2)
+                with act1:
+                    if t_data['trip_status'] == 'COMPLETED' and st.button("🔓 Reopen Trip", use_container_width=True):
+                        confirm_action_dialog(f"reopen {t_data['trip_number']}", lambda: (run_query("UPDATE trips SET trip_status = 'IN_TRANSIT', pod_number = NULL WHERE trip_id = %s;", (t_data['trip_id'],), fetch=False), run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT' WHERE vehicle_id = %s;", (t_data['vehicle_id'],), fetch=False), get_cached_vehicles.clear(), trigger_toast_and_rerun("SUCCESS", "Reopened!")))
+                with act2:
+                    if st.button(f"🗑️ Delete Trip", type="secondary", use_container_width=True):
+                        confirm_action_dialog(f"delete {t_data['trip_number']}", lambda: (run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (t_data['trip_id'],), fetch=False), run_query("DELETE FROM trips WHERE trip_id = %s", (t_data['trip_id'],), fetch=False), get_cached_vehicles.clear(), trigger_toast_and_rerun("SUCCESS", "Deleted.")))
 
     with fin_tabs[2]:
         tfc1, tfc2, tfc3 = st.columns(3)
@@ -862,7 +894,7 @@ elif selected_nav == "📊 Financials":
 elif selected_nav == "⚙️ Setup":
     if st.session_state.user_role != "MASTER": st.warning("Restricted to Master"); st.stop()
     st.markdown('<div class="section-header">Master Database Configuration</div>', unsafe_allow_html=True)
-    t_v, t_d, t_r, t_b = st.tabs(["Trucks", "Drivers", "Freight Slabs", "Bata Slabs"])
+    t_v, t_d, t_r, t_b, t_a = st.tabs(["🚚 Trucks", "👨‍✈️ Drivers", "🛣️ Freight Slabs", "💰 Bata Slabs", "📋 System Audit Log"])
     
     with t_v:
         c1, c2 = st.columns([1.5, 3.5])
@@ -876,14 +908,13 @@ elif selected_nav == "⚙️ Setup":
                     if not nv: show_error_toast("Missing fields.")
                     else: confirm_action_dialog(f"register {nv}", lambda: (run_query("INSERT INTO vehicles (vehicle_number, truck_type, carrying_capacity_tons, current_status, odometer_working) VALUES (%s, %s, %s, 'AVAILABLE_FOR_LOAD', %s)", (nv, vt, vc, odo_working), fetch=False), get_cached_vehicles.clear(), trigger_toast_and_rerun("SUCCESS", "Saved.")))
         with c2:
-            v_recs = get_cached_vehicles()
-            if v_recs: st.dataframe(pd.DataFrame(v_recs)[['vehicle_number', 'truck_type', 'carrying_capacity_tons', 'current_status']], hide_index=True, use_container_width=True, height=450)
+            if global_vehicles: st.dataframe(pd.DataFrame(global_vehicles)[['vehicle_number', 'truck_type', 'carrying_capacity_tons', 'current_status']], hide_index=True, use_container_width=True, height=450)
 
     with t_d:
         c1, c2 = st.columns([1.5, 3.5])
         with c1:
             with st.form("quick_driver"):
-                nd_c = st.text_input("Driver Code*", value=f"DRV-{len(get_cached_drivers(True))+1:03d}").strip().upper()
+                nd_c = st.text_input("Driver Code*", value=f"DRV-{len(global_drivers or [])+1:03d}").strip().upper()
                 nd_n = st.text_input("Full Name*").strip()
                 nd_p = st.text_input("Phone*").strip()
                 nd_l = st.text_input("License No").strip().upper()
@@ -892,8 +923,7 @@ elif selected_nav == "⚙️ Setup":
                     if not nd_n or not nd_p: show_error_toast("Missing fields.")
                     else: confirm_action_dialog(f"register {nd_n}", lambda: (run_query("INSERT INTO drivers (driver_code, full_name, phone_number, license_number, license_expiry_date, branch_id) VALUES (%s, %s, %s, %s, %s, 1) ON CONFLICT (driver_code) DO UPDATE SET full_name = EXCLUDED.full_name, phone_number = EXCLUDED.phone_number, license_number = EXCLUDED.license_number, license_expiry_date = EXCLUDED.license_expiry_date, is_active = TRUE;", (nd_c, nd_n, nd_p, nd_l, nd_exp), fetch=False), get_cached_drivers.clear(), trigger_toast_and_rerun("SUCCESS", "Saved.")))
         with c2:
-            d_recs = get_cached_drivers(True)
-            if d_recs: st.dataframe(pd.DataFrame(d_recs)[['driver_code', 'full_name', 'phone_number', 'license_number']], hide_index=True, use_container_width=True, height=450)
+            if global_drivers: st.dataframe(pd.DataFrame(global_drivers)[['driver_code', 'full_name', 'phone_number', 'license_number']], hide_index=True, use_container_width=True, height=450)
 
     with t_r:
         c1, c2 = st.columns([1.5, 3.5])
@@ -907,7 +937,11 @@ elif selected_nav == "⚙️ Setup":
                 km = st.number_input("Std KM", min_value=0.0, step=10.0)
                 if st.form_submit_button("Save Route", type="primary"):
                     if not dt or rt <= 0: show_error_toast("Invalid inputs.")
-                    else: confirm_action_dialog(f"save slab {so} to {dt}", lambda: ([run_query("INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;", (cg, so, dt, c, rt, km), fetch=False) for c in ([25.0, 30.0] if cg == "BAG" else [cl])], get_cached_routes.clear(), trigger_toast_and_rerun("SUCCESS", "Saved.")))
+                    else:
+                        def save_route_action():
+                            for c_val in ([25.0, 30.0] if cg == "BAG" else [cl]): run_query("INSERT INTO destinations_freight_master (cargo_type, origin, destination_name, capacity_tons, freight_rate_per_ton, standard_km) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (cargo_type, origin, destination_name, capacity_tons) DO UPDATE SET freight_rate_per_ton = EXCLUDED.freight_rate_per_ton, standard_km = EXCLUDED.standard_km;", (cg, so, dt, c_val, rt, km), fetch=False)
+                            get_cached_routes.clear(); trigger_toast_and_rerun("SUCCESS", "Saved.")
+                        confirm_action_dialog(f"save slab {so} to {dt}", save_route_action)
         with c2:
             r_recs = get_cached_routes()
             if r_recs: st.dataframe(pd.DataFrame(r_recs)[['cargo_type', 'origin', 'destination_name', 'capacity_tons', 'freight_rate_per_ton', 'standard_km']], hide_index=True, use_container_width=True, height=450)
@@ -930,3 +964,40 @@ elif selected_nav == "⚙️ Setup":
                 df_bata = pd.DataFrame(bata_list)
                 df_bata['bata_slab'] = df_bata.apply(lambda r: f"{int(float(r['capacity_tons']))}MT Body (Bag)" if str(r['cargo_type']).upper() == "BAG" else f"{int(float(r['capacity_tons']))}MT Bulk", axis=1)
                 st.dataframe(df_bata[['origin', 'destination_name', 'bata_slab', 'standard_bata_inr']], hide_index=True, use_container_width=True, height=450)
+
+    with t_a:
+        af_col1, af_col2, af_col3, af_col4, af_col5 = st.columns([1.8, 1.8, 1.8, 1.8, 2.0])
+        with af_col1: aud_date_mode = st.selectbox("Date", ["All Dates", "Specific Date", "Date Range"])
+        with af_col2: sel_aud_trk = st.selectbox("Truck", ["All"] + sorted([v['vehicle_number'] for v in (global_vehicles or [])]))
+        with af_col3: sel_aud_stat = st.selectbox("Status", ["All", "IN_TRANSIT", "COMPLETED"])
+        with af_col4: sel_aud_drv = st.selectbox("Driver", ["All"] + sorted([f"{d['driver_code']} - {d['full_name']}" for d in (global_drivers or [])]))
+        with af_col5: search_aud = st.text_input("Search LR/Dest").strip().upper()
+
+        aud_q, aud_p = "", []
+        if aud_date_mode == "Specific Date": aud_q = " AND t.trip_start_date::date = %s"; aud_p.append(st.date_input("Date", date.today()))
+        elif aud_date_mode == "Date Range":
+            c_d1, c_d2 = st.columns(2); aud_p.append(c_d1.date_input("From", date.today().replace(day=1))); aud_p.append(c_d2.date_input("To", date.today())); aud_q = " AND t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s"
+
+        try:
+            aud_sql = f"SELECT t.trip_id, t.trip_number, t.trip_start_date, v.vehicle_number, d.full_name AS driver, t.origin, t.destination, t.start_km, t.end_km, t.total_km_run, t.loaded_weight_mt, t.freight_revenue, t.fuel_litres, t.fuel_expense, t.driver_bata, (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.halt_bata + t.enroute_repairs_maintenance)) AS net_profit, t.trip_status FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE 1=1 {aud_q}"
+            run_query(aud_sql + " LIMIT 1", tuple(aud_p) if aud_p else None)
+        except Exception:
+            aud_sql = f"SELECT t.trip_id, t.trip_number, t.trip_start_date, v.vehicle_number, d.full_name AS driver, t.origin, t.destination, t.start_km, t.end_km, t.total_km_run, t.loaded_weight_mt, t.freight_revenue, t.fuel_litres, t.fuel_expense, t.driver_bata, (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.halt_bata + t.enroute_repairs_maintenance)) AS net_profit, t.trip_status FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE 1=1 {aud_q}"
+
+        if sel_aud_trk != "All": aud_sql += " AND v.vehicle_number = %s"; aud_p.append(sel_aud_trk)
+        if sel_aud_stat != "All": aud_sql += " AND t.trip_status = %s"; aud_p.append(sel_aud_stat)
+        if sel_aud_drv != "All": aud_sql += " AND d.driver_code = %s"; aud_p.append(sel_aud_drv.split(" - ")[0].strip())
+        if search_aud: aud_sql += " AND (UPPER(t.trip_number) LIKE %s OR UPPER(t.destination) LIKE %s OR UPPER(t.origin) LIKE %s)"; aud_p.extend([f"%{search_aud}%", f"%{search_aud}%", f"%{search_aud}%"])
+        aud_sql += " ORDER BY t.trip_id DESC;"
+
+        all_trips = run_query(aud_sql, tuple(aud_p) if aud_p else None)
+        if all_trips:
+            df_all = pd.DataFrame(all_trips)
+            st.dataframe(df_all, hide_index=True, use_container_width=True, height=450)
+            del_c1, del_c3 = st.columns([3.0, 1.0])
+            with del_c1: del_id = st.selectbox("Select ID", df_all['trip_id'].tolist(), format_func=lambda x: f"ID #{x} - LR: {df_all.loc[df_all['trip_id'] == x, 'trip_number'].values[0]}")
+            with del_c3:
+                st.write("")
+                if st.button("🗑️ Purge Trip", type="secondary", use_container_width=True):
+                    confirm_action_dialog(f"purge Trip #{del_id}", lambda: (run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (del_id,), fetch=False), run_query("DELETE FROM trips WHERE trip_id = %s", (del_id,), fetch=False), trigger_toast_and_rerun("SUCCESS", "Purged.")))
+        else: st.info("No records match criteria.")
