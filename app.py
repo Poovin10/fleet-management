@@ -1494,8 +1494,6 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
-                    else:
-                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
