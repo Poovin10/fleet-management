@@ -512,19 +512,19 @@ if menu == "Trip Dispatch Entry":
             "7. Designated Driver*", 
             driver_keys_list, 
             index=drv_default_idx, 
-            key=f"drv_sel_cnt_{cnt}"
+            key=f"drv_sel_cnt_{cnt}_{sel_veh_label}"
         )
         sel_driver_obj = driver_dict[chosen_driver_str] if chosen_driver_str != "-- SELECT DRIVER --" else None
 
     with r2_c3:
-        initial_weight_val = v_class_mt
+        initial_weight_val = float(v_class_mt)
         weighbridge_mt = st.number_input(
             "8. Loaded Weight (MT)*", 
             min_value=0.0, 
             max_value=65.0, 
             step=0.05, 
             value=initial_weight_val, 
-            key=f"wmt_cnt_{cnt}"
+            key=f"wmt_cnt_{cnt}_{sel_veh_label}"
         )
     with r2_c4:
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
