@@ -855,96 +855,144 @@ if menu == "Trip Dispatch Entry":
 # 2. POD RECEIVE & TRIP CLOSURE
 # ==============================================================================
 elif menu == "POD Receive & Close":
-    active_trips = run_query("""
-        SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, v.carrying_capacity_tons,
-               d.full_name AS driver_name, t.origin, t.destination, t.trip_start_date,
-               t.start_km, t.end_km, t.total_km_run, t.loaded_weight_mt, t.freight_revenue, t.driver_bata, t.fuel_litres
-        FROM trips t
-        JOIN vehicles v ON t.vehicle_id = v.vehicle_id
-        JOIN drivers d ON t.primary_driver_id = d.driver_id
-        WHERE t.trip_status != 'COMPLETED'
-        ORDER BY t.trip_id DESC;
-    """)
+    c_pod1, c_pod2 = st.columns([6, 4])
+    
+    with c_pod1:
+        st.markdown('<div class="section-header">Record Closing Reference, Start KM & Release Vehicle</div>', unsafe_allow_html=True)
+        active_trips = run_query("""
+            SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, v.carrying_capacity_tons,
+                   d.full_name AS driver_name, t.origin, t.destination, t.trip_start_date,
+                   t.start_km, t.end_km, t.total_km_run, t.loaded_weight_mt, t.freight_revenue, t.driver_bata, t.fuel_litres
+            FROM trips t
+            JOIN vehicles v ON t.vehicle_id = v.vehicle_id
+            JOIN drivers d ON t.primary_driver_id = d.driver_id
+            WHERE t.trip_status != 'COMPLETED'
+            ORDER BY t.trip_id DESC;
+        """)
 
-    if not active_trips:
-        st.info("No active trips awaiting POD reference closure.")
-    else:
-        trip_opts = {f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | Driver: {t['driver_name']}": t for t in active_trips}
-        trip_labels_list = ["-- SELECT ACTIVE TRIP TO CLOSE --"] + list(trip_opts.keys())
-        
-        chosen_lr_label = st.selectbox("Select Active Trip to Close with POD Reference", trip_labels_list, index=0)
-
-        if chosen_lr_label == "-- SELECT ACTIVE TRIP TO CLOSE --":
-            st.info("👆 Please select an active trip from the dropdown above to open the closure form.")
+        if not active_trips:
+            st.info("No active trips awaiting POD reference closure.")
         else:
-            t_cur = trip_opts[chosen_lr_label]
+            trip_opts = {f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | Driver: {t['driver_name']}": t for t in active_trips}
+            trip_labels_list = ["-- SELECT ACTIVE TRIP TO CLOSE --"] + list(trip_opts.keys())
+            
+            chosen_lr_label = st.selectbox("Select Active Trip to Close with POD Reference", trip_labels_list, index=0)
 
-            with st.form("pod_closure_form"):
-                st.markdown('<div class="section-header">Record Closing Reference, Start KM & Release Vehicle</div>', unsafe_allow_html=True)
-                p1, p2, p3, p4 = st.columns([1.5, 1.5, 1.5, 1.5])
-                with p1:
-                    pod_no = st.text_input("POD / Challan No*", placeholder="POD-XXXX").strip().upper()
-                    close_d = st.date_input("Closing Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
-                with p2:
-                    unloaded_wt = st.number_input("Customer Unloaded Weight (MT)", min_value=0.0, max_value=60.0, value=float(t_cur['loaded_weight_mt'] or 0.0), step=0.01)
-                    shortage = max(0.0, float(t_cur['loaded_weight_mt']) - unloaded_wt)
-                with p3:
-                    pod_start_km = st.number_input("Start Odometer KM*", min_value=0.0, value=float(t_cur['start_km'] or 0.0), step=10.0)
-                    final_km = st.number_input("Closing Odometer KM*", min_value=pod_start_km, value=float(t_cur['end_km'] or (pod_start_km + float(t_cur['total_km_run'] or 0.0))), step=10.0)
-                    tot_km = max(0.0, final_km - pod_start_km)
-                with p4:
-                    halt_bata = st.number_input("Halt Bata (₹)", min_value=0.0, value=0.0, step=100.0)
-                    claims = st.number_input("En-route Claims (₹)", min_value=0.0, value=0.0, step=50.0)
+            if chosen_lr_label == "-- SELECT ACTIVE TRIP TO CLOSE --":
+                st.info("👆 Please select an active trip from the dropdown above to open the closure form.")
+            else:
+                t_cur = trip_opts[chosen_lr_label]
 
-                st.markdown('<div class="section-header">Closing Diesel Top-up (If Applicable)</div>', unsafe_allow_html=True)
-                pod_f1, pod_f2, pod_f3 = st.columns(3)
-                with pod_f1:
-                    pod_fuel = st.number_input("Closing Diesel Top-up (L)", min_value=0.0, step=5.0, value=0.0)
-                    pod_tf = st.checkbox("⛽ Mark as Tank Full at Close")
-                with pod_f2:
-                    tot_trip_fuel = float(t_cur['fuel_litres'] or 0.0) + pod_fuel
-                    pod_kmpl = (tot_km / tot_trip_fuel) if tot_trip_fuel > 0 else 0.0
-                    st.metric("Final Trip KMPL", f"{pod_kmpl:.2f} km/l")
+                with st.form("pod_closure_form"):
+                    p1, p2, p3, p4 = st.columns([1.5, 1.5, 1.5, 1.5])
+                    with p1:
+                        pod_no = st.text_input("POD / Challan No*", placeholder="POD-XXXX").strip().upper()
+                        close_d = st.date_input("Closing Date*", date.today(), min_value=date(2020, 1, 1), max_value=date(2035, 12, 31))
+                    with p2:
+                        unloaded_wt = st.number_input("Customer Unloaded Weight (MT)", min_value=0.0, max_value=60.0, value=float(t_cur['loaded_weight_mt'] or 0.0), step=0.01)
+                        shortage = max(0.0, float(t_cur['loaded_weight_mt']) - unloaded_wt)
+                    with p3:
+                        pod_start_km = st.number_input("Start Odometer KM*", min_value=0.0, value=float(t_cur['start_km'] or 0.0), step=10.0)
+                        final_km = st.number_input("Closing Odometer KM*", min_value=pod_start_km, value=float(t_cur['end_km'] or (pod_start_km + float(t_cur['total_km_run'] or 0.0))), step=10.0)
+                        tot_km = max(0.0, final_km - pod_start_km)
+                    with p4:
+                        halt_bata = st.number_input("Halt Bata (₹)", min_value=0.0, value=0.0, step=100.0)
+                        claims = st.number_input("En-route Claims (₹)", min_value=0.0, value=0.0, step=50.0)
 
-                st.write("")
-                if st.form_submit_button("✅ Settle POD Reference & Release Truck", type="primary"):
-                    if not pod_no:
-                        show_error_toast("POD Number is required.")
-                    else:
-                        def execute_close_trip():
-                            try:
-                                d_rate_fast = get_cached_diesel_rate()
-                                extra_fuel_cost = round(pod_fuel * d_rate_fast, 2)
-                                
-                                run_query("""
-                                    UPDATE trips
-                                    SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, 
-                                        start_km = %s, end_km = %s,
-                                        total_km_run = CASE WHEN %s > 0 THEN %s ELSE total_km_run END,
-                                        unloaded_weight_mt = %s, shortage_mt = %s, halt_bata = %s,
-                                        driver_bata = driver_bata + %s,
-                                        enroute_repairs_maintenance = enroute_repairs_maintenance + %s,
-                                        fuel_litres = fuel_litres + %s,
-                                        fuel_expense = fuel_expense + %s,
-                                        is_tank_full = CASE WHEN %s = TRUE THEN TRUE ELSE is_tank_full END,
-                                        trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
-                                    WHERE trip_id = %s;
-                                """, (pod_no, close_d, close_d, pod_start_km, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, pod_fuel, extra_fuel_cost, pod_tf, t_cur['trip_id']), fetch=False)
-                                
-                                if pod_fuel > 0:
+                    st.markdown('<div class="section-header">Closing Diesel Top-up (If Applicable)</div>', unsafe_allow_html=True)
+                    pod_f1, pod_f2, pod_f3 = st.columns(3)
+                    with pod_f1:
+                        pod_fuel = st.number_input("Closing Diesel Top-up (L)", min_value=0.0, step=5.0, value=0.0)
+                        pod_tf = st.checkbox("⛽ Mark as Tank Full at Close")
+                    with pod_f2:
+                        tot_trip_fuel = float(t_cur['fuel_litres'] or 0.0) + pod_fuel
+                        pod_kmpl = (tot_km / tot_trip_fuel) if tot_trip_fuel > 0 else 0.0
+                        st.metric("Final Trip KMPL", f"{pod_kmpl:.2f} km/l")
+
+                    st.write("")
+                    if st.form_submit_button("✅ Settle POD Reference & Release Truck", type="primary"):
+                        if not pod_no:
+                            show_error_toast("POD Number is required.")
+                        else:
+                            def execute_close_trip():
+                                try:
+                                    d_rate_fast = get_cached_diesel_rate()
+                                    extra_fuel_cost = round(pod_fuel * d_rate_fast, 2)
+                                    
                                     run_query("""
-                                        INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full)
-                                        VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s, %s);
-                                    """, (close_d, t_cur['vehicle_id'], t_cur['trip_id'], t_cur['trip_number'], pod_fuel, d_rate_fast, extra_fuel_cost, final_km, pod_tf), fetch=False)
+                                        UPDATE trips
+                                        SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, 
+                                            start_km = %s, end_km = %s,
+                                            total_km_run = CASE WHEN %s > 0 THEN %s ELSE total_km_run END,
+                                            unloaded_weight_mt = %s, shortage_mt = %s, halt_bata = %s,
+                                            driver_bata = driver_bata + %s,
+                                            enroute_repairs_maintenance = enroute_repairs_maintenance + %s,
+                                            fuel_litres = fuel_litres + %s,
+                                            fuel_expense = fuel_expense + %s,
+                                            is_tank_full = CASE WHEN %s = TRUE THEN TRUE ELSE is_tank_full END,
+                                            trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
+                                        WHERE trip_id = %s;
+                                    """, (pod_no, close_d, close_d, pod_start_km, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, pod_fuel, extra_fuel_cost, pod_tf, t_cur['trip_id']), fetch=False)
+                                    
+                                    if pod_fuel > 0:
+                                        run_query("""
+                                            INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full)
+                                            VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s, %s);
+                                        """, (close_d, t_cur['vehicle_id'], t_cur['trip_id'], t_cur['trip_number'], pod_fuel, d_rate_fast, extra_fuel_cost, final_km, pod_tf), fetch=False)
 
-                                run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
-                                          (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
-                                get_cached_vehicles.clear()
-                                trigger_toast_and_rerun("SUCCESS", f"Trip {t_cur['trip_number']} closed. Truck {t_cur['vehicle_number']} is now AVAILABLE.")
-                            except Exception as e:
-                                show_error_toast(f"Error closing trip: {e}")
-                                
-                        confirm_action_dialog(f"close LR {t_cur['trip_number']} and record POD {pod_no}", execute_close_trip)
+                                    run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
+                                              (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
+                                    get_cached_vehicles.clear()
+                                    trigger_toast_and_rerun("SUCCESS", f"Trip {t_cur['trip_number']} closed. Truck {t_cur['vehicle_number']} is now AVAILABLE.")
+                                except Exception as e:
+                                    show_error_toast(f"Error closing trip: {e}")
+                                    
+                            confirm_action_dialog(f"close LR {t_cur['trip_number']} and record POD {pod_no}", execute_close_trip)
+
+    with c_pod2:
+        st.markdown('<div class="section-header">📞 Driver Follow-up Desk (Pending POD List)</div>', unsafe_allow_html=True)
+        pending_trips = run_query("""
+            SELECT 
+                t.trip_id,
+                t.trip_number AS lr_no,
+                v.vehicle_number,
+                d.full_name AS driver_name,
+                d.phone_number AS driver_phone,
+                t.origin AS source,
+                t.destination,
+                t.trip_start_date,
+                CURRENT_DATE - t.trip_start_date::date AS days_pending,
+                t.tonnage_loaded
+            FROM trips t
+            JOIN vehicles v ON t.vehicle_id = v.vehicle_id
+            JOIN drivers d ON t.primary_driver_id = d.driver_id
+            WHERE t.trip_status != 'COMPLETED'
+            ORDER BY t.trip_start_date ASC;
+        """)
+
+        if pending_trips:
+            df_pending = pd.DataFrame(pending_trips)
+            f_trucks = ["All Trucks"] + sorted(df_pending['vehicle_number'].unique().tolist())
+            sel_f_trk = st.selectbox("Filter by Truck", f_trucks, key="pod_trk_filter")
+            
+            if sel_f_trk != "All Trucks":
+                df_pending = df_pending[df_pending['vehicle_number'] == sel_f_trk]
+            
+            st.dataframe(
+                df_pending[['vehicle_number', 'lr_no', 'driver_phone', 'days_pending', 'destination']],
+                column_config={
+                    "vehicle_number": "Truck",
+                    "lr_no": "LR Number",
+                    "driver_phone": "Phone No",
+                    "days_pending": "Days",
+                    "destination": "Destination"
+                },
+                hide_index=True,
+                use_container_width=True,
+                height=450
+            )
+        else:
+            st.success("All dispatched trips have their PODs received and closed.")
 
 # ==============================================================================
 # 3. FLEET STATUS BOARD
@@ -2182,62 +2230,6 @@ elif menu == "Executive Retention Analytics":
                 use_container_width=True,
                 height=400
             )
-
-            st.markdown('<div class="section-header">📞 Driver Follow-up Desk (Pending POD Calling List)</div>', unsafe_allow_html=True)
-            
-            date_filter_cond = ""
-            sub_params = []
-            if start_filter_date and end_filter_date:
-                date_filter_cond = "AND t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s"
-                sub_params.extend([start_filter_date, end_filter_date])
-
-            pending_trips = run_query(f"""
-                SELECT 
-                    t.trip_id,
-                    t.trip_number AS lr_no,
-                    v.vehicle_number,
-                    d.full_name AS driver_name,
-                    d.phone_number AS driver_phone,
-                    t.origin AS source,
-                    t.destination,
-                    t.trip_start_date,
-                    CURRENT_DATE - t.trip_start_date::date AS days_pending,
-                    t.tonnage_loaded
-                FROM trips t
-                JOIN vehicles v ON t.vehicle_id = v.vehicle_id
-                JOIN drivers d ON t.primary_driver_id = d.driver_id
-                WHERE t.trip_status != 'COMPLETED'
-                {date_filter_cond}
-                ORDER BY t.trip_start_date ASC;
-            """, tuple(sub_params) if sub_params else None)
-
-            if pending_trips:
-                df_pending = pd.DataFrame(pending_trips)
-                f_trucks = ["All Trucks"] + sorted(df_pending['vehicle_number'].unique().tolist())
-                sel_f_trk = st.selectbox("Filter Pending POD by Specific Truck", f_trucks)
-                
-                if sel_f_trk != "All Trucks":
-                    df_pending = df_pending[df_pending['vehicle_number'] == sel_f_trk]
-                
-                st.dataframe(
-                    df_pending[['vehicle_number', 'lr_no', 'driver_name', 'driver_phone', 'source', 'destination', 'trip_start_date', 'days_pending', 'tonnage_loaded']],
-                    column_config={
-                        "vehicle_number": "Truck No",
-                        "lr_no": "LR Number",
-                        "driver_name": "Assigned Driver",
-                        "driver_phone": "Driver Contact No",
-                        "source": "Source",
-                        "destination": "Destination",
-                        "trip_start_date": "Dispatched On",
-                        "days_pending": "Days Pending",
-                        "tonnage_loaded": "Tons Loaded"
-                    },
-                    hide_index=True,
-                    use_container_width=True,
-                    height=300
-                )
-            else:
-                st.success("All dispatched trips for this window have their PODs received and closed.")
 
     with tab_v:
         st.markdown('<div class="section-header">Truck Variant Peer Benchmarks</div>', unsafe_allow_html=True)
