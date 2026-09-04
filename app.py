@@ -338,7 +338,7 @@ STATUS_OPTIONS = {
 
 STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"]
 
-# --- Clean Header Ribbon with Role Badge and Logout ---
+# --- Clean Header Navigation Ribbon ---
 nav1, nav2, nav3 = st.columns([3.0, 5.8, 1.2])
 with nav1:
     role_badge = "👑 MASTER" if st.session_state.user_role == "MASTER" else "👁️ REPORTS ONLY"
@@ -376,7 +376,7 @@ with nav3:
 st.markdown("<hr style='margin: 8px 0 16px 0; border: none; border-top: 1px solid #E2E8F0;' />", unsafe_allow_html=True)
 
 # ==============================================================================
-# 1. TRIP DISPATCH ENTRY
+# 1. TRIP DISPATCH ENTRY (WITH BLANK SELECTORS BY DEFAULT)
 # ==============================================================================
 if menu == "Trip Dispatch Entry":
     vehicles = get_cached_vehicles()
@@ -422,64 +422,90 @@ if menu == "Trip Dispatch Entry":
         f"{v['vehicle_number']} ➔ [{v['truck_type']} | {v['carrying_capacity_tons']} MT Class]": v 
         for v in filtered_vehicles
     }
+    
+    # Blank default selector option to prevent accidental pre-selection
+    veh_labels_list = ["-- SELECT TRUCK --"] + list(vehicle_map.keys())
 
     with r1_c4:
-        sel_veh_label = st.selectbox(f"4. Assigned Truck ({cargo_category} Only)*", list(vehicle_map.keys()), key=f"veh_sel_{cnt}")
-        active_veh = vehicle_map[sel_veh_label]
-        v_class_mt = float(active_veh['carrying_capacity_tons'])
+        sel_veh_label = st.selectbox(f"4. Assigned Truck ({cargo_category} Only)*", veh_labels_list, index=0, key=f"veh_sel_{cnt}")
         
-        # Auto-fetch previous driver and weight category when truck is selected
-        old_drv_id, old_weight, old_drv_name = get_last_driver_and_weight_for_vehicle(active_veh['vehicle_id'])
-        if old_drv_name:
-            st.info(f"ℹ️ Last Assigned: **{old_drv_name}** ({old_weight} MT)")
+        active_veh = None
+        v_class_mt = 30.0
+        old_drv_id, old_weight, old_drv_name = None, 0.0, None
+        open_trip_check = None
 
-        open_trip_check = check_vehicle_has_open_trip(active_veh['vehicle_id'])
-        if open_trip_check:
-            st.error(f"🚫 Cannot Dispatch: Truck {active_veh['vehicle_number']} already has an active incomplete trip (LR: {open_trip_check['trip_number']}). Close it first.")
+        if sel_veh_label != "-- SELECT TRUCK --":
+            active_veh = vehicle_map[sel_veh_label]
+            v_class_mt = float(active_veh['carrying_capacity_tons'])
+            old_drv_id, old_weight, old_drv_name = get_last_driver_and_weight_for_vehicle(active_veh['vehicle_id'])
+            if old_drv_name:
+                st.info(f"ℹ️ Last Assigned: **{old_drv_name}** ({old_weight} MT)")
+
+            open_trip_check = check_vehicle_has_open_trip(active_veh['vehicle_id'])
+            if open_trip_check:
+                st.error(f"🚫 Cannot Dispatch: Truck {active_veh['vehicle_number']} already has an active incomplete trip (LR: {open_trip_check['trip_number']}). Close it first.")
+
+    # Blank default selector option for Source Hub
+    source_labels_list = ["-- SELECT SOURCE HUB --"] + STANDARD_SOURCES
 
     with r1_c5:
-        chosen_source_opt = st.selectbox("5. Source Hub*", STANDARD_SOURCES, key=f"src_sel_{cnt}")
+        chosen_source_opt = st.selectbox("5. Source Hub*", source_labels_list, index=0, key=f"src_sel_{cnt}")
         origin_terminal = st.text_input("Custom Source", placeholder="Enter Source").strip().upper() if chosen_source_opt == "CUSTOM" else chosen_source_opt
 
-    routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
     dest_options = {}
-    if routes_from_source:
-        for r in routes_from_source:
-            lbl = f"{r['destination_name']} ➔ [Rate: ₹{r['freight_rate_per_ton']}/MT | {r['standard_km']} KM]"
-            dest_options[lbl] = r
+    if sel_veh_label != "-- SELECT TRUCK --" and chosen_source_opt != "-- SELECT SOURCE HUB --":
+        routes_from_source = get_cached_routes(cargo_type=cargo_category, capacity=v_class_mt, origin=origin_terminal)
+        if routes_from_source:
+            for r in routes_from_source:
+                lbl = f"{r['destination_name']} ➔ [Rate: ₹{r['freight_rate_per_ton']}/MT | {r['standard_km']} KM]"
+                dest_options[lbl] = r
     dest_options["-- MANUAL / SPOT DESTINATION --"] = {"origin": origin_terminal, "destination_name": "", "standard_km": 0.0, "freight_rate_per_ton": 0.0}
 
     driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
-    driver_keys_list = list(driver_dict.keys())
-    default_driver_index = 0
+    driver_keys_list = ["-- SELECT DRIVER --"] + list(driver_dict.keys())
+    
+    default_driver_sel = "-- SELECT DRIVER --"
     if old_drv_id:
-        for idx, d_obj in enumerate(driver_dict.values()):
+        for k, d_obj in driver_dict.items():
             if int(d_obj['driver_id']) == int(old_drv_id):
-                default_driver_index = idx
+                default_driver_sel = k
                 break
 
     r2_c1, r2_c2, r2_c3, r2_c4 = st.columns([2.8, 2.2, 1.5, 1.5])
     with r2_c1:
-        sel_dest_label = st.selectbox(f"6. Destination Terminal ({origin_terminal})*", list(dest_options.keys()), key=f"dest_sel_{cnt}")
-        active_route = dest_options[sel_dest_label]
-        is_spot = (sel_dest_label == "-- MANUAL / SPOT DESTINATION --")
-        if is_spot:
-            dest_terminal = st.text_input("Custom Destination Name*", placeholder="e.g. SANKARI").strip().upper()
-            agreed_rate_mt = st.number_input("Spot Freight Rate/MT*", min_value=0.0, step=25.0, value=0.0, key=f"spot_rate_{cnt}")
-            standard_route_km = st.number_input("Standard KM", min_value=0.0, step=10.0, value=0.0, key=f"spot_km_{cnt}")
-        else:
-            dest_terminal = active_route['destination_name']
-            agreed_rate_mt = float(active_route['freight_rate_per_ton'])
-            standard_route_km = float(active_route['standard_km'])
+        dest_labels_list = ["-- SELECT DESTINATION --"] + list(dest_options.keys())
+        sel_dest_label = st.selectbox(f"6. Destination Terminal*", dest_labels_list, index=0, key=f"dest_sel_{cnt}")
+        
+        is_spot = False
+        dest_terminal = ""
+        agreed_rate_mt = 0.0
+        standard_route_km = 0.0
+
+        if sel_dest_label != "-- SELECT DESTINATION --":
+            active_route = dest_options[sel_dest_label]
+            is_spot = (sel_dest_label == "-- MANUAL / SPOT DESTINATION --")
+            if is_spot:
+                dest_terminal = st.text_input("Custom Destination Name*", placeholder="e.g. SANKARI").strip().upper()
+                agreed_rate_mt = st.number_input("Spot Freight Rate/MT*", min_value=0.0, step=25.0, value=0.0, key=f"spot_rate_{cnt}")
+                standard_route_km = st.number_input("Standard KM", min_value=0.0, step=10.0, value=0.0, key=f"spot_km_{cnt}")
+            else:
+                dest_terminal = active_route['destination_name']
+                agreed_rate_mt = float(active_route['freight_rate_per_ton'])
+                standard_route_km = float(active_route['standard_km'])
 
     with r2_c2:
+        try:
+            drv_default_idx = driver_keys_list.index(default_driver_sel)
+        except ValueError:
+            drv_default_idx = 0
+
         chosen_driver_str = st.selectbox(
             "7. Designated Driver*", 
             driver_keys_list, 
-            index=default_driver_index, 
-            key=f"drv_sel_for_veh_{active_veh['vehicle_id']}_{cnt}"
+            index=drv_default_idx, 
+            key=f"drv_sel_cnt_{cnt}"
         )
-        sel_driver_obj = driver_dict[chosen_driver_str]
+        sel_driver_obj = driver_dict[chosen_driver_str] if chosen_driver_str != "-- SELECT DRIVER --" else None
 
     with r2_c3:
         initial_weight_val = old_weight if old_weight > 0.0 else v_class_mt
@@ -489,13 +515,13 @@ if menu == "Trip Dispatch Entry":
             max_value=65.0, 
             step=0.05, 
             value=initial_weight_val, 
-            key=f"wmt_veh_{active_veh['vehicle_id']}_{cnt}"
+            key=f"wmt_cnt_{cnt}"
         )
     with r2_c4:
         gross_freight = round(weighbridge_mt * agreed_rate_mt, 2)
         st.metric("Auto Freight Revenue", f"₹{gross_freight:,.2f}")
 
-    master_bata_val = lookup_driver_bata_slab(dest_terminal, cargo_category, v_class_mt)
+    master_bata_val = lookup_driver_bata_slab(dest_terminal, cargo_category, v_class_mt) if dest_terminal else 0.0
     
     st.markdown('<div class="section-header">Allowances, Fuel & Odometer Tracking</div>', unsafe_allow_html=True)
     r3_c1, r3_c2, r3_c3, r3_c4, r3_c5, r3_c6 = st.columns(6)
@@ -519,6 +545,14 @@ if menu == "Trip Dispatch Entry":
     if st.button("🚀 Save & Dispatch Trip Record", type="primary", use_container_width=True):
         if not confirm_dispatch:
             show_error_toast("Check the confirmation key before dispatching.")
+        elif sel_veh_label == "-- SELECT TRUCK --":
+            show_error_toast("Please select an assigned truck.")
+        elif chosen_source_opt == "-- SELECT SOURCE HUB --":
+            show_error_toast("Please select a source hub.")
+        elif sel_dest_label == "-- SELECT DESTINATION --":
+            show_error_toast("Please select a destination terminal.")
+        elif chosen_driver_str == "-- SELECT DRIVER --":
+            show_error_toast("Please select a designated driver.")
         elif open_trip_check:
             show_error_toast(f"Action Blocked: Truck {active_veh['vehicle_number']} already has active trip {open_trip_check['trip_number']}.")
         elif not lr_no or not dest_terminal or not origin_terminal:
@@ -558,7 +592,7 @@ if menu == "Trip Dispatch Entry":
                 show_error_toast(f"Database Error: {e}")
 
 # ==============================================================================
-# 2. POD RECEIVE & TRIP CLOSURE (WITH BLANK SELECTOR DEFAULT)
+# 2. POD RECEIVE & TRIP CLOSURE
 # ==============================================================================
 elif menu == "POD Receive & Close":
     active_trips = run_query("""
@@ -575,7 +609,6 @@ elif menu == "POD Receive & Close":
     if not active_trips:
         st.info("No active trips awaiting POD reference closure.")
     else:
-        # Reconfigured selector with a blank default option so accidental clicks don't execute pre-filled data
         trip_opts = {f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | Driver: {t['driver_name']}": t for t in active_trips}
         trip_labels_list = ["-- SELECT ACTIVE TRIP TO CLOSE --"] + list(trip_opts.keys())
         
@@ -987,7 +1020,7 @@ elif menu == "Driver Advances":
                         trigger_toast_and_rerun("SUCCESS", f"Advance record #{del_adv_id} deleted.")
 
 # ==============================================================================
-# 6. MODIFY TRIPS & CLAIMS (WITH BLANK SELECTOR DEFAULT)
+# 6. MODIFY TRIPS & CLAIMS
 # ==============================================================================
 elif menu == "Modify Trips & Claims":
     hm1, hm2 = st.columns([7.5, 2.5])
@@ -1030,7 +1063,6 @@ elif menu == "Modify Trips & Claims":
     if not all_matched_trips:
         st.info("No trips found matching your search query.")
     else:
-        # Reconfigured with a blank default option matching your requested format: [LR NO] | [TRUCK NO] | [SOURCE] ➔ [DESTINATION]
         trip_map = {
             f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} (ID #{t['trip_id']})": t 
             for t in all_matched_trips
@@ -1464,6 +1496,8 @@ elif menu == "Master Configuration":
                             trigger_toast_and_rerun("SUCCESS", f"Freight slab {so} ➔ {dt} saved.")
                         except Exception as e:
                             show_error_toast(f"Route slab save failed: {e}")
+                    else:
+                        show_error_toast("Destination and freight rate are required.")
         with c2:
             st.markdown('<div class="section-header">Configured Freight Slabs</div>', unsafe_allow_html=True)
             r_recs = get_cached_routes()
