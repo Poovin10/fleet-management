@@ -442,11 +442,20 @@ if menu == "Trip Dispatch Entry":
         v_class_mt = 30.0
         old_drv_id, old_weight, old_drv_name = None, 0.0, None
         open_trip_check = None
+        default_driver_sel = "-- SELECT DRIVER --"
 
         if sel_veh_label != "-- SELECT TRUCK --":
             active_veh = vehicle_map[sel_veh_label]
             v_class_mt = float(active_veh['carrying_capacity_tons'])
             old_drv_id, old_weight, old_drv_name = get_last_driver_and_weight_for_vehicle(active_veh['vehicle_id'])
+            
+            driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
+            if old_drv_id:
+                for k, d_obj in driver_dict.items():
+                    if int(d_obj['driver_id']) == int(old_drv_id):
+                        default_driver_sel = k
+                        break
+
             if old_drv_name:
                 st.info(f"ℹ️ Last Assigned: **{old_drv_name}** ({old_weight} MT)")
 
@@ -469,15 +478,7 @@ if menu == "Trip Dispatch Entry":
                 dest_options[lbl] = r
     dest_options["-- MANUAL / SPOT DESTINATION --"] = {"origin": origin_terminal, "destination_name": "", "standard_km": 0.0, "freight_rate_per_ton": 0.0}
 
-    driver_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in drivers}
-    driver_keys_list = ["-- SELECT DRIVER --"] + list(driver_dict.keys())
-    
-    default_driver_sel = "-- SELECT DRIVER --"
-    if old_drv_id:
-        for k, d_obj in driver_dict.items():
-            if int(d_obj['driver_id']) == int(old_drv_id):
-                default_driver_sel = k
-                break
+    driver_keys_list = ["-- SELECT DRIVER --"] + list(driver_dict.keys()) if 'driver_dict' in locals() else ["-- SELECT DRIVER --"]
 
     r2_c1, r2_c2, r2_c3, r2_c4 = st.columns([2.8, 2.2, 1.5, 1.5])
     with r2_c1:
@@ -516,7 +517,7 @@ if menu == "Trip Dispatch Entry":
         sel_driver_obj = driver_dict[chosen_driver_str] if chosen_driver_str != "-- SELECT DRIVER --" else None
 
     with r2_c3:
-        initial_weight_val = old_weight if old_weight > 0.0 else v_class_mt
+        initial_weight_val = v_class_mt
         weighbridge_mt = st.number_input(
             "8. Loaded Weight (MT)*", 
             min_value=0.0, 
@@ -1072,7 +1073,7 @@ elif menu == "Modify Trips & Claims":
         st.info("No trips found matching your search query.")
     else:
         trip_map = {
-            f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} (ID #{t['trip_id']})": t 
+            f"LR: {t['trip_number']} | Truck: {t['vehicle_number']} | {t['origin']} ➔ {t['destination']} | Status: {t['trip_status']} (ID #{t['trip_id']})": t 
             for t in all_matched_trips
         }
         trip_labels_list = ["-- SELECT TRIP TO EDIT --"] + list(trip_map.keys())
@@ -1204,7 +1205,7 @@ elif menu == "Modify Trips & Claims":
                                 """, (e_sdate, e_lr, e_fuel_l, recalculated_fuel_cost, e_start_km, t_data['trip_id'], existing_fuel_log[0]['fuel_log_id']), fetch=False)
 
                             get_cached_vehicles.clear()
-                            trigger_toast_and_rerun("SUCCESS", f"Trip #{e_lr} & Route Slabs updated successfully.")
+                            trigger_toast_and_rerun("SUCCESS", f"Trip #{e_lr} updated successfully (Status: {e_trip_status}).")
                         except Exception as e:
                             show_error_toast(f"Update failed: {e}")
 
