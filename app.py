@@ -221,7 +221,6 @@ def generate_settlement_pdf(driver_name, start_d, end_d, trips_df, adv_df, total
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.add_page()
     
-    # Header
     pdf.set_font("Arial", 'B', 18)
     pdf.cell(0, 10, "KSS Roadways - Settlement Statement", ln=True, align='C')
     pdf.set_font("Arial", '', 12)
@@ -229,7 +228,6 @@ def generate_settlement_pdf(driver_name, start_d, end_d, trips_df, adv_df, total
     pdf.cell(0, 6, f"Period: {start_d} to {end_d}", ln=True, align='C')
     pdf.ln(5)
     
-    # Financial Summary Card
     pdf.set_font("Arial", 'B', 12)
     pdf.set_fill_color(240, 245, 255)
     pdf.cell(0, 10, " Overall Cycle Position", ln=True, fill=True)
@@ -241,14 +239,12 @@ def generate_settlement_pdf(driver_name, start_d, end_d, trips_df, adv_df, total
     pdf.cell(95, 8, f" Grand Balance Payable: Rs {totals['bal']:.2f}", border=1, ln=True)
     pdf.ln(10)
     
-    # Trips Table
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, " Trip Details", ln=True)
     
     if not trips_df.empty:
         pdf.set_font("Arial", 'B', 9)
         cols = ["Date", "LR No", "Truck", "Source", "Dest", "Diesel", "Bata", "Adv", "Bal"]
-        # Total width = 190mm for A4 inside margins
         col_widths = [20, 18, 22, 22, 25, 15, 18, 20, 30]
         for i in range(len(cols)):
             pdf.cell(col_widths[i], 8, cols[i], border=1, align='C')
@@ -272,7 +268,6 @@ def generate_settlement_pdf(driver_name, start_d, end_d, trips_df, adv_df, total
         
     pdf.ln(5)
     
-    # Advances Table
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, " Direct Cash & Salary Advances", ln=True)
     if not adv_df.empty:
@@ -294,7 +289,6 @@ def generate_settlement_pdf(driver_name, start_d, end_d, trips_df, adv_df, total
         pdf.set_font("Arial", '', 10)
         pdf.cell(0, 8, "No direct advances in this period.", ln=True)
 
-    # Securely extract PDF bytes
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         pdf.output(tmp.name)
         tmp.seek(0)
@@ -416,6 +410,15 @@ def run_query(query, params=None, fetch=True):
         raise e
     finally:
         db_pool.putconn(conn)
+
+# --- NEW: Auto-Update Database Schema (Prevents Crashes) ---
+def ensure_schema_updates():
+    try:
+        run_query("ALTER TABLE diesel_fuel_logs ADD COLUMN IF NOT EXISTS is_tank_full BOOLEAN DEFAULT FALSE;", fetch=False)
+        run_query("ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_tank_full BOOLEAN DEFAULT FALSE;", fetch=False)
+    except Exception:
+        pass
+ensure_schema_updates()
 
 # --- Standard Bata Slabs ---
 BATA_SLAB_DEFINITIONS = {
@@ -782,16 +785,20 @@ if menu == "Trip Dispatch Entry":
         driver_bata = st.number_input("9. Driver Bata (₹)*", min_value=0.0, step=100.0, value=master_bata_val, key=f"bata_{cnt}")
     with r3_c2:
         cash_advance = st.number_input("10. Cash Advance (₹)", min_value=0.0, step=500.0, value=0.0, key=f"adv_{cnt}")
-    with r3_c3:
-        fuel_qty = st.number_input("11. Diesel (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
-    with r3_c4:
-        gross_fuel_cost = round(fuel_qty * d_rate_fast, 2)
-        st.metric("Auto Fuel Expense", f"₹{gross_fuel_cost:,.2f}")
+        
     with r3_c5:
         start_km = st.number_input("Start Odometer KM", min_value=0.0, step=10.0, value=0.0, key=f"skm_{cnt}")
     with r3_c6:
         end_km = st.number_input("Expected End KM", min_value=0.0, step=10.0, value=0.0, key=f"ekm_{cnt}")
         computed_km = max(0.0, end_km - start_km) if (end_km >= start_km and end_km > 0) else standard_route_km
+
+    with r3_c3:
+        fuel_qty = st.number_input("11. Diesel (Litres)*", min_value=0.0, step=10.0, value=0.0, key=f"fqty_{cnt}")
+        is_tank_full = st.checkbox("⛽ Mark as Tank Full", key=f"tf_{cnt}")
+    with r3_c4:
+        gross_fuel_cost = round(fuel_qty * d_rate_fast, 2)
+        trip_kmpl = (computed_km / fuel_qty) if fuel_qty > 0 else 0.0
+        st.metric("Auto Fuel Exp & Est. KMPL", f"₹{gross_fuel_cost:,.2f} | {trip_kmpl:.2f} km/l")
 
     st.write("")
     if st.button("🚀 Save & Dispatch Trip Record", type="primary"):
@@ -817,22 +824,22 @@ if menu == "Trip Dispatch Entry":
                             trip_number, branch_id, vehicle_id, primary_driver_id,
                             trip_start_date, trip_end_date, origin, destination,
                             start_km, end_km, total_km_run, tonnage_loaded, loaded_weight_mt, unloaded_weight_mt,
-                            freight_revenue, fuel_litres, fuel_expense, driver_bata, cash_advance_issued, trip_status
-                        ) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT')
+                            freight_revenue, fuel_litres, fuel_expense, driver_bata, cash_advance_issued, trip_status, is_tank_full
+                        ) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT', %s)
                         RETURNING trip_id;
                     """, (
                         lr_no, active_veh['vehicle_id'], sel_driver_obj['driver_id'],
                         start_date, start_date, origin_terminal, dest_terminal,
                         start_km, end_km, computed_km, weighbridge_mt, weighbridge_mt, weighbridge_mt,
-                        gross_freight, fuel_qty, gross_fuel_cost, driver_bata, cash_advance
+                        gross_freight, fuel_qty, gross_fuel_cost, driver_bata, cash_advance, is_tank_full
                     ))
                     trip_id_created = new_t[0]['trip_id'] if new_t else None
 
                     if fuel_qty > 0 and trip_id_created:
                         run_query("""
-                            INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km)
-                            VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s);
-                        """, (start_date, active_veh['vehicle_id'], trip_id_created, lr_no, fuel_qty, d_rate_fast, gross_fuel_cost, start_km), fetch=False)
+                            INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full)
+                            VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s, %s);
+                        """, (start_date, active_veh['vehicle_id'], trip_id_created, lr_no, fuel_qty, d_rate_fast, gross_fuel_cost, start_km, is_tank_full), fetch=False)
 
                     run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s",
                               (f"Trip {lr_no}: {origin_terminal} ➔ {dest_terminal}", active_veh['vehicle_id']), fetch=False)
@@ -851,7 +858,7 @@ elif menu == "POD Receive & Close":
     active_trips = run_query("""
         SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, v.carrying_capacity_tons,
                d.full_name AS driver_name, t.origin, t.destination, t.trip_start_date,
-               t.start_km, t.end_km, t.total_km_run, t.loaded_weight_mt, t.freight_revenue, t.driver_bata
+               t.start_km, t.end_km, t.total_km_run, t.loaded_weight_mt, t.freight_revenue, t.driver_bata, t.fuel_litres
         FROM trips t
         JOIN vehicles v ON t.vehicle_id = v.vehicle_id
         JOIN drivers d ON t.primary_driver_id = d.driver_id
@@ -889,6 +896,16 @@ elif menu == "POD Receive & Close":
                     halt_bata = st.number_input("Halt Bata (₹)", min_value=0.0, value=0.0, step=100.0)
                     claims = st.number_input("En-route Claims (₹)", min_value=0.0, value=0.0, step=50.0)
 
+                st.markdown('<div class="section-header">Closing Diesel Top-up (If Applicable)</div>', unsafe_allow_html=True)
+                pod_f1, pod_f2, pod_f3 = st.columns(3)
+                with pod_f1:
+                    pod_fuel = st.number_input("Closing Diesel Top-up (L)", min_value=0.0, step=5.0, value=0.0)
+                    pod_tf = st.checkbox("⛽ Mark as Tank Full at Close")
+                with pod_f2:
+                    tot_trip_fuel = float(t_cur['fuel_litres'] or 0.0) + pod_fuel
+                    pod_kmpl = (tot_km / tot_trip_fuel) if tot_trip_fuel > 0 else 0.0
+                    st.metric("Final Trip KMPL", f"{pod_kmpl:.2f} km/l")
+
                 st.write("")
                 if st.form_submit_button("✅ Settle POD Reference & Release Truck", type="primary"):
                     if not pod_no:
@@ -896,6 +913,9 @@ elif menu == "POD Receive & Close":
                     else:
                         def execute_close_trip():
                             try:
+                                d_rate_fast = get_cached_diesel_rate()
+                                extra_fuel_cost = round(pod_fuel * d_rate_fast, 2)
+                                
                                 run_query("""
                                     UPDATE trips
                                     SET pod_number = %s, pod_received_date = %s, trip_end_date = %s, 
@@ -904,9 +924,19 @@ elif menu == "POD Receive & Close":
                                         unloaded_weight_mt = %s, shortage_mt = %s, halt_bata = %s,
                                         driver_bata = driver_bata + %s,
                                         enroute_repairs_maintenance = enroute_repairs_maintenance + %s,
+                                        fuel_litres = fuel_litres + %s,
+                                        fuel_expense = fuel_expense + %s,
+                                        is_tank_full = CASE WHEN %s = TRUE THEN TRUE ELSE is_tank_full END,
                                         trip_status = 'COMPLETED', trip_closed_at = CURRENT_TIMESTAMP
                                     WHERE trip_id = %s;
-                                """, (pod_no, close_d, close_d, pod_start_km, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, t_cur['trip_id']), fetch=False)
+                                """, (pod_no, close_d, close_d, pod_start_km, final_km, tot_km, tot_km, unloaded_wt, shortage, halt_bata, halt_bata, claims, pod_fuel, extra_fuel_cost, pod_tf, t_cur['trip_id']), fetch=False)
+                                
+                                if pod_fuel > 0:
+                                    run_query("""
+                                        INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full)
+                                        VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s, %s);
+                                    """, (close_d, t_cur['vehicle_id'], t_cur['trip_id'], t_cur['trip_number'], pod_fuel, d_rate_fast, extra_fuel_cost, final_km, pod_tf), fetch=False)
+
                                 run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = %s WHERE vehicle_id = %s",
                                           (f"Completed LR {t_cur['trip_number']} (POD: {pod_no})", t_cur['vehicle_id']), fetch=False)
                                 get_cached_vehicles.clear()
@@ -1000,6 +1030,8 @@ elif menu == "Diesel Logs":
                 
                 filling_km = st.number_input("Filling Odometer (KM)*", min_value=0.0, step=10.0, value=auto_km)
                 f_l = st.number_input("Litres Filled*", min_value=0.0, step=10.0)
+                is_tank_full = st.checkbox("⛽ Mark as Tank Full", value=False, key="d_tf")
+                
                 f_cost = round(f_l * d_rate_fast, 2)
                 st.metric("Total Fuel Cost", f"₹{f_cost:,.2f}")
                 st.write("")
@@ -1012,9 +1044,9 @@ elif menu == "Diesel Logs":
                         def execute_fuel_record():
                             try:
                                 run_query("""
-                                    INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km) 
-                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                                """, (f_date, target_veh_id, f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, f_cost, filling_km), fetch=False)
+                                    INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full) 
+                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                """, (f_date, target_veh_id, f_lr or "SUNDRY", f_cat, f_l, d_rate_fast, f_cost, filling_km, is_tank_full), fetch=False)
                                 trigger_toast_and_rerun("SUCCESS", f"Recorded {f_l}L fuel for {f_veh} at {filling_km} KM.")
                             except Exception as e:
                                 show_error_toast(f"Diesel log error: {e}")
@@ -1022,28 +1054,48 @@ elif menu == "Diesel Logs":
                         confirm_action_dialog(f"record an issue of {f_l} Litres of diesel to truck {v_dict[f_veh]['vehicle_number']}", execute_fuel_record)
         with col_d2:
             st.markdown('<div class="section-header">Recent Fuel Entries (Last 50)</div>', unsafe_allow_html=True)
-            d_recent = run_query("""
-                SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, 
-                       f.filling_odometer_km, f.litres_filled, f.total_fuel_cost 
-                FROM diesel_fuel_logs f 
-                JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
-                ORDER BY f.fuel_date DESC, f.fuel_log_id DESC 
-                LIMIT 50;
-            """)
+            try:
+                d_recent = run_query("""
+                    SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, 
+                           f.filling_odometer_km, f.litres_filled, f.total_fuel_cost, f.is_tank_full 
+                    FROM diesel_fuel_logs f 
+                    JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
+                    ORDER BY f.fuel_date DESC, f.fuel_log_id DESC 
+                    LIMIT 50;
+                """)
+            except Exception:
+                d_recent = run_query("""
+                    SELECT f.fuel_log_id, f.fuel_date, v.vehicle_number, f.diesel_category, f.lr_number, 
+                           f.filling_odometer_km, f.litres_filled, f.total_fuel_cost 
+                    FROM diesel_fuel_logs f 
+                    JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
+                    ORDER BY f.fuel_date DESC, f.fuel_log_id DESC 
+                    LIMIT 50;
+                """)
             if d_recent:
                 st.dataframe(pd.DataFrame(d_recent), hide_index=True, use_container_width=True, height=450)
 
     with tab_edit_fuel:
         st.markdown('<div class="section-header">Search & Edit Specific Diesel Log</div>', unsafe_allow_html=True)
         
-        all_fuel_entries = run_query("""
-            SELECT f.fuel_log_id, f.fuel_date, f.vehicle_id, v.vehicle_number, f.diesel_category, 
-                   f.lr_number, f.filling_odometer_km, f.litres_filled, f.diesel_rate_per_litre, 
-                   f.total_fuel_cost, f.trip_id
-            FROM diesel_fuel_logs f 
-            JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
-            ORDER BY f.fuel_date DESC, f.fuel_log_id DESC;
-        """)
+        try:
+            all_fuel_entries = run_query("""
+                SELECT f.fuel_log_id, f.fuel_date, f.vehicle_id, v.vehicle_number, f.diesel_category, 
+                       f.lr_number, f.filling_odometer_km, f.litres_filled, f.diesel_rate_per_litre, 
+                       f.total_fuel_cost, f.trip_id, f.is_tank_full
+                FROM diesel_fuel_logs f 
+                JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
+                ORDER BY f.fuel_date DESC, f.fuel_log_id DESC;
+            """)
+        except Exception:
+             all_fuel_entries = run_query("""
+                SELECT f.fuel_log_id, f.fuel_date, f.vehicle_id, v.vehicle_number, f.diesel_category, 
+                       f.lr_number, f.filling_odometer_km, f.litres_filled, f.diesel_rate_per_litre, 
+                       f.total_fuel_cost, f.trip_id
+                FROM diesel_fuel_logs f 
+                JOIN vehicles v ON f.vehicle_id = v.vehicle_id 
+                ORDER BY f.fuel_date DESC, f.fuel_log_id DESC;
+            """)
         
         if not all_fuel_entries:
             st.info("No diesel logs found in registry.")
@@ -1086,6 +1138,7 @@ elif menu == "Diesel Logs":
                     ed6, ed7, ed8 = st.columns(3)
                     with ed6:
                         e_litres = st.number_input("Litres Filled*", min_value=0.0, value=float(target_fuel['litres_filled'] or 0.0), step=5.0)
+                        e_tank_full = st.checkbox("⛽ Mark as Tank Full", value=bool(target_fuel.get('is_tank_full', False)))
                     with ed7:
                         e_rate = st.number_input("Diesel Rate (₹/L)*", min_value=50.0, max_value=150.0, value=float(target_fuel['diesel_rate_per_litre'] or d_rate_fast), step=0.05)
                     with ed8:
@@ -1110,11 +1163,12 @@ elif menu == "Diesel Logs":
                                             filling_odometer_km = %s,
                                             litres_filled = %s,
                                             diesel_rate_per_litre = %s,
-                                            total_fuel_cost = %s
+                                            total_fuel_cost = %s,
+                                            is_tank_full = %s
                                         WHERE fuel_log_id = %s;
                                     """, (
                                         e_fuel_date, e_target_veh_id, e_cat, e_lr_val or "SUNDRY",
-                                        e_filling_km, e_litres, e_rate, e_cost, target_fuel['fuel_log_id']
+                                        e_filling_km, e_litres, e_rate, e_cost, e_tank_full, target_fuel['fuel_log_id']
                                     ), fetch=False)
 
                                     if target_fuel['trip_id']:
@@ -1293,17 +1347,32 @@ elif menu == "Modify Trips & Claims":
     with f_c2:
         status_filter = st.selectbox("Filter by Trip Status", ["All Statuses", "IN_TRANSIT", "COMPLETED"])
 
-    trip_sql = """
-        SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, v.carrying_capacity_tons, d.full_name, t.origin, t.destination, 
-               t.trip_start_date, t.trip_end_date, t.start_km, t.end_km, t.total_km_run, 
-               t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, 
-               t.fuel_expense, t.driver_bata, t.halt_bata, t.cash_advance_issued, 
-               t.enroute_repairs_maintenance, t.pod_number, t.pod_received_date, t.trip_status 
-        FROM trips t 
-        JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
-        JOIN drivers d ON t.primary_driver_id = d.driver_id 
-        WHERE 1=1
-    """
+    try:
+        trip_sql = """
+            SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, v.carrying_capacity_tons, d.full_name, t.origin, t.destination, 
+                   t.trip_start_date, t.trip_end_date, t.start_km, t.end_km, t.total_km_run, 
+                   t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, 
+                   t.fuel_expense, t.driver_bata, t.halt_bata, t.cash_advance_issued, 
+                   t.enroute_repairs_maintenance, t.pod_number, t.pod_received_date, t.trip_status, t.is_tank_full 
+            FROM trips t 
+            JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
+            JOIN drivers d ON t.primary_driver_id = d.driver_id 
+            WHERE 1=1
+        """
+        all_matched_trips = run_query(trip_sql) # Try fetch to see if column exists
+    except Exception:
+         trip_sql = """
+            SELECT t.trip_id, t.trip_number, v.vehicle_number, v.vehicle_id, v.carrying_capacity_tons, d.full_name, t.origin, t.destination, 
+                   t.trip_start_date, t.trip_end_date, t.start_km, t.end_km, t.total_km_run, 
+                   t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, 
+                   t.fuel_expense, t.driver_bata, t.halt_bata, t.cash_advance_issued, 
+                   t.enroute_repairs_maintenance, t.pod_number, t.pod_received_date, t.trip_status 
+            FROM trips t 
+            JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
+            JOIN drivers d ON t.primary_driver_id = d.driver_id 
+            WHERE 1=1
+        """
+         
     params = []
     if search_query:
         trip_sql += " AND (UPPER(t.trip_number) LIKE %s OR UPPER(v.vehicle_number) LIKE %s)"
@@ -1397,6 +1466,7 @@ elif menu == "Modify Trips & Claims":
                 p1, p2, p3, p4, p5 = st.columns(5)
                 with p1:
                     e_pod_no = st.text_input("POD / Challan No", value=t_data['pod_number'] or "")
+                    e_is_tank_full = st.checkbox("⛽ Mark as Tank Full", value=bool(t_data.get('is_tank_full', False)))
                 with p2:
                     e_unloaded_mt = st.number_input("Unloaded MT", value=float(t_data['unloaded_weight_mt'] or e_ton), step=0.01)
                 with p3:
@@ -1407,9 +1477,12 @@ elif menu == "Modify Trips & Claims":
                     status_choices = ["IN_TRANSIT", "COMPLETED"]
                     curr_st_idx = status_choices.index(t_data['trip_status']) if t_data['trip_status'] in status_choices else 0
                     e_trip_status = st.selectbox("Trip Status", status_choices, index=curr_st_idx)
+                    
+                    e_kmpl = (e_total_km / e_fuel_l) if e_fuel_l > 0 else 0.0
+                    st.metric("Est. KMPL", f"{e_kmpl:.2f} km/l")
 
                 st.write("")
-                if st.form_submit_button("💾 Commit Updates to Trip & POD Record", type="primary", use_container_width=True):
+                if st.form_submit_button("💾 Commit Updates to Trip & POD Record", type="primary"):
                     def execute_mod_trip():
                         try:
                             recalculated_fuel_cost = round(e_fuel_l * d_rate_fast, 2)
@@ -1421,7 +1494,7 @@ elif menu == "Modify Trips & Claims":
                                                  loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, shortage_mt=%s,
                                                  freight_revenue=%s, fuel_litres=%s, fuel_expense=%s, driver_bata=%s, 
                                                  halt_bata=%s, cash_advance_issued=%s, enroute_repairs_maintenance=%s,
-                                                 pod_number=%s, trip_status=%s
+                                                 pod_number=%s, trip_status=%s, is_tank_full=%s
                                 WHERE trip_id=%s;
                             """, (
                                 e_sdate, e_edate, e_lr, e_orig, e_dest, 
@@ -1429,7 +1502,7 @@ elif menu == "Modify Trips & Claims":
                                 e_ton, e_unloaded_mt, e_ton, shortage_val,
                                 e_freight, e_fuel_l, recalculated_fuel_cost, e_bata, 
                                 e_halt_bata, e_adv, e_claims,
-                                e_pod_no or None, e_trip_status, t_data['trip_id']
+                                e_pod_no or None, e_trip_status, e_is_tank_full, t_data['trip_id']
                             ), fetch=False)
                             
                             if e_trip_status == "COMPLETED":
@@ -1443,9 +1516,9 @@ elif menu == "Modify Trips & Claims":
                             if existing_fuel_log:
                                 run_query("""
                                     UPDATE diesel_fuel_logs 
-                                    SET fuel_date = %s, lr_number = %s, litres_filled = %s, total_fuel_cost = %s, filling_odometer_km = %s, trip_id = %s
+                                    SET fuel_date = %s, lr_number = %s, litres_filled = %s, total_fuel_cost = %s, filling_odometer_km = %s, trip_id = %s, is_tank_full = %s
                                     WHERE fuel_log_id = %s;
-                                """, (e_sdate, e_lr, e_fuel_l, recalculated_fuel_cost, e_start_km, t_data['trip_id'], existing_fuel_log[0]['fuel_log_id']), fetch=False)
+                                """, (e_sdate, e_lr, e_fuel_l, recalculated_fuel_cost, e_start_km, t_data['trip_id'], e_is_tank_full, existing_fuel_log[0]['fuel_log_id']), fetch=False)
 
                             get_cached_vehicles.clear()
                             trigger_toast_and_rerun("SUCCESS", f"Trip #{e_lr} updated successfully (Status: {e_trip_status}).")
@@ -2323,19 +2396,36 @@ elif menu == "Audit Log":
             aud_date_q = " AND t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s"
             aud_params.extend([aud_from_d, aud_to_d])
 
-    aud_sql = f"""
-        SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, t.trip_end_date,
-               v.vehicle_number, d.full_name AS driver, d.phone_number AS driver_phone,
-               t.origin, t.destination, t.start_km, t.end_km, t.total_km_run,
-               t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, t.fuel_expense, 
-               t.driver_bata, t.halt_bata, t.cash_advance_issued,
-               (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.halt_bata + t.enroute_repairs_maintenance)) AS net_profit, 
-               t.trip_status
-        FROM trips t 
-        JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
-        JOIN drivers d ON t.primary_driver_id = d.driver_id 
-        WHERE 1=1 {aud_date_q}
-    """
+    try:
+        aud_sql = f"""
+            SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, t.trip_end_date,
+                   v.vehicle_number, d.full_name AS driver, d.phone_number AS driver_phone,
+                   t.origin, t.destination, t.start_km, t.end_km, t.total_km_run,
+                   t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, t.fuel_expense, 
+                   t.driver_bata, t.halt_bata, t.cash_advance_issued,
+                   (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.halt_bata + t.enroute_repairs_maintenance)) AS net_profit, 
+                   t.trip_status, t.is_tank_full
+            FROM trips t 
+            JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
+            JOIN drivers d ON t.primary_driver_id = d.driver_id 
+            WHERE 1=1 {aud_date_q}
+        """
+        all_trips = run_query(aud_sql, tuple(aud_params) if aud_params else None)
+    except Exception:
+        aud_sql = f"""
+            SELECT t.trip_id, t.trip_number, t.pod_number, t.trip_start_date, t.trip_end_date,
+                   v.vehicle_number, d.full_name AS driver, d.phone_number AS driver_phone,
+                   t.origin, t.destination, t.start_km, t.end_km, t.total_km_run,
+                   t.loaded_weight_mt, t.unloaded_weight_mt, t.freight_revenue, t.fuel_litres, t.fuel_expense, 
+                   t.driver_bata, t.halt_bata, t.cash_advance_issued,
+                   (t.freight_revenue - (t.fuel_expense + t.driver_bata + t.halt_bata + t.enroute_repairs_maintenance)) AS net_profit, 
+                   t.trip_status
+            FROM trips t 
+            JOIN vehicles v ON t.vehicle_id = v.vehicle_id 
+            JOIN drivers d ON t.primary_driver_id = d.driver_id 
+            WHERE 1=1 {aud_date_q}
+        """
+        all_trips = run_query(aud_sql, tuple(aud_params) if aud_params else None)
 
     if sel_aud_trk != "All Trucks":
         aud_sql += " AND v.vehicle_number = %s"
