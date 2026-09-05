@@ -16,7 +16,7 @@ except ImportError:
     HAS_FPDF = False
 
 # ==============================================================================
-# 1. PAGE CONFIGURATION & ANIMATED BUTTON CSS
+# 1. PAGE CONFIGURATION & SLEEK ENTERPRISE CSS
 # ==============================================================================
 st.set_page_config(page_title="KSS Roadways ERP", layout="wide", initial_sidebar_state="collapsed")
 
@@ -143,9 +143,9 @@ if "pending_toast" in st.session_state and st.session_state.pending_toast:
     show_success_toast(t_msg) if t_type == "SUCCESS" else show_error_toast(t_msg)
     st.session_state.pending_toast = None
 
-def trigger_toast_and_rerun(toast_type: str, message: str):
+def trigger_toast_and_rerun(toast_type: str, message: str, delay_sec: float = 0.4):
     st.session_state.pending_toast = (toast_type, message)
-    time.sleep(0.1) 
+    time.sleep(delay_sec)
     st.rerun()
 
 @st.dialog("⚠️ Confirm Action")
@@ -383,7 +383,6 @@ if selected_nav == "🏠 Dashboard":
     stat_counts = df_v['current_status'].value_counts().to_dict() if not df_v.empty else {}
     def get_c(key): return stat_counts.get(key, 0)
 
-    # Flattened HTML string prevents markdown injection bugs
     html_dashboard = (
         f"<div class='wm-card'><div class='wm-card-title'>Operations Summary ({date.today().strftime('%B %Y')})</div>"
         f"<div class='wm-flex-row'><div class='wm-metric-box'><div class='wm-metric-label'>Fleet Size</div><div class='wm-metric-val'>{total_veh}</div></div>"
@@ -470,7 +469,9 @@ elif selected_nav == "🚛 Operations":
                 sc1, sc2, sc3 = st.columns(3)
                 with sc1: dest_terminal = st.text_input("Custom Destination*", key="d_cdest").strip().upper()
                 with sc2: rate_input = st.number_input("Spot Rate/MT*", value=None, placeholder="0.00", key="d_srate"); rate_mt = rate_input or 0.0
-                with sc3: std_input = st.number_input("Standard KM", value=None, placeholder="0.0", key="d_skm"); std_km = std_input or 0.0
+                
+                # FIXED DUPLICATE KEY ISSUE HERE: Changed key from 'd_skm' to 'd_stdkm'
+                with sc3: std_input = st.number_input("Standard KM", value=None, placeholder="0.0", key="d_stdkm"); std_km = std_input or 0.0
             elif sel_dest_label != "-- SELECT DESTINATION --":
                 rt = dest_options[sel_dest_label]
                 dest_terminal, rate_mt, std_km = rt['destination_name'], float(rt['freight_rate_per_ton']), float(rt['standard_km'])
@@ -509,10 +510,23 @@ elif selected_nav == "🚛 Operations":
                     def run_dispatch():
                         calc_km = (end_km - start_km) if end_km > start_km else std_km
                         gross, f_cost = round(wmt * rate_mt, 2), round(fuel_l * d_rate_fast, 2)
-                        new_t = run_query("INSERT INTO trips (trip_number, branch_id, vehicle_id, primary_driver_id, trip_start_date, trip_end_date, origin, destination, start_km, end_km, total_km_run, tonnage_loaded, loaded_weight_mt, unloaded_weight_mt, freight_revenue, fuel_litres, fuel_expense, driver_bata, cash_advance_issued, trip_status, is_tank_full) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT', %s) RETURNING trip_id;", (lr_no, active_veh['vehicle_id'], d_dict[chosen_drv]['driver_id'], start_date, start_date, origin_terminal, dest_terminal, start_km, end_km, calc_km, wmt, wmt, wmt, gross, fuel_l, f_cost, bata, adv, is_tank_full))
-                        if fuel_l > 0 and new_t: run_query("INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full) VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s, %s);", (start_date, active_veh['vehicle_id'], new_t[0]['trip_id'], lr_no, fuel_l, d_rate_fast, f_cost, start_km, is_tank_full), fetch=False)
+                        new_t = run_query("""
+                            INSERT INTO trips (
+                                trip_number, branch_id, vehicle_id, primary_driver_id, 
+                                trip_start_date, trip_end_date, origin, destination, 
+                                start_km, end_km, total_km_run, tonnage_loaded, 
+                                loaded_weight_mt, unloaded_weight_mt, freight_revenue, 
+                                fuel_litres, fuel_expense, driver_bata, cash_advance_issued, 
+                                trip_status, is_tank_full
+                            ) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT', %s) RETURNING trip_id;
+                        """, (lr_no, active_veh['vehicle_id'], d_dict[chosen_drv]['driver_id'], start_date, start_date, origin_terminal, dest_terminal, start_km, end_km, calc_km, wmt, wmt, wmt, gross, fuel_l, f_cost, bata, adv, is_tank_full))
+                        
+                        if fuel_l > 0 and new_t: 
+                            run_query("INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full) VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s, %s);", (start_date, active_veh['vehicle_id'], new_t[0]['trip_id'], lr_no, fuel_l, d_rate_fast, f_cost, start_km, is_tank_full), fetch=False)
+                        
                         run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s", (f"Trip {lr_no}: {origin_terminal} ➔ {dest_terminal}", active_veh['vehicle_id']), fetch=False)
-                        get_cached_vehicles.clear(); trigger_toast_and_rerun("SUCCESS", "Trip dispatched.")
+                        get_cached_vehicles.clear()
+                        trigger_toast_and_rerun("SUCCESS", "Trip dispatched.")
                     confirm_action_dialog("Dispatch this trip", run_dispatch)
 
     with op_tabs[1]:
@@ -871,7 +885,6 @@ elif selected_nav == "🛠️ Workshop & Tyres":
                 else: st.info("No workshop bills recorded yet.")
             except Exception: st.info("Workshop module initializing... Please refresh.")
 
-
 elif selected_nav == "📊 Financials":
     fin_tabs = st.tabs(["💵 Driver Settlement", "📈 Analytics & Margins"])
     
@@ -982,7 +995,6 @@ elif selected_nav == "📊 Financials":
 
 elif selected_nav == "⚙️ Setup":
     if st.session_state.user_role != "MASTER": st.warning("Restricted to Master"); st.stop()
-    st.markdown('<div class="section-header">Master Database Configuration</div>', unsafe_allow_html=True)
     t_v, t_d, t_r, t_b, t_a = st.tabs(["🚚 Trucks", "👨‍✈️ Drivers", "🛣️ Slabs", "💰 Bata", "📋 System Audit"])
     
     with t_v:
