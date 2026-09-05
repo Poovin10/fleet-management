@@ -16,7 +16,7 @@ except ImportError:
     HAS_FPDF = False
 
 # ==============================================================================
-# 1. PAGE CONFIGURATION & SLEEK ENTERPRISE CSS
+# 1. PAGE CONFIGURATION & ANIMATED BUTTON CSS
 # ==============================================================================
 st.set_page_config(page_title="KSS Roadways ERP", layout="wide", initial_sidebar_state="collapsed")
 
@@ -143,9 +143,9 @@ if "pending_toast" in st.session_state and st.session_state.pending_toast:
     show_success_toast(t_msg) if t_type == "SUCCESS" else show_error_toast(t_msg)
     st.session_state.pending_toast = None
 
-def trigger_toast_and_rerun(toast_type: str, message: str, delay_sec: float = 0.4):
+def trigger_toast_and_rerun(toast_type: str, message: str):
     st.session_state.pending_toast = (toast_type, message)
-    time.sleep(delay_sec)
+    time.sleep(0.1) 
     st.rerun()
 
 @st.dialog("⚠️ Confirm Action")
@@ -159,10 +159,18 @@ def confirm_action_dialog(message: str, action_callback):
 
 @st.cache_resource
 def init_connection_pool():
-    creds = {"host": "aws-0-ap-south-1.pooler.supabase.com", "port": 6543, "dbname": "postgres", "user": "postgres.eobweyciqwoojwnsonor", "password": "Poovin@2809"}
+    creds = None
     try:
-        if len(st.secrets) > 0 and "postgres" in st.secrets: creds = dict(st.secrets["postgres"])
-    except Exception: pass
+        if len(st.secrets) > 0 and "postgres" in st.secrets:
+            creds = dict(st.secrets["postgres"])
+    except Exception:
+        creds = None
+    if not creds:
+        # NOTE: never bake live DB credentials into source. Configure a
+        # [postgres] section in .streamlit/secrets.toml (host/port/dbname/user/password)
+        # or the equivalent env-backed secrets on your hosting platform.
+        st.error("Database is not configured. Add a [postgres] block to secrets.toml (host, port, dbname, user, password) and restart the app.")
+        st.stop()
     return psycopg2.pool.ThreadedConnectionPool(minconn=1, maxconn=10, **creds, sslmode="require")
 
 db_pool = init_connection_pool()
@@ -194,7 +202,9 @@ def ensure_schema_updates():
         with conn.cursor() as cur:
             for q in queries: cur.execute(q)
         conn.commit()
-    except Exception: conn.rollback()
+    except Exception as e:
+        conn.rollback()
+        st.warning(f"⚠️ Schema check skipped one or more updates: {e}")
     finally: db_pool.putconn(conn)
     return True
 
@@ -315,7 +325,25 @@ def lookup_driver_bata_slab(origin, dest_name, cargo_type, capacity_tons):
 # ==============================================================================
 # 4. AUTHENTICATION & MODERN TOP-BAR
 # ==============================================================================
-USER_CREDENTIALS = {"admin": {"password": "admin123", "role": "MASTER"}, "user": {"password": "user123", "role": "VIEWER"}}
+import hashlib, secrets as _secrets_mod
+
+def _load_user_credentials():
+    # Preferred: define [users.<name>] password="..." role="MASTER|VIEWER" in secrets.toml
+    try:
+        if len(st.secrets) > 0 and "users" in st.secrets:
+            return {u.lower(): dict(cfg) for u, cfg in dict(st.secrets["users"]).items()}
+    except Exception:
+        pass
+    # Dev-only fallback so the app is still runnable before secrets are configured.
+    # These are NOT safe for production — configure secrets.toml and remove this block's reliance.
+    st.session_state.setdefault("_using_dev_credentials", True)
+    return {"admin": {"password": "admin123", "role": "MASTER"}, "user": {"password": "user123", "role": "VIEWER"}}
+
+USER_CREDENTIALS = _load_user_credentials()
+
+def _check_password(entered: str, stored: str) -> bool:
+    # Constant-time comparison to avoid timing side-channels on the login form.
+    return _secrets_mod.compare_digest(hashlib.sha256(entered.encode()).hexdigest(), hashlib.sha256(stored.encode()).hexdigest())
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated, st.session_state.username, st.session_state.user_role = False, None, None
@@ -327,13 +355,15 @@ if not st.session_state.authenticated:
             <p style='color: #6B7280; font-weight: 600; font-size: 0.85rem; margin-bottom: 25px; text-transform: uppercase;'>Fleet Operations Portal</p>
         </div>
     """, unsafe_allow_html=True)
+    if st.session_state.get("_using_dev_credentials"):
+        st.warning("⚠️ Running with default dev credentials. Configure [users] in secrets.toml before going live.")
     _, col, _ = st.columns([3, 4, 3])
     with col:
         with st.form("login_form"):
             in_user = st.text_input("Username", placeholder="Enter username").strip().lower()
             in_pass = st.text_input("Password", type="password", placeholder="Enter password").strip()
             if st.form_submit_button("Secure Sign In", type="primary", use_container_width=True):
-                if in_user in USER_CREDENTIALS and USER_CREDENTIALS[in_user]["password"] == in_pass:
+                if in_user in USER_CREDENTIALS and _check_password(in_pass, USER_CREDENTIALS[in_user]["password"]):
                     st.session_state.update({"authenticated": True, "username": in_user, "user_role": USER_CREDENTIALS[in_user]["role"]})
                     st.rerun()
                 else: show_error_toast("Invalid Credentials.")
@@ -370,19 +400,21 @@ d_dict = {f"{d['driver_code']} - {d['full_name']}": d for d in global_drivers} i
 if selected_nav == "🏠 Dashboard":
     df_v = pd.DataFrame(global_vehicles) if global_vehicles else pd.DataFrame()
     total_veh = len(df_v)
-    
-    active_trips_data = run_query("SELECT COUNT(trip_id) as active_count FROM trips WHERE trip_status != 'COMPLETED';")
-    active_trips = active_trips_data[0]['active_count'] if active_trips_data else 0
-    
-    tonnage_data = run_query("SELECT SUM(loaded_weight_mt) as total_tons FROM trips WHERE EXTRACT(MONTH FROM trip_start_date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM trip_start_date) = EXTRACT(YEAR FROM CURRENT_DATE);")
-    month_tons = float(tonnage_data[0]['total_tons'] or 0.0) if tonnage_data else 0.0
-    
-    month_rev_data = run_query("SELECT SUM(freight_revenue) as total_rev FROM trips WHERE EXTRACT(MONTH FROM trip_start_date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM trip_start_date) = EXTRACT(YEAR FROM CURRENT_DATE);")
-    month_rev = float(month_rev_data[0]['total_rev'] or 0.0) if month_rev_data else 0.0
+
+    with st.spinner("Loading operations summary..."):
+        active_trips_data = run_query("SELECT COUNT(trip_id) as active_count FROM trips WHERE trip_status != 'COMPLETED';")
+        active_trips = active_trips_data[0]['active_count'] if active_trips_data else 0
+
+        tonnage_data = run_query("SELECT SUM(loaded_weight_mt) as total_tons FROM trips WHERE EXTRACT(MONTH FROM trip_start_date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM trip_start_date) = EXTRACT(YEAR FROM CURRENT_DATE);")
+        month_tons = float(tonnage_data[0]['total_tons'] or 0.0) if tonnage_data else 0.0
+
+        month_rev_data = run_query("SELECT SUM(freight_revenue) as total_rev FROM trips WHERE EXTRACT(MONTH FROM trip_start_date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM trip_start_date) = EXTRACT(YEAR FROM CURRENT_DATE);")
+        month_rev = float(month_rev_data[0]['total_rev'] or 0.0) if month_rev_data else 0.0
 
     stat_counts = df_v['current_status'].value_counts().to_dict() if not df_v.empty else {}
     def get_c(key): return stat_counts.get(key, 0)
 
+    # Flattened HTML string prevents markdown injection bugs
     html_dashboard = (
         f"<div class='wm-card'><div class='wm-card-title'>Operations Summary ({date.today().strftime('%B %Y')})</div>"
         f"<div class='wm-flex-row'><div class='wm-metric-box'><div class='wm-metric-label'>Fleet Size</div><div class='wm-metric-val'>{total_veh}</div></div>"
@@ -469,9 +501,7 @@ elif selected_nav == "🚛 Operations":
                 sc1, sc2, sc3 = st.columns(3)
                 with sc1: dest_terminal = st.text_input("Custom Destination*", key="d_cdest").strip().upper()
                 with sc2: rate_input = st.number_input("Spot Rate/MT*", value=None, placeholder="0.00", key="d_srate"); rate_mt = rate_input or 0.0
-                
-                # FIXED DUPLICATE KEY ISSUE HERE: Changed key from 'd_skm' to 'd_stdkm'
-                with sc3: std_input = st.number_input("Standard KM", value=None, placeholder="0.0", key="d_stdkm"); std_km = std_input or 0.0
+                with sc3: std_input = st.number_input("Standard KM", value=None, placeholder="0.0", key="d_std_km"); std_km = std_input or 0.0
             elif sel_dest_label != "-- SELECT DESTINATION --":
                 rt = dest_options[sel_dest_label]
                 dest_terminal, rate_mt, std_km = rt['destination_name'], float(rt['freight_rate_per_ton']), float(rt['standard_km'])
@@ -506,27 +536,16 @@ elif selected_nav == "🚛 Operations":
                 if not all([active_veh, lr_no, dest_terminal, origin_terminal != "-- SELECT SOURCE --", chosen_drv != "-- SELECT DRIVER --"]): show_error_toast("Fill all mandatory fields.")
                 elif check_vehicle_has_open_trip(active_veh['vehicle_id']): show_error_toast(f"Truck has an active trip already.")
                 elif run_query("SELECT trip_id FROM trips WHERE LOWER(trip_number) = LOWER(%s)", (lr_no,)): show_error_toast(f"LR '{lr_no}' already exists.")
+                elif fuel_l > 0 and check_duplicate_diesel_entry(active_veh['vehicle_id'], start_date, fuel_l, filling_km=start_km, lr_number=lr_no):
+                    show_error_toast("A near-identical diesel entry already exists for this truck/date/litres.")
                 else:
                     def run_dispatch():
                         calc_km = (end_km - start_km) if end_km > start_km else std_km
                         gross, f_cost = round(wmt * rate_mt, 2), round(fuel_l * d_rate_fast, 2)
-                        new_t = run_query("""
-                            INSERT INTO trips (
-                                trip_number, branch_id, vehicle_id, primary_driver_id, 
-                                trip_start_date, trip_end_date, origin, destination, 
-                                start_km, end_km, total_km_run, tonnage_loaded, 
-                                loaded_weight_mt, unloaded_weight_mt, freight_revenue, 
-                                fuel_litres, fuel_expense, driver_bata, cash_advance_issued, 
-                                trip_status, is_tank_full
-                            ) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT', %s) RETURNING trip_id;
-                        """, (lr_no, active_veh['vehicle_id'], d_dict[chosen_drv]['driver_id'], start_date, start_date, origin_terminal, dest_terminal, start_km, end_km, calc_km, wmt, wmt, wmt, gross, fuel_l, f_cost, bata, adv, is_tank_full))
-                        
-                        if fuel_l > 0 and new_t: 
-                            run_query("INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full) VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s, %s);", (start_date, active_veh['vehicle_id'], new_t[0]['trip_id'], lr_no, fuel_l, d_rate_fast, f_cost, start_km, is_tank_full), fetch=False)
-                        
+                        new_t = run_query("INSERT INTO trips (trip_number, branch_id, vehicle_id, primary_driver_id, trip_start_date, trip_end_date, origin, destination, start_km, end_km, total_km_run, tonnage_loaded, loaded_weight_mt, unloaded_weight_mt, freight_revenue, fuel_litres, fuel_expense, driver_bata, cash_advance_issued, trip_status, is_tank_full) VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'IN_TRANSIT', %s) RETURNING trip_id;", (lr_no, active_veh['vehicle_id'], d_dict[chosen_drv]['driver_id'], start_date, start_date, origin_terminal, dest_terminal, start_km, end_km, calc_km, wmt, wmt, wmt, gross, fuel_l, f_cost, bata, adv, is_tank_full))
+                        if fuel_l > 0 and new_t: run_query("INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, trip_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full) VALUES (%s, %s, %s, %s, 'TRIP_DIESEL', %s, %s, %s, %s, %s);", (start_date, active_veh['vehicle_id'], new_t[0]['trip_id'], lr_no, fuel_l, d_rate_fast, f_cost, start_km, is_tank_full), fetch=False)
                         run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT', status_remarks = %s WHERE vehicle_id = %s", (f"Trip {lr_no}: {origin_terminal} ➔ {dest_terminal}", active_veh['vehicle_id']), fetch=False)
-                        get_cached_vehicles.clear()
-                        trigger_toast_and_rerun("SUCCESS", "Trip dispatched.")
+                        get_cached_vehicles.clear(); trigger_toast_and_rerun("SUCCESS", "Trip dispatched.")
                     confirm_action_dialog("Dispatch this trip", run_dispatch)
 
     with op_tabs[1]:
@@ -583,8 +602,7 @@ elif selected_nav == "🚛 Operations":
         with f_c1: search_query = st.text_input("🔍 Search LR or Truck").strip().upper()
         with f_c2: status_filter = st.selectbox("Status Filter", ["All Statuses", "IN_TRANSIT", "COMPLETED"])
 
-        try: trip_sql = "SELECT t.*, v.vehicle_number, v.carrying_capacity_tons, d.full_name FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE 1=1"
-        except Exception: trip_sql = "SELECT t.*, v.vehicle_number, v.carrying_capacity_tons, d.full_name FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE 1=1"
+        trip_sql = "SELECT t.*, v.vehicle_number, v.carrying_capacity_tons, d.full_name FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE 1=1"
         params = []
         if search_query: trip_sql += " AND (UPPER(t.trip_number) LIKE %s OR UPPER(v.vehicle_number) LIKE %s)"; params.extend([f"%{search_query}%", f"%{search_query}%"])
         if status_filter != "All Statuses": trip_sql += " AND t.trip_status = %s"; params.append(status_filter)
@@ -600,7 +618,7 @@ elif selected_nav == "🚛 Operations":
                 t_data = trip_map[sel_t_key_label]
                 with st.form("mod_full_form"):
                     v_class_mt = float(t_data['carrying_capacity_tons'] or 30.0)
-                    all_routes = run_query("SELECT * FROM destinations_freight_master WHERE is_active = TRUE ORDER BY destination_name ASC")
+                    all_routes = get_cached_routes()
                     route_labels, route_map_dict, active_lbl = [], {}, "-- MANUAL / SPOT ROUTE --"
                     if all_routes:
                         for r in all_routes:
@@ -717,6 +735,8 @@ elif selected_nav == "⛽ Fuel & Adv":
                 st.write("")
                 if st.form_submit_button("Record Diesel Entry", type="primary"):
                     if f_l <= 0: show_error_toast("Fuel > 0 required.")
+                    elif check_duplicate_diesel_entry(target_veh_id, f_date, f_l, filling_km=filling_km, lr_number=f_lr):
+                        show_error_toast("A near-identical entry already exists for this truck/date/litres. Adjust values or delete the old entry first.")
                     else:
                         def save_fuel():
                             run_query("INSERT INTO diesel_fuel_logs (fuel_date, vehicle_id, lr_number, diesel_category, litres_filled, diesel_rate_per_litre, total_fuel_cost, filling_odometer_km, is_tank_full) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", (f_date, target_veh_id, f_lr or "SUNDRY", f_cat, f_l, get_cached_diesel_rate(), round(f_l * get_cached_diesel_rate(), 2), filling_km, is_tank_full), fetch=False)
@@ -885,6 +905,7 @@ elif selected_nav == "🛠️ Workshop & Tyres":
                 else: st.info("No workshop bills recorded yet.")
             except Exception: st.info("Workshop module initializing... Please refresh.")
 
+
 elif selected_nav == "📊 Financials":
     fin_tabs = st.tabs(["💵 Driver Settlement", "📈 Analytics & Margins"])
     
@@ -995,6 +1016,7 @@ elif selected_nav == "📊 Financials":
 
 elif selected_nav == "⚙️ Setup":
     if st.session_state.user_role != "MASTER": st.warning("Restricted to Master"); st.stop()
+    st.markdown('<div class="section-header">Master Database Configuration</div>', unsafe_allow_html=True)
     t_v, t_d, t_r, t_b, t_a = st.tabs(["🚚 Trucks", "👨‍✈️ Drivers", "🛣️ Slabs", "💰 Bata", "📋 System Audit"])
     
     with t_v:
