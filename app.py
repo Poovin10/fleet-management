@@ -16,7 +16,7 @@ except ImportError:
     HAS_FPDF = False
 
 # ==============================================================================
-# 1. PAGE CONFIGURATION & SLEEK ENTERPRISE CSS
+# 1. PAGE CONFIGURATION & ANIMATED BUTTON CSS
 # ==============================================================================
 st.set_page_config(page_title="KSS Roadways ERP", layout="wide", initial_sidebar_state="collapsed")
 
@@ -24,66 +24,88 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     
-    html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !important; color: #111827 !important; background: #F4F7F9 !important; }
+    html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !important; color: #111827 !important; background: #F9FAFB !important; }
     header, #MainMenu, footer { visibility: hidden; display: none !important; }
     
     /* Layout Constraints */
     .main .block-container {
-        padding-top: 1rem !important; padding-bottom: 3rem !important;
+        padding-top: 1.5rem !important; padding-bottom: 3rem !important;
         padding-left: 2rem !important; padding-right: 2rem !important;
-        max-width: 1450px !important; margin: 0 auto;
+        max-width: 1400px !important; margin: 0 auto;
     }
 
-    /* Transform Native Radio into a Sleek Top Navigation Bar */
+    /* Transform Native Radio into Animated Floating Buttons */
     div[role="radiogroup"] {
-        flex-direction: row !important; flex-wrap: wrap !important; gap: 14px !important;
-        border-bottom: 2px solid #E5E7EB; padding-bottom: 20px; margin-bottom: 24px;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 14px !important;
+        border-bottom: 2px solid #E5E7EB;
+        padding-bottom: 20px;
+        margin-bottom: 24px;
     }
     div[role="radiogroup"] > label {
-        padding: 12px 24px !important; background: #FFFFFF !important;
-        border: 1px solid #D1D5DB !important; border-radius: 8px !important;
-        margin: 0 !important; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
+        padding: 12px 24px !important;
+        background: #FFFFFF !important;
+        border: 1px solid #D1D5DB !important;
+        border-radius: 8px !important;
+        margin: 0 !important;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     div[role="radiogroup"] > label:hover { 
-        transform: translateY(-4px) !important; box-shadow: 0 8px 16px rgba(0,0,0,0.08) !important; border-color: #4F46E5 !important;
+        transform: translateY(-4px) !important;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.08) !important;
+        border-color: #4F46E5 !important;
     }
     div[role="radiogroup"] > label[data-checked="true"] {
-        background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%) !important; border-color: transparent !important;
-        box-shadow: 0 6px 15px rgba(79, 70, 229, 0.35) !important; transform: translateY(-2px) !important;
+        background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%) !important;
+        border-color: transparent !important;
+        box-shadow: 0 6px 15px rgba(79, 70, 229, 0.35) !important;
+        transform: translateY(-2px) !important;
     }
-    div[role="radiogroup"] > label > div:first-child { display: none !important; } /* Hide the circle */
+    div[role="radiogroup"] > label > div:first-child { display: none !important; }
     div[role="radiogroup"] > label > div:last-child { font-size: 0.95rem !important; font-weight: 700; margin-left: 0 !important; transition: color 0.3s ease; }
     div[role="radiogroup"] > label[data-checked="true"] > div:last-child { color: #FFFFFF !important; }
 
-    /* Login Card Modernization */
-    .login-card { background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 16px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 400px; margin: 80px auto 0 auto; text-align: center; }
-
     /* Wondermove Cards */
-    .wm-card { background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02); }
-    .wm-card-title { font-size: 0.95rem; font-weight: 700; color: #111827; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .wm-flex-row { display: flex; flex-wrap: wrap; gap: 12px; }
-    .wm-metric-box { flex: 1; min-width: 140px; border: 1px solid #F3F4F6; border-radius: 8px; padding: 12px 16px; background: #FFFFFF; }
+    .wm-card {
+        background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 12px;
+        padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    }
+    .wm-card-title { font-size: 1.1rem; font-weight: 800; color: #111827; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .wm-flex-row { display: flex; flex-wrap: wrap; gap: 16px; }
+    .wm-metric-box { flex: 1; min-width: 150px; border: 1px solid #F3F4F6; border-radius: 8px; padding: 16px; background: #FFFFFF; }
     .wm-metric-box.blue-tint { background: #EEF2FF; border-color: #E0E7FF; }
     .wm-metric-box.red-tint { background: #FEF2F2; border-color: #FEE2E2; }
-    .wm-metric-label { font-size: 0.70rem; font-weight: 700; color: #6B7280; text-transform: uppercase; margin-bottom: 6px; }
-    .wm-metric-val { font-size: 1.4rem; font-weight: 800; color: #111827; }
-    .wm-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-    .wm-status-pill { display: flex; align-items: center; border: 1px solid #E5E7EB; border-radius: 6px; padding: 6px 10px; background: #FFFFFF; font-size: 0.85rem; font-weight: 600; color: #374151; }
-    .wm-status-badge { background: #F3F4F6; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; margin-right: 10px; color: #111827; border: 1px solid #E5E7EB; }
-    .wm-workshop-box { background: #FAFAFA; border: 1px solid #EAEAEA; border-radius: 8px; padding: 16px; margin-top: 16px; }
-    .wm-workshop-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #EAEAEA; font-size: 0.85rem; font-weight: 600; }
-    .wm-workshop-row:last-child { border-bottom: none; }
-    .text-orange { color: #D97706; font-size: 1rem; } .text-blue { color: #2563EB; font-size: 1rem; }
-
-    /* SLEEK FORM INPUTS - Removed Bulkiness */
-    div[data-testid="stForm"] { background: #FFFFFF !important; border: 1px solid #EAEAEA !important; border-radius: 10px !important; padding: 20px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.03) !important; }
+    .wm-metric-label { font-size: 0.75rem; font-weight: 700; color: #6B7280; text-transform: uppercase; margin-bottom: 8px; }
+    .wm-metric-val { font-size: 1.6rem; font-weight: 800; color: #111827; }
     
-    /* Remove the bulky number stepper (+/-) for true Excel-like typing */
-    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .wm-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .wm-status-pill { display: flex; align-items: center; border: 1px solid #E5E7EB; border-radius: 8px; padding: 10px 14px; background: #FFFFFF; font-size: 0.9rem; font-weight: 600; color: #374151; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .wm-status-badge { background: #F3F4F6; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: 800; margin-right: 12px; color: #111827; border: 1px solid #E5E7EB; }
+    
+    .wm-workshop-box { background: #FAFAFA; border: 1px solid #EAEAEA; border-radius: 8px; padding: 20px; margin-top: 20px; }
+    .wm-workshop-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #EAEAEA; font-size: 0.95rem; font-weight: 700; }
+    .wm-workshop-row:last-child { border-bottom: none; }
+    .text-orange { color: #D97706; font-size: 1.1rem; } 
+    .text-blue { color: #2563EB; font-size: 1.1rem; }
+
+    /* Login Card */
+    .login-card { background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 16px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 400px; margin: 80px auto 0 auto; text-align: center; }
+
+    /* Remove Bulky Number Steppers Aggressively */
+    button[aria-label="Step down"], button[aria-label="Step up"] { display: none !important; }
+    div[data-testid="stNumberInputContainer"] { border-radius: 4px !important; }
+    input[type="number"]::-webkit-inner-spin-button, 
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type="number"] { -moz-appearance: textfield; }
 
-    .section-header { font-size: 0.95rem !important; font-weight: 700 !important; color: #111827 !important; border-bottom: 1px solid #E5E7EB !important; padding-bottom: 4px !important; margin: 16px 0 12px 0 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; }
+    /* General App UI Overrides */
+    div[data-testid="stForm"] { background: #FFFFFF !important; border: 1px solid #EAEAEA !important; border-radius: 12px !important; padding: 24px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; }
+    div[data-testid="stMetricValue"] { font-size: 1.6rem !important; font-weight: 800 !important; color: #111827 !important; }
+    div[data-testid="stMetricLabel"] { font-size: 0.75rem !important; font-weight: 700 !important; color: #6B7280 !important; text-transform: uppercase !important; }
+    .section-header { font-size: 1.05rem !important; font-weight: 800 !important; color: #111827 !important; border-bottom: 1px solid #E5E7EB !important; padding-bottom: 6px !important; margin: 20px 0 16px 0 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; }
     
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { 
         height: 38px !important; font-size: 0.85rem !important; font-weight: 500 !important; 
@@ -91,16 +113,22 @@ st.markdown("""
         border: 1px solid #D1D5DB !important; color: #111827 !important; 
     }
     .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, .stSelectbox>div>div>div:focus { border-color: #4F46E5 !important; box-shadow: 0 0 0 1px #4F46E5 !important; }
-    .stTextInput>div>div>input:disabled { background-color: #F3F4F6 !important; color: #6B7280 !important; font-weight: 600 !important; border-color: #E2E8F0 !important; }
+    .stTextInput>div>div>input:disabled { background-color: #F3F4F6 !important; color: #6B7280 !important; font-weight: 700 !important; border-color: #E2E8F0 !important; }
     
     .stButton>button { height: 38px !important; font-weight: 600 !important; font-size: 0.85rem !important; border-radius: 4px !important; }
     .stButton>button[kind="primary"] { background: #111827 !important; color: #FFFFFF !important; border: none !important; }
     .stButton>button[kind="primary"]:hover { background: #374151 !important; }
     
-    div[data-testid="column"]:nth-of-type(2) button { height: 32px !important; padding: 2px 10px !important; font-size: 0.75rem !important; background: #F3F4F6 !important; color: #374151 !important; border: 1px solid #E5E7EB !important; }
+    /* Sleek Small Logout Button (Targets the Header Column) */
+    div[data-testid="column"]:nth-of-type(2) button {
+        height: 32px !important; padding: 2px 10px !important; font-size: 0.75rem !important; 
+        background: #F3F4F6 !important; color: #374151 !important; border: 1px solid #E5E7EB !important;
+    }
     div[data-testid="column"]:nth-of-type(2) button:hover { background: #E5E7EB !important; }
+
     div[data-testid="stDataFrame"] > div { border-radius: 6px !important; border: 1px solid #E5E7EB !important; }
-    .stTabs [data-baseweb="tab"] { font-weight: 600 !important; color: #6B7280 !important; padding: 8px 16px !important; } .stTabs [aria-selected="true"] { color: #111827 !important; }
+    .stTabs [data-baseweb="tab"] { font-weight: 600 !important; color: #6B7280 !important; padding: 8px 16px !important; } 
+    .stTabs [aria-selected="true"] { color: #111827 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -355,6 +383,7 @@ if selected_nav == "🏠 Dashboard":
     stat_counts = df_v['current_status'].value_counts().to_dict() if not df_v.empty else {}
     def get_c(key): return stat_counts.get(key, 0)
 
+    # Flattened HTML string prevents markdown injection bugs
     html_dashboard = (
         f"<div class='wm-card'><div class='wm-card-title'>Operations Summary ({date.today().strftime('%B %Y')})</div>"
         f"<div class='wm-flex-row'><div class='wm-metric-box'><div class='wm-metric-label'>Fleet Size</div><div class='wm-metric-val'>{total_veh}</div></div>"
@@ -394,11 +423,9 @@ elif selected_nav == "🚛 Operations":
             with c3: cargo_category = st.selectbox("Cargo Type*", ["BULK", "BAG"], key="d_cg")
             with c4: d_rate_fast = st.number_input("Diesel Rate (₹/L)*", value=get_cached_diesel_rate(), step=0.1, key="d_dr")
 
-            # STRICT REACTIVE FILTER: Instantly changes list when dropdown changes
-            if cargo_category == "BULK":
-                filtered_vehicles = [v for v in global_vehicles if "BULK" in str(v.get('truck_type', '')).upper()]
-            else:
-                filtered_vehicles = [v for v in global_vehicles if "BULK" not in str(v.get('truck_type', '')).upper()]
+            # STRICT REACTIVE FILTER
+            if cargo_category == "BULK": filtered_vehicles = [v for v in global_vehicles if "BULK" in str(v.get('truck_type', '')).upper()]
+            else: filtered_vehicles = [v for v in global_vehicles if "BULK" not in str(v.get('truck_type', '')).upper()]
 
             v_map = {f"{v['vehicle_number']} [{v['truck_type']}]": v for v in filtered_vehicles}
             
@@ -423,7 +450,7 @@ elif selected_nav == "🚛 Operations":
                 old_drv_id, old_weight, old_drv_name = get_last_driver_and_weight_for_vehicle(active_veh['vehicle_id'])
                 if old_drv_id:
                     for i, k in enumerate(driver_keys):
-                        if k != "-- SELECT DRIVER --" and d_dict[k]['driver_id'] == old_drv_id:
+                        if k != "-- SELECT DRIVER --" and int(d_dict[k]['driver_id']) == int(old_drv_id):
                             def_drv_idx = i
                             break
 
@@ -450,23 +477,25 @@ elif selected_nav == "🚛 Operations":
 
             st.markdown("<hr style='margin:10px 0; border-color:#EAEAEA;'>", unsafe_allow_html=True)
             
-            if active_veh and old_drv_name:
-                st.caption(f"ℹ️ **Last Assigned for {active_veh['vehicle_number']}**: Driver: **{old_drv_name}** | Weight: **{old_weight} MT**")
+            # INSTANT LIVE ALERT & DRIVER MEMORY
+            if active_veh:
+                open_trip = check_vehicle_has_open_trip(active_veh['vehicle_id'])
+                if open_trip: st.error(f"🚫 STOP! Active Trip Alert: {active_veh['vehicle_number']} is currently ON TRIP (LR: {open_trip['trip_number']}). Close it first.")
+                elif old_drv_name: st.caption(f"ℹ️ **Last Assigned for {active_veh['vehicle_number']}**: Driver: **{old_drv_name}** | Weight: **{old_weight} MT**")
 
             fc1, fc2, fc3, fc4 = st.columns(4)
             with fc1: chosen_drv = st.selectbox("Driver*", driver_keys, index=def_drv_idx, key="d_drv")
             
-            # Value forces actual number into box, but no stepper arrows means it's just text to edit
-            with fc2: wmt = st.number_input("Loaded MT*", value=calc_cap, step=0.5, key="d_wmt")
+            with fc2: wmt_in = st.number_input("Loaded MT*", value=None, placeholder=f"Auto: {calc_cap}", key="d_wmt"); wmt = wmt_in if wmt_in is not None else calc_cap
             
             calc_bata = lookup_driver_bata_slab(origin_terminal, dest_terminal, cargo_category, calc_cap) if (origin_terminal and dest_terminal) else 0.0
-            with fc3: bata = st.number_input("Driver Bata (₹)*", value=calc_bata, step=100.0, key="d_bata")
+            with fc3: b_in = st.number_input("Driver Bata (₹)*", value=None, placeholder=f"Slab: ₹{calc_bata}", key="d_bata"); bata = b_in if b_in is not None else calc_bata
             
             with fc4: adv_input = st.number_input("Advance (₹)", value=None, placeholder="0.00", key="d_adv"); adv = adv_input or 0.0
 
             oc1, oc2, oc3, oc4 = st.columns(4)
             calc_odo = get_latest_odometer_for_truck(active_veh['vehicle_id']) if active_veh else 0.0
-            with oc1: start_km = st.number_input("Start KM*", value=calc_odo, step=10.0, key="d_skm")
+            with oc1: start_input = st.number_input("Start KM*", value=None, placeholder=f"Last: {calc_odo}", key="d_skm"); start_km = start_input if start_input is not None else calc_odo
             with oc2: end_input = st.number_input("Expected End KM", value=None, placeholder="0.0", key="d_ekm"); end_km = end_input or 0.0
             with oc3: fuel_input = st.number_input("Diesel (L)", value=None, placeholder="0.0", key="d_fuel"); fuel_l = fuel_input or 0.0
             with oc4: st.write(""); is_tank_full = st.checkbox("⛽ Mark Tank Full", value=False, key="d_tf")
@@ -629,7 +658,7 @@ elif selected_nav == "🚛 Operations":
                         confirm_action_dialog(f"reopen {t_data['trip_number']}", lambda: (run_query("UPDATE trips SET trip_status = 'IN_TRANSIT', pod_number = NULL WHERE trip_id = %s;", (t_data['trip_id'],), fetch=False), run_query("UPDATE vehicles SET current_status = 'IN_TRANSIT' WHERE vehicle_id = %s;", (t_data['vehicle_id'],), fetch=False), get_cached_vehicles.clear(), trigger_toast_and_rerun("SUCCESS", "Reopened!")))
                 with act2:
                     if st.button(f"🗑️ Delete Trip", type="secondary", use_container_width=True):
-                        confirm_action_dialog(f"delete {t_data['trip_number']}", lambda: (run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (t_data['trip_id'],), fetch=False), run_query("DELETE FROM trips WHERE trip_id = %s", (t_data['trip_id'],), fetch=False), get_cached_vehicles.clear(), trigger_toast_and_rerun("SUCCESS", "Deleted.")))
+                        confirm_action_dialog(f"delete {t_data['trip_number']}", lambda: (run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (t_data['trip_id'],), fetch=False), run_query("DELETE FROM trips WHERE trip_id = %s", (t_data['trip_id'],), fetch=False), run_query("UPDATE vehicles SET current_status = 'AVAILABLE_FOR_LOAD', status_remarks = 'Available' WHERE vehicle_id = %s AND current_status = 'IN_TRANSIT'", (t_data['vehicle_id'],), fetch=False), get_cached_vehicles.clear(), trigger_toast_and_rerun("SUCCESS", "Deleted.")))
 
     with op_tabs[3]:
         st.markdown('<div class="section-header">Manual Status Override</div>', unsafe_allow_html=True)
@@ -953,6 +982,7 @@ elif selected_nav == "📊 Financials":
 
 elif selected_nav == "⚙️ Setup":
     if st.session_state.user_role != "MASTER": st.warning("Restricted to Master"); st.stop()
+    st.markdown('<div class="section-header">Master Database Configuration</div>', unsafe_allow_html=True)
     t_v, t_d, t_r, t_b, t_a = st.tabs(["🚚 Trucks", "👨‍✈️ Drivers", "🛣️ Slabs", "💰 Bata", "📋 System Audit"])
     
     with t_v:
@@ -1059,4 +1089,3 @@ elif selected_nav == "⚙️ Setup":
                 st.write("")
                 if st.button("🗑️ Purge Trip", type="secondary", use_container_width=True):
                     confirm_action_dialog(f"purge Trip #{del_id}", lambda: (run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (del_id,), fetch=False), run_query("DELETE FROM trips WHERE trip_id = %s", (del_id,), fetch=False), trigger_toast_and_rerun("SUCCESS", "Purged.")))
-        else: st.info("No records match criteria.")
