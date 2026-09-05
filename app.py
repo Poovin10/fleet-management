@@ -208,6 +208,28 @@ def get_cached_drivers(include_inactive=False):
     cond = "" if include_inactive else "WHERE is_active = TRUE"
     return run_query(f"SELECT driver_id, driver_code, full_name, phone_number, license_number, license_expiry_date, is_active FROM drivers {cond} ORDER BY full_name ASC")
 
+@st.cache_data(ttl=60)
+def get_cached_routes(cargo_type=None, capacity=None, origin=None):
+    query, params = "SELECT * FROM destinations_freight_master WHERE is_active = TRUE", []
+    if cargo_type: query += " AND cargo_type = %s"; params.append(cargo_type)
+    if origin: query += " AND UPPER(origin) = UPPER(%s)"; params.append(origin.strip())
+    if cargo_type == "BAG" and capacity in [25.0, 30.0]: query += " AND capacity_tons IN (25.0, 30.0)"
+    elif capacity: query += " AND capacity_tons = %s"; params.append(capacity)
+    query += " ORDER BY destination_name ASC, capacity_tons ASC"
+    routes = run_query(query, tuple(params))
+    if cargo_type == "BAG" and routes:
+        seen, deduped = set(), []
+        for r in routes:
+            key = (r['origin'].upper(), r['destination_name'].upper())
+            if key not in seen: seen.add(key); deduped.append(r)
+        return deduped
+    return routes
+
+@st.cache_data(ttl=60)
+def get_cached_bata_rules():
+    try: return run_query("SELECT bata_rule_id, origin, destination_name, cargo_type, capacity_tons, standard_bata_inr FROM driver_bata_master ORDER BY origin ASC, destination_name ASC, cargo_type ASC, capacity_tons ASC;")
+    except Exception: return run_query("SELECT bata_rule_id, destination_name, cargo_type, capacity_tons, standard_bata_inr FROM driver_bata_master ORDER BY destination_name ASC, cargo_type ASC, capacity_tons ASC;")
+
 @st.cache_data(ttl=300)
 def get_cached_diesel_rate():
     res = run_query("SELECT setting_value FROM system_settings WHERE setting_key = 'diesel_rate_per_litre'")
@@ -224,6 +246,22 @@ def get_latest_odometer_for_truck(vehicle_id):
     if res2 and res2[0].get('filling_odometer_km'): return float(res2[0]['filling_odometer_km'])
     res3 = run_query("SELECT end_km FROM trips WHERE vehicle_id = %s AND trip_status = 'COMPLETED' ORDER BY trip_id DESC LIMIT 1", (vehicle_id,))
     return float(res3[0]['end_km']) if res3 and res3[0].get('end_km') else 0.0
+
+def check_lr_exists(trip_no):
+    if not trip_no or not trip_no.strip(): return None
+    res = run_query("SELECT t.trip_id, t.trip_number, t.trip_status, t.trip_start_date, t.start_km, v.vehicle_number, d.full_name AS driver_name FROM trips t JOIN vehicles v ON t.vehicle_id = v.vehicle_id JOIN drivers d ON t.primary_driver_id = d.driver_id WHERE LOWER(t.trip_number) = LOWER(%s) LIMIT 1;", (trip_no.strip(),))
+    return res[0] if res else None
+
+def check_vehicle_has_open_trip(vehicle_id):
+    res = run_query("SELECT trip_id, trip_number FROM trips WHERE vehicle_id = %s AND trip_status != 'COMPLETED' LIMIT 1;", (vehicle_id,))
+    return res[0] if res else None
+
+def check_duplicate_diesel_entry(vehicle_id, fuel_date, litres, filling_km=None, lr_number=None, exclude_fuel_log_id=None):
+    query, params = "SELECT fuel_log_id FROM diesel_fuel_logs WHERE vehicle_id = %s AND fuel_date::date = %s AND ABS(litres_filled - %s) < 0.01", [vehicle_id, fuel_date, litres]
+    if exclude_fuel_log_id: query += " AND fuel_log_id != %s"; params.append(exclude_fuel_log_id)
+    if filling_km and filling_km > 0: query += " AND ABS(COALESCE(filling_odometer_km, 0) - %s) < 0.1"; params.append(filling_km)
+    elif lr_number and lr_number.strip() and lr_number.strip().upper() != "SUNDRY": query += " AND UPPER(COALESCE(lr_number, '')) = UPPER(%s)"; params.append(lr_number.strip())
+    return len(run_query(query, tuple(params))) > 0
 
 def lookup_driver_bata_slab(origin, dest_name, cargo_type, capacity_tons):
     if not origin or not dest_name: return 0.00
@@ -266,12 +304,13 @@ with h2:
         st.session_state.update({"authenticated": False, "username": None, "user_role": None})
         st.rerun()
 
-# --- The Magic Seamless Navigation Bar ---
+# --- CSS Styled Radio Buttons for Seamless Navigation ---
 if st.session_state.user_role == "MASTER":
     MODULE_LIST = ["🏠 Dashboard", "🚛 Operations", "⛽ Fuel & Adv", "🛠️ Workshop & Tyres", "📊 Financials", "⚙️ Setup"]
 else:
     MODULE_LIST = ["🏠 Dashboard", "📊 Financials"]
 
+# Horizontal radio renders as the top nav bar thanks to the CSS injected at the top
 selected_nav = st.radio("Navigation Menu", MODULE_LIST, horizontal=True, label_visibility="collapsed")
 
 # Pre-fetch global lookups to prevent crashes in tabs
@@ -300,57 +339,58 @@ if selected_nav == "🏠 Dashboard":
     stat_counts = df_v['current_status'].value_counts().to_dict() if not df_v.empty else {}
     def get_c(key): return stat_counts.get(key, 0)
 
+# ZERO INDENTATION FOR HTML STRING TO PREVENT MARKDOWN CODE BLOCKS
     html_dashboard = f"""
-    <div class="wm-card">
-        <div class="wm-card-title">Operations Summary ({date.today().strftime('%B %Y')})</div>
-        <div class="wm-flex-row">
-            <div class="wm-metric-box">
-                <div class="wm-metric-label">Fleet Size</div>
-                <div class="wm-metric-val">{total_veh}</div>
-            </div>
-            <div class="wm-metric-box">
-                <div class="wm-metric-label">Active Trips</div>
-                <div class="wm-metric-val">{active_trips}</div>
-            </div>
-            <div class="wm-metric-box blue-tint">
-                <div class="wm-metric-label" style="color: #4338CA;">Tonnage Dispatched</div>
-                <div class="wm-metric-val" style="color: #3730A3;">{month_tons:,.1f} MT</div>
-            </div>
-            <div class="wm-metric-box red-tint">
-                <div class="wm-metric-label" style="color: #B91C1C;">Pending PODs</div>
-                <div class="wm-metric-val" style="color: #991B1B;">{active_trips}</div>
-            </div>
+<div class="wm-card">
+    <div class="wm-card-title">Operations Summary ({date.today().strftime('%B %Y')})</div>
+    <div class="wm-flex-row">
+        <div class="wm-metric-box">
+            <div class="wm-metric-label">Fleet Size</div>
+            <div class="wm-metric-val">{total_veh}</div>
+        </div>
+        <div class="wm-metric-box">
+            <div class="wm-metric-label">Active Trips</div>
+            <div class="wm-metric-val">{active_trips}</div>
+        </div>
+        <div class="wm-metric-box blue-tint">
+            <div class="wm-metric-label" style="color: #4338CA;">Tonnage Dispatched</div>
+            <div class="wm-metric-val" style="color: #3730A3;">{month_tons:,.1f} MT</div>
+        </div>
+        <div class="wm-metric-box red-tint">
+            <div class="wm-metric-label" style="color: #B91C1C;">Pending PODs</div>
+            <div class="wm-metric-val" style="color: #991B1B;">{active_trips}</div>
         </div>
     </div>
+</div>
 
-    <div class="wm-card" style="background: #FEF2F2; border-color: #FEE2E2;">
-        <div class="wm-metric-label" style="color: #991B1B;">Month Freight Generated</div>
-        <div class="wm-metric-val" style="color: #7F1D1D; font-size: 2.2rem;">₹ {month_rev:,.2f}</div>
-    </div>
+<div class="wm-card" style="background: #FEF2F2; border-color: #FEE2E2;">
+    <div class="wm-metric-label" style="color: #991B1B;">Month Freight Generated</div>
+    <div class="wm-metric-val" style="color: #7F1D1D; font-size: 2.2rem;">₹ {month_rev:,.2f}</div>
+</div>
 
-    <div class="wm-card">
-        <div class="wm-card-title">Vehicle Status Monitor</div>
-        <div class="wm-status-grid">
-            <div class="wm-status-pill"><div class="wm-status-badge">{get_c('IN_TRANSIT')}</div> In Transit</div>
-            <div class="wm-status-pill"><div class="wm-status-badge">{get_c('WAITING_FOR_LOAD')}</div> Plant Loading</div>
-            <div class="wm-status-pill"><div class="wm-status-badge">{get_c('WAITING_FOR_UNLOAD')}</div> Site Unloading</div>
-            <div class="wm-status-pill"><div class="wm-status-badge">{get_c('AVAILABLE_FOR_LOAD')}</div> Ready / Available</div>
-            <div class="wm-status-pill"><div class="wm-status-badge">{get_c('DRIVER_UNAVAILABLE')}</div> No Driver / Leave</div>
+<div class="wm-card">
+    <div class="wm-card-title">Vehicle Status Monitor</div>
+    <div class="wm-status-grid">
+        <div class="wm-status-pill"><div class="wm-status-badge">{get_c('IN_TRANSIT')}</div> In Transit</div>
+        <div class="wm-status-pill"><div class="wm-status-badge">{get_c('WAITING_FOR_LOAD')}</div> Plant Loading</div>
+        <div class="wm-status-pill"><div class="wm-status-badge">{get_c('WAITING_FOR_UNLOAD')}</div> Site Unloading</div>
+        <div class="wm-status-pill"><div class="wm-status-badge">{get_c('AVAILABLE_FOR_LOAD')}</div> Ready / Available</div>
+        <div class="wm-status-pill"><div class="wm-status-badge">{get_c('DRIVER_UNAVAILABLE')}</div> No Driver / Leave</div>
+    </div>
+    
+    <div class="wm-workshop-box">
+        <div class="wm-card-title" style="margin-bottom: 8px;">Workshop & Maintenance</div>
+        <div class="wm-workshop-row">
+            <span>Active Repairs</span>
+            <span class="text-orange">{get_c('WORKSHOP_MAINTENANCE')}</span>
         </div>
-        
-        <div class="wm-workshop-box">
-            <div class="wm-card-title" style="margin-bottom: 8px;">Workshop & Maintenance</div>
-            <div class="wm-workshop-row">
-                <span>Active Repairs</span>
-                <span class="text-orange">{get_c('WORKSHOP_MAINTENANCE')}</span>
-            </div>
-            <div class="wm-workshop-row">
-                <span>Available Assets</span>
-                <span class="text-blue">{max(0, total_veh - get_c('WORKSHOP_MAINTENANCE') - get_c('DRIVER_UNAVAILABLE'))}</span>
-            </div>
+        <div class="wm-workshop-row">
+            <span>Available Assets</span>
+            <span class="text-blue">{max(0, total_veh - get_c('WORKSHOP_MAINTENANCE') - get_c('DRIVER_UNAVAILABLE'))}</span>
         </div>
     </div>
-    """
+</div>
+"""
     st.markdown(html_dashboard, unsafe_allow_html=True)
     
     with st.expander("🔍 View Detailed Truck Status Table"):
@@ -1000,4 +1040,3 @@ elif selected_nav == "⚙️ Setup":
                 st.write("")
                 if st.button("🗑️ Purge Trip", type="secondary", use_container_width=True):
                     confirm_action_dialog(f"purge Trip #{del_id}", lambda: (run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (del_id,), fetch=False), run_query("DELETE FROM trips WHERE trip_id = %s", (del_id,), fetch=False), trigger_toast_and_rerun("SUCCESS", "Purged.")))
-        else: st.info("No records match criteria.")
