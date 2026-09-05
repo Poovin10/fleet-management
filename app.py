@@ -16,7 +16,7 @@ except ImportError:
     HAS_FPDF = False
 
 # ==============================================================================
-# 1. PAGE CONFIGURATION & WONDERMOVE-STYLE CSS
+# 1. PAGE CONFIGURATION & ANIMATED BUTTON CSS
 # ==============================================================================
 st.set_page_config(page_title="KSS Roadways ERP", layout="wide", initial_sidebar_state="collapsed")
 
@@ -24,63 +24,81 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     
-    html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !important; color: #111827 !important; background: #F4F7F9 !important; }
+    html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !important; color: #111827 !important; background: #F9FAFB !important; }
     header, #MainMenu, footer { visibility: hidden; display: none !important; }
     
     /* Layout Constraints */
     .main .block-container {
-        padding-top: 1rem !important; padding-bottom: 3rem !important;
+        padding-top: 1.5rem !important; padding-bottom: 3rem !important;
         padding-left: 2rem !important; padding-right: 2rem !important;
-        max-width: 1450px !important; margin: 0 auto;
+        max-width: 1400px !important; margin: 0 auto;
     }
 
-    /* Transform Native Radio into a Sleek Top Navigation Bar */
+    /* Transform Native Radio into Animated Floating Buttons */
     div[role="radiogroup"] {
-        flex-direction: row !important; flex-wrap: wrap !important; gap: 0px !important;
-        border-bottom: 2px solid #E5E7EB; padding-bottom: 0px; margin-bottom: 24px;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 14px !important;
+        border-bottom: 2px solid #E5E7EB;
+        padding-bottom: 20px;
+        margin-bottom: 24px;
     }
     div[role="radiogroup"] > label {
-        padding: 12px 20px !important; background: transparent !important;
-        border-radius: 0px !important; border: none !important; border-bottom: 3px solid transparent !important;
-        margin-right: 8px; cursor: pointer; transition: all 0.2s ease;
+        padding: 12px 24px !important;
+        background: #FFFFFF !important;
+        border: 1px solid #D1D5DB !important;
+        border-radius: 8px !important;
+        margin: 0 !important;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
-    div[role="radiogroup"] > label:hover { color: #4F46E5 !important; }
+    div[role="radiogroup"] > label:hover { 
+        transform: translateY(-4px) !important;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.08) !important;
+        border-color: #4F46E5 !important;
+    }
     div[role="radiogroup"] > label[data-checked="true"] {
-        border-bottom: 3px solid #4F46E5 !important; color: #4F46E5 !important; font-weight: 700 !important;
+        background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%) !important;
+        border-color: transparent !important;
+        box-shadow: 0 6px 15px rgba(79, 70, 229, 0.35) !important;
+        transform: translateY(-2px) !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; } /* Hide the circle */
-    div[role="radiogroup"] > label > div:last-child { font-size: 0.95rem !important; font-weight: 600; margin-left: 0 !important; }
+    div[role="radiogroup"] > label > div:last-child { font-size: 0.95rem !important; font-weight: 700; margin-left: 0 !important; transition: color 0.3s ease; }
+    div[role="radiogroup"] > label[data-checked="true"] > div:last-child { color: #FFFFFF !important; }
 
     /* Wondermove Cards */
     .wm-card {
         background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 12px;
-        padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+        padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
     }
-    .wm-card-title { font-size: 1rem; font-weight: 700; color: #111827; margin-bottom: 16px; }
+    .wm-card-title { font-size: 1.1rem; font-weight: 800; color: #111827; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
     .wm-flex-row { display: flex; flex-wrap: wrap; gap: 16px; }
     .wm-metric-box { flex: 1; min-width: 150px; border: 1px solid #F3F4F6; border-radius: 8px; padding: 16px; background: #FFFFFF; }
     .wm-metric-box.blue-tint { background: #EEF2FF; border-color: #E0E7FF; }
     .wm-metric-box.red-tint { background: #FEF2F2; border-color: #FEE2E2; }
-    .wm-metric-label { font-size: 0.75rem; font-weight: 600; color: #6B7280; text-transform: uppercase; margin-bottom: 8px; }
-    .wm-metric-val { font-size: 1.5rem; font-weight: 700; color: #111827; }
+    .wm-metric-label { font-size: 0.75rem; font-weight: 700; color: #6B7280; text-transform: uppercase; margin-bottom: 8px; }
+    .wm-metric-val { font-size: 1.6rem; font-weight: 800; color: #111827; }
     
     .wm-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-    .wm-status-pill { display: flex; align-items: center; border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 12px; background: #FFFFFF; font-size: 0.85rem; font-weight: 500; color: #374151; }
-    .wm-status-badge { background: #F3F4F6; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: 12px; color: #111827; border: 1px solid #E5E7EB; }
+    .wm-status-pill { display: flex; align-items: center; border: 1px solid #E5E7EB; border-radius: 8px; padding: 10px 14px; background: #FFFFFF; font-size: 0.9rem; font-weight: 600; color: #374151; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .wm-status-badge { background: #F3F4F6; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: 800; margin-right: 12px; color: #111827; border: 1px solid #E5E7EB; }
     
-    .wm-workshop-box { background: #FAFAFA; border: 1px solid #EAEAEA; border-radius: 8px; padding: 16px; margin-top: 16px; }
-    .wm-workshop-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EAEAEA; font-size: 0.85rem; font-weight: 600; }
+    .wm-workshop-box { background: #FAFAFA; border: 1px solid #EAEAEA; border-radius: 8px; padding: 20px; margin-top: 20px; }
+    .wm-workshop-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #EAEAEA; font-size: 0.95rem; font-weight: 700; }
     .wm-workshop-row:last-child { border-bottom: none; }
-    .text-orange { color: #D97706; } .text-blue { color: #2563EB; }
+    .text-orange { color: #D97706; font-size: 1.1rem; } 
+    .text-blue { color: #2563EB; font-size: 1.1rem; }
 
     /* Form UI Override */
-    div[data-testid="stForm"] { background: #FFFFFF !important; border: 1px solid #EAEAEA !important; border-radius: 12px !important; padding: 24px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; }
+    div[data-testid="stForm"] { background: #FFFFFF !important; border: 1px solid #EAEAEA !important; border-radius: 12px !important; padding: 24px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; }
     div[data-testid="stMetricValue"] { font-size: 1.6rem !important; font-weight: 800 !important; color: #111827 !important; }
-    div[data-testid="stMetricLabel"] { font-size: 0.75rem !important; font-weight: 600 !important; color: #6B7280 !important; text-transform: uppercase !important; }
-    .section-header { font-size: 1.05rem !important; font-weight: 700 !important; color: #111827 !important; border-bottom: 1px solid #E5E7EB !important; padding-bottom: 6px !important; margin: 20px 0 16px 0 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; }
+    div[data-testid="stMetricLabel"] { font-size: 0.75rem !important; font-weight: 700 !important; color: #6B7280 !important; text-transform: uppercase !important; }
+    .section-header { font-size: 1.05rem !important; font-weight: 800 !important; color: #111827 !important; border-bottom: 1px solid #E5E7EB !important; padding-bottom: 6px !important; margin: 20px 0 16px 0 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; }
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { height: 42px !important; font-size: 0.9rem !important; font-weight: 500 !important; border-radius: 6px !important; background-color: #FFFFFF !important; border: 1px solid #D1D5DB !important; color: #111827 !important; }
     .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, .stSelectbox>div>div>div:focus { border-color: #4F46E5 !important; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1) !important; }
-    .stTextInput>div>div>input:disabled { background-color: #F3F4F6 !important; color: #6B7280 !important; font-weight: 600 !important; }
+    .stTextInput>div>div>input:disabled { background-color: #F3F4F6 !important; color: #6B7280 !important; font-weight: 700 !important; border-color: #E2E8F0 !important; }
     .stButton>button { height: 42px !important; font-weight: 600 !important; border-radius: 6px !important; }
     .stButton>button[kind="primary"] { background: #111827 !important; color: #FFFFFF !important; border: none !important; }
     .stButton>button[kind="primary"]:hover { background: #374151 !important; }
@@ -298,20 +316,19 @@ if not st.session_state.authenticated:
 h1, h2 = st.columns([9, 1])
 with h1:
     role_badge = "👑 Master" if st.session_state.user_role == "MASTER" else "👁️ Viewer"
-    st.markdown(f"<h3 style='margin-bottom: 0px; font-weight: 800; color: #111827;'>KSS Roadways <span style='font-size: 11px; font-weight: 600; padding: 4px 8px; background: #EEF2FF; color: #4F46E5; border-radius: 4px; vertical-align: middle;'>{role_badge}</span></h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='margin-bottom: 0px; font-weight: 800; color: #111827;'>KSS Roadways <span style='font-size: 11px; font-weight: 700; padding: 4px 10px; background: #EEF2FF; color: #4F46E5; border-radius: 6px; vertical-align: middle;'>{role_badge}</span></h3>", unsafe_allow_html=True)
 with h2:
     if st.button("🚪 Logout", use_container_width=True):
         st.session_state.update({"authenticated": False, "username": None, "user_role": None})
         st.rerun()
 
-# --- CSS Styled Radio Buttons for Seamless Navigation ---
+# --- CSS Styled Button Navigation Bar ---
 if st.session_state.user_role == "MASTER":
     MODULE_LIST = ["🏠 Dashboard", "🚛 Operations", "⛽ Fuel & Adv", "🛠️ Workshop & Tyres", "📊 Financials", "⚙️ Setup"]
 else:
     MODULE_LIST = ["🏠 Dashboard", "📊 Financials"]
 
-# Horizontal radio renders as the top nav bar thanks to the CSS injected at the top
-selected_nav = st.radio("Navigation Menu", MODULE_LIST, horizontal=True, label_visibility="collapsed")
+selected_nav = st.radio("Menu", MODULE_LIST, horizontal=True, label_visibility="collapsed")
 
 # Pre-fetch global lookups to prevent crashes in tabs
 global_vehicles = get_cached_vehicles()
@@ -339,58 +356,24 @@ if selected_nav == "🏠 Dashboard":
     stat_counts = df_v['current_status'].value_counts().to_dict() if not df_v.empty else {}
     def get_c(key): return stat_counts.get(key, 0)
 
-# ZERO INDENTATION FOR HTML STRING TO PREVENT MARKDOWN CODE BLOCKS
-    html_dashboard = f"""
-<div class="wm-card">
-    <div class="wm-card-title">Operations Summary ({date.today().strftime('%B %Y')})</div>
-    <div class="wm-flex-row">
-        <div class="wm-metric-box">
-            <div class="wm-metric-label">Fleet Size</div>
-            <div class="wm-metric-val">{total_veh}</div>
-        </div>
-        <div class="wm-metric-box">
-            <div class="wm-metric-label">Active Trips</div>
-            <div class="wm-metric-val">{active_trips}</div>
-        </div>
-        <div class="wm-metric-box blue-tint">
-            <div class="wm-metric-label" style="color: #4338CA;">Tonnage Dispatched</div>
-            <div class="wm-metric-val" style="color: #3730A3;">{month_tons:,.1f} MT</div>
-        </div>
-        <div class="wm-metric-box red-tint">
-            <div class="wm-metric-label" style="color: #B91C1C;">Pending PODs</div>
-            <div class="wm-metric-val" style="color: #991B1B;">{active_trips}</div>
-        </div>
-    </div>
-</div>
-
-<div class="wm-card" style="background: #FEF2F2; border-color: #FEE2E2;">
-    <div class="wm-metric-label" style="color: #991B1B;">Month Freight Generated</div>
-    <div class="wm-metric-val" style="color: #7F1D1D; font-size: 2.2rem;">₹ {month_rev:,.2f}</div>
-</div>
-
-<div class="wm-card">
-    <div class="wm-card-title">Vehicle Status Monitor</div>
-    <div class="wm-status-grid">
-        <div class="wm-status-pill"><div class="wm-status-badge">{get_c('IN_TRANSIT')}</div> In Transit</div>
-        <div class="wm-status-pill"><div class="wm-status-badge">{get_c('WAITING_FOR_LOAD')}</div> Plant Loading</div>
-        <div class="wm-status-pill"><div class="wm-status-badge">{get_c('WAITING_FOR_UNLOAD')}</div> Site Unloading</div>
-        <div class="wm-status-pill"><div class="wm-status-badge">{get_c('AVAILABLE_FOR_LOAD')}</div> Ready / Available</div>
-        <div class="wm-status-pill"><div class="wm-status-badge">{get_c('DRIVER_UNAVAILABLE')}</div> No Driver / Leave</div>
-    </div>
-    
-    <div class="wm-workshop-box">
-        <div class="wm-card-title" style="margin-bottom: 8px;">Workshop & Maintenance</div>
-        <div class="wm-workshop-row">
-            <span>Active Repairs</span>
-            <span class="text-orange">{get_c('WORKSHOP_MAINTENANCE')}</span>
-        </div>
-        <div class="wm-workshop-row">
-            <span>Available Assets</span>
-            <span class="text-blue">{max(0, total_veh - get_c('WORKSHOP_MAINTENANCE') - get_c('DRIVER_UNAVAILABLE'))}</span>
-        </div>
-    </div>
-</div>
-"""
+    # Flattened HTML string to prevent Markdown code block interference
+    html_dashboard = (
+        f"<div class='wm-card'><div class='wm-card-title'>Operations Summary ({date.today().strftime('%B %Y')})</div>"
+        f"<div class='wm-flex-row'><div class='wm-metric-box'><div class='wm-metric-label'>Fleet Size</div><div class='wm-metric-val'>{total_veh}</div></div>"
+        f"<div class='wm-metric-box'><div class='wm-metric-label'>Active Trips</div><div class='wm-metric-val'>{active_trips}</div></div>"
+        f"<div class='wm-metric-box blue-tint'><div class='wm-metric-label' style='color: #4338CA;'>Tonnage Dispatched</div><div class='wm-metric-val' style='color: #3730A3;'>{month_tons:,.1f} MT</div></div>"
+        f"<div class='wm-metric-box red-tint'><div class='wm-metric-label' style='color: #B91C1C;'>Pending PODs</div><div class='wm-metric-val' style='color: #991B1B;'>{active_trips}</div></div></div></div>"
+        f"<div class='wm-card' style='background: #FEF2F2; border-color: #FEE2E2;'><div class='wm-metric-label' style='color: #991B1B;'>Month Freight Generated</div><div class='wm-metric-val' style='color: #7F1D1D; font-size: 2.2rem;'>₹ {month_rev:,.2f}</div></div>"
+        f"<div class='wm-card'><div class='wm-card-title'>Vehicle Status Monitor</div><div class='wm-status-grid'>"
+        f"<div class='wm-status-pill'><div class='wm-status-badge'>{get_c('IN_TRANSIT')}</div> In Transit</div>"
+        f"<div class='wm-status-pill'><div class='wm-status-badge'>{get_c('WAITING_FOR_LOAD')}</div> Plant Loading</div>"
+        f"<div class='wm-status-pill'><div class='wm-status-badge'>{get_c('WAITING_FOR_UNLOAD')}</div> Site Unloading</div>"
+        f"<div class='wm-status-pill'><div class='wm-status-badge'>{get_c('AVAILABLE_FOR_LOAD')}</div> Ready / Available</div>"
+        f"<div class='wm-status-pill'><div class='wm-status-badge'>{get_c('DRIVER_UNAVAILABLE')}</div> No Driver / Leave</div></div>"
+        f"<div class='wm-workshop-box'><div class='wm-card-title' style='margin-bottom: 8px;'>Workshop & Maintenance</div>"
+        f"<div class='wm-workshop-row'><span>Active Repairs</span><span class='text-orange'>{get_c('WORKSHOP_MAINTENANCE')}</span></div>"
+        f"<div class='wm-workshop-row'><span>Available Assets</span><span class='text-blue'>{max(0, total_veh - get_c('WORKSHOP_MAINTENANCE') - get_c('DRIVER_UNAVAILABLE'))}</span></div></div></div>"
+    )
     st.markdown(html_dashboard, unsafe_allow_html=True)
     
     with st.expander("🔍 View Detailed Truck Status Table"):
@@ -724,7 +707,6 @@ elif selected_nav == "🛠️ Workshop & Tyres":
                 else: st.info("No workshop bills recorded yet.")
             except Exception: st.info("Workshop module initializing... Please refresh.")
 
-
 elif selected_nav == "📊 Financials":
     fin_tabs = st.tabs(["💵 Driver Settlement", "✏️ Modify Trips", "📈 Analytics & Margins"])
     
@@ -933,7 +915,6 @@ elif selected_nav == "📊 Financials":
 
 elif selected_nav == "⚙️ Setup":
     if st.session_state.user_role != "MASTER": st.warning("Restricted to Master"); st.stop()
-    st.markdown('<div class="section-header">Master Database Configuration</div>', unsafe_allow_html=True)
     t_v, t_d, t_r, t_b, t_a = st.tabs(["🚚 Trucks", "👨‍✈️ Drivers", "🛣️ Freight Slabs", "💰 Bata Slabs", "📋 System Audit Log"])
     
     with t_v:
