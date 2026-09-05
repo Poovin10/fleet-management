@@ -16,7 +16,7 @@ except ImportError:
     HAS_FPDF = False
 
 # ==============================================================================
-# 1. PAGE CONFIGURATION & ENTERPRISE CSS
+# 1. PAGE CONFIGURATION & ANIMATED BUTTON CSS
 # ==============================================================================
 st.set_page_config(page_title="KSS Roadways ERP", layout="wide", initial_sidebar_state="collapsed")
 
@@ -27,39 +27,52 @@ st.markdown("""
     html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif !important; color: #111827 !important; background: #F9FAFB !important; }
     header, #MainMenu, footer { visibility: hidden; display: none !important; }
     
+    /* Layout Constraints */
     .main .block-container {
         padding-top: 1.5rem !important; padding-bottom: 3rem !important;
         padding-left: 2rem !important; padding-right: 2rem !important;
         max-width: 1400px !important; margin: 0 auto;
     }
 
-    /* ALL RADIOS BECOME SLEEK FLOATING BUTTONS (Fixes the Tab Reset Bug) */
+    /* Transform Native Radio into Animated Floating Buttons */
     div[role="radiogroup"] {
-        flex-direction: row !important; flex-wrap: wrap !important; gap: 12px !important;
-        padding-bottom: 8px; margin-bottom: 16px;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 14px !important;
+        border-bottom: 2px solid #E5E7EB;
+        padding-bottom: 20px;
+        margin-bottom: 24px;
     }
     div[role="radiogroup"] > label {
-        padding: 10px 20px !important; background: #FFFFFF !important;
-        border: 1px solid #D1D5DB !important; border-radius: 8px !important;
-        margin: 0 !important; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        padding: 12px 24px !important;
+        background: #FFFFFF !important;
+        border: 1px solid #D1D5DB !important;
+        border-radius: 8px !important;
+        margin: 0 !important;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     div[role="radiogroup"] > label:hover { 
-        transform: translateY(-2px) !important; box-shadow: 0 6px 12px rgba(0,0,0,0.05) !important; border-color: #4F46E5 !important;
+        transform: translateY(-4px) !important;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.08) !important;
+        border-color: #4F46E5 !important;
     }
     div[role="radiogroup"] > label[data-checked="true"] {
         background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%) !important;
-        border-color: transparent !important; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3) !important;
+        border-color: transparent !important;
+        box-shadow: 0 6px 15px rgba(79, 70, 229, 0.35) !important;
+        transform: translateY(-2px) !important;
     }
     div[role="radiogroup"] > label > div:first-child { display: none !important; }
-    div[role="radiogroup"] > label > div:last-child { font-size: 0.90rem !important; font-weight: 700; margin-left: 0 !important; transition: color 0.2s ease; }
+    div[role="radiogroup"] > label > div:last-child { font-size: 0.95rem !important; font-weight: 700; margin-left: 0 !important; transition: color 0.3s ease; }
     div[role="radiogroup"] > label[data-checked="true"] > div:last-child { color: #FFFFFF !important; }
 
-    /* Login Card */
-    .login-card { background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 16px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 400px; margin: 80px auto 0 auto; text-align: center; }
-
-    /* Wondermove Metric Cards */
-    .wm-card { background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03); }
+    /* Wondermove Cards */
+    .wm-card {
+        background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 12px;
+        padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    }
     .wm-card-title { font-size: 1.1rem; font-weight: 800; color: #111827; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
     .wm-flex-row { display: flex; flex-wrap: wrap; gap: 16px; }
     .wm-metric-box { flex: 1; min-width: 150px; border: 1px solid #F3F4F6; border-radius: 8px; padding: 16px; background: #FFFFFF; }
@@ -78,18 +91,27 @@ st.markdown("""
     .text-orange { color: #D97706; font-size: 1.1rem; } 
     .text-blue { color: #2563EB; font-size: 1.1rem; }
 
+    /* Login Card */
+    .login-card { background: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 16px; padding: 40px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 400px; margin: 80px auto 0 auto; text-align: center; }
+
     /* Remove Bulky Number Steppers Aggressively */
     button[aria-label="Step down"], button[aria-label="Step up"] { display: none !important; }
     div[data-testid="stNumberInputContainer"] { border-radius: 4px !important; }
-    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"]::-webkit-inner-spin-button, 
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type="number"] { -moz-appearance: textfield; }
 
+    /* General App UI Overrides */
     div[data-testid="stForm"] { background: #FFFFFF !important; border: 1px solid #EAEAEA !important; border-radius: 12px !important; padding: 24px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; }
     div[data-testid="stMetricValue"] { font-size: 1.6rem !important; font-weight: 800 !important; color: #111827 !important; }
     div[data-testid="stMetricLabel"] { font-size: 0.75rem !important; font-weight: 700 !important; color: #6B7280 !important; text-transform: uppercase !important; }
     .section-header { font-size: 1.05rem !important; font-weight: 800 !important; color: #111827 !important; border-bottom: 1px solid #E5E7EB !important; padding-bottom: 6px !important; margin: 20px 0 16px 0 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; }
     
-    .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { height: 38px !important; font-size: 0.85rem !important; font-weight: 500 !important; border-radius: 4px !important; background-color: #FFFFFF !important; border: 1px solid #D1D5DB !important; color: #111827 !important; }
+    .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { 
+        height: 38px !important; font-size: 0.85rem !important; font-weight: 500 !important; 
+        border-radius: 4px !important; background-color: #FFFFFF !important; 
+        border: 1px solid #D1D5DB !important; color: #111827 !important; 
+    }
     .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, .stSelectbox>div>div>div:focus { border-color: #4F46E5 !important; box-shadow: 0 0 0 1px #4F46E5 !important; }
     .stTextInput>div>div>input:disabled { background-color: #F3F4F6 !important; color: #6B7280 !important; font-weight: 700 !important; border-color: #E2E8F0 !important; }
     
@@ -97,10 +119,15 @@ st.markdown("""
     .stButton>button[kind="primary"] { background: #111827 !important; color: #FFFFFF !important; border: none !important; }
     .stButton>button[kind="primary"]:hover { background: #374151 !important; }
     
-    div[data-testid="column"]:nth-of-type(2) button { height: 32px !important; padding: 2px 10px !important; font-size: 0.75rem !important; background: #F3F4F6 !important; color: #374151 !important; border: 1px solid #E5E7EB !important; }
+    div[data-testid="column"]:nth-of-type(2) button {
+        height: 32px !important; padding: 2px 10px !important; font-size: 0.75rem !important; 
+        background: #F3F4F6 !important; color: #374151 !important; border: 1px solid #E5E7EB !important;
+    }
     div[data-testid="column"]:nth-of-type(2) button:hover { background: #E5E7EB !important; }
 
     div[data-testid="stDataFrame"] > div { border-radius: 6px !important; border: 1px solid #E5E7EB !important; }
+    .stTabs [data-baseweb="tab"] { font-weight: 600 !important; color: #6B7280 !important; padding: 8px 16px !important; } 
+    .stTabs [aria-selected="true"] { color: #111827 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -380,15 +407,13 @@ if selected_nav == "🏠 Dashboard":
             st.dataframe(df_v[['vehicle_number', 'truck_type', 'carrying_capacity_tons', 'status_lbl', 'status_remarks']], hide_index=True, use_container_width=True)
 
 elif selected_nav == "🚛 Operations":
-    
-    # NEW STATEFUL SUB-MENU (Fixes the Tab Reset Bug!)
+    # Stateful Sub-Navigation Fixes Tab Resetting
     op_nav = st.radio("Operations Submenu", ["🚀 Trip Dispatch", "📦 POD Receive & Close", "✏️ Modify Trips", "📍 Quick Status"], horizontal=True, label_visibility="collapsed", key="op_nav")
     
     if op_nav == "🚀 Trip Dispatch":
         st.markdown('<div class="section-header">Initiate Trip Dispatch</div>', unsafe_allow_html=True)
         if not global_vehicles or not global_drivers: st.error("Configure vehicles and drivers first."); st.stop()
         
-        # Reactive Layout - NO FORMS to freeze the UI
         with st.container():
             c1, c2, c3, c4 = st.columns([1.5, 2, 2, 1.5])
             with c1: start_date = st.date_input("Start Date*", date.today(), key="d_sd")
@@ -396,7 +421,6 @@ elif selected_nav == "🚛 Operations":
             with c3: cargo_category = st.selectbox("Cargo Type*", ["BULK", "BAG"], key="d_cg")
             with c4: d_rate_fast = st.number_input("Diesel Rate (₹/L)*", value=get_cached_diesel_rate(), step=0.1, key="d_dr")
 
-            # STRICT REACTIVE FILTER
             if cargo_category == "BULK": filtered_vehicles = [v for v in global_vehicles if "BULK" in str(v.get('truck_type', '')).upper()]
             else: filtered_vehicles = [v for v in global_vehicles if "BULK" not in str(v.get('truck_type', '')).upper()]
 
@@ -412,7 +436,6 @@ elif selected_nav == "🚛 Operations":
                     sel_veh_label = st.selectbox(f"Assigned Truck ({cargo_category} Only)*", ["-- SELECT TRUCK --"] + list(v_map.keys()), key="d_trk")
                     active_veh = v_map.get(sel_veh_label)
 
-            # Reactive Data Mapping based on selected truck
             driver_keys = ["-- SELECT DRIVER --"] + list(d_dict.keys())
             def_drv_idx = 0
             calc_cap = 30.0
@@ -424,8 +447,7 @@ elif selected_nav == "🚛 Operations":
                 if old_drv_id:
                     for i, k in enumerate(driver_keys):
                         if k != "-- SELECT DRIVER --" and int(d_dict[k]['driver_id']) == int(old_drv_id):
-                            def_drv_idx = i
-                            break
+                            def_drv_idx = i; break
 
             with c6: chosen_source = st.selectbox("Source Hub*", ["-- SELECT SOURCE --"] + STANDARD_SOURCES + ["CUSTOM"], key="d_src")
             origin_terminal = st.text_input("Enter Custom Source", key="d_csrc") if chosen_source == "CUSTOM" else chosen_source
@@ -450,36 +472,41 @@ elif selected_nav == "🚛 Operations":
 
             st.markdown("<hr style='margin:10px 0; border-color:#EAEAEA;'>", unsafe_allow_html=True)
             
-            # INSTANT LIVE ALERT & DRIVER MEMORY
+            # LIVE ANOMALY ALERTS
             if active_veh:
                 open_trip = check_vehicle_has_open_trip(active_veh['vehicle_id'])
                 if open_trip: st.error(f"🚫 STOP! Active Trip Alert: {active_veh['vehicle_number']} is currently ON TRIP (LR: {open_trip['trip_number']}). Close it first.")
                 elif old_drv_name: st.caption(f"ℹ️ **Last Assigned for {active_veh['vehicle_number']}**: Driver: **{old_drv_name}** | Weight: **{old_weight} MT**")
 
             fc1, fc2, fc3, fc4 = st.columns(4)
-            with fc1: chosen_drv = st.selectbox("Driver*", driver_keys, index=def_drv_idx, key="d_drv")
+            # DYNAMIC DRIVER KEY: Resets perfectly when truck changes
+            veh_key = active_veh['vehicle_id'] if active_veh else 'none'
+            with fc1: chosen_drv = st.selectbox("Driver*", driver_keys, index=def_drv_idx, key=f"d_drv_{veh_key}")
             
-            with fc2: wmt_in = st.number_input("Loaded MT*", value=None, placeholder=f"Auto: {calc_cap}", key="d_wmt"); wmt = wmt_in if wmt_in is not None else calc_cap
+            with fc2: wmt_in = st.number_input("Loaded MT*", value=None, placeholder=f"Auto: {calc_cap}", key=f"d_wmt_{veh_key}"); wmt = wmt_in if wmt_in is not None else calc_cap
             
             calc_bata = lookup_driver_bata_slab(origin_terminal, dest_terminal, cargo_category, calc_cap) if (origin_terminal and dest_terminal) else 0.0
-            with fc3: b_in = st.number_input("Driver Bata (₹)*", value=None, placeholder=f"Slab: ₹{calc_bata}", key="d_bata"); bata = b_in if b_in is not None else calc_bata
+            with fc3: b_in = st.number_input("Driver Bata (₹)*", value=None, placeholder=f"Slab: ₹{calc_bata}", key=f"d_bata_{veh_key}_{dest_terminal}"); bata = b_in if b_in is not None else calc_bata
             
             with fc4: adv_input = st.number_input("Advance (₹)", value=None, placeholder="0.00", key="d_adv"); adv = adv_input or 0.0
 
             oc1, oc2, oc3, oc4 = st.columns(4)
             calc_odo = get_latest_odometer_for_truck(active_veh['vehicle_id']) if active_veh else 0.0
-            with oc1: start_input = st.number_input("Start KM*", value=None, placeholder=f"Last: {calc_odo}", key="d_skm"); start_km = start_input if start_input is not None else calc_odo
+            with oc1: start_input = st.number_input("Start KM*", value=None, placeholder=f"Last: {calc_odo}", key=f"d_skm_{veh_key}"); start_km = start_input if start_input is not None else calc_odo
             with oc2: end_input = st.number_input("Expected End KM", value=None, placeholder="0.0", key="d_ekm"); end_km = end_input or 0.0
             with oc3: fuel_input = st.number_input("Diesel (L)", value=None, placeholder="0.0", key="d_fuel"); fuel_l = fuel_input or 0.0
             with oc4: st.write(""); is_tank_full = st.checkbox("⛽ Mark Tank Full", value=False, key="d_tf")
 
             st.write("")
             if st.button("🚀 Dispatch Trip", type="primary", use_container_width=True):
-                if not all([active_veh, lr_no, dest_terminal, origin_terminal != "-- SELECT SOURCE --", chosen_drv != "-- SELECT DRIVER --"]): show_error_toast("Fill all mandatory fields.")
+                # STRICT ANOMALY GATEWAY
+                if not all([active_veh, lr_no, dest_terminal, origin_terminal != "-- SELECT SOURCE --", chosen_drv != "-- SELECT DRIVER --"]): 
+                    show_error_toast("Fill all mandatory fields.")
+                elif wmt <= 0: show_error_toast("⚠️ Anomaly Detected: Loaded MT cannot be zero.")
+                elif rate_mt <= 0: show_error_toast("⚠️ Anomaly Detected: No Freight Rate assigned for this destination.")
+                elif bata <= 0: show_error_toast("⚠️ Anomaly Detected: No Driver Bata entered.")
                 elif check_vehicle_has_open_trip(active_veh['vehicle_id']): show_error_toast(f"Truck has an active trip already.")
                 elif run_query("SELECT trip_id FROM trips WHERE LOWER(trip_number) = LOWER(%s)", (lr_no,)): show_error_toast(f"LR '{lr_no}' already exists.")
-                elif fuel_l > 0 and check_duplicate_diesel_entry(active_veh['vehicle_id'], start_date, fuel_l, filling_km=start_km, lr_number=lr_no):
-                    show_error_toast("A near-identical diesel entry already exists for this truck/date/litres.")
                 else:
                     def run_dispatch():
                         calc_km = (end_km - start_km) if end_km > start_km else std_km
@@ -627,18 +654,22 @@ elif selected_nav == "🚛 Operations":
 
                     st.write("")
                     if st.form_submit_button("💾 Commit Updates", type="primary"):
-                        def execute_mod_trip():
-                            try:
-                                f_c = round(e_fuel_l * get_cached_diesel_rate(), 2)
-                                short = max(0.0, e_ton - e_unloaded_mt)
-                                run_query("UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s, start_km=%s, end_km=%s, total_km_run=%s, loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, shortage_mt=%s, freight_revenue=%s, fuel_litres=%s, fuel_expense=%s, driver_bata=%s, halt_bata=%s, cash_advance_issued=%s, enroute_repairs_maintenance=%s, pod_number=%s, trip_status=%s, is_tank_full=%s WHERE trip_id=%s;", (e_sdate, e_edate, e_lr, e_orig, e_dest, e_start_km, e_end_km, e_total_km, e_ton, e_unloaded_mt, e_ton, short, e_freight, e_fuel_l, f_c, e_bata, e_halt_bata, e_adv, e_claims, e_pod_no or None, e_trip_status, e_is_tank_full, t_data['trip_id']), fetch=False)
-                                st_u = "AVAILABLE_FOR_LOAD" if e_trip_status == "COMPLETED" else "IN_TRANSIT"
-                                run_query("UPDATE vehicles SET current_status = %s WHERE vehicle_id = %s", (st_u, t_data['vehicle_id']), fetch=False)
-                                if run_query("SELECT fuel_log_id FROM diesel_fuel_logs WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s)", (t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id'])):
-                                    run_query("UPDATE diesel_fuel_logs SET fuel_date=%s, lr_number=%s, litres_filled=%s, total_fuel_cost=%s, filling_odometer_km=%s, trip_id=%s, is_tank_full=%s WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s);", (e_sdate, e_lr, e_fuel_l, f_c, e_start_km, t_data['trip_id'], e_is_tank_full, t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id']), fetch=False)
-                                get_cached_vehicles.clear(); trigger_toast_and_rerun("SUCCESS", f"Updated.")
-                            except Exception as e: show_error_toast(f"Update failed: {e}")
-                        confirm_action_dialog(f"commit modifications", execute_mod_trip)
+                        if e_ton <= 0: show_error_toast("⚠️ Anomaly Detected: Loaded MT cannot be zero.")
+                        elif auto_rate_mt <= 0: show_error_toast("⚠️ Anomaly Detected: No Freight Rate assigned for this trip.")
+                        elif e_bata <= 0: show_error_toast("⚠️ Anomaly Detected: No Driver Bata entered.")
+                        else:
+                            def execute_mod_trip():
+                                try:
+                                    f_c = round(e_fuel_l * get_cached_diesel_rate(), 2)
+                                    short = max(0.0, e_ton - e_unloaded_mt)
+                                    run_query("UPDATE trips SET trip_start_date=%s, trip_end_date=%s, trip_number=%s, origin=%s, destination=%s, start_km=%s, end_km=%s, total_km_run=%s, loaded_weight_mt=%s, unloaded_weight_mt=%s, tonnage_loaded=%s, shortage_mt=%s, freight_revenue=%s, fuel_litres=%s, fuel_expense=%s, driver_bata=%s, halt_bata=%s, cash_advance_issued=%s, enroute_repairs_maintenance=%s, pod_number=%s, trip_status=%s, is_tank_full=%s WHERE trip_id=%s;", (e_sdate, e_edate, e_lr, e_orig, e_dest, e_start_km, e_end_km, e_total_km, e_ton, e_unloaded_mt, e_ton, short, e_freight, e_fuel_l, f_c, e_bata, e_halt_bata, e_adv, e_claims, e_pod_no or None, e_trip_status, e_is_tank_full, t_data['trip_id']), fetch=False)
+                                    st_u = "AVAILABLE_FOR_LOAD" if e_trip_status == "COMPLETED" else "IN_TRANSIT"
+                                    run_query("UPDATE vehicles SET current_status = %s WHERE vehicle_id = %s", (st_u, t_data['vehicle_id']), fetch=False)
+                                    if run_query("SELECT fuel_log_id FROM diesel_fuel_logs WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s)", (t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id'])):
+                                        run_query("UPDATE diesel_fuel_logs SET fuel_date=%s, lr_number=%s, litres_filled=%s, total_fuel_cost=%s, filling_odometer_km=%s, trip_id=%s, is_tank_full=%s WHERE trip_id = %s OR (lr_number = %s AND vehicle_id = %s);", (e_sdate, e_lr, e_fuel_l, f_c, e_start_km, t_data['trip_id'], e_is_tank_full, t_data['trip_id'], t_data['trip_number'], t_data['vehicle_id']), fetch=False)
+                                    get_cached_vehicles.clear(); trigger_toast_and_rerun("SUCCESS", f"Updated.")
+                                except Exception as e: show_error_toast(f"Update failed: {e}")
+                            confirm_action_dialog(f"commit modifications", execute_mod_trip)
 
                 act1, act2 = st.columns(2)
                 with act1:
@@ -1076,3 +1107,4 @@ elif selected_nav == "⚙️ Setup":
                 st.write("")
                 if st.button("🗑️ Purge Trip", type="secondary", use_container_width=True):
                     confirm_action_dialog(f"purge Trip #{del_id}", lambda: (run_query("UPDATE diesel_fuel_logs SET trip_id = NULL WHERE trip_id = %s", (del_id,), fetch=False), run_query("DELETE FROM trips WHERE trip_id = %s", (del_id,), fetch=False), trigger_toast_and_rerun("SUCCESS", "Purged.")))
+        else: st.info("No records match criteria.")
