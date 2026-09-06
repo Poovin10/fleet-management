@@ -8,11 +8,22 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Form states matching your original layout
+  const [tripDate, setTripDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lrNo, setLrNo] = useState("");
+  const [selectedTruck, setSelectedTruck] = useState("");
+  const [origin, setOrigin] = useState("COCHIN");
+  const [destination, setDestination] = useState("");
+  const [driver, setDriver] = useState("");
+  const [tonnage, setTonnage] = useState("");
+  const [ratePerTon, setRatePerTon] = useState("");
+  const [dieselAdvance, setDieselAdvance] = useState("");
+  const [cashAdvance, setCashAdvance] = useState("");
+
   useEffect(() => {
     async function fetchVehicles() {
       setIsLoading(true);
       const supabase = createClient();
-      // Fetch all vehicles (you can later add .eq('status', 'AVAILABLE_FOR_LOAD') to only show ready trucks)
       const { data } = await supabase.from('vehicles').select('*');
       
       if (data) setVehicles(data);
@@ -21,7 +32,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     fetchVehicles();
   }, []);
 
-  // 1. DYNAMIC FILTER: Show only trucks that match the selected Cargo Type
+  // Filter trucks based on Cargo Type (BULK vs BAGS)
   const filteredVehicles = vehicles.filter((v) => {
     const variant = String(v.variant || v.type || "").toUpperCase();
     if (cargoType === "BULK") {
@@ -33,38 +44,66 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     return true; 
   });
 
-  // 2. CLEAN TEXT EXTRACTOR: Gets just the license plate, no capacity/type info
+  // Clean license plate extractor (No capacity/type text in dropdown)
   const getCleanTruckNo = (v: any) => {
     return String(v.vehicle_no || v.truck_no || v.reg_no || v.id || "").trim();
   };
 
+  const handleDispatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const supabase = createClient();
+    
+    // Insert trip record into Supabase
+    const { error } = await supabase.from('trips').insert([
+      {
+        trip_date: tripDate,
+        lr_no: lrNo,
+        vehicle_no: selectedTruck,
+        cargo_type: cargoType,
+        origin: origin,
+        destination: destination,
+        driver_name: driver,
+        tonnage: parseFloat(tonnage) || 0,
+        rate_per_ton: parseFloat(ratePerTon) || 0,
+        diesel_advance: parseFloat(dieselAdvance) || 0,
+        cash_advance: parseFloat(cashAdvance) || 0,
+        trip_status: 'IN_TRANSIT'
+      }
+    ]);
+
+    if (!error) {
+      alert("Trip Dispatched Successfully!");
+      if (onSuccess) onSuccess();
+    } else {
+      alert("Error dispatching trip: " + error.message);
+    }
+  };
+
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm max-w-3xl animate-in fade-in duration-300">
-      <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-3">
-        <div>
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">New Trip Dispatch</h3>
-          <p className="text-xs text-slate-500 mt-1">Initialize a new trip and assign an available asset.</p>
-        </div>
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in fade-in duration-300">
+      <div className="mb-6 border-b border-slate-200 pb-4">
+        <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Trip Dispatch Form</h3>
+        <p className="text-xs text-slate-500 mt-1">Create a new transit record, allocate cargo slabs, and record initial advances.</p>
       </div>
 
-      <form className="space-y-6">
-        {/* ROW 1: Cargo Type & Truck Assignment */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <form onSubmit={handleDispatch} className="space-y-6">
+        
+        {/* ROW 1: Cargo Type Toggle & Clean Truck Dropdown */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Cargo Type</label>
-            <div className="flex bg-white rounded-lg border border-slate-300 overflow-hidden">
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Cargo Type</label>
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
               <button
                 type="button"
                 onClick={() => setCargoType("BULK")}
-                className={`flex-1 py-2.5 text-sm font-bold transition-colors ${cargoType === "BULK" ? "bg-indigo-50 text-indigo-700 shadow-inner" : "text-slate-500 hover:bg-slate-50"}`}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${cargoType === "BULK" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
               >
                 BULK
               </button>
-              <div className="w-px bg-slate-300"></div>
               <button
                 type="button"
                 onClick={() => setCargoType("BAGS")}
-                className={`flex-1 py-2.5 text-sm font-bold transition-colors ${cargoType === "BAGS" ? "bg-indigo-50 text-indigo-700 shadow-inner" : "text-slate-500 hover:bg-slate-50"}`}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${cargoType === "BAGS" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
               >
                 BAGS
               </button>
@@ -72,12 +111,17 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Assign Truck (Filtered)</label>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">
+              Assigned Truck ({filteredVehicles.length} {cargoType} available)
+            </label>
             <select 
-              className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-100"
+              value={selectedTruck}
+              onChange={(e) => setSelectedTruck(e.target.value)}
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              required
               disabled={isLoading}
             >
-              <option value="">{isLoading ? "Loading fleet..." : `Select a ${cargoType} truck...`}</option>
+              <option value="">{isLoading ? "Loading fleet..." : `Select a clean ${cargoType} truck number...`}</option>
               {filteredVehicles.map((v, i) => {
                 const cleanNo = getCleanTruckNo(v);
                 return (
@@ -87,48 +131,131 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
                 );
               })}
             </select>
-            <p className="text-[10px] text-slate-400 mt-1 font-semibold">{filteredVehicles.length} matching vehicles found</p>
           </div>
         </div>
 
-        {/* ROW 2: Routing Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* ROW 2: Date & LR Number */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Origin Source</label>
-            <select className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Trip Date</label>
+            <input 
+              type="date" 
+              value={tripDate}
+              onChange={(e) => setTripDate(e.target.value)}
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none"
+              required 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">LR / Invoice No *</label>
+            <input 
+              type="text" 
+              value={lrNo}
+              onChange={(e) => setLrNo(e.target.value)}
+              placeholder="e.g. 40080069852" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none font-semibold uppercase"
+              required 
+            />
+          </div>
+        </div>
+
+        {/* ROW 3: Origin & Destination */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Origin Source</label>
+            <select 
+              value={origin}
+              onChange={(e) => setOrigin(e.target.value)}
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none"
+            >
               <option>COCHIN</option>
               <option>COCHIN-ACC</option>
               <option>POTTANERI</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Destination Name</label>
-            <input type="text" placeholder="e.g. ALAPPUZHA" className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none uppercase" />
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Destination Name *</label>
+            <input 
+              type="text" 
+              value={destination}
+              onChange={(e) => setDestination(e.target.value)}
+              placeholder="e.g. PARAMATHI VELUR" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white uppercase outline-none"
+              required 
+            />
           </div>
         </div>
 
-        {/* ROW 3: Driver & Tonnage */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* ROW 4: Driver & Tonnage */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Driver Name</label>
-            <input type="text" placeholder="Driver Name" className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Driver Name</label>
+            <input 
+              type="text" 
+              value={driver}
+              onChange={(e) => setDriver(e.target.value)}
+              placeholder="Enter driver full name" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none" 
+            />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Expected Tonnage (MT)</label>
-            <input type="number" step="0.01" placeholder="0.00" className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Tonnage Dispatched (MT)</label>
+            <input 
+              type="number" 
+              step="0.01"
+              value={tonnage}
+              onChange={(e) => setTonnage(e.target.value)}
+              placeholder="0.00" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none" 
+            />
+          </div>
+        </div>
+
+        {/* ROW 5: Rate & Advances */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Rate / MT (₹)</label>
+            <input 
+              type="number" 
+              step="0.01"
+              value={ratePerTon}
+              onChange={(e) => setRatePerTon(e.target.value)}
+              placeholder="0.00" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none" 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Diesel Advance (₹)</label>
+            <input 
+              type="number" 
+              value={dieselAdvance}
+              onChange={(e) => setDieselAdvance(e.target.value)}
+              placeholder="0.00" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none" 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Cash Advance (₹)</label>
+            <input 
+              type="number" 
+              value={cashAdvance}
+              onChange={(e) => setCashAdvance(e.target.value)}
+              placeholder="0.00" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none" 
+            />
           </div>
         </div>
 
         {/* Action Button */}
-        <div className="pt-4 border-t border-slate-200">
+        <div className="pt-4 border-t border-slate-200 flex justify-end">
           <button 
-            type="button" 
-            className="w-full sm:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-2"
+            type="submit" 
+            className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             Dispatch Trip
           </button>
         </div>
+
       </form>
     </div>
   );
