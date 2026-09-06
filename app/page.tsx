@@ -1,3 +1,8 @@
+'use client';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
   useEffect(() => {
     async function fetchAllTimeMetrics() {
       // 1. Total Fleet Size
