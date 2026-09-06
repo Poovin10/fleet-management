@@ -20,7 +20,6 @@ export default function SaaS_ERPDashboard() {
 
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
   const opTabs = ["Trips", "POD Closure", "Settlements"];
-
   const currentMonthText = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
   const truckStatusDetails = {
