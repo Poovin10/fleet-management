@@ -1,291 +1,219 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 
 export function SetupModule() {
-  const [setupSubTab, setSetupSubTab] = useState("Trucks");
-  const [vehicles, setVehicles] = useState<any[]>([]);
-  const [drivers, setDrivers] = useState<any[]>([]);
-  const [routes, setRoutes] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("Slabs");
   
-  // Form States
-  const [truckNo, setTruckNo] = useState("");
-  const [truckVariant, setTruckVariant] = useState("Bulker (16-Wheel)");
-  const [capacity, setCapacity] = useState("35");
-  const [odoWorking, setOdoWorking] = useState(true);
-
-  const [driverName, setDriverName] = useState("");
-  const [driverPhone, setDriverPhone] = useState("");
-  const [driverLicense, setDriverLicense] = useState("");
-
-  const [originSource, setOriginSource] = useState("COCHIN");
-  const [destName, setDestName] = useState("");
-  const [cargoType, setCargoType] = useState("BULK");
-  const [freightRate, setFreightRate] = useState("");
-  const [stdKm, setStdKm] = useState("");
+  // Data States
+  const [slabs, setSlabs] = useState<any[]>([]);
+  const [bataRates, setBataRates] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const supabase = createClient();
 
-  const fetchMasterData = async () => {
-    const { data: v } = await supabase.from('vehicles').select('*').order('vehicle_number');
-    const { data: d } = await supabase.from('drivers').select('*').order('full_name');
-    const { data: r } = await supabase.from('destinations_freight_master').select('*').order('destination_name');
-    if (v) setVehicles(v);
-    if (d) setDrivers(d);
-    if (r) setRoutes(r);
-  };
-
   useEffect(() => {
+    async function fetchMasterData() {
+      setIsLoading(true);
+      
+      // Fetch Slabs (Adjust table name 'freight_rates' if yours is different in Supabase)
+      const { data: slabData, error: slabError } = await supabase
+        .from('freight_rates')
+        .select('*')
+        .order('destination_name', { ascending: true });
+        
+      if (slabData) setSlabs(slabData);
+
+      // Fetch Bata Rates (Adjust table name 'bata_rates' if yours is different)
+      const { data: bataData } = await supabase
+        .from('bata_rates')
+        .select('*');
+        
+      if (bataData) setBataRates(bataData);
+      
+      setIsLoading(false);
+    }
+    
     fetchMasterData();
   }, [supabase]);
 
-  const handleAddTruck = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!truckNo) { toast.error("Truck number is required."); return; }
-
-    const { error } = await supabase.from('vehicles').insert([
-      {
-        vehicle_number: truckNo.trim().toUpperCase(),
-        truck_type: truckVariant,
-        carrying_capacity_tons: Number(capacity),
-        current_status: 'AVAILABLE_FOR_LOAD',
-        odometer_working: odoWorking,
-        is_active: true
-      }
-    ]);
-
-    if (error) { toast.error("Error adding truck", { description: error.message }); } 
-    else {
-      toast.success("Truck registered successfully!");
-      setTruckNo("");
-      fetchMasterData();
-    }
-  };
-
-  const handleAddDriver = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!driverName || !driverPhone) { toast.error("Name and phone are required."); return; }
-
-    const driverCode = `DRV-${drivers.length + 101}`;
-    const { error } = await supabase.from('drivers').insert([
-      {
-        driver_code: driverCode,
-        full_name: driverName.trim(),
-        phone_number: driverPhone.trim(),
-        license_number: driverLicense.trim().toUpperCase(),
-        branch_id: 1,
-        is_active: true
-      }
-    ]);
-
-    if (error) { toast.error("Error adding driver", { description: error.message }); } 
-    else {
-      toast.success("Driver registered successfully!");
-      setDriverName("");
-      setDriverPhone("");
-      setDriverLicense("");
-      fetchMasterData();
-    }
-  };
-
-  const handleAddRoute = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!destName || !freightRate) { toast.error("Destination and rate are required."); return; }
-
-    const { error } = await supabase.from('destinations_freight_master').insert([
-      {
-        cargo_type: cargoType,
-        origin: originSource,
-        destination_name: destName.trim().toUpperCase(),
-        capacity_tons: Number(capacity),
-        freight_rate_per_ton: Number(freightRate),
-        standard_km: Number(stdKm) || 0,
-        is_active: true
-      }
-    ]);
-
-    if (error) { toast.error("Error adding rate slab", { description: error.message }); } 
-    else {
-      toast.success("Rate slab saved successfully!");
-      setDestName("");
-      setFreightRate("");
-      setStdKm("");
-      fetchMasterData();
-    }
-  };
+  const setupTabs = ["Trucks", "Drivers", "Slabs", "Bata", "System Audit"];
 
   return (
     <div className="space-y-6">
-      {/* Sub-menu tabs */}
-      <div className="flex gap-2 bg-slate-100 p-1 rounded-lg w-fit">
-        {["Trucks", "Drivers", "Rate Slabs"].map((sub) => (
+      <div className="border-b border-slate-200 pb-4">
+        <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Master Database Configuration</h2>
+        <p className="text-sm text-slate-500 mt-1">Manage core fleet parameters, routing, and standard rate tables.</p>
+      </div>
+
+      {/* Setup Sub-Navigation */}
+      <div className="flex flex-wrap gap-2 pb-4">
+        {setupTabs.map((tab) => (
           <button
-            key={sub}
-            onClick={() => setSetupSubTab(sub)}
-            className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
-              setupSubTab === sub ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${
+              activeTab === tab
+                ? "bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm"
+                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
             }`}
           >
-            {sub}
+            {tab === "Trucks" && "🚛 "}
+            {tab === "Drivers" && "👨‍✈️ "}
+            {tab === "Slabs" && "🛣️ "}
+            {tab === "Bata" && "💰 "}
+            {tab === "System Audit" && "📋 "}
+            {tab}
           </button>
         ))}
       </div>
 
-      {/* TRUCKS SETUP */}
-      {setupSubTab === "Trucks" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <form onSubmit={handleAddTruck} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-slate-900 border-b pb-2">Register New Truck</h3>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Truck Number*</label>
-              <input type="text" placeholder="e.g. KL43E3617" value={truckNo} onChange={(e) => setTruckNo(e.target.value)} className="w-full border rounded-md p-2 text-sm" required />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Variant</label>
-              <select value={truckVariant} onChange={(e) => setTruckVariant(e.target.value)} className="w-full border rounded-md p-2 text-sm bg-white">
-                <option value="Bulker (16-Wheel)">Bulker (16-Wheel)</option>
-                <option value="Bulker (14-Wheel)">Bulker (14-Wheel)</option>
-                <option value="Body Truck">Body Truck</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Capacity (MT)</label>
-              <select value={capacity} onChange={(e) => setCapacity(e.target.value)} className="w-full border rounded-md p-2 text-sm bg-white">
-                <option value="25">25 MT</option>
-                <option value="30">30 MT</option>
-                <option value="35">35 MT</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" checked={odoWorking} onChange={(e) => setOdoWorking(e.target.checked)} className="h-4 w-4" />
-              <span className="text-sm font-semibold text-slate-700">Odometer Working</span>
-            </div>
-            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">Save Truck</Button>
-          </form>
-
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-x-auto">
-            <h3 className="text-base font-bold text-slate-900 border-b pb-2 mb-4">Existing Fleet ({vehicles.length})</h3>
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-100 text-xs uppercase text-slate-700 font-bold">
-                <tr><th className="p-2">No</th><th className="p-2">Variant</th><th className="p-2">Capacity</th><th className="p-2">Status</th></tr>
-              </thead>
-              <tbody>
-                {vehicles.map(v => (
-                  <tr key={v.vehicle_id} className="border-b">
-                    <td className="p-2 font-bold text-slate-900">{v.vehicle_number}</td>
-                    <td className="p-2">{v.truck_type}</td>
-                    <td className="p-2">{v.carrying_capacity_tons} MT</td>
-                    <td className="p-2"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full font-semibold">{v.current_status}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* DRIVERS SETUP */}
-      {setupSubTab === "Drivers" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <form onSubmit={handleAddDriver} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-slate-900 border-b pb-2">Register Driver</h3>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Full Name*</label>
-              <input type="text" placeholder="Enter driver name" value={driverName} onChange={(e) => setDriverName(e.target.value)} className="w-full border rounded-md p-2 text-sm" required />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Phone Number*</label>
-              <input type="text" placeholder="10-digit mobile" value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} className="w-full border rounded-md p-2 text-sm" required />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">License No</label>
-              <input type="text" placeholder="License ID" value={driverLicense} onChange={(e) => setDriverLicense(e.target.value)} className="w-full border rounded-md p-2 text-sm" />
-            </div>
-            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">Save Driver</Button>
-          </form>
-
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-x-auto">
-            <h3 className="text-base font-bold text-slate-900 border-b pb-2 mb-4">Active Drivers ({drivers.length})</h3>
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-100 text-xs uppercase text-slate-700 font-bold">
-                <tr><th className="p-2">Code</th><th className="p-2">Name</th><th className="p-2">Phone</th><th className="p-2">License</th></tr>
-              </thead>
-              <tbody>
-                {drivers.map(d => (
-                  <tr key={d.driver_id} className="border-b">
-                    <td className="p-2 font-bold text-slate-900">{d.driver_code}</td>
-                    <td className="p-2">{d.full_name}</td>
-                    <td className="p-2">{d.phone_number}</td>
-                    <td className="p-2">{d.license_number || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* RATE SLABS SETUP */}
-      {setupSubTab === "Rate Slabs" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <form onSubmit={handleAddRoute} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-slate-900 border-b pb-2">Add Freight Rate Slab</h3>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Cargo Type</label>
-              <select value={cargoType} onChange={(e) => setCargoType(e.target.value)} className="w-full border rounded-md p-2 text-sm bg-white">
-                <option value="BULK">BULK</option>
-                <option value="BAG">BAG</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Origin Source</label>
-              <select value={originSource} onChange={(e) => setOriginSource(e.target.value)} className="w-full border rounded-md p-2 text-sm bg-white">
-                <option value="COCHIN">COCHIN</option>
-                <option value="POTTANERI">POTTANERI</option>
-                <option value="METTUR">METTUR</option>
-                <option value="UDUPPI">UDUPPI</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Destination Name*</label>
-              <input type="text" placeholder="e.g. PARAMATHI VELUR" value={destName} onChange={(e) => setDestName(e.target.value)} className="w-full border rounded-md p-2 text-sm" required />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+      {/* ---------------- SLABS TAB ---------------- */}
+      {activeTab === "Slabs" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* LEFT: Data Entry Form */}
+          <div className="lg:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-900 mb-4 border-b border-slate-200 pb-2">Add New Route Slab</h3>
+            <form className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Rate/MT (₹)*</label>
-                <input type="number" placeholder="0.00" value={freightRate} onChange={(e) => setFreightRate(e.target.value)} className="w-full border rounded-md p-2 text-sm" required />
+                <label className="block text-xs font-bold text-slate-600 mb-1">Cargo</label>
+                <select className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option>BULK</option>
+                  <option>BAGS</option>
+                </select>
               </div>
+              
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Std KM</label>
-                <input type="number" placeholder="0" value={stdKm} onChange={(e) => setStdKm(e.target.value)} className="w-full border rounded-md p-2 text-sm" />
+                <label className="block text-xs font-bold text-slate-600 mb-1">Origin</label>
+                <select className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option>COCHIN</option>
+                  <option>COCHIN-ACC</option>
+                  <option>POTTANERI</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Destination *</label>
+                <input type="text" placeholder="e.g. ALAPPUZHA" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-white uppercase focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Class (MT)</label>
+                <select className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option>25.0</option>
+                  <option>30.0</option>
+                  <option>35.0</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Rate/MT (₹) *</label>
+                  <input type="number" placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Std KM</label>
+                  <input type="number" placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+              </div>
+
+              <button type="button" className="w-full mt-2 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-lg transition-colors shadow-sm active:scale-95">
+                Save Route
+              </button>
+            </form>
+          </div>
+
+          {/* RIGHT: Data Table */}
+          <div className="lg:col-span-8 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full min-h-[500px]">
+            <div className="flex justify-between items-center p-4 border-b border-slate-200 bg-slate-50">
+              <h3 className="text-sm font-bold text-slate-900">Active Rate Slabs ({slabs.length})</h3>
+              <div className="flex gap-2">
+                <button className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
               </div>
             </div>
-            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">Save Rate Slab</Button>
-          </form>
-
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-x-auto">
-            <h3 className="text-base font-bold text-slate-900 border-b pb-2 mb-4">Destination Slabs ({routes.length})</h3>
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-100 text-xs uppercase text-slate-700 font-bold">
-                <tr><th className="p-2">Route</th><th className="p-2">Cargo</th><th className="p-2">Rate/MT</th><th className="p-2">Std KM</th></tr>
-              </thead>
-              <tbody>
-                {routes.map(r => (
-                  <tr key={r.route_id || r.destination_id} className="border-b">
-                    <td className="p-2 font-bold text-slate-900">{r.origin} ➔ {r.destination_name}</td>
-                    <td className="p-2">{r.cargo_type}</td>
-                    <td className="p-2 text-indigo-600 font-bold">₹{r.freight_rate_per_ton}</td>
-                    <td className="p-2">{r.standard_km} km</td>
+            
+            <div className="overflow-x-auto flex-1">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50/50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Cargo</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Origin</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Destination</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Cap (MT)</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Rate/MT (₹)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-100">
+                  {isLoading ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">Loading master data...</td></tr>
+                  ) : slabs.length === 0 ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">No slabs found.</td></tr>
+                  ) : (
+                    slabs.map((slab, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 text-sm text-slate-600">{slab.cargo_type || "BULK"}</td>
+                        <td className="px-4 py-3 text-sm font-semibold text-slate-900">{slab.origin || "COCHIN"}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600">{slab.destination_name}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600">{slab.capacity_tons}</td>
+                        <td className="px-4 py-3 text-sm font-bold text-indigo-600 text-right">{slab.freight_rate_per_ton}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
+
+      {/* ---------------- BATA TAB ---------------- */}
+      {activeTab === "Bata" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in">
+          <div className="lg:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-900 mb-4 border-b border-slate-200 pb-2">Add Driver Bata</h3>
+            <form className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Route / Type</label>
+                <input type="text" placeholder="e.g. COCHIN to ALAPPUZHA" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-white uppercase outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Vehicle Class</label>
+                <select className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-white outline-none">
+                  <option>10 Wheeler</option>
+                  <option>14 Wheeler</option>
+                  <option>16 Wheeler</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Standard Bata (₹) *</label>
+                <input type="number" placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-white outline-none" />
+              </div>
+              <button type="button" className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg shadow-sm">
+                Save Bata Rule
+              </button>
+            </form>
+          </div>
+
+          <div className="lg:col-span-8 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full min-h-[400px]">
+             <div className="p-4 border-b border-slate-200 bg-slate-50">
+                <h3 className="text-sm font-bold text-slate-900">Bata Rules Register</h3>
+             </div>
+             <div className="p-8 text-center text-slate-500 text-sm">
+                {bataRates.length > 0 ? "Bata data loaded." : "No standard bata rules defined yet."}
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Placeholders for other tabs */}
+      {(activeTab === "Trucks" || activeTab === "Drivers" || activeTab === "System Audit") && (
+        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center shadow-sm">
+          <p className="text-slate-500 font-medium">Master module for {activeTab} is currently syncing...</p>
+        </div>
+      )}
+
     </div>
   );
 }
