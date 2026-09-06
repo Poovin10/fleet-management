@@ -8,7 +8,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Form states matching your original layout
+  // Form states
   const [tripDate, setTripDate] = useState(new Date().toISOString().split('T')[0]);
   const [lrNo, setLrNo] = useState("");
   const [selectedTruck, setSelectedTruck] = useState("");
@@ -44,7 +44,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     return true; 
   });
 
-  // Clean license plate extractor (No capacity/type text in dropdown)
   const getCleanTruckNo = (v: any) => {
     return String(v.vehicle_no || v.truck_no || v.reg_no || v.id || "").trim();
   };
@@ -53,7 +52,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     e.preventDefault();
     const supabase = createClient();
     
-    // Insert trip record into Supabase
     const { error } = await supabase.from('trips').insert([
       {
         trip_date: tripDate,
@@ -88,7 +86,32 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
 
       <form onSubmit={handleDispatch} className="space-y-6">
         
-        {/* ROW 1: Cargo Type Toggle & Clean Truck Dropdown */}
+        {/* ROW 1: Date & LR Number (Moved to Top) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Trip Date</label>
+            <input 
+              type="date" 
+              value={tripDate}
+              onChange={(e) => setTripDate(e.target.value)}
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none"
+              required 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">LR / Invoice No *</label>
+            <input 
+              type="text" 
+              value={lrNo}
+              onChange={(e) => setLrNo(e.target.value)}
+              placeholder="e.g. 40080069852" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none font-semibold uppercase"
+              required 
+            />
+          </div>
+        </div>
+
+        {/* ROW 2: Cargo Type & Filtered Truck Selection */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Cargo Type</label>
@@ -131,31 +154,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
                 );
               })}
             </select>
-          </div>
-        </div>
-
-        {/* ROW 2: Date & LR Number */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Trip Date</label>
-            <input 
-              type="date" 
-              value={tripDate}
-              onChange={(e) => setTripDate(e.target.value)}
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none"
-              required 
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">LR / Invoice No *</label>
-            <input 
-              type="text" 
-              value={lrNo}
-              onChange={(e) => setLrNo(e.target.value)}
-              placeholder="e.g. 40080069852" 
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none font-semibold uppercase"
-              required 
-            />
           </div>
         </div>
 
