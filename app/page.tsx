@@ -16,11 +16,9 @@ export default function SaaS_ERPDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [opSubTab, setOpSubTab] = useState("Trips");
   
-  // Interactive Dashboard States
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [showFullReport, setShowFullReport] = useState(false);
 
-  // Data States
   const [currentMonthText, setCurrentMonthText] = useState("");
   const [currentDateText, setCurrentDateText] = useState("");
   const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
@@ -34,9 +32,12 @@ export default function SaaS_ERPDashboard() {
   });
 
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
-  
-  // Added "Modify Trips" and "Quick Status" back to Operations
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Settlements"];
+
+  // Bulletproof status extractor (handles status, current_status, vehicle_status, etc.)
+  const extractStatus = (v: any) => {
+    return (v.status || v.current_status || v.vehicle_status || v.STATUS || "").toUpperCase();
+  };
 
   useEffect(() => {
     setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
@@ -44,27 +45,24 @@ export default function SaaS_ERPDashboard() {
 
     async function fetchDashboardData() {
       const supabase = createClient();
-      
-      // Fetch live vehicle data to power the dashboard monitor
       const { data: vehicles } = await supabase.from('vehicles').select('*');
       
-      if (vehicles) {
+      if (vehicles && vehicles.length > 0) {
         setLiveVehicles(vehicles);
         
-        // Calculate dynamic counts based on real Supabase data
+        // Calculate dynamic counts based on the robust extractor
         setStatusCounts({
-          "In Transit": vehicles.filter(v => v.status === 'IN_TRANSIT').length,
-          "Ready / Available": vehicles.filter(v => v.status === 'AVAILABLE_FOR_LOAD').length,
-          "Plant Loading": vehicles.filter(v => v.status === 'PLANT_LOADING').length,
-          "Workshop / Repairs": vehicles.filter(v => v.status === 'WORKSHOP_MAINTENANCE').length,
-          "No Driver / Leave": vehicles.filter(v => v.status === 'NO_DRIVER').length
+          "In Transit": vehicles.filter(v => extractStatus(v) === 'IN_TRANSIT').length,
+          "Ready / Available": vehicles.filter(v => extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
+          "Plant Loading": vehicles.filter(v => extractStatus(v) === 'PLANT_LOADING').length,
+          "Workshop / Repairs": vehicles.filter(v => extractStatus(v) === 'WORKSHOP_MAINTENANCE').length,
+          "No Driver / Leave": vehicles.filter(v => extractStatus(v) === 'NO_DRIVER').length
         });
       }
     }
     fetchDashboardData();
   }, []);
 
-  // Helper function to map UI labels to Database statuses for the drill-down
   const getDrillDownData = (statusLabel: string) => {
     const statusMap: Record<string, string> = {
       "In Transit": "IN_TRANSIT",
@@ -74,7 +72,7 @@ export default function SaaS_ERPDashboard() {
       "No Driver / Leave": "NO_DRIVER"
     };
     const dbStatus = statusMap[statusLabel];
-    return liveVehicles.filter(v => v.status === dbStatus);
+    return liveVehicles.filter(v => extractStatus(v) === dbStatus);
   };
 
   const currentDrillDownData = selectedStatus ? getDrillDownData(selectedStatus) : [];
@@ -196,8 +194,8 @@ export default function SaaS_ERPDashboard() {
                         <tbody className="bg-white divide-y divide-slate-200">
                           {currentDrillDownData.map((truck, idx) => (
                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{truck.vehicle_no}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{truck.variant} ({truck.capacity_tons} MT)</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{truck.vehicle_no || truck.id}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{truck.variant || "Bulk"} ({truck.capacity_tons} MT)</td>
                               <td className="px-6 py-4 text-sm text-slate-500">{truck.remarks || "-"}</td>
                             </tr>
                           ))}
@@ -244,7 +242,6 @@ export default function SaaS_ERPDashboard() {
                 {opSubTab === "POD Closure" && <PodClosure onSuccess={() => {}} />}
                 {opSubTab === "Settlements" && <DriverSettlementModule />}
                 
-                {/* NEW: Modify Trips Placeholder */}
                 {opSubTab === "Modify Trips" && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center shadow-sm">
                     <h3 className="text-sm font-bold text-slate-900 mb-2">Modify Active Trips</h3>
@@ -252,7 +249,6 @@ export default function SaaS_ERPDashboard() {
                   </div>
                 )}
 
-                {/* NEW: Quick Status Form */}
                 {opSubTab === "Quick Status" && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm max-w-2xl">
                     <h3 className="text-sm font-bold text-slate-900 mb-6 uppercase tracking-wider border-b border-slate-200 pb-2">Manual Status Override</h3>
@@ -262,8 +258,8 @@ export default function SaaS_ERPDashboard() {
                         <select className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
                           <option>Select a vehicle...</option>
                           {liveVehicles.map(v => (
-                            <option key={v.vehicle_no} value={v.vehicle_no}>
-                              {v.vehicle_no} ({v.capacity_tons}MT {v.variant})
+                            <option key={v.vehicle_no || v.id} value={v.vehicle_no || v.id}>
+                              {v.vehicle_no || v.id} ({v.capacity_tons}MT {v.variant || "Bulk"})
                             </option>
                           ))}
                         </select>
@@ -288,7 +284,6 @@ export default function SaaS_ERPDashboard() {
                     </form>
                   </div>
                 )}
-
               </div>
             )}
             
