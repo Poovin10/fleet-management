@@ -32,20 +32,25 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     fetchVehicles();
   }, []);
 
-  // Filter trucks based on Cargo Type (BULK vs BAGS)
+  // Bulletproof Multi-Column Filter
   const filteredVehicles = vehicles.filter((v) => {
-    const variant = String(v.variant || v.type || "").toUpperCase();
+    // Combine all potential text fields where variant/type might be stored
+    const combinedText = String(
+      v.variant || v.type || v.body_type || v.category || v.cargo_type || ""
+    ).toUpperCase();
+
     if (cargoType === "BULK") {
-      return variant.includes("BULK");
+      // Include if it explicitly mentions bulk, OR if it's unassigned/blank (defaults to bulk)
+      return combinedText.includes("BULK") || combinedText === "";
     } 
     if (cargoType === "BAGS") {
-      return variant.includes("BAG") || variant.includes("BODY");
+      return combinedText.includes("BAG") || combinedText.includes("BODY") || combinedText.includes("SACK");
     }
     return true; 
   });
 
   const getCleanTruckNo = (v: any) => {
-    return String(v.vehicle_no || v.truck_no || v.reg_no || v.id || "").trim();
+    return String(v.vehicle_no || v.truck_no || v.reg_no || v.plate || v.id || "").trim();
   };
 
   const handleDispatch = async (e: React.FormEvent) => {
@@ -86,7 +91,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
 
       <form onSubmit={handleDispatch} className="space-y-6">
         
-        {/* ROW 1: Date & LR Number (Moved to Top) */}
+        {/* ROW 1: Date & LR Number */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Trip Date</label>
