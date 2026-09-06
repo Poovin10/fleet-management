@@ -1,31 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
-// Import your existing components here
-import TripForm from "@/components/TripForm";
-import PodClosure from "@/components/PodClosure";
-import DriverSettlementModule from "@/components/DriverSettlementModule";
-import FuelAdvanceModule from "@/components/FuelAdvanceModule";
-import FinancialsModule from "@/components/FinancialsModule";
-import WorkshopModule from "@/components/WorkshopModule";
-import SetupModule from "@/components/SetupModule";
-import FleetTable from "@/components/FleetTable";
+import { useState } from "react";
+// Corrected: Added curly braces for Named Exports
+import { TripForm } from "@/components/TripForm";
+import { PodClosure } from "@/components/PodClosure";
+import { DriverSettlementModule } from "@/components/DriverSettlementModule";
+import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
+import { FinancialsModule } from "@/components/FinancialsModule";
+import { WorkshopModule } from "@/components/WorkshopModule";
+import { SetupModule } from "@/components/SetupModule";
+import { FleetTable } from "@/components/FleetTable";
 
 export default function SaaS_ERPDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [opSubTab, setOpSubTab] = useState("Trips");
   
-  // Interactive Dashboard States
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [showFullReport, setShowFullReport] = useState(false);
 
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
   const opTabs = ["Trips", "POD Closure", "Settlements"];
 
-  // Current Month Text Generator (e.g., "September 2026")
   const currentMonthText = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
-  // Mock data for the drill-down view (Wire this to your Supabase logic later)
   const truckStatusDetails = {
     "Workshop / Repairs": [
       { id: "TN 56 F 0452", driver: "Unassigned", days: 3, issue: "Clutch Plate Replacement" },
@@ -152,7 +149,6 @@ export default function SaaS_ERPDashboard() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
-                          {/* Mapped Data */}
                           {(truckStatusDetails[selectedStatus as keyof typeof truckStatusDetails] || []).map((truck, idx) => (
                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{truck.id}</td>
@@ -220,7 +216,6 @@ export default function SaaS_ERPDashboard() {
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
             
-            {/* Modal Header */}
             <div className="flex justify-between items-center p-6 border-b border-slate-200">
               <div>
                 <h2 className="text-xl font-black text-slate-900">Detailed Truck Status Report</h2>
@@ -246,7 +241,6 @@ export default function SaaS_ERPDashboard() {
               </div>
             </div>
 
-            {/* Modal Content / Table */}
             <div className="flex-1 overflow-auto p-6">
               <FleetTable />
             </div>
@@ -254,7 +248,6 @@ export default function SaaS_ERPDashboard() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
