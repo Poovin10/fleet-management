@@ -14,16 +14,17 @@ export default function ERPDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [opSubTab, setOpSubTab] = useState("Trip Dispatch");
 
-  // Real-time metric states
+  // Fiscal Month Metrics States
   const [fleetCount, setFleetCount] = useState(0);
-  const [activeTripsCount, setActiveTripsCount] = useState(0);
-  const [totalTonnage, setTotalTonnage] = useState(0);
-  const [pendingPodsCount, setPendingPodsCount] = useState(0);
+  const [monthlyRevenue, setMonthlyRevenue] = useState(0);
+  const [monthlyTripsCount, setMonthlyTripsCount] = useState(0);
+  const [monthlyDieselCost, setMonthlyDieselCost] = useState(0);
+  const [monthlyNetProfit, setMonthlyNetProfit] = useState(0);
 
   const supabase = createClient();
 
   useEffect(() => {
-    async function fetchDashboardMetrics() {
+    async function fetchFiscalMonthData() {
       // 1. Fetch total active vehicles
       const { count: vCount } = await supabase
         .from('vehicles')
@@ -32,21 +33,39 @@ export default function ERPDashboard() {
 
       if (vCount !== null) setFleetCount(vCount);
 
-      // 2. Fetch active/in-transit trips
-      const { data: activeTrips } = await supabase
-        .from('trips')
-        .select('tonnage_loaded')
-        .in('trip_status', ['IN_TRANSIT', 'DISPATCHED']);
+      // 2. Get current fiscal year/month start & end dates (e.g. September 2026)
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      if (activeTrips) {
-        setActiveTripsCount(activeTrips.length);
-        setPendingPodsCount(activeTrips.length); // trips pending POD closure
-        const sumTonnage = activeTrips.reduce((acc, t) => acc + (Number(t.tonnage_loaded) || 0), 0);
-        setTotalTonnage(sumTonnage);
+      // 3. Fetch trips created in the current calendar/fiscal month
+      const { data: monthTrips } = await supabase
+        .from('trips')
+        .select('freight_revenue, fuel_expense, driver_bata, trip_start_date')
+        .gte('trip_start_date', firstDayOfMonth);
+
+      if (monthTrips) {
+        setMonthlyTripsCount(monthTrips.length);
+
+        let rev = 0;
+        let diesel = 0;
+        let expenses = 0;
+
+        monthTrips.forEach(t => {
+          const r = Number(t.freight_revenue) || 0;
+          const d = Number(t.fuel_expense) || 0;
+          const b = Number(t.driver_bata) || 0;
+          rev += r;
+          diesel += d;
+          expenses += (d + b);
+        });
+
+        setMonthlyRevenue(rev);
+        setMonthlyDieselCost(diesel);
+        setMonthlyNetProfit(rev - expenses);
       }
     }
 
-    fetchDashboardMetrics();
+    fetchFiscalMonthData();
   }, [supabase]);
 
   const navItems = [
@@ -92,23 +111,29 @@ export default function ERPDashboard() {
         {activeTab === "Dashboard" && (
           <div className="space-y-6">
             <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-              <h3 className="text-base font-extrabold uppercase text-slate-900 mb-4">Operations Summary</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-base font-extrabold uppercase text-slate-900">Current Fiscal Month Performance</h3>
+                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                  {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="border border-slate-100 rounded-lg p-4 bg-white shadow-sm">
                   <p className="text-xs font-bold text-slate-500 uppercase mb-2">Fleet Size</p>
-                  <p className="text-2xl font-extrabold text-slate-900">{fleetCount}</p>
+                  <p className="text-2xl font-extrabold text-slate-900">{fleetCount} Trucks</p>
                 </div>
                 <div className="border border-slate-100 rounded-lg p-4 bg-white shadow-sm">
-                  <p className="text-xs font-bold text-slate-500 uppercase mb-2">Active Trips</p>
-                  <p className="text-2xl font-extrabold text-slate-900">{activeTripsCount}</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-2">Month Dispatches</p>
+                  <p className="text-2xl font-extrabold text-slate-900">{monthlyTripsCount} Trips</p>
+                </div>
+                <div className="border border-emerald-100 rounded-lg p-4 bg-emerald-50 shadow-sm">
+                  <p className="text-xs font-bold text-emerald-700 uppercase mb-2">Freight Revenue</p>
+                  <p className="text-2xl font-extrabold text-emerald-900">₹{monthlyRevenue.toLocaleString()}</p>
                 </div>
                 <div className="border border-indigo-100 rounded-lg p-4 bg-indigo-50 shadow-sm">
-                  <p className="text-xs font-bold text-indigo-700 uppercase mb-2">Tonnage Dispatched</p>
-                  <p className="text-2xl font-extrabold text-indigo-900">{totalTonnage.toFixed(1)} MT</p>
-                </div>
-                <div className="border border-red-100 rounded-lg p-4 bg-red-50 shadow-sm">
-                  <p className="text-xs font-bold text-red-700 uppercase mb-2">Pending PODs</p>
-                  <p className="text-2xl font-extrabold text-red-900">{pendingPodsCount}</p>
+                  <p className="text-xs font-bold text-indigo-700 uppercase mb-2">Net Month Profit</p>
+                  <p className="text-2xl font-extrabold text-indigo-900">₹{monthlyNetProfit.toLocaleString()}</p>
                 </div>
               </div>
             </div>
