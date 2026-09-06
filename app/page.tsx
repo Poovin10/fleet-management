@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-// Imports with curly braces to fix the "Export default doesn't exist" error
+import { useState, useEffect } from "react";
 import { TripForm } from "@/components/TripForm";
 import { PodClosure } from "@/components/PodClosure";
 import { DriverSettlementModule } from "@/components/DriverSettlementModule";
@@ -19,11 +18,18 @@ export default function SaaS_ERPDashboard() {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [showFullReport, setShowFullReport] = useState(false);
 
+  // Date States for Next.js Client-Side Rendering
+  const [currentMonthText, setCurrentMonthText] = useState("");
+  const [currentDateText, setCurrentDateText] = useState("");
+
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
   const opTabs = ["Trips", "POD Closure", "Settlements"];
 
-  // Current Month Text Generator (e.g., "September 2026")
-  const currentMonthText = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+  // Run the date calculations only on the client side to prevent Vercel build errors
+  useEffect(() => {
+    setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
+    setCurrentDateText(new Date().toLocaleDateString());
+  }, []);
 
   // Mock data for the drill-down view
   const truckStatusDetails = {
@@ -88,7 +94,7 @@ export default function SaaS_ERPDashboard() {
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-sm font-bold text-slate-900">Operations Summary</h3>
                   <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-100">
-                    {currentMonthText} Only
+                    {currentMonthText || "Current Month"} Only
                   </span>
                 </div>
                 
@@ -133,7 +139,7 @@ export default function SaaS_ERPDashboard() {
                   ))}
                 </div>
 
-                {/* DRILL-DOWN TABLE (Reveals on click) */}
+                {/* DRILL-DOWN TABLE */}
                 {selectedStatus && (
                   <div className="mt-6 border-t border-slate-100 pt-6 animate-in slide-in-from-top-4 fade-in duration-300">
                     <div className="flex justify-between items-center mb-4">
@@ -200,7 +206,6 @@ export default function SaaS_ERPDashboard() {
                     </button>
                   ))}
                 </div>
-                {/* Fixed TypeScript Error: Added onSuccess={() => {}} */}
                 {opSubTab === "Trips" && <TripForm onSuccess={() => {}} />}
                 {opSubTab === "POD Closure" && <PodClosure onSuccess={() => {}} />}
                 {opSubTab === "Settlements" && <DriverSettlementModule />}
@@ -223,7 +228,7 @@ export default function SaaS_ERPDashboard() {
             <div className="flex justify-between items-center p-6 border-b border-slate-200">
               <div>
                 <h2 className="text-xl font-black text-slate-900">Detailed Truck Status Report</h2>
-                <p className="text-sm text-slate-500 mt-1">Full fleet overview as of {new Date().toLocaleDateString()}</p>
+                <p className="text-sm text-slate-500 mt-1">Full fleet overview as of {currentDateText}</p>
               </div>
               
               <div className="flex items-center gap-3">
