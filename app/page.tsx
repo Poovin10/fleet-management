@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+
 import { TripForm } from "@/components/TripForm";
 import { PodClosure } from "@/components/PodClosure";
 import { DriverSettlementModule } from "@/components/DriverSettlementModule";
@@ -18,29 +20,64 @@ export default function SaaS_ERPDashboard() {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [showFullReport, setShowFullReport] = useState(false);
 
-  // Date States for Next.js Client-Side Rendering
+  // Data States
   const [currentMonthText, setCurrentMonthText] = useState("");
   const [currentDateText, setCurrentDateText] = useState("");
+  const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
+  
+  const [statusCounts, setStatusCounts] = useState({
+    "In Transit": 0,
+    "Ready / Available": 0,
+    "Plant Loading": 0,
+    "Workshop / Repairs": 0,
+    "No Driver / Leave": 0
+  });
 
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
-  const opTabs = ["Trips", "POD Closure", "Settlements"];
+  
+  // Added "Modify Trips" and "Quick Status" back to Operations
+  const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Settlements"];
 
-  // Run the date calculations only on the client side to prevent Vercel build errors
   useEffect(() => {
     setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
     setCurrentDateText(new Date().toLocaleDateString());
+
+    async function fetchDashboardData() {
+      const supabase = createClient();
+      
+      // Fetch live vehicle data to power the dashboard monitor
+      const { data: vehicles } = await supabase.from('vehicles').select('*');
+      
+      if (vehicles) {
+        setLiveVehicles(vehicles);
+        
+        // Calculate dynamic counts based on real Supabase data
+        setStatusCounts({
+          "In Transit": vehicles.filter(v => v.status === 'IN_TRANSIT').length,
+          "Ready / Available": vehicles.filter(v => v.status === 'AVAILABLE_FOR_LOAD').length,
+          "Plant Loading": vehicles.filter(v => v.status === 'PLANT_LOADING').length,
+          "Workshop / Repairs": vehicles.filter(v => v.status === 'WORKSHOP_MAINTENANCE').length,
+          "No Driver / Leave": vehicles.filter(v => v.status === 'NO_DRIVER').length
+        });
+      }
+    }
+    fetchDashboardData();
   }, []);
 
-  // Mock data for the drill-down view
-  const truckStatusDetails = {
-    "Workshop / Repairs": [
-      { id: "TN 56 F 0452", driver: "Unassigned", days: 3, issue: "Clutch Plate Replacement" },
-      { id: "TN 34 A 8821", driver: "Murugan", days: 1, issue: "Tyre Puncture & Alignment" }
-    ],
-    "No Driver / Leave": [
-      { id: "KL 45 B 1122", driver: "Suresh (Leave)", days: 2, issue: "Personal Leave" }
-    ]
+  // Helper function to map UI labels to Database statuses for the drill-down
+  const getDrillDownData = (statusLabel: string) => {
+    const statusMap: Record<string, string> = {
+      "In Transit": "IN_TRANSIT",
+      "Ready / Available": "AVAILABLE_FOR_LOAD",
+      "Plant Loading": "PLANT_LOADING",
+      "Workshop / Repairs": "WORKSHOP_MAINTENANCE",
+      "No Driver / Leave": "NO_DRIVER"
+    };
+    const dbStatus = statusMap[statusLabel];
+    return liveVehicles.filter(v => v.status === dbStatus);
   };
+
+  const currentDrillDownData = selectedStatus ? getDrillDownData(selectedStatus) : [];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
@@ -120,11 +157,11 @@ export default function SaaS_ERPDashboard() {
                 
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {[
-                    { label: "In Transit", count: 8, color: "bg-blue-50 text-blue-700 border-blue-200" },
-                    { label: "Ready / Available", count: 15, color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-                    { label: "Plant Loading", count: 1, color: "bg-amber-50 text-amber-700 border-amber-200" },
-                    { label: "Workshop / Repairs", count: 2, color: "bg-rose-50 text-rose-700 border-rose-200" },
-                    { label: "No Driver / Leave", count: 0, color: "bg-slate-100 text-slate-700 border-slate-300" }
+                    { label: "In Transit", count: statusCounts["In Transit"], color: "bg-blue-50 text-blue-700 border-blue-200" },
+                    { label: "Ready / Available", count: statusCounts["Ready / Available"], color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+                    { label: "Plant Loading", count: statusCounts["Plant Loading"], color: "bg-amber-50 text-amber-700 border-amber-200" },
+                    { label: "Workshop / Repairs", count: statusCounts["Workshop / Repairs"], color: "bg-rose-50 text-rose-700 border-rose-200" },
+                    { label: "No Driver / Leave", count: statusCounts["No Driver / Leave"], color: "bg-slate-100 text-slate-700 border-slate-300" }
                   ].map((status) => (
                     <button
                       key={status.label}
@@ -139,7 +176,7 @@ export default function SaaS_ERPDashboard() {
                   ))}
                 </div>
 
-                {/* DRILL-DOWN TABLE */}
+                {/* DYNAMIC DRILL-DOWN TABLE */}
                 {selectedStatus && (
                   <div className="mt-6 border-t border-slate-100 pt-6 animate-in slide-in-from-top-4 fade-in duration-300">
                     <div className="flex justify-between items-center mb-4">
@@ -152,24 +189,20 @@ export default function SaaS_ERPDashboard() {
                         <thead className="bg-slate-50">
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Truck No.</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Driver</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Days in Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Type / Capacity</th>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Remarks</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
-                          {(truckStatusDetails[selectedStatus as keyof typeof truckStatusDetails] || []).map((truck, idx) => (
+                          {currentDrillDownData.map((truck, idx) => (
                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{truck.id}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{truck.driver}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="px-2 py-1 bg-rose-100 text-rose-700 text-xs font-bold rounded-md">{truck.days} Days</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{truck.issue}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{truck.vehicle_no}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{truck.variant} ({truck.capacity_tons} MT)</td>
+                              <td className="px-6 py-4 text-sm text-slate-500">{truck.remarks || "-"}</td>
                             </tr>
                           ))}
-                          {!(truckStatusDetails[selectedStatus as keyof typeof truckStatusDetails]) && (
-                            <tr><td colSpan={4} className="px-6 py-8 text-center text-sm text-slate-500">No detailed records found for this status.</td></tr>
+                          {currentDrillDownData.length === 0 && (
+                            <tr><td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500">No detailed records found for this status.</td></tr>
                           )}
                         </tbody>
                       </table>
@@ -195,7 +228,7 @@ export default function SaaS_ERPDashboard() {
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6">
             {activeTab === "Operations" && (
               <div className="p-6 min-h-[60vh]">
-                <div className="flex space-x-6 border-b border-slate-200 mb-6">
+                <div className="flex flex-wrap gap-6 border-b border-slate-200 mb-6">
                   {opTabs.map((sub) => (
                     <button
                       key={sub}
@@ -206,9 +239,56 @@ export default function SaaS_ERPDashboard() {
                     </button>
                   ))}
                 </div>
+                
                 {opSubTab === "Trips" && <TripForm onSuccess={() => {}} />}
                 {opSubTab === "POD Closure" && <PodClosure onSuccess={() => {}} />}
                 {opSubTab === "Settlements" && <DriverSettlementModule />}
+                
+                {/* NEW: Modify Trips Placeholder */}
+                {opSubTab === "Modify Trips" && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center shadow-sm">
+                    <h3 className="text-sm font-bold text-slate-900 mb-2">Modify Active Trips</h3>
+                    <p className="text-sm text-slate-500">Search and edit in-transit trip details.</p>
+                  </div>
+                )}
+
+                {/* NEW: Quick Status Form */}
+                {opSubTab === "Quick Status" && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm max-w-2xl">
+                    <h3 className="text-sm font-bold text-slate-900 mb-6 uppercase tracking-wider border-b border-slate-200 pb-2">Manual Status Override</h3>
+                    <form className="space-y-5">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Select Truck</label>
+                        <select className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                          <option>Select a vehicle...</option>
+                          {liveVehicles.map(v => (
+                            <option key={v.vehicle_no} value={v.vehicle_no}>
+                              {v.vehicle_no} ({v.capacity_tons}MT {v.variant})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">New Operational Status</label>
+                        <select className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                          <option>Ready / Available</option>
+                          <option>In Transit</option>
+                          <option>Plant Loading</option>
+                          <option>Workshop / Repairs</option>
+                          <option>No Driver / Leave</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Location / Breakdown Details</label>
+                        <input type="text" placeholder="e.g. Trip 40080069852: POTTANERI -> PARAMATHI VELUR" className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                      </div>
+                      <button type="button" className="mt-4 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-sm">
+                        Update Status
+                      </button>
+                    </form>
+                  </div>
+                )}
+
               </div>
             )}
             
@@ -224,36 +304,27 @@ export default function SaaS_ERPDashboard() {
       {showFullReport && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
-            
             <div className="flex justify-between items-center p-6 border-b border-slate-200">
               <div>
                 <h2 className="text-xl font-black text-slate-900">Detailed Truck Status Report</h2>
                 <p className="text-sm text-slate-500 mt-1">Full fleet overview as of {currentDateText}</p>
               </div>
-              
               <div className="flex items-center gap-3">
                 <button className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold text-sm rounded-lg transition-colors">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Excel
                 </button>
                 <button className="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-bold text-sm rounded-lg transition-colors">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   PDF
                 </button>
                 <div className="h-6 w-px bg-slate-200 mx-2"></div>
-                <button 
-                  onClick={() => setShowFullReport(false)}
-                  className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-                >
+                <button onClick={() => setShowFullReport(false)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
             </div>
-
             <div className="flex-1 overflow-auto p-6">
               <FleetTable />
             </div>
-            
           </div>
         </div>
       )}
