@@ -38,11 +38,29 @@ export default function SaaS_ERPDashboard() {
     return String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
   };
 
+  // Standard matcher for regular properties
   const findProp = (obj: any, hints: string[]) => {
     if (!obj) return null;
     const keys = Object.keys(obj);
     for (const hint of hints) {
       const foundKey = keys.find(k => k.toLowerCase().includes(hint.toLowerCase()));
+      if (foundKey && obj[foundKey] !== null && obj[foundKey] !== '') {
+        return obj[foundKey];
+      }
+    }
+    return null;
+  };
+
+  // Strict string matcher that ignores database 'id' keys (to prevent showing 34 instead of TN56...)
+  const findStringProp = (obj: any, hints: string[]) => {
+    if (!obj) return null;
+    const keys = Object.keys(obj);
+    for (const hint of hints) {
+      const foundKey = keys.find(k => 
+        k.toLowerCase().includes(hint.toLowerCase()) && 
+        k.toLowerCase() !== 'id' && 
+        !k.toLowerCase().endsWith('_id') // Ignore vehicle_id, truck_id, etc.
+      );
       if (foundKey && obj[foundKey] !== null && obj[foundKey] !== '') {
         return obj[foundKey];
       }
@@ -203,11 +221,8 @@ export default function SaaS_ERPDashboard() {
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
                           {currentDrillDownData.map((truck, idx) => {
-                            // Removed "id" from hints to prevent grabbing the numeric primary key.
-                            // If it still fails, it prints the database keys so we can see the correct column name!
-                            const truckNo = findProp(truck, ["veh", "truck", "reg", "plate", "asset", "name", "number", "v_no"]) 
-                                            || `Keys: ${Object.keys(truck).join(', ')}`;
-                            
+                            // Uses the strict string matcher to avoid grabbing the ID
+                            const truckNo = findStringProp(truck, ["veh", "truck", "reg", "plate", "asset", "name", "number", "v_no"]) || `Unknown (ID: ${truck.id})`;
                             const variant = findProp(truck, ["var", "type", "model", "body"]) || "Bulk";
                             const capacity = findProp(truck, ["cap", "ton", "weight", "mt"]) || "N/A";
                             const remarks = findProp(truck, ["rem", "note", "desc", "loc", "trip"]) || "-";
@@ -279,7 +294,7 @@ export default function SaaS_ERPDashboard() {
                         <select className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
                           <option>Select a vehicle...</option>
                           {liveVehicles.map((v, i) => {
-                            const tNo = findProp(v, ["veh", "truck", "reg", "plate", "asset", "name", "number", "v_no"]) || `Truck ${v.id || i}`;
+                            const tNo = findStringProp(v, ["veh", "truck", "reg", "plate", "asset", "name", "number", "v_no"]) || `Unknown (ID: ${v.id || i})`;
                             const cap = findProp(v, ["cap", "ton", "weight"]) || "N/A";
                             const type = findProp(v, ["var", "type", "model"]) || "Bulk";
                             return (
