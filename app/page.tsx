@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { TripForm } from "@/components/TripForm";
 import { FleetTable } from "@/components/FleetTable";
 import { PodClosure } from "@/components/PodClosure";
@@ -12,6 +13,41 @@ import { WorkshopModule } from "@/components/WorkshopModule";
 export default function ERPDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [opSubTab, setOpSubTab] = useState("Trip Dispatch");
+
+  // Real-time metric states
+  const [fleetCount, setFleetCount] = useState(0);
+  const [activeTripsCount, setActiveTripsCount] = useState(0);
+  const [totalTonnage, setTotalTonnage] = useState(0);
+  const [pendingPodsCount, setPendingPodsCount] = useState(0);
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function fetchDashboardMetrics() {
+      // 1. Fetch total active vehicles
+      const { count: vCount } = await supabase
+        .from('vehicles')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+      if (vCount !== null) setFleetCount(vCount);
+
+      // 2. Fetch active/in-transit trips
+      const { data: activeTrips } = await supabase
+        .from('trips')
+        .select('tonnage_loaded')
+        .in('trip_status', ['IN_TRANSIT', 'DISPATCHED']);
+
+      if (activeTrips) {
+        setActiveTripsCount(activeTrips.length);
+        setPendingPodsCount(activeTrips.length); // trips pending POD closure
+        const sumTonnage = activeTrips.reduce((acc, t) => acc + (Number(t.tonnage_loaded) || 0), 0);
+        setTotalTonnage(sumTonnage);
+      }
+    }
+
+    fetchDashboardMetrics();
+  }, [supabase]);
 
   const navItems = [
     "Dashboard", 
@@ -60,19 +96,19 @@ export default function ERPDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="border border-slate-100 rounded-lg p-4 bg-white shadow-sm">
                   <p className="text-xs font-bold text-slate-500 uppercase mb-2">Fleet Size</p>
-                  <p className="text-2xl font-extrabold text-slate-900">21</p>
+                  <p className="text-2xl font-extrabold text-slate-900">{fleetCount}</p>
                 </div>
                 <div className="border border-slate-100 rounded-lg p-4 bg-white shadow-sm">
                   <p className="text-xs font-bold text-slate-500 uppercase mb-2">Active Trips</p>
-                  <p className="text-2xl font-extrabold text-slate-900">296</p>
+                  <p className="text-2xl font-extrabold text-slate-900">{activeTripsCount}</p>
                 </div>
                 <div className="border border-indigo-100 rounded-lg p-4 bg-indigo-50 shadow-sm">
                   <p className="text-xs font-bold text-indigo-700 uppercase mb-2">Tonnage Dispatched</p>
-                  <p className="text-2xl font-extrabold text-indigo-900">0.0 MT</p>
+                  <p className="text-2xl font-extrabold text-indigo-900">{totalTonnage.toFixed(1)} MT</p>
                 </div>
                 <div className="border border-red-100 rounded-lg p-4 bg-red-50 shadow-sm">
                   <p className="text-xs font-bold text-red-700 uppercase mb-2">Pending PODs</p>
-                  <p className="text-2xl font-extrabold text-red-900">296</p>
+                  <p className="text-2xl font-extrabold text-red-900">{pendingPodsCount}</p>
                 </div>
               </div>
             </div>
@@ -117,14 +153,14 @@ export default function ERPDashboard() {
           <FuelAdvanceModule />
         )}
 
-        {/* Workshop & Tyres Tab */}
-        {activeTab === "Workshop & Tyres" && (
-          <WorkshopModule />
-        )}
-
         {/* Financials Tab */}
         {activeTab === "Financials" && (
           <FinancialsModule />
+        )}
+
+        {/* Workshop & Tyres Tab */}
+        {activeTab === "Workshop & Tyres" && (
+          <WorkshopModule />
         )}
 
         {/* Setup Tab */}
