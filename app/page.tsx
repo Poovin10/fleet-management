@@ -9,6 +9,7 @@ import { SetupModule } from "@/components/SetupModule";
 import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
 import { FinancialsModule } from "@/components/FinancialsModule";
 import { WorkshopModule } from "@/components/WorkshopModule";
+import { DriverSettlementModule } from "@/components/DriverSettlementModule";
 
 export default function ERPDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -146,7 +147,7 @@ export default function ERPDashboard() {
         {activeTab === "Operations" && (
           <div className="space-y-6">
             <div className="flex gap-2 bg-slate-100 p-1 rounded-lg w-fit">
-              {["Trip Dispatch", "POD Receive & Close"].map((sub) => (
+              {["Trip Dispatch", "POD Receive & Close", "Rate Slabs & Settlements"].map((sub) => (
                 <button
                   key={sub}
                   onClick={() => setOpSubTab(sub)}
@@ -168,6 +169,12 @@ export default function ERPDashboard() {
             {opSubTab === "POD Receive & Close" && (
               <div>
                 <PodClosure onSuccess={() => {}} />
+              </div>
+            )}
+
+            {opSubTab === "Rate Slabs & Settlements" && (
+              <div>
+                <DriverSettlementModule />
               </div>
             )}
           </div>
