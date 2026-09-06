@@ -9,6 +9,7 @@ export function TripForm({ onSuccess }: { onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
+  const [activeTrips, setActiveTrips] = useState<any[]>([]);
 
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [lrNo, setLrNo] = useState("");
@@ -31,11 +32,39 @@ export function TripForm({ onSuccess }: { onSuccess: () => void }) {
     async function fetchMasterData() {
       const { data: vData } = await supabase.from('vehicles').select('*').eq('is_active', true);
       const { data: dData } = await supabase.from('drivers').select('*').eq('is_active', true);
+      const { data: tData } = await supabase.from('trips').select('*').in('trip_status', ['IN_TRANSIT', 'DISPATCHED']);
+      
       if (vData) setVehicles(vData);
       if (dData) setDrivers(dData);
+      if (tData) setActiveTrips(tData);
     }
     fetchMasterData();
   }, [supabase]);
+
+  // AUTO-SELECT PREVIOUSLY ASSIGNED DRIVER & PRE-FILL SPECS WHEN TRUCK IS CHOSEN
+  const handleVehicleChange = async (vehicleId: string) => {
+    setSelectedVehicle(vehicleId);
+    if (!vehicleId) return;
+
+    // Find last trip for this vehicle to auto-assign driver and route info
+    const { data: lastTrip } = await supabase
+      .from('trips')
+      .select('primary_driver_id, destination, tonnage_loaded')
+      .eq('vehicle_id', Number(vehicleId))
+      .order('trip_id', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (lastTrip) {
+      if (lastTrip.primary_driver_id) {
+        setSelectedDriver(lastTrip.primary_driver_id.toString());
+        toast.info("Auto-assigned last active driver for this truck.");
+      }
+      if (lastTrip.tonnage_loaded) {
+        setLoadedMt(lastTrip.tonnage_loaded.toString());
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +76,27 @@ export function TripForm({ onSuccess }: { onSuccess: () => void }) {
     setLoading(true);
 
     try {
+      // 1. CHECK FOR DUPLICATE LR NUMBER
+      const { data: existingLr } = await supabase
+        .from('trips')
+        .select('trip_id')
+        .eq('trip_number', lrNo.trim().toUpperCase())
+        .maybeSingle();
+
+      if (existingLr) {
+        toast.error(`Duplicate Error: LR Number "${lrNo.toUpperCase()}" already exists in the system!`);
+        setLoading(false);
+        return;
+      }
+
+      // 2. CHECK IF TRUCK ALREADY HAS AN UNCLOSED TRIP
+      const activeTripForVehicle = activeTrips.find(t => t.vehicle_id.toString() === selectedVehicle);
+      if (activeTripForVehicle) {
+        toast.error(`Trip Not Closed Error: Vehicle already has an active trip (LR: ${activeTripForVehicle.trip_number})! Close POD first.`);
+        setLoading(false);
+        return;
+      }
+
       const vehObj = vehicles.find(v => v.vehicle_id.toString() === selectedVehicle);
       const tonnage = Number(loadedMt) || Number(vehObj?.carrying_capacity_tons) || 30.0;
       const freightRevenue = tonnage * 1200; 
@@ -122,7 +172,7 @@ export function TripForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4 max-w-3xl">
-      <h3 className="text-lg font-bold text-slate-900 border-b pb-2">Initiate Full Trip Dispatch</h3>
+      <h3 className="text-lg font-bold text-slate-900 border-b pb-2">Initiate Full Trip Dispatch (Safeguarded)</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
@@ -136,7 +186,7 @@ export function TripForm({ onSuccess }: { onSuccess: () => void }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">LR Number*</label>
+          <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">LR Number (Unique)*</label>
           <input
             type="text"
             required
@@ -161,23 +211,26 @@ export function TripForm({ onSuccess }: { onSuccess: () => void }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Assigned Truck*</label>
+          <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Assigned Truck* (Auto-checks active trips)</label>
           <select
             value={selectedVehicle}
-            onChange={(e) => setSelectedVehicle(e.target.value)}
+            onChange={(e) => handleVehicleChange(e.target.value)}
             className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white"
             required
           >
             <option value="">-- SELECT TRUCK --</option>
-            {vehicles.map((v) => (
-              <option key={v.vehicle_id} value={v.vehicle_id}>
-                {v.vehicle_number} [{v.truck_type} - {v.carrying_capacity_tons}MT]
-              </option>
-            ))}
+            {vehicles.map((v) => {
+              const hasActive = activeTrips.some(t => t.vehicle_id === v.vehicle_id);
+              return (
+                <option key={v.vehicle_id} value={v.vehicle_id} disabled={hasActive}>
+                  {v.vehicle_number} [{v.truck_type} - {v.carrying_capacity_tons}MT] {hasActive ? "⚠️ [TRIP ACTIVE]" : ""}
+                </option>
+              );
+            })}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Driver*</label>
+          <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Driver* (Auto-suggests previous)</label>
           <select
             value={selectedDriver}
             onChange={(e) => setSelectedDriver(e.target.value)}
@@ -300,7 +353,7 @@ export function TripForm({ onSuccess }: { onSuccess: () => void }) {
       </div>
 
       <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2">
-        {loading ? "Processing Dispatch..." : "Dispatch Trip"}
+        {loading ? "Processing Dispatch..." : "Dispatch Trip (Safeguarded)"}
       </Button>
     </form>
   );
