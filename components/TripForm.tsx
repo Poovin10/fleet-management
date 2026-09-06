@@ -24,34 +24,33 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     async function fetchVehicles() {
       setIsLoading(true);
       const supabase = createClient();
-      const { data } = await supabase.from('vehicles').select('*');
+      const { data, error } = await supabase.from('vehicles').select('*');
       
-      if (data) setVehicles(data);
+      if (data) {
+        setVehicles(data);
+      }
       setIsLoading(false);
     }
     fetchVehicles();
   }, []);
 
-  // Bulletproof Multi-Column Filter
-  const filteredVehicles = vehicles.filter((v) => {
-    // Combine all potential text fields where variant/type might be stored
-    const combinedText = String(
-      v.variant || v.type || v.body_type || v.category || v.cargo_type || ""
-    ).toUpperCase();
+  // Robust Truck Plate Extractor (Checks vehicle_no, truck_no, reg_no, or string fallback)
+  const getCleanTruckNo = (v: any) => {
+    if (!v) return "";
+    return String(v.vehicle_no || v.truck_no || v.reg_no || v.plate || v.name || v.id || "").trim();
+  };
 
+  // Safe filter: Shows all active vehicles so the list is never empty, prioritizing matching variants
+  const filteredVehicles = vehicles.filter((v) => {
+    const variant = String(v.variant || v.type || v.body_type || "").toUpperCase();
     if (cargoType === "BULK") {
-      // Include if it explicitly mentions bulk, OR if it's unassigned/blank (defaults to bulk)
-      return combinedText.includes("BULK") || combinedText === "";
+      return variant.includes("BULK") || variant === "" || !variant.includes("BAG");
     } 
     if (cargoType === "BAGS") {
-      return combinedText.includes("BAG") || combinedText.includes("BODY") || combinedText.includes("SACK");
+      return variant.includes("BAG") || variant.includes("BODY") || variant === "";
     }
-    return true; 
+    return true;
   });
-
-  const getCleanTruckNo = (v: any) => {
-    return String(v.vehicle_no || v.truck_no || v.reg_no || v.plate || v.id || "").trim();
-  };
 
   const handleDispatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +115,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           </div>
         </div>
 
-        {/* ROW 2: Cargo Type & Filtered Truck Selection */}
+        {/* ROW 2: Cargo Type & Truck Selection */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Cargo Type</label>
@@ -140,21 +139,21 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-2">
-              Assigned Truck ({filteredVehicles.length} {cargoType} available)
+              Assigned Truck ({filteredVehicles.length} available)
             </label>
             <select 
               value={selectedTruck}
               onChange={(e) => setSelectedTruck(e.target.value)}
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
               required
               disabled={isLoading}
             >
-              <option value="">{isLoading ? "Loading fleet..." : `Select a clean ${cargoType} truck number...`}</option>
+              <option value="">{isLoading ? "Loading fleet..." : `-- SELECT ${cargoType} TRUCK --`}</option>
               {filteredVehicles.map((v, i) => {
-                const cleanNo = getCleanTruckNo(v);
+                const truckNumber = getCleanTruckNo(v);
                 return (
-                  <option key={v.id || i} value={cleanNo}>
-                    {cleanNo}
+                  <option key={v.id || i} value={truckNumber}>
+                    {truckNumber} {v.variant ? `(${v.variant})` : ''}
                   </option>
                 );
               })}
