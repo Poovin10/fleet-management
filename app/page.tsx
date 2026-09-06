@@ -34,9 +34,22 @@ export default function SaaS_ERPDashboard() {
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Settlements"];
 
-  // Ultra-robust status extractor (handles spaces, nulls, and multiple column names)
+  // 1. Status Extractor
   const extractStatus = (v: any) => {
     return String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
+  };
+
+  // 2. Auto-Mapper (Fuzzy Matcher) for Database Columns
+  const findProp = (obj: any, hints: string[]) => {
+    if (!obj) return null;
+    const keys = Object.keys(obj);
+    for (const hint of hints) {
+      const foundKey = keys.find(k => k.toLowerCase().includes(hint.toLowerCase()));
+      if (foundKey && obj[foundKey] !== null && obj[foundKey] !== '') {
+        return obj[foundKey];
+      }
+    }
+    return null;
   };
 
   useEffect(() => {
@@ -173,7 +186,7 @@ export default function SaaS_ERPDashboard() {
                   ))}
                 </div>
 
-                {/* DYNAMIC DRILL-DOWN TABLE WITH FALLBACKS */}
+                {/* DYNAMIC DRILL-DOWN TABLE WITH AUTO-MAPPER */}
                 {selectedStatus && (
                   <div className="mt-6 border-t border-slate-100 pt-6 animate-in slide-in-from-top-4 fade-in duration-300">
                     <div className="flex justify-between items-center mb-4">
@@ -192,23 +205,23 @@ export default function SaaS_ERPDashboard() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
-                          {currentDrillDownData.map((truck, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                              {/* Extremely robust fallbacks for database properties */}
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
-                                {truck.vehicle_no || truck.truck_no || truck.reg_no || truck.id || "Unknown"}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                                {truck.driver || truck.driver_name || "Unassigned"}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                                {truck.variant || truck.type || "Bulk"} ({truck.capacity_tons || truck.capacity || "N/A"} MT)
-                              </td>
-                              <td className="px-6 py-4 text-sm text-slate-500">
-                                {truck.remarks || truck.notes || "-"}
-                              </td>
-                            </tr>
-                          ))}
+                          {currentDrillDownData.map((truck, idx) => {
+                            // Extract data robustly using the fuzzy matcher
+                            const truckNo = findProp(truck, ["veh", "truck", "reg", "id"]) || "Unknown";
+                            const driver = findProp(truck, ["driv", "emp", "name"]) || "Unassigned";
+                            const variant = findProp(truck, ["var", "type", "model", "body"]) || "Bulk";
+                            const capacity = findProp(truck, ["cap", "ton", "weight", "mt"]) || "N/A";
+                            const remarks = findProp(truck, ["rem", "note", "desc", "loc", "trip"]) || "-";
+
+                            return (
+                              <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{truckNo}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{driver}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{variant} ({capacity} MT)</td>
+                                <td className="px-6 py-4 text-sm text-slate-500">{remarks}</td>
+                              </tr>
+                            );
+                          })}
                           {currentDrillDownData.length === 0 && (
                             <tr><td colSpan={4} className="px-6 py-8 text-center text-sm text-slate-500">No detailed records found for this status.</td></tr>
                           )}
@@ -267,11 +280,14 @@ export default function SaaS_ERPDashboard() {
                         <label className="block text-xs font-bold text-slate-600 mb-1">Select Truck</label>
                         <select className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
                           <option>Select a vehicle...</option>
-                          {liveVehicles.map(v => (
-                            <option key={v.id || v.vehicle_no} value={v.vehicle_no || v.id}>
-                              {v.vehicle_no || v.truck_no || v.id} ({v.capacity_tons || "N/A"}MT {v.variant || "Bulk"})
-                            </option>
-                          ))}
+                          {liveVehicles.map((v, i) => {
+                            const tNo = findProp(v, ["veh", "truck", "reg", "id"]) || `Truck ${i+1}`;
+                            const cap = findProp(v, ["cap", "ton", "weight"]) || "N/A";
+                            const type = findProp(v, ["var", "type", "model"]) || "Bulk";
+                            return (
+                              <option key={tNo} value={tNo}>{tNo} ({cap}MT {type})</option>
+                            );
+                          })}
                         </select>
                       </div>
                       <div>
