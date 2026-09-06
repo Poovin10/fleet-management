@@ -34,9 +34,9 @@ export default function SaaS_ERPDashboard() {
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Settlements"];
 
-  // Bulletproof status extractor (handles status, current_status, vehicle_status, etc.)
+  // Ultra-robust status extractor (handles spaces, nulls, and multiple column names)
   const extractStatus = (v: any) => {
-    return (v.status || v.current_status || v.vehicle_status || v.STATUS || "").toUpperCase();
+    return String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
   };
 
   useEffect(() => {
@@ -50,7 +50,6 @@ export default function SaaS_ERPDashboard() {
       if (vehicles && vehicles.length > 0) {
         setLiveVehicles(vehicles);
         
-        // Calculate dynamic counts based on the robust extractor
         setStatusCounts({
           "In Transit": vehicles.filter(v => extractStatus(v) === 'IN_TRANSIT').length,
           "Ready / Available": vehicles.filter(v => extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
@@ -174,7 +173,7 @@ export default function SaaS_ERPDashboard() {
                   ))}
                 </div>
 
-                {/* DYNAMIC DRILL-DOWN TABLE */}
+                {/* DYNAMIC DRILL-DOWN TABLE WITH FALLBACKS */}
                 {selectedStatus && (
                   <div className="mt-6 border-t border-slate-100 pt-6 animate-in slide-in-from-top-4 fade-in duration-300">
                     <div className="flex justify-between items-center mb-4">
@@ -187,6 +186,7 @@ export default function SaaS_ERPDashboard() {
                         <thead className="bg-slate-50">
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Truck No.</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Driver</th>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Type / Capacity</th>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Remarks</th>
                           </tr>
@@ -194,13 +194,23 @@ export default function SaaS_ERPDashboard() {
                         <tbody className="bg-white divide-y divide-slate-200">
                           {currentDrillDownData.map((truck, idx) => (
                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{truck.vehicle_no || truck.id}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{truck.variant || "Bulk"} ({truck.capacity_tons} MT)</td>
-                              <td className="px-6 py-4 text-sm text-slate-500">{truck.remarks || "-"}</td>
+                              {/* Extremely robust fallbacks for database properties */}
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
+                                {truck.vehicle_no || truck.truck_no || truck.reg_no || truck.id || "Unknown"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                                {truck.driver || truck.driver_name || "Unassigned"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                                {truck.variant || truck.type || "Bulk"} ({truck.capacity_tons || truck.capacity || "N/A"} MT)
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-500">
+                                {truck.remarks || truck.notes || "-"}
+                              </td>
                             </tr>
                           ))}
                           {currentDrillDownData.length === 0 && (
-                            <tr><td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500">No detailed records found for this status.</td></tr>
+                            <tr><td colSpan={4} className="px-6 py-8 text-center text-sm text-slate-500">No detailed records found for this status.</td></tr>
                           )}
                         </tbody>
                       </table>
@@ -258,8 +268,8 @@ export default function SaaS_ERPDashboard() {
                         <select className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
                           <option>Select a vehicle...</option>
                           {liveVehicles.map(v => (
-                            <option key={v.vehicle_no || v.id} value={v.vehicle_no || v.id}>
-                              {v.vehicle_no || v.id} ({v.capacity_tons}MT {v.variant || "Bulk"})
+                            <option key={v.id || v.vehicle_no} value={v.vehicle_no || v.id}>
+                              {v.vehicle_no || v.truck_no || v.id} ({v.capacity_tons || "N/A"}MT {v.variant || "Bulk"})
                             </option>
                           ))}
                         </select>
