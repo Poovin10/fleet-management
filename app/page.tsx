@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-// Corrected: Added curly braces for Named Exports
+// Imports with curly braces to fix the "Export default doesn't exist" error
 import { TripForm } from "@/components/TripForm";
 import { PodClosure } from "@/components/PodClosure";
 import { DriverSettlementModule } from "@/components/DriverSettlementModule";
@@ -15,13 +15,17 @@ export default function SaaS_ERPDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [opSubTab, setOpSubTab] = useState("Trips");
   
+  // Interactive Dashboard States
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [showFullReport, setShowFullReport] = useState(false);
 
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
   const opTabs = ["Trips", "POD Closure", "Settlements"];
+
+  // Current Month Text Generator (e.g., "September 2026")
   const currentMonthText = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
+  // Mock data for the drill-down view
   const truckStatusDetails = {
     "Workshop / Repairs": [
       { id: "TN 56 F 0452", driver: "Unassigned", days: 3, issue: "Clutch Plate Replacement" },
@@ -196,8 +200,9 @@ export default function SaaS_ERPDashboard() {
                     </button>
                   ))}
                 </div>
-                {opSubTab === "Trips" && <TripForm />}
-                {opSubTab === "POD Closure" && <PodClosure />}
+                {/* Fixed TypeScript Error: Added onSuccess={() => {}} */}
+                {opSubTab === "Trips" && <TripForm onSuccess={() => {}} />}
+                {opSubTab === "POD Closure" && <PodClosure onSuccess={() => {}} />}
                 {opSubTab === "Settlements" && <DriverSettlementModule />}
               </div>
             )}
