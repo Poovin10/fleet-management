@@ -24,7 +24,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     async function fetchVehicles() {
       setIsLoading(true);
       const supabase = createClient();
-      const { data, error } = await supabase.from('vehicles').select('*');
+      const { data } = await supabase.from('vehicles').select('*');
       
       if (data) {
         setVehicles(data);
@@ -34,23 +34,26 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     fetchVehicles();
   }, []);
 
-  // Robust Truck Plate Extractor (Checks vehicle_no, truck_no, reg_no, or string fallback)
+  // Robust Truck Plate Extractor
   const getCleanTruckNo = (v: any) => {
     if (!v) return "";
     return String(v.vehicle_no || v.truck_no || v.reg_no || v.plate || v.name || v.id || "").trim();
   };
 
-  // Safe filter: Shows all active vehicles so the list is never empty, prioritizing matching variants
-  const filteredVehicles = vehicles.filter((v) => {
-    const variant = String(v.variant || v.type || v.body_type || "").toUpperCase();
+  // Filter with Fallback: Tries to match Bulk/Bags, but falls back to all vehicles if empty
+  const strictFiltered = vehicles.filter((v) => {
+    const variant = String(v.variant || v.type || v.body_type || v.cargo_type || "").toUpperCase();
     if (cargoType === "BULK") {
-      return variant.includes("BULK") || variant === "" || !variant.includes("BAG");
+      return variant.includes("BULK") || variant === "";
     } 
     if (cargoType === "BAGS") {
-      return variant.includes("BAG") || variant.includes("BODY") || variant === "";
+      return variant.includes("BAG") || variant.includes("BODY") || variant.includes("SACK");
     }
     return true;
   });
+
+  // Fail-safe: if strict filter finds nothing, show all vehicles so the list is never blank
+  const filteredVehicles = strictFiltered.length > 0 ? strictFiltered : vehicles;
 
   const handleDispatch = async (e: React.FormEvent) => {
     e.preventDefault();
