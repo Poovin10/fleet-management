@@ -24,7 +24,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     async function fetchVehicles() {
       setIsLoading(true);
       const supabase = createClient();
-      const { data } = await supabase.from('vehicles').select('*');
+      const { data, error } = await supabase.from('vehicles').select('*');
       
       if (data) {
         setVehicles(data);
@@ -34,26 +34,21 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     fetchVehicles();
   }, []);
 
-  // Robust Truck Plate Extractor
+  // Universal truck number extractor that checks every possible column name
   const getCleanTruckNo = (v: any) => {
     if (!v) return "";
-    return String(v.vehicle_no || v.truck_no || v.reg_no || v.plate || v.name || v.id || "").trim();
+    return String(
+      v.vehicle_no || 
+      v.truck_no || 
+      v.reg_no || 
+      v.plate || 
+      v.name || 
+      v.number || 
+      v.registration || 
+      v.id || 
+      ""
+    ).trim();
   };
-
-  // Filter with Fallback: Tries to match Bulk/Bags, but falls back to all vehicles if empty
-  const strictFiltered = vehicles.filter((v) => {
-    const variant = String(v.variant || v.type || v.body_type || v.cargo_type || "").toUpperCase();
-    if (cargoType === "BULK") {
-      return variant.includes("BULK") || variant === "";
-    } 
-    if (cargoType === "BAGS") {
-      return variant.includes("BAG") || variant.includes("BODY") || variant.includes("SACK");
-    }
-    return true;
-  });
-
-  // Fail-safe: if strict filter finds nothing, show all vehicles so the list is never blank
-  const filteredVehicles = strictFiltered.length > 0 ? strictFiltered : vehicles;
 
   const handleDispatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,7 +137,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-2">
-              Assigned Truck ({filteredVehicles.length} available)
+              Assigned Truck ({vehicles.length} Active Fleet Loaded)
             </label>
             <select 
               value={selectedTruck}
@@ -151,8 +146,8 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               required
               disabled={isLoading}
             >
-              <option value="">{isLoading ? "Loading fleet..." : `-- SELECT ${cargoType} TRUCK --`}</option>
-              {filteredVehicles.map((v, i) => {
+              <option value="">{isLoading ? "Loading fleet..." : "-- SELECT TRUCK --"}</option>
+              {vehicles.map((v, i) => {
                 const truckNumber = getCleanTruckNo(v);
                 return (
                   <option key={v.id || i} value={truckNumber}>
