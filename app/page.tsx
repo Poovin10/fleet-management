@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+// Modular Components
 import { TripForm } from "@/components/TripForm";
 import { PodClosure } from "@/components/PodClosure";
+import { ModifyTrips } from "@/components/ModifyTrips";
 import { DriverSettlementModule } from "@/components/DriverSettlementModule";
 import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
 import { FinancialsModule } from "@/components/FinancialsModule";
@@ -34,11 +36,15 @@ export default function SaaS_ERPDashboard() {
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Settlements"];
 
+  // Quick Status Override States
+  const [qsTruckId, setQsTruckId] = useState("");
+  const [qsStatus, setQsStatus] = useState("AVAILABLE_FOR_LOAD");
+  const [qsRemarks, setQsRemarks] = useState("");
+
   const extractStatus = (v: any) => {
     return String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
   };
 
-  // Standard matcher for regular properties
   const findProp = (obj: any, hints: string[]) => {
     if (!obj) return null;
     const keys = Object.keys(obj);
@@ -51,7 +57,6 @@ export default function SaaS_ERPDashboard() {
     return null;
   };
 
-  // Strict string matcher that ignores database 'id' keys (to prevent showing 34 instead of TN56...)
   const findStringProp = (obj: any, hints: string[]) => {
     if (!obj) return null;
     const keys = Object.keys(obj);
@@ -59,7 +64,7 @@ export default function SaaS_ERPDashboard() {
       const foundKey = keys.find(k => 
         k.toLowerCase().includes(hint.toLowerCase()) && 
         k.toLowerCase() !== 'id' && 
-        !k.toLowerCase().endsWith('_id') // Ignore vehicle_id, truck_id, etc.
+        !k.toLowerCase().endsWith('_id')
       );
       if (foundKey && obj[foundKey] !== null && obj[foundKey] !== '') {
         return obj[foundKey];
@@ -68,26 +73,26 @@ export default function SaaS_ERPDashboard() {
     return null;
   };
 
+  const fetchDashboardData = async () => {
+    const supabase = createClient();
+    const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
+    
+    if (vehicles && vehicles.length > 0) {
+      setLiveVehicles(vehicles);
+      
+      setStatusCounts({
+        "In Transit": vehicles.filter(v => extractStatus(v) === 'IN_TRANSIT').length,
+        "Ready / Available": vehicles.filter(v => extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
+        "Plant Loading": vehicles.filter(v => extractStatus(v) === 'WAITING_FOR_LOAD').length,
+        "Workshop / Repairs": vehicles.filter(v => extractStatus(v) === 'WORKSHOP_MAINTENANCE').length,
+        "No Driver / Leave": vehicles.filter(v => extractStatus(v) === 'DRIVER_UNAVAILABLE').length
+      });
+    }
+  };
+
   useEffect(() => {
     setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
     setCurrentDateText(new Date().toLocaleDateString());
-
-    async function fetchDashboardData() {
-      const supabase = createClient();
-      const { data: vehicles } = await supabase.from('vehicles').select('*');
-      
-      if (vehicles && vehicles.length > 0) {
-        setLiveVehicles(vehicles);
-        
-        setStatusCounts({
-          "In Transit": vehicles.filter(v => extractStatus(v) === 'IN_TRANSIT').length,
-          "Ready / Available": vehicles.filter(v => extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
-          "Plant Loading": vehicles.filter(v => extractStatus(v) === 'PLANT_LOADING').length,
-          "Workshop / Repairs": vehicles.filter(v => extractStatus(v) === 'WORKSHOP_MAINTENANCE').length,
-          "No Driver / Leave": vehicles.filter(v => extractStatus(v) === 'NO_DRIVER').length
-        });
-      }
-    }
     fetchDashboardData();
   }, []);
 
@@ -95,15 +100,34 @@ export default function SaaS_ERPDashboard() {
     const statusMap: Record<string, string> = {
       "In Transit": "IN_TRANSIT",
       "Ready / Available": "AVAILABLE_FOR_LOAD",
-      "Plant Loading": "PLANT_LOADING",
+      "Plant Loading": "WAITING_FOR_LOAD",
       "Workshop / Repairs": "WORKSHOP_MAINTENANCE",
-      "No Driver / Leave": "NO_DRIVER"
+      "No Driver / Leave": "DRIVER_UNAVAILABLE"
     };
     const dbStatus = statusMap[statusLabel];
     return liveVehicles.filter(v => extractStatus(v) === dbStatus);
   };
 
   const currentDrillDownData = selectedStatus ? getDrillDownData(selectedStatus) : [];
+
+  const handleQuickStatusSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!qsTruckId) return alert("Please select a truck.");
+    
+    const supabase = createClient();
+    const { error } = await supabase.from('vehicles')
+      .update({ current_status: qsStatus, status_remarks: qsRemarks })
+      .eq('vehicle_id', qsTruckId);
+
+    if (error) {
+      alert("Error updating status: " + error.message);
+    } else {
+      alert("Vehicle status updated successfully!");
+      setQsTruckId("");
+      setQsRemarks("");
+      fetchDashboardData(); // Refresh the counts instantly
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
@@ -121,7 +145,7 @@ export default function SaaS_ERPDashboard() {
             </span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold text-slate-700">Active Fleet: 26 Units</span>
+            <span className="text-sm font-semibold text-slate-700">Active Fleet: {liveVehicles.length} Units</span>
             <div className="h-4 w-px bg-slate-200"></div>
             <button className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors">Sign out</button>
           </div>
@@ -132,7 +156,7 @@ export default function SaaS_ERPDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         
         {/* Navigation Bar */}
-        <nav className="flex space-x-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 shadow-sm w-fit">
+        <nav className="flex flex-wrap space-x-1 space-y-1 sm:space-y-0 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 shadow-sm w-fit">
           {navItems.map((item) => (
             <button
               key={item}
@@ -202,7 +226,7 @@ export default function SaaS_ERPDashboard() {
                   ))}
                 </div>
 
-                {/* DYNAMIC DRILL-DOWN TABLE */}
+                {/* DYNAMIC DRILL-DOWN TABLE WITH AUTO-MAPPER */}
                 {selectedStatus && (
                   <div className="mt-6 border-t border-slate-100 pt-6 animate-in slide-in-from-top-4 fade-in duration-300">
                     <div className="flex justify-between items-center mb-4">
@@ -221,11 +245,10 @@ export default function SaaS_ERPDashboard() {
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
                           {currentDrillDownData.map((truck, idx) => {
-                            // Uses the strict string matcher to avoid grabbing the ID
-                            const truckNo = findStringProp(truck, ["veh", "truck", "reg", "plate", "asset", "name", "number", "v_no"]) || `Unknown (ID: ${truck.id})`;
-                            const variant = findProp(truck, ["var", "type", "model", "body"]) || "Bulk";
+                            const truckNo = findStringProp(truck, ["veh", "truck", "reg", "plate", "number"]) || `Truck ${truck.id}`;
+                            const variant = findProp(truck, ["var", "type", "model"]) || "Bulk";
                             const capacity = findProp(truck, ["cap", "ton", "weight", "mt"]) || "N/A";
-                            const remarks = findProp(truck, ["rem", "note", "desc", "loc", "trip"]) || "-";
+                            const remarks = findProp(truck, ["rem", "note", "desc", "loc", "trip", "status_remarks"]) || "-";
 
                             return (
                               <tr key={idx} className="hover:bg-slate-50 transition-colors">
@@ -274,50 +297,57 @@ export default function SaaS_ERPDashboard() {
                   ))}
                 </div>
                 
-                {opSubTab === "Trips" && <TripForm onSuccess={() => {}} />}
-                {opSubTab === "POD Closure" && <PodClosure onSuccess={() => {}} />}
+                {/* --- The Modular Component Routing --- */}
+                {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
+                {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
+                {opSubTab === "Modify Trips" && <ModifyTrips onSuccess={() => fetchDashboardData()} />}
                 {opSubTab === "Settlements" && <DriverSettlementModule />}
                 
-                {opSubTab === "Modify Trips" && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center shadow-sm">
-                    <h3 className="text-sm font-bold text-slate-900 mb-2">Modify Active Trips</h3>
-                    <p className="text-sm text-slate-500">Search and edit in-transit trip details.</p>
-                  </div>
-                )}
-
+                {/* Quick Status is kept inline due to its simplicity */}
                 {opSubTab === "Quick Status" && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm max-w-2xl">
                     <h3 className="text-sm font-bold text-slate-900 mb-6 uppercase tracking-wider border-b border-slate-200 pb-2">Manual Status Override</h3>
-                    <form className="space-y-5">
+                    <form onSubmit={handleQuickStatusSubmit} className="space-y-5">
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-1">Select Truck</label>
-                        <select className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-                          <option>Select a vehicle...</option>
-                          {liveVehicles.map((v, i) => {
-                            const tNo = findStringProp(v, ["veh", "truck", "reg", "plate", "asset", "name", "number", "v_no"]) || `Unknown (ID: ${v.id || i})`;
-                            const cap = findProp(v, ["cap", "ton", "weight"]) || "N/A";
-                            const type = findProp(v, ["var", "type", "model"]) || "Bulk";
-                            return (
-                              <option key={v.id || i} value={tNo}>{tNo} ({cap}MT {type})</option>
-                            );
-                          })}
+                        <select 
+                          value={qsTruckId} 
+                          onChange={(e) => setQsTruckId(e.target.value)} 
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                        >
+                          <option value="">Select a vehicle...</option>
+                          {liveVehicles.map(v => (
+                            <option key={v.vehicle_id} value={v.vehicle_id}>
+                              {v.vehicle_number} ({v.carrying_capacity_tons}MT {v.truck_type})
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-1">New Operational Status</label>
-                        <select className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-                          <option>Ready / Available</option>
-                          <option>In Transit</option>
-                          <option>Plant Loading</option>
-                          <option>Workshop / Repairs</option>
-                          <option>No Driver / Leave</option>
+                        <select 
+                          value={qsStatus} 
+                          onChange={(e) => setQsStatus(e.target.value)} 
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                        >
+                          <option value="AVAILABLE_FOR_LOAD">Ready / Available</option>
+                          <option value="IN_TRANSIT">In Transit</option>
+                          <option value="WAITING_FOR_LOAD">Plant Loading</option>
+                          <option value="WORKSHOP_MAINTENANCE">Workshop / Repairs</option>
+                          <option value="DRIVER_UNAVAILABLE">No Driver / Leave</option>
                         </select>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-1">Location / Breakdown Details</label>
-                        <input type="text" placeholder="e.g. Trip 40080069852: POTTANERI -> PARAMATHI VELUR" className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                        <input 
+                          type="text" 
+                          value={qsRemarks} 
+                          onChange={(e) => setQsRemarks(e.target.value)} 
+                          placeholder="e.g. Broken Down near Erode Toll" 
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                        />
                       </div>
-                      <button type="button" className="mt-4 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-sm">
+                      <button type="submit" className="mt-4 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-sm">
                         Update Status
                       </button>
                     </form>
