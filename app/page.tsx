@@ -24,6 +24,11 @@ export default function SaaS_ERPDashboard() {
   const [currentDateText, setCurrentDateText] = useState("");
   const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
   
+  // Real-time KPI States
+  const [monthTonnage, setMonthTonnage] = useState<number>(0);
+  const [monthFreight, setMonthFreight] = useState<number>(0);
+  const [activeTripCount, setActiveTripCount] = useState<number>(0);
+  
   const [statusCounts, setStatusCounts] = useState({
     "In Transit": 0,
     "Ready / Available": 0,
@@ -33,11 +38,8 @@ export default function SaaS_ERPDashboard() {
   });
 
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
-  
-  // Cleaned up Operations tabs (Settlements moved to Financials)
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status"];
 
-  // Quick Status Override States
   const [qsTruckId, setQsTruckId] = useState("");
   const [qsStatus, setQsStatus] = useState("AVAILABLE_FOR_LOAD");
   const [qsRemarks, setQsRemarks] = useState("");
@@ -64,11 +66,11 @@ export default function SaaS_ERPDashboard() {
 
   const fetchDashboardData = async () => {
     const supabase = createClient();
-    const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
     
+    // 1. Fetch Vehicles
+    const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
     if (vehicles && vehicles.length > 0) {
       setLiveVehicles(vehicles);
-      
       setStatusCounts({
         "In Transit": vehicles.filter(v => extractStatus(v) === 'IN_TRANSIT').length,
         "Ready / Available": vehicles.filter(v => extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
@@ -77,13 +79,38 @@ export default function SaaS_ERPDashboard() {
         "No Driver / Leave": vehicles.filter(v => extractStatus(v) === 'DRIVER_UNAVAILABLE').length
       });
     }
+
+    // 2. Fetch Active Trips (Pending PODs)
+    const { count: activeCount } = await supabase
+      .from('trips')
+      .select('*', { count: 'exact', head: true })
+      .neq('trip_status', 'COMPLETED');
+    setActiveTripCount(activeCount || 0);
+
+    // 3. Calculate Current Month Tonnage & Freight
+    const date = new Date();
+    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
+    const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+    const { data: monthTrips } = await supabase
+      .from('trips')
+      .select('loaded_weight_mt, freight_revenue')
+      .gte('trip_start_date', firstDayOfMonth)
+      .lte('trip_start_date', lastDayOfMonth);
+
+    if (monthTrips) {
+      const totalTonnage = monthTrips.reduce((acc, curr) => acc + (Number(curr.loaded_weight_mt) || 0), 0);
+      const totalFreight = monthTrips.reduce((acc, curr) => acc + (Number(curr.freight_revenue) || 0), 0);
+      setMonthTonnage(totalTonnage);
+      setMonthFreight(totalFreight);
+    }
   };
 
   useEffect(() => {
     setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
     setCurrentDateText(new Date().toLocaleDateString());
     fetchDashboardData();
-  }, []);
+  }, [activeTab]); // Added activeTab to dependency array so it refreshes data when returning to Dashboard
 
   const getDrillDownData = (statusLabel: string) => {
     const statusMap: Record<string, string> = {
@@ -114,7 +141,7 @@ export default function SaaS_ERPDashboard() {
       alert("Vehicle status updated successfully!");
       setQsTruckId("");
       setQsRemarks("");
-      fetchDashboardData(); // Refresh the counts instantly
+      fetchDashboardData();
     }
   };
 
@@ -168,31 +195,35 @@ export default function SaaS_ERPDashboard() {
               {/* CURRENT MONTH OPERATIONS SUMMARY */}
               <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-sm font-bold text-slate-900">Operations Summary</h3>
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Operations Summary</h3>
                   <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-100">
-                    {currentMonthText || "Current Month"} Only
+                    {currentMonthText.toUpperCase()} ONLY
                   </span>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Trips Initiated</p>
-                    <p className="text-3xl font-black text-slate-900 mt-2">14</p>
+                  <div className="p-4 rounded-xl bg-rose-50/50 border border-rose-100">
+                    <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Active Trips / Pending PODs</p>
+                    <p className="text-3xl font-black text-rose-900 mt-2">{activeTripCount}</p>
                   </div>
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tonnage Dispatched</p>
-                    <p className="text-3xl font-black text-indigo-600 mt-2">485.5 <span className="text-lg text-indigo-400">MT</span></p>
+                  <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100">
+                    <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Tonnage Dispatched</p>
+                    <p className="text-3xl font-black text-indigo-900 mt-2">
+                      {monthTonnage.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-lg text-indigo-600">MT</span>
+                    </p>
                   </div>
-                  <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-100 relative overflow-hidden">
-                    <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Freight Generated</p>
-                    <p className="text-3xl font-black text-emerald-900 mt-2">₹1,82,450</p>
+                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 relative overflow-hidden shadow-sm">
+                    <p className="text-xs font-black text-rose-800 uppercase tracking-wider">Month Freight Generated</p>
+                    <p className="text-3xl font-black text-rose-700 mt-2">
+                      ₹ {monthFreight.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* VEHICLE STATUS INTERACTIVE MONITOR */}
               <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                <h3 className="text-sm font-bold text-slate-900 mb-4">Live Vehicle Status Monitor</h3>
+                <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide">Live Vehicle Status Monitor</h3>
                 
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {[
@@ -292,7 +323,6 @@ export default function SaaS_ERPDashboard() {
                 {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
                 {opSubTab === "Modify Trips" && <ModifyTrips onSuccess={() => fetchDashboardData()} />}
                 
-                {/* Quick Status is kept inline due to its simplicity */}
                 {opSubTab === "Quick Status" && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm max-w-2xl">
                     <h3 className="text-sm font-bold text-slate-900 mb-6 uppercase tracking-wider border-b border-slate-200 pb-2">Manual Status Override</h3>
