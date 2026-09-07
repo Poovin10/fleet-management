@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import { TripForm } from "@/components/TripForm";
 import { PodClosure } from "@/components/PodClosure";
 import { ModifyTrips } from "@/components/ModifyTrips";
-import { DriverSettlementModule } from "@/components/DriverSettlementModule";
 import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
 import { FinancialsModule } from "@/components/FinancialsModule";
 import { WorkshopModule } from "@/components/WorkshopModule";
@@ -34,7 +33,9 @@ export default function SaaS_ERPDashboard() {
   });
 
   const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
-  const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Settlements"];
+  
+  // Cleaned up Operations tabs (Settlements moved to Financials)
+  const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status"];
 
   // Quick Status Override States
   const [qsTruckId, setQsTruckId] = useState("");
@@ -43,18 +44,6 @@ export default function SaaS_ERPDashboard() {
 
   const extractStatus = (v: any) => {
     return String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
-  };
-
-  const findProp = (obj: any, hints: string[]) => {
-    if (!obj) return null;
-    const keys = Object.keys(obj);
-    for (const hint of hints) {
-      const foundKey = keys.find(k => k.toLowerCase().includes(hint.toLowerCase()));
-      if (foundKey && obj[foundKey] !== null && obj[foundKey] !== '') {
-        return obj[foundKey];
-      }
-    }
-    return null;
   };
 
   const findStringProp = (obj: any, hints: string[]) => {
@@ -246,9 +235,9 @@ export default function SaaS_ERPDashboard() {
                         <tbody className="bg-white divide-y divide-slate-200">
                           {currentDrillDownData.map((truck, idx) => {
                             const truckNo = findStringProp(truck, ["veh", "truck", "reg", "plate", "number"]) || `Truck ${truck.id}`;
-                            const variant = findProp(truck, ["var", "type", "model"]) || "Bulk";
-                            const capacity = findProp(truck, ["cap", "ton", "weight", "mt"]) || "N/A";
-                            const remarks = findProp(truck, ["rem", "note", "desc", "loc", "trip", "status_remarks"]) || "-";
+                            const variant = truck.truck_type || "Bulk";
+                            const capacity = truck.carrying_capacity_tons || "N/A";
+                            const remarks = truck.status_remarks || "-";
 
                             return (
                               <tr key={idx} className="hover:bg-slate-50 transition-colors">
@@ -283,6 +272,7 @@ export default function SaaS_ERPDashboard() {
 
           {/* RENDER OTHER MODULES */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6">
+            
             {activeTab === "Operations" && (
               <div className="p-6 min-h-[60vh]">
                 <div className="flex flex-wrap gap-6 border-b border-slate-200 mb-6">
@@ -301,7 +291,6 @@ export default function SaaS_ERPDashboard() {
                 {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
                 {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
                 {opSubTab === "Modify Trips" && <ModifyTrips onSuccess={() => fetchDashboardData()} />}
-                {opSubTab === "Settlements" && <DriverSettlementModule />}
                 
                 {/* Quick Status is kept inline due to its simplicity */}
                 {opSubTab === "Quick Status" && (
@@ -347,7 +336,7 @@ export default function SaaS_ERPDashboard() {
                           className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none" 
                         />
                       </div>
-                      <button type="submit" className="mt-4 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-sm">
+                      <button type="submit" className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-sm">
                         Update Status
                       </button>
                     </form>
@@ -360,6 +349,7 @@ export default function SaaS_ERPDashboard() {
             {activeTab === "Workshop & Tyres" && <div className="p-6"><WorkshopModule /></div>}
             {activeTab === "Financials" && <div className="p-6"><FinancialsModule /></div>}
             {activeTab === "Setup" && <div className="p-6"><SetupModule /></div>}
+            
           </div>
         </div>
       </main>
