@@ -14,9 +14,9 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
   
   // Master Data
   const [routeMaster, setRouteMaster] = useState<any[]>([]);
-  const [dieselRate, setDieselRate] = useState(95.0); // Default, can be fetched from settings
+  const [dieselRate, setDieselRate] = useState(95.0);
 
-  // Form States (Populated when a trip is selected)
+  // Form States
   const [activeTrip, setActiveTrip] = useState<any>(null);
   
   const [startDate, setStartDate] = useState("");
@@ -48,7 +48,6 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
 
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Fetch Master Routes on load
   useEffect(() => {
     async function fetchMaster() {
       const { data } = await supabase.from('destinations_freight_master').select('*').eq('is_active', true);
@@ -57,7 +56,6 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
     fetchMaster();
   }, [supabase]);
 
-  // Handle Trip Search
   const handleSearch = async () => {
     setIsProcessing(true);
     let query = supabase
@@ -77,7 +75,6 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
     const { data, error } = await query;
     
     if (data) {
-      // Local filter for search query across LR and Truck No
       const filtered = searchQuery
         ? data.filter((t: any) => 
             t.trip_number?.toUpperCase().includes(searchQuery.toUpperCase()) ||
@@ -91,7 +88,6 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
     setIsProcessing(false);
   };
 
-  // Populate form when a trip is selected
   useEffect(() => {
     if (selectedTripId) {
       const trip = matchedTrips.find((t) => String(t.trip_id) === selectedTripId);
@@ -104,10 +100,10 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
         setOrigin(trip.origin || "");
         setDestination(trip.destination || "");
         
-        // Find if it matches a master route
-        const match = routeMaster.find(r => r.origin === trip.origin && r.destination_name === trip.destination);
+        // FIXED: Using "match" instead of "r" for the template string
+        const match = routeMaster.find(route => route.origin === trip.origin && route.destination_name === trip.destination);
         if (match) {
-          setRouteSlab(`${r.origin} ➔ ${r.destination_name}`);
+          setRouteSlab(`${match.origin} ➔ ${match.destination_name}`);
           setSpotRate(match.freight_rate_per_ton);
           setStdKm(match.standard_km);
         } else {
@@ -135,14 +131,12 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
     }
   }, [selectedTripId, matchedTrips, routeMaster]);
 
-  // Auto-calculate Freight when Tonnage or Spot Rate changes
   useEffect(() => {
     if (loadedMt !== "" && spotRate !== "") {
       setFreight(Math.round(Number(loadedMt) * Number(spotRate) * 100) / 100);
     }
   }, [loadedMt, spotRate]);
 
-  // Auto-calculate Distance
   const calcTotalKm = () => {
     const s = Number(startKm) || 0;
     const e = Number(endKm) || 0;
@@ -158,7 +152,6 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
     const fuelCost = Number(diesel) * dieselRate;
     const shortage = Math.max(0, Number(loadedMt) - Number(unloadedMt));
 
-    // Update Trips
     const { error: tripError } = await supabase.from('trips').update({
       trip_start_date: startDate,
       trip_end_date: endDate || null,
@@ -190,11 +183,9 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
       return;
     }
 
-    // Update Vehicle Status
     const vStatus = tripStatus === 'COMPLETED' ? 'AVAILABLE_FOR_LOAD' : 'IN_TRANSIT';
     await supabase.from('vehicles').update({ current_status: vStatus }).eq('vehicle_id', activeTrip.vehicle_id);
 
-    // Update Diesel Fuel Log if it exists for this trip
     if (Number(diesel) > 0) {
       await supabase.from('diesel_fuel_logs').update({
         fuel_date: startDate,
@@ -208,7 +199,7 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
 
     alert("Trip updated successfully!");
     if (onSuccess) onSuccess();
-    handleSearch(); // Refresh list
+    handleSearch(); 
   };
 
   const handleReopenTrip = async () => {
@@ -223,7 +214,6 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
   const handleDeleteTrip = async () => {
     if (!confirm(`WARNING: Permanently delete Trip ${activeTrip.trip_number}?`)) return;
     setIsProcessing(true);
-    // Unlink fuel log, then delete trip, then free vehicle
     await supabase.from('diesel_fuel_logs').update({ trip_id: null }).eq('trip_id', activeTrip.trip_id);
     await supabase.from('trips').delete().eq('trip_id', activeTrip.trip_id);
     await supabase.from('vehicles').update({ current_status: 'AVAILABLE_FOR_LOAD', status_remarks: 'Available' }).eq('vehicle_id', activeTrip.vehicle_id);
