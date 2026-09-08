@@ -52,7 +52,6 @@ export default function SaaS_ERPDashboard() {
   const [qsStatus, setQsStatus] = useState("WAITING_FOR_LOAD");
   const [qsRemarks, setQsRemarks] = useState("");
 
-  // Re-added the missing opTabs array!
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status"];
 
   // Hydrate Authentication from Session Storage to survive reloads
@@ -431,12 +430,18 @@ export default function SaaS_ERPDashboard() {
             
             {activeTab === "Operations" && userRole === "ADMIN" && (
               <div className="p-6 min-h-[60vh]">
-                <div className="flex flex-wrap gap-6 border-b border-slate-200 mb-6">
+                
+                {/* --- UNIFORM ORANGE PILL NAVIGATION ADDED HERE --- */}
+                <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4 mb-6">
                   {opTabs.map((sub) => (
                     <button
                       key={sub}
                       onClick={() => setOpSubTab(sub)}
-                      className={`pb-3 text-sm font-bold transition-all duration-200 border-b-2 ${opSubTab === sub ? "border-orange-600 text-orange-600" : "border-transparent text-slate-500 hover:text-slate-900"}`}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                        opSubTab === sub 
+                          ? "bg-orange-600 text-white shadow-sm ring-1 ring-orange-600" 
+                          : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                      }`}
                     >
                       {sub}
                     </button>
@@ -448,7 +453,7 @@ export default function SaaS_ERPDashboard() {
                 {opSubTab === "Modify Trips" && <ModifyTrips onSuccess={() => fetchDashboardData()} />}
                 
                 {opSubTab === "Quick Status" && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm max-w-2xl">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm max-w-2xl animate-in fade-in duration-300">
                     <h3 className="text-sm font-black text-slate-900 mb-6 uppercase tracking-wider border-b border-slate-200 pb-2">Manual Status Override</h3>
                     <form onSubmit={handleQuickStatusSubmit} className="space-y-5">
                       <div>
