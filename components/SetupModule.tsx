@@ -30,8 +30,13 @@ export function SetupModule() {
   const [expiryDate, setExpiryDate] = useState("");
   
   const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN"];
+  
+  // Smart Dropdown States
   const [src, setSrc] = useState("COCHIN");
+  const [customSrc, setCustomSrc] = useState("");
   const [dest, setDest] = useState("");
+  const [customDest, setCustomDest] = useState("");
+  
   const [cType, setCType] = useState("BULK");
   const [cap, setCap] = useState("35");
   const [fRate, setFRate] = useState<number | "">("");
@@ -71,6 +76,19 @@ export function SetupModule() {
     }
   }, [driversList, sTab]);
 
+  // 🚀 DYNAMIC MASTER LISTS
+  // Automatically extracts all unique origins and destinations from both your Freight and Bata tables!
+  const originOptions = Array.from(new Set([
+    ...STANDARD_SOURCES,
+    ...slabsList.map(s => s.origin),
+    ...bataList.map(b => b.origin)
+  ])).filter(Boolean).sort();
+
+  const destOptions = Array.from(new Set([
+    ...slabsList.map(s => s.destination_name),
+    ...bataList.map(b => b.destination_name)
+  ])).filter(Boolean).sort();
+
   const handleSaveTruck = (e: React.FormEvent) => {
     e.preventDefault();
     if (!truckNo.trim()) return;
@@ -98,26 +116,34 @@ export function SetupModule() {
 
   const handleSaveSlab = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dest.trim() || !fRate) return;
-    triggerModal("Add Freight Slab", `Lock in ₹${fRate}/MT for ${src} to ${dest}?`, false, "Save Slab", async () => {
+    const finalSrc = src === "CUSTOM" ? customSrc : src;
+    const finalDest = dest === "CUSTOM" ? customDest : dest;
+
+    if (!finalDest.trim() || !fRate) return;
+    
+    triggerModal("Add Freight Slab", `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Slab", async () => {
       setIsProcessing(true);
-      await supabase.from('destinations_freight_master').insert([{ origin: src, destination_name: dest.toUpperCase().trim(), cargo_type: cType, capacity_tons: Number(cap), freight_rate_per_ton: Number(fRate), is_active: true }]);
-      setDest(""); setFRate(""); fetchData(); setIsProcessing(false); closeModal();
+      await supabase.from('destinations_freight_master').insert([{ origin: finalSrc.toUpperCase().trim(), destination_name: finalDest.toUpperCase().trim(), cargo_type: cType, capacity_tons: Number(cap), freight_rate_per_ton: Number(fRate), is_active: true }]);
+      setDest(""); setCustomDest(""); setFRate(""); fetchData(); setIsProcessing(false); closeModal();
     });
   };
 
   const handleSaveBata = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dest.trim() || !bataAmt) return;
-    triggerModal("Add Bata Master", `Set ₹${bataAmt} default Bata for ${src} to ${dest}?`, false, "Save Bata", async () => {
+    const finalSrc = src === "CUSTOM" ? customSrc : src;
+    const finalDest = dest === "CUSTOM" ? customDest : dest;
+
+    if (!finalDest.trim() || !bataAmt) return;
+    
+    triggerModal("Add Bata Master", `Set ₹${bataAmt} default Bata for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Bata", async () => {
       setIsProcessing(true);
-      await supabase.from('driver_bata_master').insert([{ origin: src, destination_name: dest.toUpperCase().trim(), cargo_type: cType, capacity_tons: Number(cap), standard_bata_inr: Number(bataAmt) }]);
-      setDest(""); setBataAmt(""); fetchData(); setIsProcessing(false); closeModal();
+      await supabase.from('driver_bata_master').insert([{ origin: finalSrc.toUpperCase().trim(), destination_name: finalDest.toUpperCase().trim(), cargo_type: cType, capacity_tons: Number(cap), standard_bata_inr: Number(bataAmt) }]);
+      setDest(""); setCustomDest(""); setBataAmt(""); fetchData(); setIsProcessing(false); closeModal();
     });
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300" style={{ colorScheme: 'light' }}>
       <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
 
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
@@ -161,7 +187,7 @@ export function SetupModule() {
                 </div>
                 <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="e.g. ANEESH CR" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase bg-white text-slate-900" required /></div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                 <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mobile Number</label><input type="tel" value={mobileNo} onChange={e=>setMobileNo(e.target.value)} placeholder="e.g. 9876543210" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-white text-slate-900" /></div>
                 <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">License Number</label><input type="text" value={licenseNo} onChange={e=>setLicenseNo(e.target.value)} placeholder="e.g. KL123456789" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold uppercase bg-white text-slate-900" /></div>
                 <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">License Expiry Date</label><input type="date" value={expiryDate} onChange={e=>setExpiryDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-white text-slate-900" /></div>
@@ -198,17 +224,42 @@ export function SetupModule() {
           </>
         )}
 
+        {/* FREIGHT SLABS */}
         {sTab === "Freight Slabs" && (
           <>
             <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add Freight Slab</h3>
-            <form onSubmit={handleSaveSlab} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source</label><select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900">{STANDARD_SOURCES.map(s=><option key={s}>{s}</option>)}</select></div>
-              <div className="md:col-span-2"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination *</label><input type="text" value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required /></div>
+            <form onSubmit={handleSaveSlab} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
+              
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source</label>
+                <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900">
+                  {originOptions.map(s=><option key={s} value={s}>{s}</option>)}
+                  <option value="CUSTOM">-- TYPE NEW --</option>
+                </select>
+                {src === "CUSTOM" && (
+                  <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900 animate-in fade-in" required />
+                )}
+              </div>
+              
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination *</label>
+                <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900 uppercase" required>
+                  <option value="">-- SELECT DEST --</option>
+                  {destOptions.map(d=><option key={d} value={d}>{d}</option>)}
+                  <option value="CUSTOM">-- TYPE NEW --</option>
+                </select>
+                {dest === "CUSTOM" && (
+                  <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900 animate-in fade-in" required />
+                )}
+              </div>
+              
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900"><option>BULK</option><option>BAG</option></select></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900"><option>35</option><option>30</option><option>25</option></select></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rate(₹)</label><input type="number" value={fRate} onChange={e=>setFRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-black text-emerald-600 focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required /></div>
+              
               <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95 mt-2">Save Freight Rule</button>
             </form>
+            
             <div className="mt-8 border-t border-slate-100 pt-6 w-full">
               <div className="overflow-x-auto border border-slate-200 rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
@@ -223,17 +274,42 @@ export function SetupModule() {
           </>
         )}
 
+        {/* BATA */}
         {sTab === "Bata" && (
           <>
             <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add Bata Rule</h3>
-            <form onSubmit={handleSaveBata} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source</label><select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900">{STANDARD_SOURCES.map(s=><option key={s}>{s}</option>)}</select></div>
-              <div className="md:col-span-2"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination *</label><input type="text" value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required /></div>
+            <form onSubmit={handleSaveBata} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
+              
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source</label>
+                <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900">
+                  {originOptions.map(s=><option key={s} value={s}>{s}</option>)}
+                  <option value="CUSTOM">-- TYPE NEW --</option>
+                </select>
+                {src === "CUSTOM" && (
+                  <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900 animate-in fade-in" required />
+                )}
+              </div>
+              
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination *</label>
+                <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required>
+                  <option value="">-- SELECT DEST --</option>
+                  {destOptions.map(d=><option key={d} value={d}>{d}</option>)}
+                  <option value="CUSTOM">-- TYPE NEW --</option>
+                </select>
+                {dest === "CUSTOM" && (
+                  <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900 animate-in fade-in" required />
+                )}
+              </div>
+
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900"><option>BULK</option><option>BAG</option></select></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900"><option>35</option><option>30</option><option>25</option></select></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bata(₹)</label><input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-black text-indigo-600 focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required /></div>
+              
               <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors mt-2 shadow-sm active:scale-95">Save Bata Rule</button>
             </form>
+            
             <div className="mt-8 border-t border-slate-100 pt-6 w-full">
               <div className="overflow-x-auto border border-slate-200 rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
@@ -248,6 +324,7 @@ export function SetupModule() {
           </>
         )}
 
+        {/* SYSTEM AUDIT */}
         {sTab === "System Audit" && (
           <>
             <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Recent Trip Activity Log</h3>
