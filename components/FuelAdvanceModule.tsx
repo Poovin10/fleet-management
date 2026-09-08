@@ -2,12 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { ConfirmModal } from "@/components/ConfirmModal"; 
 
 export function FuelAdvanceModule() {
   const supabase = createClient();
   const [faNav, setFaNav] = useState("⛽ Issue Diesel");
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // SLEEK MODAL STATE
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Confirm",
+    isDanger: false,
+    action: async () => {}
+  });
+
+  const triggerModal = (title: string, message: string, isDanger: boolean, confirmText: string, action: () => Promise<void>) => {
+    setModalConfig({ isOpen: true, title, message, isDanger, confirmText, action });
+  };
+  const closeModal = () => setModalConfig({ ...modalConfig, isOpen: false });
 
   // Master Data
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -25,7 +41,7 @@ export function FuelAdvanceModule() {
   const [fLrNo, setFLrNo] = useState("");
   const [fFillingKm, setFFillingKm] = useState<number | "">("");
   const [fLitres, setFLitres] = useState<number | "">("");
-  const [fDieselRate, setFDieselRate] = useState<number | "">(95.0); // New State
+  const [fDieselRate, setFDieselRate] = useState<number | "">(95.0);
   const [fIsTankFull, setFIsTankFull] = useState(false);
 
   // --- 2. EDIT DIESEL LOG STATES ---
@@ -76,14 +92,12 @@ export function FuelAdvanceModule() {
     if (fuelRes.data) setRecentFuelLogs(fuelRes.data);
     if (advRes.data) setRecentAdvances(advRes.data);
 
-    // Auto-populate latest diesel rate
     if (dieselRateRes.data && dieselRateRes.data.length > 0 && dieselRateRes.data[0].diesel_rate_per_litre) {
       const latestRate = Number(dieselRateRes.data[0].diesel_rate_per_litre);
       setDieselRate(latestRate);
       setFDieselRate(latestRate);
     }
 
-    // If Edit tab is active, fetch a larger pool of logs for the dropdown
     if (faNav === "📝 Edit Diesel Log") {
       const { data: allLogs } = await supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_log_id', { ascending: false }).limit(200);
       if (allLogs) setAllFuelLogs(allLogs);
@@ -94,158 +108,116 @@ export function FuelAdvanceModule() {
 
   useEffect(() => {
     fetchData();
-    if (faNav === "📊 Fuel Audit") handleRunAudit(); // Auto-run audit when tab opens
+    if (faNav === "📊 Fuel Audit") handleRunAudit();
   }, [faNav]);
 
-  // --- HANDLERS: ISSUE DIESEL ---
-  const handleIssueDiesel = async (e: React.FormEvent) => {
+  const handleIssueDiesel = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fVehicleId || Number(fLitres) <= 0 || Number(fDieselRate) <= 0) return alert("Valid Vehicle, Litres > 0, and Rate > 0 are required.");
+    if (!fVehicleId || Number(fLitres) <= 0 || Number(fDieselRate) <= 0) return;
 
-    setIsProcessing(true);
-    const totalCost = Math.round((Number(fLitres) * Number(fDieselRate)) * 100) / 100;
+    triggerModal("Record Diesel Entry", `Are you sure you want to issue ${fLitres}L of diesel? This will automatically update your expenses.`, false, "Record Diesel", async () => {
+      setIsProcessing(true);
+      const totalCost = Math.round((Number(fLitres) * Number(fDieselRate)) * 100) / 100;
 
-    const { error } = await supabase.from('diesel_fuel_logs').insert([{
-      fuel_date: fDate,
-      vehicle_id: Number(fVehicleId),
-      lr_number: fLrNo.toUpperCase().trim() || "SUNDRY",
-      diesel_category: fCategory,
-      litres_filled: Number(fLitres),
-      diesel_rate_per_litre: Number(fDieselRate),
-      total_fuel_cost: totalCost,
-      filling_odometer_km: Number(fFillingKm) || 0,
-      is_tank_full: fIsTankFull
-    }]);
+      await supabase.from('diesel_fuel_logs').insert([{
+        fuel_date: fDate, vehicle_id: Number(fVehicleId), lr_number: fLrNo.toUpperCase().trim() || "SUNDRY",
+        diesel_category: fCategory, litres_filled: Number(fLitres), diesel_rate_per_litre: Number(fDieselRate),
+        total_fuel_cost: totalCost, filling_odometer_km: Number(fFillingKm) || 0, is_tank_full: fIsTankFull
+      }]);
 
-    if (error) alert("Error recording fuel: " + error.message);
-    else {
-      alert("Diesel entry recorded successfully!");
       setFLitres(""); setFLrNo(""); setFFillingKm(""); setFIsTankFull(false);
-      fetchData(); // Refetches to update recent tables & new diesel rate baseline
-    }
-    setIsProcessing(false);
+      fetchData();
+      setIsProcessing(false);
+      closeModal();
+    });
   };
 
-  // --- HANDLERS: EDIT DIESEL ---
   useEffect(() => {
     if (selectedEditLogId) {
       const log = allFuelLogs.find(l => String(l.fuel_log_id) === selectedEditLogId);
       if (log) {
         setEditLog(log);
-        setEFuelDate(log.fuel_date || "");
-        setEVehicleId(String(log.vehicle_id) || "");
-        setECategory(log.diesel_category || "TRIP_DIESEL");
-        setELrNo(log.lr_number === "SUNDRY" ? "" : (log.lr_number || ""));
-        setEFillingKm(log.filling_odometer_km || 0);
-        setELitres(log.litres_filled || 0);
-        setERate(log.diesel_rate_per_litre || dieselRate);
-        setEIsTankFull(log.is_tank_full || false);
+        setEFuelDate(log.fuel_date || ""); setEVehicleId(String(log.vehicle_id) || "");
+        setECategory(log.diesel_category || "TRIP_DIESEL"); setELrNo(log.lr_number === "SUNDRY" ? "" : (log.lr_number || ""));
+        setEFillingKm(log.filling_odometer_km || 0); setELitres(log.litres_filled || 0);
+        setERate(log.diesel_rate_per_litre || dieselRate); setEIsTankFull(log.is_tank_full || false);
       }
-    } else {
-      setEditLog(null);
-    }
+    } else setEditLog(null);
   }, [selectedEditLogId, allFuelLogs]);
 
-  const handleUpdateFuelLog = async (e: React.FormEvent) => {
+  const handleUpdateFuelLog = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editLog || Number(eLitres) <= 0) return alert("Litres must be > 0.");
-    setIsProcessing(true);
+    if (!editLog || Number(eLitres) <= 0) return;
+    
+    triggerModal("Commit Diesel Updates", "Are you sure you want to edit this fuel log? If it is attached to a trip, the trip expenses will be automatically recalculated.", false, "Commit Updates", async () => {
+      setIsProcessing(true);
+      const cost = Math.round((Number(eLitres) * Number(eRate)) * 100) / 100;
 
-    const cost = Math.round((Number(eLitres) * Number(eRate)) * 100) / 100;
+      await supabase.from('diesel_fuel_logs').update({
+        fuel_date: eFuelDate, vehicle_id: Number(eVehicleId), diesel_category: eCategory,
+        lr_number: eLrNo.toUpperCase().trim() || "SUNDRY", filling_odometer_km: Number(eFillingKm),
+        litres_filled: Number(eLitres), diesel_rate_per_litre: Number(eRate), total_fuel_cost: cost, is_tank_full: eIsTankFull
+      }).eq('fuel_log_id', editLog.fuel_log_id);
 
-    // 1. Update the fuel log
-    const { error } = await supabase.from('diesel_fuel_logs').update({
-      fuel_date: eFuelDate,
-      vehicle_id: Number(eVehicleId),
-      diesel_category: eCategory,
-      lr_number: eLrNo.toUpperCase().trim() || "SUNDRY",
-      filling_odometer_km: Number(eFillingKm),
-      litres_filled: Number(eLitres),
-      diesel_rate_per_litre: Number(eRate),
-      total_fuel_cost: cost,
-      is_tank_full: eIsTankFull
-    }).eq('fuel_log_id', editLog.fuel_log_id);
-
-    if (error) {
-      alert("Update failed: " + error.message);
-      setIsProcessing(false);
-      return;
-    }
-
-    // 2. If this log is attached to a trip, update the trip's fuel values
-    if (editLog.trip_id) {
-      const { data: trip } = await supabase.from('trips').select('start_km').eq('trip_id', editLog.trip_id).single();
-      let updatePayload: any = { fuel_litres: Number(eLitres), fuel_expense: cost };
-      
-      // If start_km was 0, update it to the filling KM
-      if (trip && (trip.start_km === 0 || trip.start_km === null)) {
-        updatePayload.start_km = Number(eFillingKm);
+      if (editLog.trip_id) {
+        const { data: trip } = await supabase.from('trips').select('start_km').eq('trip_id', editLog.trip_id).single();
+        let updatePayload: any = { fuel_litres: Number(eLitres), fuel_expense: cost };
+        if (trip && (trip.start_km === 0 || trip.start_km === null)) updatePayload.start_km = Number(eFillingKm);
+        await supabase.from('trips').update(updatePayload).eq('trip_id', editLog.trip_id);
       }
 
-      await supabase.from('trips').update(updatePayload).eq('trip_id', editLog.trip_id);
-    }
-
-    alert("Fuel Log updated successfully!");
-    setSelectedEditLogId("");
-    fetchData();
-    setIsProcessing(false);
-  };
-
-  const handleDeleteFuel = async (id: string) => {
-    if (!confirm("Are you sure you want to permanently delete this fuel log?")) return;
-    setIsProcessing(true);
-    await supabase.from('diesel_fuel_logs').delete().eq('fuel_log_id', id);
-    alert("Deleted.");
-    if (faNav === "📝 Edit Diesel Log") {
       setSelectedEditLogId("");
       fetchData();
-    }
-    if (faNav === "📊 Fuel Audit") handleRunAudit();
-    setIsProcessing(false);
+      setIsProcessing(false);
+      closeModal();
+    });
   };
 
-  // --- HANDLERS: DRIVER ADVANCES ---
-  const handleIssueAdvance = async (e: React.FormEvent) => {
+  const handleDeleteFuel = (id: string) => {
+    triggerModal("Delete Fuel Record", "Warning: Are you sure you want to permanently delete this fuel log? This action cannot be reversed.", true, "Delete Log", async () => {
+      setIsProcessing(true);
+      await supabase.from('diesel_fuel_logs').delete().eq('fuel_log_id', id);
+      if (faNav === "📝 Edit Diesel Log") setSelectedEditLogId("");
+      fetchData();
+      if (faNav === "📊 Fuel Audit") handleRunAudit();
+      setIsProcessing(false);
+      closeModal();
+    });
+  };
+
+  const handleIssueAdvance = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!advDriverId || Number(advAmount) <= 0) return alert("Valid Driver and Amount > 0 are required.");
-    setIsProcessing(true);
+    if (!advDriverId || Number(advAmount) <= 0) return;
 
-    const { error } = await supabase.from('driver_direct_advances').insert([{
-      advance_date: advDate,
-      driver_id: Number(advDriverId),
-      amount_inr: Number(advAmount),
-      advance_type: advCategory,
-      reference_remarks: advRef
-    }]);
-
-    if (error) alert("Error recording advance: " + error.message);
-    else {
-      alert("Driver advance recorded successfully!");
+    triggerModal("Issue Driver Advance", `You are about to issue ₹${advAmount} as a direct advance. This will deduct from the driver's next settlement.`, false, "Issue Advance", async () => {
+      setIsProcessing(true);
+      await supabase.from('driver_direct_advances').insert([{
+        advance_date: advDate, driver_id: Number(advDriverId), amount_inr: Number(advAmount),
+        advance_type: advCategory, reference_remarks: advRef
+      }]);
       setAdvAmount(""); setAdvRef("");
       fetchData();
-    }
-    setIsProcessing(false);
+      setIsProcessing(false);
+      closeModal();
+    });
   };
 
-  const handleDeleteAdvance = async (id: string) => {
-    if (!confirm("Are you sure you want to permanently delete this advance?")) return;
-    setIsProcessing(true);
-    await supabase.from('driver_direct_advances').delete().eq('advance_id', id);
-    fetchData();
-    setIsProcessing(false);
+  const handleDeleteAdvance = (id: string) => {
+    triggerModal("Delete Advance Record", "Warning: Are you sure you want to permanently delete this driver advance? This action cannot be reversed.", true, "Delete Advance", async () => {
+      setIsProcessing(true);
+      await supabase.from('driver_direct_advances').delete().eq('advance_id', id);
+      fetchData();
+      setIsProcessing(false);
+      closeModal();
+    });
   };
 
-  // --- HANDLERS: FUEL AUDIT ---
   const handleRunAudit = async () => {
     setIsProcessing(true);
-    // Use inner join to filter by vehicle number safely
     let query = supabase.from('diesel_fuel_logs').select('*, vehicles!inner(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false });
 
-    if (auditDateMode === "Specific Date") {
-      query = query.eq('fuel_date', auditSpecificDate);
-    } else if (auditDateMode === "Date Range") {
-      query = query.gte('fuel_date', auditFromDate).lte('fuel_date', auditToDate);
-    }
+    if (auditDateMode === "Specific Date") query = query.eq('fuel_date', auditSpecificDate);
+    else if (auditDateMode === "Date Range") query = query.gte('fuel_date', auditFromDate).lte('fuel_date', auditToDate);
 
     if (auditTruck !== "All Trucks") query = query.eq('vehicles.vehicle_number', auditTruck);
     if (auditCategory !== "All Categories") query = query.eq('diesel_category', auditCategory);
@@ -260,7 +232,17 @@ export function FuelAdvanceModule() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* Sub-Navigation */}
+      <ConfirmModal 
+        isOpen={modalConfig.isOpen} 
+        title={modalConfig.title} 
+        message={modalConfig.message}
+        isDanger={modalConfig.isDanger}
+        confirmText={modalConfig.confirmText}
+        onConfirm={modalConfig.action} 
+        onCancel={closeModal}
+        isProcessing={isProcessing}
+      />
+      
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
         {["⛽ Issue Diesel", "📝 Edit Diesel Log", "💵 Driver Advances", "📊 Fuel Audit"].map((tab) => (
           <button
@@ -268,7 +250,7 @@ export function FuelAdvanceModule() {
             onClick={() => setFaNav(tab)}
             className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               faNav === tab 
-                ? "bg-indigo-600 text-white shadow-md" 
+                ? "bg-orange-600 text-white shadow-sm ring-1 ring-orange-600" 
                 : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
             }`}
           >
@@ -277,53 +259,52 @@ export function FuelAdvanceModule() {
         ))}
       </div>
 
-      {/* 1. ISSUE DIESEL */}
       {faNav === "⛽ Issue Diesel" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
           <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight border-b border-slate-100 pb-3 mb-5">Record Fuel Bill</h3>
             <form onSubmit={handleIssueDiesel} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fuel Date *</label>
-                <input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" required />
+                <input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" required />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Select Truck *</label>
-                <select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required disabled={isLoading}>
+                <select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold" required disabled={isLoading}>
                   <option value="">-- SELECT TRUCK --</option>
                   {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Category *</label>
-                <select value={fCategory} onChange={e => setFCategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500">
+                <select value={fCategory} onChange={e => setFCategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500">
                   <option value="TRIP_DIESEL">TRIP_DIESEL</option>
                   <option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option>
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Trip LR No (Optional)</label>
-                <input type="text" value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input type="text" value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
               
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filling KM</label>
-                  <input type="number" value={fFillingKm} onChange={e => setFFillingKm(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <input type="number" value={fFillingKm} onChange={e => setFFillingKm(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Litres *</label>
-                  <input type="number" step="0.1" value={fLitres} onChange={e => setFLitres(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700" required />
+                  <input type="number" step="0.1" value={fLitres} onChange={e => setFLitres(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold text-orange-600" required />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rate (₹/L) *</label>
-                  <input type="number" step="0.1" value={fDieselRate} onChange={e => setFDieselRate(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required />
+                  <input type="number" step="0.1" value={fDieselRate} onChange={e => setFDieselRate(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold" required />
                 </div>
               </div>
               
               <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={fIsTankFull} onChange={e => setFIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" />
+                  <input type="checkbox" checked={fIsTankFull} onChange={e => setFIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500" />
                   <span className="text-xs font-bold text-slate-700">⛽ Tank Full</span>
                 </label>
                 <div className="text-right">
@@ -333,8 +314,8 @@ export function FuelAdvanceModule() {
               </div>
 
               <div className="pt-4 border-t border-slate-100">
-                <button type="submit" disabled={isProcessing} className="w-full py-3 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
-                  {isProcessing ? "Saving..." : "Record Diesel Entry"}
+                <button type="submit" disabled={!fVehicleId || Number(fLitres) <= 0} className="w-full py-3 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
+                  Record Diesel Entry
                 </button>
               </div>
             </form>
@@ -362,7 +343,7 @@ export function FuelAdvanceModule() {
                         {log.diesel_category}<br/>
                         <span className="text-[9px] text-slate-400">{log.lr_number}</span>
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-indigo-600">{log.litres_filled} L</td>
+                      <td className="px-4 py-3 text-right font-bold text-orange-600">{log.litres_filled} L</td>
                       <td className="px-4 py-3 text-right text-rose-600">₹{log.total_fuel_cost}</td>
                     </tr>
                   ))}
@@ -374,9 +355,8 @@ export function FuelAdvanceModule() {
         </div>
       )}
 
-      {/* 2. EDIT DIESEL LOG */}
       {faNav === "📝 Edit Diesel Log" && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm max-w-4xl mx-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm max-w-4xl mx-auto animate-in slide-in-from-bottom-4">
           <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight border-b border-slate-100 pb-3 mb-5">Edit Diesel Log</h3>
           
           <div className="mb-6">
@@ -384,7 +364,7 @@ export function FuelAdvanceModule() {
             <select 
               value={selectedEditLogId} 
               onChange={(e) => setSelectedEditLogId(e.target.value)}
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-orange-500"
             >
               <option value="">-- SELECT LOG --</option>
               {allFuelLogs.map(l => (
@@ -400,17 +380,17 @@ export function FuelAdvanceModule() {
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fuel Date *</label>
-                  <input type="date" value={eFuelDate} onChange={e => setEFuelDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" required />
+                  <input type="date" value={eFuelDate} onChange={e => setEFuelDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" required />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Vehicle *</label>
-                  <select value={eVehicleId} onChange={e => setEVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required>
+                  <select value={eVehicleId} onChange={e => setEVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold" required>
                     {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
                   </select>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Category *</label>
-                  <select value={eCategory} onChange={e => setECategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500">
+                  <select value={eCategory} onChange={e => setECategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500">
                     <option value="TRIP_DIESEL">TRIP_DIESEL</option>
                     <option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option>
                   </select>
@@ -420,25 +400,25 @@ export function FuelAdvanceModule() {
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Trip LR No</label>
-                  <input type="text" value={eLrNo} onChange={e => setELrNo(e.target.value.toUpperCase())} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <input type="text" value={eLrNo} onChange={e => setELrNo(e.target.value.toUpperCase())} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filling KM *</label>
-                  <input type="number" value={eFillingKm} onChange={e => setEFillingKm(parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" required />
+                  <input type="number" value={eFillingKm} onChange={e => setEFillingKm(parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" required />
                 </div>
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Litres *</label>
-                  <input type="number" step="0.1" value={eLitres} onChange={e => setELitres(parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required />
+                  <input type="number" step="0.1" value={eLitres} onChange={e => setELitres(parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold" required />
                 </div>
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rate (₹/L) *</label>
-                  <input type="number" step="0.1" value={eRate} onChange={e => setERate(parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" required />
+                  <input type="number" step="0.1" value={eRate} onChange={e => setERate(parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" required />
                 </div>
               </div>
 
               <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={eIsTankFull} onChange={e => setEIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-indigo-600" />
+                  <input type="checkbox" checked={eIsTankFull} onChange={e => setEIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500" />
                   <span className="text-xs font-bold text-slate-700">⛽ Mark Tank Full</span>
                 </label>
                 <div className="text-right">
@@ -448,11 +428,11 @@ export function FuelAdvanceModule() {
               </div>
 
               <div className="pt-4 border-t border-slate-200 flex justify-between">
-                <button type="button" onClick={() => handleDeleteFuel(editLog.fuel_log_id)} disabled={isProcessing} className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-lg transition-colors border border-rose-200">
+                <button type="button" onClick={() => handleDeleteFuel(editLog.fuel_log_id)} className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-lg transition-colors border border-rose-200">
                   🗑️ Delete Log
                 </button>
-                <button type="submit" disabled={isProcessing} className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
-                  {isProcessing ? "Processing..." : "💾 Commit Updates"}
+                <button type="submit" className="px-8 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
+                  💾 Commit Updates
                 </button>
               </div>
             </form>
@@ -460,30 +440,29 @@ export function FuelAdvanceModule() {
         </div>
       )}
 
-      {/* 3. DRIVER ADVANCES */}
       {faNav === "💵 Driver Advances" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
           <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight border-b border-slate-100 pb-3 mb-5">Direct Cash Advance</h3>
             <form onSubmit={handleIssueAdvance} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Advance Date *</label>
-                <input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" required />
+                <input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" required />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Account *</label>
-                <select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required disabled={isLoading}>
+                <select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold" required disabled={isLoading}>
                   <option value="">-- SELECT DRIVER --</option>
                   {drivers.map(d => <option key={d.driver_id} value={String(d.driver_id)}>{d.driver_code} - {d.full_name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Advance Amount (₹) *</label>
-                <input type="number" value={advAmount} onChange={e => setAdvAmount(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-emerald-700" required />
+                <input type="number" value={advAmount} onChange={e => setAdvAmount(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold text-emerald-700" required />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Category</label>
-                <select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500">
+                <select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500">
                   <option value="GENERAL_ADVANCE">GENERAL_ADVANCE</option>
                   <option value="BATA_ADVANCE">BATA_ADVANCE</option>
                   <option value="EMERGENCY_MEDICAL">EMERGENCY_MEDICAL</option>
@@ -492,11 +471,11 @@ export function FuelAdvanceModule() {
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Reference Note</label>
-                <input type="text" value={advRef} onChange={e => setAdvRef(e.target.value)} placeholder="e.g. For enroute expenses" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" />
+                <input type="text" value={advRef} onChange={e => setAdvRef(e.target.value)} placeholder="e.g. For enroute expenses" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
               <div className="pt-4 border-t border-slate-100">
-                <button type="submit" disabled={isProcessing} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
-                  {isProcessing ? "Saving..." : "Issue Advance"}
+                <button type="submit" disabled={!advDriverId || Number(advAmount) <= 0} className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
+                  Issue Advance
                 </button>
               </div>
             </form>
@@ -538,15 +517,14 @@ export function FuelAdvanceModule() {
         </div>
       )}
 
-      {/* 4. FUEL AUDIT */}
       {faNav === "📊 Fuel Audit" && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm animate-in slide-in-from-bottom-4">
           <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight border-b border-slate-100 pb-3 mb-5">Fuel Audit & Search</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Date Mode</label>
-              <select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:border-indigo-500">
+              <select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500">
                 <option value="All Time">All Time</option>
                 <option value="Specific Date">Specific Date</option>
                 <option value="Date Range">Date Range</option>
@@ -556,7 +534,7 @@ export function FuelAdvanceModule() {
             {auditDateMode === "Specific Date" && (
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Date</label>
-                <input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:border-indigo-500" />
+                <input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
             )}
             
@@ -564,11 +542,11 @@ export function FuelAdvanceModule() {
               <>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">From</label>
-                  <input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:border-indigo-500" />
+                  <input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">To</label>
-                  <input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:border-indigo-500" />
+                  <input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
               </>
             )}
@@ -576,14 +554,14 @@ export function FuelAdvanceModule() {
 
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Truck No</label>
-              <select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:border-indigo-500 font-bold">
+              <select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold">
                 <option value="All Trucks">All Trucks</option>
                 {vehicles.map(v => <option key={v.vehicle_id} value={v.vehicle_number}>{v.vehicle_number}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Category</label>
-              <select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:border-indigo-500">
+              <select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500">
                 <option value="All Categories">All Categories</option>
                 <option value="TRIP_DIESEL">TRIP_DIESEL</option>
                 <option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option>
@@ -594,11 +572,11 @@ export function FuelAdvanceModule() {
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Search LR No</label>
-              <input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="w-full text-sm p-2 rounded-lg border border-slate-300 uppercase outline-none focus:border-indigo-500" />
+              <input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="w-full text-sm p-2 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
             <div className="flex items-end">
-              <button onClick={handleRunAudit} disabled={isProcessing} className="px-8 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-lg transition-all shadow-sm">
-                {isProcessing ? "Searching..." : "Search Logs"}
+              <button onClick={handleRunAudit} className="px-8 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-lg transition-all shadow-sm">
+                Search Logs
               </button>
             </div>
           </div>
@@ -627,7 +605,7 @@ export function FuelAdvanceModule() {
                     <td className="px-4 py-2 text-slate-600">{l.diesel_category}</td>
                     <td className="px-4 py-2 text-slate-600">{l.lr_number}</td>
                     <td className="px-4 py-2 text-right">{l.filling_odometer_km}</td>
-                    <td className="px-4 py-2 text-right font-bold text-indigo-600">{l.litres_filled} L</td>
+                    <td className="px-4 py-2 text-right font-bold text-orange-600">{l.litres_filled} L</td>
                     <td className="px-4 py-2 text-right font-black text-rose-600">₹{l.total_fuel_cost}</td>
                     <td className="px-4 py-2 text-center">
                       <button onClick={() => handleDeleteFuel(l.fuel_log_id)} className="text-rose-500 hover:text-rose-700 bg-rose-50 p-1.5 rounded" title="Delete Log">🗑️</button>
