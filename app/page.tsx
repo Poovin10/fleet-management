@@ -56,6 +56,9 @@ export default function SaaS_ERPDashboard() {
   const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
   const [activeTripCount, setActiveTripCount] = useState<number>(0); 
   
+  // V2 FEATURE: Compliance Alerts
+  const [expiringDocs, setExpiringDocs] = useState<any[]>([]);
+  
   const [statusCounts, setStatusCounts] = useState({
     "Plant Loading": 0,
     "In Transit": 0,
@@ -127,6 +130,7 @@ export default function SaaS_ERPDashboard() {
   const fetchDashboardData = async () => {
     const supabase = createClient();
     
+    // 1. Fetch Vehicles & Statuses
     const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
     if (vehicles && vehicles.length > 0) {
       setLiveVehicles(vehicles);
@@ -138,9 +142,27 @@ export default function SaaS_ERPDashboard() {
       });
     }
 
+    // 2. Fetch Pending PODs
     const { count: activeCount } = await supabase.from('trips').select('*', { count: 'exact', head: true }).neq('trip_status', 'COMPLETED');
     setActiveTripCount(activeCount || 0);
 
+    // 3. V2 FEATURE: Fetch Driver License Expirations (30 Day Window)
+    const { data: drivers } = await supabase.from('drivers').select('driver_code, full_name, expiry_date').eq('is_active', true);
+    if (drivers) {
+      const today = new Date();
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+      const alerts = drivers.filter(d => {
+        if (!d.expiry_date) return false;
+        const expDate = new Date(d.expiry_date);
+        return expDate <= thirtyDaysFromNow;
+      }).sort((a, b) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime());
+      
+      setExpiringDocs(alerts);
+    }
+
+    // 4. Calculate Current Month Financials
     const now = new Date();
     const year = now.getFullYear();
     const monthStr = String(now.getMonth() + 1).padStart(2, '0');
@@ -351,6 +373,37 @@ export default function SaaS_ERPDashboard() {
           {activeTab === "Dashboard" && (
             <div className="space-y-6">
               
+              {/* V2 COMPLIANCE ALERTS WIDGET */}
+              {expiringDocs.length > 0 && (
+                <div className="bg-rose-50 border-l-4 border-rose-500 rounded-2xl shadow-sm p-5 animate-in slide-in-from-top-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">🚨</span>
+                    <h3 className="text-sm font-black text-rose-900 uppercase tracking-wide">Action Required: Compliance Alerts</h3>
+                  </div>
+                  <div className="overflow-x-auto w-full">
+                    <table className="min-w-full text-xs text-left whitespace-nowrap">
+                      <thead className="text-rose-700 uppercase font-bold">
+                        <tr><th className="pb-2 pr-4">Driver</th><th className="pb-2 pr-4">Document</th><th className="pb-2">Expiry Date</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-rose-200/50">
+                        {expiringDocs.map(d => {
+                          const isExpired = new Date(d.expiry_date) < new Date();
+                          return (
+                            <tr key={d.driver_code}>
+                              <td className="py-2 pr-4 font-bold text-slate-900">{d.driver_code} - {d.full_name}</td>
+                              <td className="py-2 pr-4 font-semibold text-slate-700">Driving License</td>
+                              <td className={`py-2 font-black ${isExpired ? 'text-rose-600' : 'text-amber-600'}`}>
+                                {d.expiry_date} {isExpired ? '(EXPIRED)' : '(Expiring Soon)'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* CURRENT MONTH OPERATIONS SUMMARY */}
               <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
                 <div className="flex justify-between items-center mb-6">
