@@ -28,7 +28,7 @@ export function ConfirmModal({
         {/* Modal Header & Body */}
         <div className="p-6">
           <div className="flex items-center gap-3 mb-3">
-            <div className={`p-2 rounded-full ${isDanger ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`}>
+            <div className={`p-2 rounded-full ${isDanger ? 'bg-rose-100 text-rose-600' : 'bg-orange-100 text-orange-600'}`}>
               {isDanger ? (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               ) : (
@@ -57,7 +57,7 @@ export function ConfirmModal({
             className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl transition-colors shadow-sm flex items-center gap-2 ${
               isDanger 
                 ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800" 
-                : "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800"
+                : "bg-orange-600 hover:bg-orange-700 active:bg-orange-800"
             } disabled:opacity-70`}
           >
             {isProcessing ? (
