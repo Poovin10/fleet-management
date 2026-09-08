@@ -13,7 +13,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [freightMaster, setFreightMaster] = useState<any[]>([]);
   const [bataMaster, setBataMaster] = useState<any[]>([]);
-  const [dieselRate, setDieselRate] = useState<number>(95.0); // Will auto-update from DB
+  const [dieselRate, setDieselRate] = useState<number>(95.0);
 
   // Basic Form States
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
@@ -43,7 +43,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
 
   const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"];
 
-  // 1. Fetch All Master Data on Load (Including last recorded diesel rate)
   useEffect(() => {
     async function fetchMasterData() {
       setIsLoading(true);
@@ -60,7 +59,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       if (frRes.data) setFreightMaster(frRes.data);
       if (btRes.data) setBataMaster(btRes.data);
       
-      // Auto-set default diesel rate to the last recorded pump price
       if (dieselRes.data && dieselRes.data.length > 0 && dieselRes.data[0].diesel_rate_per_litre) {
         setDieselRate(Number(dieselRes.data[0].diesel_rate_per_litre));
       }
@@ -69,7 +67,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     fetchMasterData();
   }, [supabase]);
 
-  // 2. Filter Available Trucks based on Cargo Type
   const availableTrucks = vehicles.filter((v) => {
     const isBulkTruck = String(v.truck_type).toUpperCase().includes("BULK");
     const isAvailable = v.current_status === "AVAILABLE_FOR_LOAD" || v.current_status === "WAITING_FOR_LOAD";
@@ -81,7 +78,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const activeTruckCap = activeTruck ? Number(activeTruck.carrying_capacity_tons) : 0;
   const finalSource = source === "CUSTOM" ? customSource : source;
 
-  // 3. Filter Freight Routes dynamically based on Source, Cargo, and exact Truck Capacity
   const validRoutes = freightMaster.filter((r) => {
     return (
       r.origin?.trim().toUpperCase() === finalSource.trim().toUpperCase() &&
@@ -90,32 +86,21 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     );
   });
 
-  // 4. Handle Truck Selection (Auto-fetch Capacity, Last Driver, & Last Odometer)
   useEffect(() => {
     if (selectedTruckId) {
-      // Auto-populate Max Capacity
       const truck = vehicles.find((v) => String(v.vehicle_id) === String(selectedTruckId));
       if (truck && truck.carrying_capacity_tons) {
         setLoadedMt(Number(truck.carrying_capacity_tons));
       }
       
       const fetchTruckHistory = async () => {
-        // Auto-populate Last Assigned Driver
-        const { data: lastTrip } = await supabase
-          .from("trips")
-          .select("primary_driver_id")
-          .eq("vehicle_id", selectedTruckId)
-          .not("primary_driver_id", "is", null)
-          .order("trip_id", { ascending: false })
-          .limit(1);
-          
+        const { data: lastTrip } = await supabase.from("trips").select("primary_driver_id").eq("vehicle_id", selectedTruckId).not("primary_driver_id", "is", null).order("trip_id", { ascending: false }).limit(1);
         if (lastTrip && lastTrip.length > 0 && lastTrip[0].primary_driver_id) {
-          setSelectedDriverId(String(lastTrip[0].primary_driver_id)); // Cast to string to fix dropdown glitch
+          setSelectedDriverId(String(lastTrip[0].primary_driver_id));
         } else {
           setSelectedDriverId("");
         }
 
-        // Get last Odometer
         const { data: lastOdoTrip } = await supabase.from("trips").select("end_km, start_km").eq("vehicle_id", selectedTruckId).order("trip_id", { ascending: false }).limit(1);
         const { data: lastOdoFuel } = await supabase.from("diesel_fuel_logs").select("filling_odometer_km").eq("vehicle_id", selectedTruckId).order("fuel_log_id", { ascending: false }).limit(1);
         
@@ -132,11 +117,10 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     }
   }, [selectedTruckId, vehicles, supabase]);
 
-  // 5. Handle Destination Selection (Auto-lock Freight Rate)
   useEffect(() => {
     if (destinationLabel === "-- MANUAL / SPOT ROUTE --") {
       setIsManualRoute(true);
-      setFreightRate(""); // Unlock for manual entry
+      setFreightRate(""); 
     } else if (destinationLabel !== "-- SELECT DESTINATION --") {
       setIsManualRoute(false);
       const matchedRoute = validRoutes.find(r => String(r.destination_name) === String(destinationLabel));
@@ -149,7 +133,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     }
   }, [destinationLabel, validRoutes]);
 
-  // 6. Auto-fetch Bata Master
   useEffect(() => {
     const finalDest = isManualRoute ? customDest : destinationLabel;
     if (finalSource && finalDest && finalDest !== "-- SELECT DESTINATION --") {
@@ -179,7 +162,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     const grossFreight = Math.round(Number(loadedMt) * Number(freightRate) * 100) / 100;
     const fuelCost = Math.round((Number(dieselL) || 0) * dieselRate * 100) / 100;
 
-    // 1. Insert Trip
     const { data: newTrip, error: tripError } = await supabase
       .from("trips")
       .insert([{
@@ -213,7 +195,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       return;
     }
 
-    // 2. Insert Fuel Log
     if (Number(dieselL) > 0) {
       await supabase.from("diesel_fuel_logs").insert([{
         fuel_date: startDate,
@@ -229,7 +210,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       }]);
     }
 
-    // 3. Update Vehicle Status
     await supabase
       .from("vehicles")
       .update({
@@ -252,76 +232,71 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        
-        {/* ROW 1: Basic Identifiers */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start Date *</label>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" required />
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" required />
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">LR Number *</label>
-            <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value)} placeholder="E.G. 40080069852" className="w-full text-sm p-3 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required />
+            <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value)} placeholder="E.G. 40080069852" className="w-full text-sm p-3 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-orange-500 font-bold" required />
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo Type *</label>
             <div className="flex bg-slate-100 p-1 rounded-xl">
-              <button type="button" onClick={() => { setCargoType("BULK"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BULK" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>BULK</button>
-              <button type="button" onClick={() => { setCargoType("BAG"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BAG" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>BAGS</button>
+              <button type="button" onClick={() => { setCargoType("BULK"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BULK" ? "bg-white text-orange-600 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>BULK</button>
+              <button type="button" onClick={() => { setCargoType("BAG"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BAG" ? "bg-white text-orange-600 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>BAGS</button>
             </div>
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Diesel Rate (₹/L)</label>
-            <input type="number" step="0.1" value={dieselRate} onChange={e => setDieselRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-slate-600 font-bold" />
+            <input type="number" step="0.1" value={dieselRate} onChange={e => setDieselRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 bg-slate-50 text-slate-600 font-bold" />
           </div>
         </div>
 
         <hr className="border-slate-100" />
 
-        {/* ROW 2: Entities (Strict Dropdowns utilizing String casts for React sync) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source (Origin) *</label>
-            <select value={source} onChange={e => setSource(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold">
+            <select value={source} onChange={e => setSource(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold">
               {STANDARD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             {source === "CUSTOM" && (
-              <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-indigo-500" required />
+              <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-orange-500" required />
             )}
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Assigned Truck ({cargoType}) *</label>
-            <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700" required disabled={isLoading}>
+            <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold text-orange-600" required disabled={isLoading}>
               <option value="">-- SELECT TRUCK --</option>
               {availableTrucks.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number} [{v.truck_type}]</option>)}
             </select>
-            {availableTrucks.length === 0 && !isLoading && <p className="text-[10px] text-rose-500 mt-1 font-bold">No {cargoType} trucks available.</p>}
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Name *</label>
-            <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required disabled={isLoading || !selectedTruckId}>
+            <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold" required disabled={isLoading || !selectedTruckId}>
               <option value="">-- SELECT DRIVER --</option>
               {drivers.map(d => <option key={d.driver_id} value={String(d.driver_id)}>{d.driver_code} - {d.full_name}</option>)}
             </select>
           </div>
         </div>
 
-        {/* ROW 3: Route & Rates */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
           <div className="md:col-span-2">
-            <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1">Destination *</label>
-            <select value={destinationLabel} onChange={e => setDestinationLabel(e.target.value)} className="w-full text-sm p-3 rounded-xl border-2 border-indigo-200 outline-none focus:border-indigo-500 font-bold text-slate-900" disabled={!selectedTruckId}>
+            <label className="block text-[10px] font-bold text-orange-600 uppercase mb-1">Destination *</label>
+            <select value={destinationLabel} onChange={e => setDestinationLabel(e.target.value)} className="w-full text-sm p-3 rounded-xl border-2 border-orange-200 outline-none focus:border-orange-500 font-bold text-slate-900" disabled={!selectedTruckId}>
               <option value="-- SELECT DESTINATION --">-- SELECT DESTINATION --</option>
               {validRoutes.map(r => <option key={r.id} value={r.destination_name}>{r.destination_name} (₹{r.freight_rate_per_ton}/MT)</option>)}
               <option value="-- MANUAL / SPOT ROUTE --">-- MANUAL / SPOT ROUTE --</option>
             </select>
             {isManualRoute && (
-              <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-indigo-500" required />
+              <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-orange-500" required />
             )}
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Loaded MT *</label>
-            <input type="number" step="0.01" value={loadedMt} onChange={e => setLoadedMt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required />
+            <input type="number" step="0.01" value={loadedMt} onChange={e => setLoadedMt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold" required />
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Freight Rate / MT (₹) *</label>
@@ -330,33 +305,31 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               step="0.01" 
               value={freightRate} 
               onChange={e => setFreightRate(parseFloat(e.target.value))} 
-              className={`w-full text-sm p-3 rounded-xl border outline-none font-black ${isManualRoute ? 'border-slate-300 focus:ring-2 focus:ring-indigo-500 text-indigo-700 bg-white' : 'border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed'}`} 
+              className={`w-full text-sm p-3 rounded-xl border outline-none font-black ${isManualRoute ? 'border-slate-300 focus:ring-2 focus:ring-orange-500 text-orange-600 bg-white' : 'border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed'}`} 
               disabled={!isManualRoute} 
               readOnly={!isManualRoute}
               required 
             />
-            {!isManualRoute && <p className="text-[9px] text-emerald-600 mt-1 font-bold italic">Auto-fetched & Locked</p>}
           </div>
         </div>
 
-        {/* ROW 4: Financials & Tracking */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Bata (₹) *</label>
-            <input type="number" value={driverBata} onChange={e => setDriverBata(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" required />
+            <input type="number" value={driverBata} onChange={e => setDriverBata(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" required />
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Direct Advance (₹)</label>
-            <input type="number" value={advance} onChange={e => setAdvance(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input type="number" value={advance} onChange={e => setAdvance(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" />
           </div>
           <div className="md:col-span-2 grid grid-cols-2 gap-4 border border-slate-200 p-2 rounded-xl bg-white">
              <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start Odo KM</label>
-                <input type="number" value={startKm} onChange={e => setStartKm(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-indigo-500" />
+                <input type="number" value={startKm} onChange={e => setStartKm(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-orange-500" />
              </div>
              <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Diesel Issued (L)</label>
-                <input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-indigo-500" />
+                <input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-orange-500" />
              </div>
           </div>
         </div>
@@ -365,7 +338,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           <div className="flex gap-6">
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase mb-0">Expected Gross Freight</p>
-              <p className="text-xl font-black text-indigo-700">₹{(Number(loadedMt || 0) * Number(freightRate || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+              <p className="text-xl font-black text-orange-600">₹{(Number(loadedMt || 0) * Number(freightRate || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase mb-0">Upfront Trip Expense</p>
