@@ -9,6 +9,7 @@ import { PodClosure } from "@/components/PodClosure";
 import { ModifyTrips } from "@/components/ModifyTrips";
 import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
 import { FinancialsModule } from "@/components/FinancialsModule";
+import { ProfitLossModule } from "@/components/ProfitLossModule";
 import { WorkshopModule } from "@/components/WorkshopModule";
 import { SetupModule } from "@/components/SetupModule";
 import { FleetTable } from "@/components/FleetTable";
@@ -280,8 +281,8 @@ export default function SaaS_ERPDashboard() {
     );
   }
 
-  const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
-  const navItems = userRole === "ADMIN" ? allNavItems : ["Dashboard", "Financials"];
+  const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "Setup"];
+  const navItems = userRole === "ADMIN" ? allNavItems : ["Dashboard", "Financials", "P&L Statement"];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative">
@@ -413,7 +414,6 @@ export default function SaaS_ERPDashboard() {
                   </span>
                 </div>
                 
-                {/* Fixed Overflows on Mobile Grid! No truncate, scaled font sizes, balanced padding. */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                   <div className="p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
                     <div>
@@ -612,6 +612,7 @@ export default function SaaS_ERPDashboard() {
             {activeTab === "Fuel & Adv" && userRole === "ADMIN" && <div className="p-6"><FuelAdvanceModule /></div>}
             {activeTab === "Workshop & Tyres" && userRole === "ADMIN" && <div className="p-6"><WorkshopModule /></div>}
             {activeTab === "Financials" && <div className="p-6"><FinancialsModule /></div>}
+            {activeTab === "P&L Statement" && <div className="p-6"><ProfitLossModule /></div>}
             {activeTab === "Setup" && userRole === "ADMIN" && <div className="p-6"><SetupModule /></div>}
             
           </div>
