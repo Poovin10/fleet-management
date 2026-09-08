@@ -52,6 +52,9 @@ export default function SaaS_ERPDashboard() {
   const [qsStatus, setQsStatus] = useState("WAITING_FOR_LOAD");
   const [qsRemarks, setQsRemarks] = useState("");
 
+  // Re-added the missing opTabs array!
+  const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status"];
+
   // Hydrate Authentication from Session Storage to survive reloads
   useEffect(() => {
     const auth = sessionStorage.getItem("kss_auth");
