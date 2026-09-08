@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export function FuelAdvanceModule() {
   const supabase = createClient();
-  const [faNav, setFaNav] = useState("Issue Diesel");
+  const [faNav, setFaNav] = useState("⛽ Issue Diesel");
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -25,6 +25,7 @@ export function FuelAdvanceModule() {
   const [fLrNo, setFLrNo] = useState("");
   const [fFillingKm, setFFillingKm] = useState<number | "">("");
   const [fLitres, setFLitres] = useState<number | "">("");
+  const [fDieselRate, setFDieselRate] = useState<number | "">(95.0); // New State
   const [fIsTankFull, setFIsTankFull] = useState(false);
 
   // --- 2. EDIT DIESEL LOG STATES ---
@@ -62,17 +63,25 @@ export function FuelAdvanceModule() {
 
   const fetchData = async () => {
     setIsLoading(true);
-    const [vehRes, drvRes, fuelRes, advRes] = await Promise.all([
+    const [vehRes, drvRes, fuelRes, advRes, dieselRateRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number'),
       supabase.from('drivers').select('*').eq('is_active', true).order('full_name'),
       supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).limit(50),
-      supabase.from('driver_direct_advances').select('*, drivers(full_name, driver_code)').order('advance_date', { ascending: false }).limit(50)
+      supabase.from('driver_direct_advances').select('*, drivers(full_name, driver_code)').order('advance_date', { ascending: false }).limit(50),
+      supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(1)
     ]);
 
     if (vehRes.data) setVehicles(vehRes.data);
     if (drvRes.data) setDrivers(drvRes.data);
     if (fuelRes.data) setRecentFuelLogs(fuelRes.data);
     if (advRes.data) setRecentAdvances(advRes.data);
+
+    // Auto-populate latest diesel rate
+    if (dieselRateRes.data && dieselRateRes.data.length > 0 && dieselRateRes.data[0].diesel_rate_per_litre) {
+      const latestRate = Number(dieselRateRes.data[0].diesel_rate_per_litre);
+      setDieselRate(latestRate);
+      setFDieselRate(latestRate);
+    }
 
     // If Edit tab is active, fetch a larger pool of logs for the dropdown
     if (faNav === "📝 Edit Diesel Log") {
@@ -91,18 +100,18 @@ export function FuelAdvanceModule() {
   // --- HANDLERS: ISSUE DIESEL ---
   const handleIssueDiesel = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fVehicleId || Number(fLitres) <= 0) return alert("Valid Vehicle and Litres > 0 are required.");
+    if (!fVehicleId || Number(fLitres) <= 0 || Number(fDieselRate) <= 0) return alert("Valid Vehicle, Litres > 0, and Rate > 0 are required.");
 
     setIsProcessing(true);
-    const totalCost = Math.round((Number(fLitres) * dieselRate) * 100) / 100;
+    const totalCost = Math.round((Number(fLitres) * Number(fDieselRate)) * 100) / 100;
 
     const { error } = await supabase.from('diesel_fuel_logs').insert([{
       fuel_date: fDate,
-      vehicle_id: fVehicleId,
-      lr_number: fLrNo.toUpperCase() || "SUNDRY",
+      vehicle_id: Number(fVehicleId),
+      lr_number: fLrNo.toUpperCase().trim() || "SUNDRY",
       diesel_category: fCategory,
       litres_filled: Number(fLitres),
-      diesel_rate_per_litre: dieselRate,
+      diesel_rate_per_litre: Number(fDieselRate),
       total_fuel_cost: totalCost,
       filling_odometer_km: Number(fFillingKm) || 0,
       is_tank_full: fIsTankFull
@@ -112,7 +121,7 @@ export function FuelAdvanceModule() {
     else {
       alert("Diesel entry recorded successfully!");
       setFLitres(""); setFLrNo(""); setFFillingKm(""); setFIsTankFull(false);
-      fetchData();
+      fetchData(); // Refetches to update recent tables & new diesel rate baseline
     }
     setIsProcessing(false);
   };
@@ -124,7 +133,7 @@ export function FuelAdvanceModule() {
       if (log) {
         setEditLog(log);
         setEFuelDate(log.fuel_date || "");
-        setEVehicleId(log.vehicle_id || "");
+        setEVehicleId(String(log.vehicle_id) || "");
         setECategory(log.diesel_category || "TRIP_DIESEL");
         setELrNo(log.lr_number === "SUNDRY" ? "" : (log.lr_number || ""));
         setEFillingKm(log.filling_odometer_km || 0);
@@ -144,12 +153,12 @@ export function FuelAdvanceModule() {
 
     const cost = Math.round((Number(eLitres) * Number(eRate)) * 100) / 100;
 
-    // 1. Update the fuel log (Typo eEFuelDate fixed here to eFuelDate)
+    // 1. Update the fuel log
     const { error } = await supabase.from('diesel_fuel_logs').update({
       fuel_date: eFuelDate,
-      vehicle_id: eVehicleId,
+      vehicle_id: Number(eVehicleId),
       diesel_category: eCategory,
-      lr_number: eLrNo.toUpperCase() || "SUNDRY",
+      lr_number: eLrNo.toUpperCase().trim() || "SUNDRY",
       filling_odometer_km: Number(eFillingKm),
       litres_filled: Number(eLitres),
       diesel_rate_per_litre: Number(eRate),
@@ -168,7 +177,7 @@ export function FuelAdvanceModule() {
       const { data: trip } = await supabase.from('trips').select('start_km').eq('trip_id', editLog.trip_id).single();
       let updatePayload: any = { fuel_litres: Number(eLitres), fuel_expense: cost };
       
-      // If start_km was 0, update it to the filling KM (Streamlit legacy logic)
+      // If start_km was 0, update it to the filling KM
       if (trip && (trip.start_km === 0 || trip.start_km === null)) {
         updatePayload.start_km = Number(eFillingKm);
       }
@@ -203,7 +212,7 @@ export function FuelAdvanceModule() {
 
     const { error } = await supabase.from('driver_direct_advances').insert([{
       advance_date: advDate,
-      driver_id: advDriverId,
+      driver_id: Number(advDriverId),
       amount_inr: Number(advAmount),
       advance_type: advCategory,
       reference_remarks: advRef
@@ -282,7 +291,7 @@ export function FuelAdvanceModule() {
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Select Truck *</label>
                 <select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required disabled={isLoading}>
                   <option value="">-- SELECT TRUCK --</option>
-                  {vehicles.map(v => <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>)}
+                  {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
                 </select>
               </div>
               <div>
@@ -296,22 +305,33 @@ export function FuelAdvanceModule() {
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Trip LR No (Optional)</label>
                 <input type="text" value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filling KM</label>
                   <input type="number" value={fFillingKm} onChange={e => setFFillingKm(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Litres Filled *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Litres *</label>
                   <input type="number" step="0.1" value={fLitres} onChange={e => setFLitres(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700" required />
                 </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rate (₹/L) *</label>
+                  <input type="number" step="0.1" value={fDieselRate} onChange={e => setFDieselRate(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required />
+                </div>
               </div>
-              <div className="pt-2">
+              
+              <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={fIsTankFull} onChange={e => setFIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" />
-                  <span className="text-xs font-bold text-slate-700">⛽ Mark as Tank Full</span>
+                  <span className="text-xs font-bold text-slate-700">⛽ Tank Full</span>
                 </label>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase mr-3">Total Cost:</span>
+                  <span className="text-lg font-black text-rose-600">₹{((Number(fLitres) || 0) * (Number(fDieselRate) || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                </div>
               </div>
+
               <div className="pt-4 border-t border-slate-100">
                 <button type="submit" disabled={isProcessing} className="w-full py-3 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
                   {isProcessing ? "Saving..." : "Record Diesel Entry"}
@@ -385,7 +405,7 @@ export function FuelAdvanceModule() {
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Vehicle *</label>
                   <select value={eVehicleId} onChange={e => setEVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required>
-                    {vehicles.map(v => <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>)}
+                    {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
                   </select>
                 </div>
                 <div className="md:col-span-2">
@@ -454,7 +474,7 @@ export function FuelAdvanceModule() {
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Account *</label>
                 <select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required disabled={isLoading}>
                   <option value="">-- SELECT DRIVER --</option>
-                  {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
+                  {drivers.map(d => <option key={d.driver_id} value={String(d.driver_id)}>{d.driver_code} - {d.full_name}</option>)}
                 </select>
               </div>
               <div>
