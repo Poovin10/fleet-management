@@ -24,17 +24,17 @@ export default function SaaS_ERPDashboard() {
   const [currentDateText, setCurrentDateText] = useState("");
   const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
   
-  // Real-time KPI States (Current Month + Pending PODs)
+  // Real-time KPI States
   const [monthTripsCount, setMonthTripsCount] = useState<number>(0);
   const [monthFreight, setMonthFreight] = useState<number>(0);
   const [monthDieselCost, setMonthDieselCost] = useState<number>(0);
   const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
   const [activeTripCount, setActiveTripCount] = useState<number>(0); 
   
+  // 4 Core Operational Statuses
   const [statusCounts, setStatusCounts] = useState({
-    "In Transit": 0,
-    "Ready / Available": 0,
     "Plant Loading": 0,
+    "In Transit": 0,
     "Workshop / Repairs": 0,
     "No Driver / Leave": 0
   });
@@ -43,7 +43,7 @@ export default function SaaS_ERPDashboard() {
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status"];
 
   const [qsTruckId, setQsTruckId] = useState("");
-  const [qsStatus, setQsStatus] = useState("AVAILABLE_FOR_LOAD");
+  const [qsStatus, setQsStatus] = useState("WAITING_FOR_LOAD");
   const [qsRemarks, setQsRemarks] = useState("");
 
   const extractStatus = (v: any) => {
@@ -54,11 +54,7 @@ export default function SaaS_ERPDashboard() {
     if (!obj) return null;
     const keys = Object.keys(obj);
     for (const hint of hints) {
-      const foundKey = keys.find(k => 
-        k.toLowerCase().includes(hint.toLowerCase()) && 
-        k.toLowerCase() !== 'id' && 
-        !k.toLowerCase().endsWith('_id')
-      );
+      const foundKey = keys.find(k => k.toLowerCase().includes(hint.toLowerCase()) && k.toLowerCase() !== 'id' && !k.toLowerCase().endsWith('_id'));
       if (foundKey && obj[foundKey] !== null && obj[foundKey] !== '') {
         return obj[foundKey];
       }
@@ -74,64 +70,39 @@ export default function SaaS_ERPDashboard() {
     if (vehicles && vehicles.length > 0) {
       setLiveVehicles(vehicles);
       setStatusCounts({
+        // Grouping legacy AVAILABLE_FOR_LOAD into WAITING_FOR_LOAD (Plant Loading)
+        "Plant Loading": vehicles.filter(v => extractStatus(v) === 'WAITING_FOR_LOAD' || extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
         "In Transit": vehicles.filter(v => extractStatus(v) === 'IN_TRANSIT').length,
-        "Ready / Available": vehicles.filter(v => extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
-        "Plant Loading": vehicles.filter(v => extractStatus(v) === 'WAITING_FOR_LOAD').length,
         "Workshop / Repairs": vehicles.filter(v => extractStatus(v) === 'WORKSHOP_MAINTENANCE').length,
         "No Driver / Leave": vehicles.filter(v => extractStatus(v) === 'DRIVER_UNAVAILABLE').length
       });
     }
 
-    // 2. Fetch Active Trips (Pending PODs across all time)
-    const { count: activeCount } = await supabase
-      .from('trips')
-      .select('*', { count: 'exact', head: true })
-      .neq('trip_status', 'COMPLETED');
+    // 2. Fetch Pending PODs
+    const { count: activeCount } = await supabase.from('trips').select('*', { count: 'exact', head: true }).neq('trip_status', 'COMPLETED');
     setActiveTripCount(activeCount || 0);
 
-    // 3. Calculate Current Month Operations strictly avoiding UTC offsets
+    // 3. Calculate Current Month Financials
     const now = new Date();
     const year = now.getFullYear();
     const monthStr = String(now.getMonth() + 1).padStart(2, '0');
     
-    // Explicitly format as YYYY-MM-DD to strictly check local dates in Supabase
     const firstDay = `${year}-${monthStr}-01`;
     const lastDayObj = new Date(year, now.getMonth() + 1, 0);
     const lastDay = `${year}-${monthStr}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
 
-    // Query Trips for Freight & Trip Expenses
-    const { data: monthTrips } = await supabase
-      .from('trips')
-      .select('freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance')
-      .gte('trip_start_date', firstDay)
-      .lte('trip_start_date', lastDay);
-
-    // Query Diesel Logs for true overall Diesel Cost
-    const { data: monthDiesel } = await supabase
-      .from('diesel_fuel_logs')
-      .select('total_fuel_cost')
-      .gte('fuel_date', firstDay)
-      .lte('fuel_date', lastDay);
+    const { data: monthTrips } = await supabase.from('trips').select('freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance').gte('trip_start_date', firstDay).lte('trip_start_date', lastDay);
+    const { data: monthDiesel } = await supabase.from('diesel_fuel_logs').select('total_fuel_cost').gte('fuel_date', firstDay).lte('fuel_date', lastDay);
 
     if (monthTrips && monthDiesel) {
       setMonthTripsCount(monthTrips.length);
+      let totalFreight = 0; let nonFuelExpenses = 0; let totalDieselCost = 0;
 
-      let totalFreight = 0;
-      let nonFuelExpenses = 0;
-      let totalDieselCost = 0;
-
-      // Sum Trip metrics
       monthTrips.forEach(t => {
         totalFreight += Number(t.freight_revenue) || 0;
-        nonFuelExpenses += (Number(t.driver_bata) || 0) + 
-                           (Number(t.halt_bata) || 0) + 
-                           (Number(t.enroute_repairs_maintenance) || 0);
+        nonFuelExpenses += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0) + (Number(t.enroute_repairs_maintenance) || 0);
       });
-
-      // Sum exact Diesel Logs
-      monthDiesel.forEach(d => {
-        totalDieselCost += Number(d.total_fuel_cost) || 0;
-      });
+      monthDiesel.forEach(d => { totalDieselCost += Number(d.total_fuel_cost) || 0; });
 
       setMonthFreight(totalFreight);
       setMonthDieselCost(totalDieselCost);
@@ -146,15 +117,14 @@ export default function SaaS_ERPDashboard() {
   }, [activeTab]);
 
   const getDrillDownData = (statusLabel: string) => {
-    const statusMap: Record<string, string> = {
-      "In Transit": "IN_TRANSIT",
-      "Ready / Available": "AVAILABLE_FOR_LOAD",
-      "Plant Loading": "WAITING_FOR_LOAD",
-      "Workshop / Repairs": "WORKSHOP_MAINTENANCE",
-      "No Driver / Leave": "DRIVER_UNAVAILABLE"
+    const statusMap: Record<string, string[]> = {
+      "Plant Loading": ["WAITING_FOR_LOAD", "AVAILABLE_FOR_LOAD"],
+      "In Transit": ["IN_TRANSIT"],
+      "Workshop / Repairs": ["WORKSHOP_MAINTENANCE"],
+      "No Driver / Leave": ["DRIVER_UNAVAILABLE"]
     };
-    const dbStatus = statusMap[statusLabel];
-    return liveVehicles.filter(v => extractStatus(v) === dbStatus);
+    const dbStatuses = statusMap[statusLabel] || [];
+    return liveVehicles.filter(v => dbStatuses.includes(extractStatus(v)));
   };
 
   const currentDrillDownData = selectedStatus ? getDrillDownData(selectedStatus) : [];
@@ -165,7 +135,11 @@ export default function SaaS_ERPDashboard() {
     
     const supabase = createClient();
     const { error } = await supabase.from('vehicles')
-      .update({ current_status: qsStatus, status_remarks: qsRemarks })
+      .update({ 
+        current_status: qsStatus, 
+        status_remarks: qsRemarks,
+        status_updated_at: new Date().toISOString() // Stamps the exact time of change
+      })
       .eq('vehicle_id', qsTruckId);
 
     if (error) {
@@ -178,7 +152,6 @@ export default function SaaS_ERPDashboard() {
     }
   };
 
-  // Dynamically calculate the margins
   const dieselPct = monthFreight > 0 ? (monthDieselCost / monthFreight) * 100 : 0;
   const retentionPct = monthFreight > 0 ? (monthNetRetention / monthFreight) * 100 : 0;
 
@@ -287,11 +260,10 @@ export default function SaaS_ERPDashboard() {
               <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
                 <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide">Live Vehicle Status Monitor</h3>
                 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: "In Transit", count: statusCounts["In Transit"], color: "bg-blue-50 text-blue-700 border-blue-200" },
-                    { label: "Ready / Available", count: statusCounts["Ready / Available"], color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
                     { label: "Plant Loading", count: statusCounts["Plant Loading"], color: "bg-amber-50 text-amber-700 border-amber-200" },
+                    { label: "In Transit", count: statusCounts["In Transit"], color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
                     { label: "Workshop / Repairs", count: statusCounts["Workshop / Repairs"], color: "bg-rose-50 text-rose-700 border-rose-200" },
                     { label: "No Driver / Leave", count: statusCounts["No Driver / Leave"], color: "bg-slate-100 text-slate-700 border-slate-300" }
                   ].map((status) => (
@@ -302,13 +274,13 @@ export default function SaaS_ERPDashboard() {
                         selectedStatus === status.label ? `ring-2 ring-offset-2 ring-slate-900 ${status.color}` : `bg-white hover:bg-slate-50 ${status.color.replace('bg-', 'hover:bg-').split(' ')[0]} border-slate-200`
                       }`}
                     >
-                      <p className="text-3xl font-black mb-1">{status.count}</p>
+                      <p className="text-4xl font-black mb-1">{status.count}</p>
                       <p className="text-xs font-bold uppercase tracking-wider opacity-80">{status.label}</p>
                     </button>
                   ))}
                 </div>
 
-                {/* DYNAMIC DRILL-DOWN TABLE WITH AUTO-MAPPER */}
+                {/* DYNAMIC DRILL-DOWN TABLE WITH AGING/DAYS */}
                 {selectedStatus && (
                   <div className="mt-6 border-t border-slate-100 pt-6 animate-in slide-in-from-top-4 fade-in duration-300">
                     <div className="flex justify-between items-center mb-4">
@@ -321,22 +293,30 @@ export default function SaaS_ERPDashboard() {
                         <thead className="bg-slate-50">
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Truck No.</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Type / Capacity</th>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Remarks</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Aging</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
                           {currentDrillDownData.map((truck, idx) => {
                             const truckNo = findStringProp(truck, ["veh", "truck", "reg", "plate", "number"]) || `Truck ${truck.id}`;
-                            const variant = truck.truck_type || "Bulk";
-                            const capacity = truck.carrying_capacity_tons || "N/A";
                             const remarks = truck.status_remarks || "-";
+                            
+                            // Calculate Days in Status
+                            const targetDate = truck.status_updated_at || truck.updated_at || new Date();
+                            const daysDiff = Math.floor((new Date().getTime() - new Date(targetDate).getTime()) / (1000 * 3600 * 24));
+                            const daysText = daysDiff === 0 ? "Today" : `${daysDiff} Days`;
+                            const badgeColor = daysDiff > 3 ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700";
 
                             return (
                               <tr key={idx} className="hover:bg-slate-50 transition-colors">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{truckNo}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{variant} ({capacity} MT)</td>
                                 <td className="px-6 py-4 text-sm text-slate-500">{remarks}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                  <span className={`px-3 py-1 rounded-md font-bold text-[11px] uppercase ${badgeColor}`}>
+                                    {daysText}
+                                  </span>
+                                </td>
                               </tr>
                             );
                           })}
@@ -348,17 +328,6 @@ export default function SaaS_ERPDashboard() {
                     </div>
                   </div>
                 )}
-
-                {/* Open Full Report Button */}
-                <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
-                  <button 
-                    onClick={() => setShowFullReport(true)}
-                    className="flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
-                  >
-                    View Detailed Truck Status Report 
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                  </button>
-                </div>
               </div>
             </div>
           )}
@@ -380,7 +349,6 @@ export default function SaaS_ERPDashboard() {
                   ))}
                 </div>
                 
-                {/* --- The Modular Component Routing --- */}
                 {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
                 {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
                 {opSubTab === "Modify Trips" && <ModifyTrips onSuccess={() => fetchDashboardData()} />}
@@ -411,9 +379,8 @@ export default function SaaS_ERPDashboard() {
                           onChange={(e) => setQsStatus(e.target.value)} 
                           className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
                         >
-                          <option value="AVAILABLE_FOR_LOAD">Ready / Available</option>
-                          <option value="IN_TRANSIT">In Transit</option>
                           <option value="WAITING_FOR_LOAD">Plant Loading</option>
+                          <option value="IN_TRANSIT">In Transit</option>
                           <option value="WORKSHOP_MAINTENANCE">Workshop / Repairs</option>
                           <option value="DRIVER_UNAVAILABLE">No Driver / Leave</option>
                         </select>
@@ -445,28 +412,6 @@ export default function SaaS_ERPDashboard() {
           </div>
         </div>
       </main>
-
-      {/* FULL SCREEN MODAL OVERLAY */}
-      {showFullReport && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-slate-200">
-              <div>
-                <h2 className="text-xl font-black text-slate-900">Detailed Truck Status Report</h2>
-                <p className="text-sm text-slate-500 mt-1">Full fleet overview as of {currentDateText}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => setShowFullReport(false)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-auto p-6">
-              <FleetTable />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
