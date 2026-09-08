@@ -13,7 +13,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [freightMaster, setFreightMaster] = useState<any[]>([]);
   const [bataMaster, setBataMaster] = useState<any[]>([]);
-  const [dieselRate, setDieselRate] = useState<number>(95.0);
+  const [dieselRate, setDieselRate] = useState<number>(95.0); // Will auto-update from DB
 
   // Basic Form States
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
@@ -43,21 +43,27 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
 
   const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"];
 
-  // 1. Fetch All Master Data on Load
+  // 1. Fetch All Master Data on Load (Including last recorded diesel rate)
   useEffect(() => {
     async function fetchMasterData() {
       setIsLoading(true);
-      const [vehRes, drvRes, frRes, btRes] = await Promise.all([
+      const [vehRes, drvRes, frRes, btRes, dieselRes] = await Promise.all([
         supabase.from("vehicles").select("*").eq("is_active", true).order("vehicle_number"),
         supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
         supabase.from("destinations_freight_master").select("*").eq("is_active", true),
-        supabase.from("driver_bata_master").select("*")
+        supabase.from("driver_bata_master").select("*"),
+        supabase.from("diesel_fuel_logs").select("diesel_rate_per_litre").order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false }).limit(1)
       ]);
 
       if (vehRes.data) setVehicles(vehRes.data);
       if (drvRes.data) setDrivers(drvRes.data);
       if (frRes.data) setFreightMaster(frRes.data);
       if (btRes.data) setBataMaster(btRes.data);
+      
+      // Auto-set default diesel rate to the last recorded pump price
+      if (dieselRes.data && dieselRes.data.length > 0 && dieselRes.data[0].diesel_rate_per_litre) {
+        setDieselRate(Number(dieselRes.data[0].diesel_rate_per_litre));
+      }
       setIsLoading(false);
     }
     fetchMasterData();
@@ -72,25 +78,29 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   });
 
   const activeTruck = vehicles.find((v) => String(v.vehicle_id) === selectedTruckId);
-  const activeTruckCap = activeTruck ? Number(activeTruck.carrying_capacity_tons) : 30.0;
+  const activeTruckCap = activeTruck ? Number(activeTruck.carrying_capacity_tons) : 0;
   const finalSource = source === "CUSTOM" ? customSource : source;
 
-  // 3. Filter Freight Routes dynamically based on Source, Cargo, and Truck Capacity
+  // 3. Filter Freight Routes dynamically based on Source, Cargo, and exact Truck Capacity
   const validRoutes = freightMaster.filter((r) => {
     return (
-      r.origin?.toUpperCase() === finalSource.toUpperCase() &&
-      r.cargo_type === cargoType &&
-      Number(r.capacity_tons) === activeTruckCap
+      r.origin?.trim().toUpperCase() === finalSource.trim().toUpperCase() &&
+      r.cargo_type?.toUpperCase() === cargoType.toUpperCase() &&
+      (activeTruckCap === 0 || Number(r.capacity_tons) === activeTruckCap)
     );
   });
 
-  // 4. Handle Truck Selection (Auto-fetch last driver & last odometer)
+  // 4. Handle Truck Selection (Auto-fetch Capacity, Last Driver, & Last Odometer)
   useEffect(() => {
     if (selectedTruckId) {
-      setLoadedMt(activeTruckCap);
+      // Auto-populate Max Capacity
+      const truck = vehicles.find((v) => String(v.vehicle_id) === String(selectedTruckId));
+      if (truck && truck.carrying_capacity_tons) {
+        setLoadedMt(Number(truck.carrying_capacity_tons));
+      }
       
       const fetchTruckHistory = async () => {
-        // Get last driver
+        // Auto-populate Last Assigned Driver
         const { data: lastTrip } = await supabase
           .from("trips")
           .select("primary_driver_id")
@@ -100,7 +110,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           .limit(1);
           
         if (lastTrip && lastTrip.length > 0 && lastTrip[0].primary_driver_id) {
-          setSelectedDriverId(String(lastTrip[0].primary_driver_id));
+          setSelectedDriverId(String(lastTrip[0].primary_driver_id)); // Cast to string to fix dropdown glitch
         } else {
           setSelectedDriverId("");
         }
@@ -120,7 +130,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       setSelectedDriverId("");
       setStartKm("");
     }
-  }, [selectedTruckId, activeTruckCap]);
+  }, [selectedTruckId, vehicles, supabase]);
 
   // 5. Handle Destination Selection (Auto-lock Freight Rate)
   useEffect(() => {
@@ -129,7 +139,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       setFreightRate(""); // Unlock for manual entry
     } else if (destinationLabel !== "-- SELECT DESTINATION --") {
       setIsManualRoute(false);
-      const matchedRoute = validRoutes.find(r => r.destination_name === destinationLabel);
+      const matchedRoute = validRoutes.find(r => String(r.destination_name) === String(destinationLabel));
       if (matchedRoute) {
         setFreightRate(Number(matchedRoute.freight_rate_per_ton));
       }
@@ -144,8 +154,8 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     const finalDest = isManualRoute ? customDest : destinationLabel;
     if (finalSource && finalDest && finalDest !== "-- SELECT DESTINATION --") {
       const match = bataMaster.find(b => 
-        b.origin?.toUpperCase() === finalSource.toUpperCase() &&
-        b.destination_name?.toUpperCase() === finalDest.toUpperCase() &&
+        b.origin?.trim().toUpperCase() === finalSource.trim().toUpperCase() &&
+        b.destination_name?.trim().toUpperCase() === finalDest.trim().toUpperCase() &&
         b.cargo_type === cargoType &&
         Number(b.capacity_tons) === activeTruckCap
       );
@@ -175,8 +185,8 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       .insert([{
         trip_number: lrNo.toUpperCase().trim(),
         branch_id: 1,
-        vehicle_id: selectedTruckId,
-        primary_driver_id: selectedDriverId,
+        vehicle_id: Number(selectedTruckId),
+        primary_driver_id: Number(selectedDriverId),
         trip_start_date: startDate,
         origin: finalSource.toUpperCase(),
         destination: finalDest,
@@ -206,7 +216,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     if (Number(dieselL) > 0) {
       await supabase.from("diesel_fuel_logs").insert([{
         fuel_date: startDate,
-        vehicle_id: selectedTruckId,
+        vehicle_id: Number(selectedTruckId),
         trip_id: newTrip.trip_id,
         lr_number: lrNo.toUpperCase().trim(),
         diesel_category: "TRIP_DIESEL",
@@ -226,7 +236,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
         status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSource.toUpperCase()} ➔ ${finalDest}`,
         status_updated_at: new Date().toISOString()
       })
-      .eq("vehicle_id", selectedTruckId);
+      .eq("vehicle_id", Number(selectedTruckId));
 
     alert("Trip dispatched successfully!");
     setIsSubmitting(false);
@@ -267,7 +277,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
 
         <hr className="border-slate-100" />
 
-        {/* ROW 2: Entities (Strict Dropdowns) */}
+        {/* ROW 2: Entities (Strict Dropdowns utilizing String casts for React sync) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source (Origin) *</label>
@@ -282,7 +292,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Assigned Truck ({cargoType}) *</label>
             <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700" required disabled={isLoading}>
               <option value="">-- SELECT TRUCK --</option>
-              {availableTrucks.map(v => <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} [{v.truck_type}]</option>)}
+              {availableTrucks.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number} [{v.truck_type}]</option>)}
             </select>
             {availableTrucks.length === 0 && !isLoading && <p className="text-[10px] text-rose-500 mt-1 font-bold">No {cargoType} trucks available.</p>}
           </div>
@@ -290,7 +300,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Name *</label>
             <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required disabled={isLoading || !selectedTruckId}>
               <option value="">-- SELECT DRIVER --</option>
-              {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
+              {drivers.map(d => <option key={d.driver_id} value={String(d.driver_id)}>{d.driver_code} - {d.full_name}</option>)}
             </select>
           </div>
         </div>
