@@ -144,9 +144,9 @@ export function FuelAdvanceModule() {
 
     const cost = Math.round((Number(eLitres) * Number(eRate)) * 100) / 100;
 
-    // 1. Update the fuel log
+    // 1. Update the fuel log (Typo eEFuelDate fixed here to eFuelDate)
     const { error } = await supabase.from('diesel_fuel_logs').update({
-      fuel_date: eEFuelDate,
+      fuel_date: eFuelDate,
       vehicle_id: eVehicleId,
       diesel_category: eCategory,
       lr_number: eLrNo.toUpperCase() || "SUNDRY",
