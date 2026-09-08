@@ -14,15 +14,15 @@ import { SetupModule } from "@/components/SetupModule";
 import { FleetTable } from "@/components/FleetTable";
 import { ConfirmModal } from "@/components/ConfirmModal";
 
-// 🚀 HIGH-QUALITY VECTOR LOGO COMPONENT
-// This perfectly replicates your logo in pure code. It will never blur!
+// 🚀 HIGH-QUALITY CUSTOM VECTOR LOGO
+// Matches your reference image perfectly: Vibrant Orange background, White inner box, Orange lines.
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <rect width="200" height="200" fill="#ea580c" />
-    <rect x="20" y="20" width="160" height="160" fill="none" stroke="white" strokeWidth="12" />
-    <path d="M 45 35 L 45 165" stroke="white" strokeWidth="16" strokeLinecap="square" />
-    <path d="M 45 125 L 145 35" stroke="white" strokeWidth="16" strokeLinecap="square" />
-    <path d="M 85 85 C 130 95, 150 135, 150 165" stroke="white" strokeWidth="16" fill="none" />
+    <rect width="200" height="200" fill="#FF5A00" />
+    <rect x="15" y="15" width="170" height="170" fill="#FFFFFF" />
+    <path d="M 50 35 L 50 165" stroke="#FF5A00" strokeWidth="24" strokeLinecap="square" />
+    <path d="M 50 110 L 140 35" stroke="#FF5A00" strokeWidth="24" strokeLinecap="square" />
+    <path d="M 85 85 C 130 95, 145 130, 145 165" stroke="#FF5A00" strokeWidth="24" fill="none" />
   </svg>
 );
 
@@ -69,7 +69,6 @@ export default function SaaS_ERPDashboard() {
 
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status"];
 
-  // Hydrate Authentication from Session Storage
   useEffect(() => {
     const auth = sessionStorage.getItem("kss_auth");
     const role = sessionStorage.getItem("kss_role");
@@ -210,14 +209,15 @@ export default function SaaS_ERPDashboard() {
   const dieselPct = monthFreight > 0 ? (monthDieselCost / monthFreight) * 100 : 0;
   const retentionPct = monthFreight > 0 ? (monthNetRetention / monthFreight) * 100 : 0;
 
+  // --- RENDER MODERN LOGIN SCREEN ---
   if (isAuthLoading) return null;
 
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
         {/* Ambient Background Glows */}
-        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-orange-600/30 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#FF5A00]/30 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-[#FF5A00]/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
 
         <div className="relative bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md p-10 border border-white/20">
           <div className="text-center mb-10">
@@ -226,21 +226,23 @@ export default function SaaS_ERPDashboard() {
                <KssLogo className="w-full h-full" />
             </div>
             
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">KSS Roadways</h1>
-            <p className="text-xs font-bold text-orange-600 uppercase tracking-widest mt-2">ERP Secure Access</p>
+            <div className="inline-block bg-slate-900 px-4 py-2 rounded-xl shadow-sm mb-3">
+              <h1 className="text-2xl sm:text-3xl font-black text-[#FF5A00] tracking-tight leading-none">KSS Roadways</h1>
+            </div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">ERP Secure Access</p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Username</label>
-              <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500 font-semibold bg-slate-50 transition-all hover:bg-white" required />
+              <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-white" required />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Password</label>
-              <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500 font-semibold bg-slate-50 transition-all hover:bg-white" required />
+              <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-white" required />
             </div>
             {loginError && <p className="text-sm font-bold text-rose-500 text-center bg-rose-50 p-3 rounded-xl">{loginError}</p>}
-            <button type="submit" className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white font-black text-lg rounded-2xl transition-all shadow-[0_8px_30px_rgb(234,88,12,0.3)] active:scale-95 mt-4">
+            <button type="submit" className="w-full py-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-lg rounded-2xl transition-all shadow-[0_8px_30px_rgba(255,90,0,0.3)] active:scale-95 mt-4">
               Log In
             </button>
           </form>
@@ -253,7 +255,7 @@ export default function SaaS_ERPDashboard() {
   const navItems = userRole === "ADMIN" ? allNavItems : ["Dashboard", "Financials"];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-orange-100 selection:text-orange-900 relative">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative">
       
       {/* Universal Logout Confirmation Modal */}
       <ConfirmModal 
@@ -269,21 +271,25 @@ export default function SaaS_ERPDashboard() {
       {/* SaaS Sticky Header */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            
             {/* Embedded Logo in Header */}
-            <div className="w-12 h-12 rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-sm border border-slate-100 overflow-hidden flex-shrink-0">
                <KssLogo className="w-full h-full" />
             </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 hidden sm:block">KSS Roadways Pvt Ltd</h1>
-              <h1 className="text-xl font-black tracking-tight text-slate-900 sm:hidden">KSS Roadways</h1>
+
+            {/* Black Background / Bright Orange Text Title */}
+            <div className="bg-slate-900 px-3 py-1.5 rounded-lg shadow-sm">
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-[#FF5A00] hidden sm:block leading-none">KSS Roadways Pvt Ltd</h1>
+              <h1 className="text-base font-black tracking-tight text-[#FF5A00] sm:hidden leading-none">KSS Roadways</h1>
             </div>
             
-            <span className="items-center px-3 py-1.5 rounded-lg text-[11px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-widest hidden md:inline-flex">
+            {/* Cochin Badge forced to show on all screens */}
+            <span className="inline-flex items-center px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[11px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-widest whitespace-nowrap">
               Cochin
             </span>
             
-            <span className={`hidden lg:inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border ${userRole === 'ADMIN' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+            <span className={`hidden lg:inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border ${userRole === 'ADMIN' ? 'bg-[#FF5A00]/10 text-[#FF5A00] border-[#FF5A00]/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
               {userRole === 'ADMIN' ? '👑 Admin' : '👁️ Viewer'}
             </span>
           </div>
@@ -311,7 +317,7 @@ export default function SaaS_ERPDashboard() {
               key={item}
               onClick={() => setActiveTab(item)}
               className={`px-5 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 ease-out ${
-                activeTab === item ? "bg-white text-orange-600 shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
+                activeTab === item ? "bg-white text-[#FF5A00] shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
               }`}
             >
               {item}
@@ -329,7 +335,7 @@ export default function SaaS_ERPDashboard() {
               <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Operations Summary</h3>
-                  <span className="px-3 py-1 bg-orange-50 text-orange-700 text-xs font-bold rounded-full border border-orange-100">
+                  <span className="px-3 py-1 bg-[#FF5A00]/10 text-[#FF5A00] text-xs font-bold rounded-full border border-[#FF5A00]/20">
                     {currentMonthText.toUpperCase()}
                   </span>
                 </div>
@@ -363,15 +369,15 @@ export default function SaaS_ERPDashboard() {
                     </div>
                   </div>
                   
-                  <div className="p-4 rounded-xl bg-indigo-600 text-white shadow-md flex flex-col justify-between">
+                  <div className="p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between">
                     <div>
-                      <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">Net Retention (Margin)</p>
-                      <p className="text-2xl sm:text-3xl font-black mt-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Retention (Margin)</p>
+                      <p className="text-2xl sm:text-3xl font-black text-[#FF5A00] mt-2">
                         ₹ {monthNetRetention.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </p>
                     </div>
                     <div className="mt-3">
-                      <span className="inline-flex items-center text-[10px] font-bold text-white bg-indigo-500/80 px-2.5 py-1 rounded-md">
+                      <span className="inline-flex items-center text-[10px] font-bold text-white bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-md">
                         Retention: {retentionPct.toFixed(1)}%
                       </span>
                     </div>
@@ -386,7 +392,7 @@ export default function SaaS_ERPDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { label: "Plant Loading", count: statusCounts["Plant Loading"], color: "bg-amber-50 text-amber-700 border-amber-200" },
-                    { label: "In Transit", count: statusCounts["In Transit"], color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+                    { label: "In Transit", count: statusCounts["In Transit"], color: "bg-[#FF5A00]/10 text-[#FF5A00] border-[#FF5A00]/20" },
                     { label: "Workshop / Repairs", count: statusCounts["Workshop / Repairs"], color: "bg-rose-50 text-rose-700 border-rose-200" },
                     { label: "No Driver / Leave", count: statusCounts["No Driver / Leave"], color: "bg-slate-100 text-slate-700 border-slate-300" }
                   ].map((status) => (
@@ -394,7 +400,7 @@ export default function SaaS_ERPDashboard() {
                       key={status.label}
                       onClick={() => setSelectedStatus(selectedStatus === status.label ? null : status.label)}
                       className={`p-4 rounded-xl border text-left transition-all duration-200 ${
-                        selectedStatus === status.label ? `ring-2 ring-offset-2 ring-orange-500 ${status.color}` : `bg-white hover:bg-slate-50 ${status.color.replace('bg-', 'hover:bg-').split(' ')[0]} border-slate-200`
+                        selectedStatus === status.label ? `ring-2 ring-offset-2 ring-[#FF5A00] ${status.color}` : `bg-white hover:bg-slate-50 ${status.color.replace('bg-', 'hover:bg-').split(' ')[0]} border-slate-200`
                       }`}
                     >
                       <p className="text-4xl font-black mb-1">{status.count}</p>
@@ -408,7 +414,7 @@ export default function SaaS_ERPDashboard() {
                   <div className="mt-6 border-t border-slate-100 pt-6 animate-in slide-in-from-top-4 fade-in duration-300">
                     <div className="flex justify-between items-center mb-4">
                       <h4 className="text-sm font-bold text-slate-900">
-                        Trucks currently in: <span className="text-orange-600">{selectedStatus}</span>
+                        Trucks currently in: <span className="text-[#FF5A00]">{selectedStatus}</span>
                       </h4>
                     </div>
                     <div className="overflow-hidden rounded-xl border border-slate-200">
@@ -465,7 +471,7 @@ export default function SaaS_ERPDashboard() {
                       onClick={() => setOpSubTab(sub)}
                       className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
                         opSubTab === sub 
-                          ? "bg-orange-600 text-white shadow-sm ring-1 ring-orange-600" 
+                          ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" 
                           : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
                       }`}
                     >
@@ -487,7 +493,7 @@ export default function SaaS_ERPDashboard() {
                         <select 
                           value={qsTruckId} 
                           onChange={(e) => setQsTruckId(e.target.value)} 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-orange-500 outline-none font-bold"
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold"
                         >
                           <option value="">Select a vehicle...</option>
                           {liveVehicles.map(v => (
@@ -502,7 +508,7 @@ export default function SaaS_ERPDashboard() {
                         <select 
                           value={qsStatus} 
                           onChange={(e) => setQsStatus(e.target.value)} 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-orange-500 outline-none font-bold"
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold"
                         >
                           <option value="WAITING_FOR_LOAD">Plant Loading</option>
                           <option value="IN_TRANSIT">In Transit</option>
@@ -517,10 +523,10 @@ export default function SaaS_ERPDashboard() {
                           value={qsRemarks} 
                           onChange={(e) => setQsRemarks(e.target.value)} 
                           placeholder="e.g. Broken Down near Erode Toll" 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-orange-500 outline-none font-semibold" 
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-[#FF5A00] outline-none font-semibold" 
                         />
                       </div>
-                      <button type="submit" className="mt-4 bg-orange-600 hover:bg-orange-700 text-white font-black py-3 px-6 rounded-lg transition-colors shadow-sm">
+                      <button type="submit" className="mt-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black py-3 px-6 rounded-lg transition-colors shadow-sm">
                         Update Status
                       </button>
                     </form>
