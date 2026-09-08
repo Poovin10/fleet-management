@@ -14,8 +14,8 @@ import { WorkshopModule } from "@/components/WorkshopModule";
 import { SetupModule } from "@/components/SetupModule";
 import { FleetTable } from "@/components/FleetTable";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { ApprovalQueue } from "@/components/ApprovalQueue"; // <-- Approval Queue import
 
-// 🚀 HIGH-QUALITY CUSTOM VECTOR LOGO
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
     <rect width="200" height="200" fill="#FF5A00" />
@@ -29,7 +29,6 @@ const KssLogo = ({ className }: { className?: string }) => (
 export default function SaaS_ERPDashboard() {
   const supabase = createClient();
 
-  // Authentication States
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<"ADMIN" | "VIEWER">("VIEWER");
@@ -39,8 +38,6 @@ export default function SaaS_ERPDashboard() {
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginError, setLoginError] = useState("");
-  
-  // Logout Modal State
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -53,14 +50,13 @@ export default function SaaS_ERPDashboard() {
   const [currentDateText, setCurrentDateText] = useState("");
   const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
   
-  // Real-time KPI States
   const [monthTripsCount, setMonthTripsCount] = useState<number>(0);
   const [monthFreight, setMonthFreight] = useState<number>(0);
   const [monthDieselCost, setMonthDieselCost] = useState<number>(0);
   const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
   const [activeTripCount, setActiveTripCount] = useState<number>(0); 
+  const [pendingDriverCount, setPendingDriverCount] = useState<number>(0); // <-- Pending Driver queue count
   
-  // V2 FEATURE: Compliance Alerts
   const [expiringDocs, setExpiringDocs] = useState<any[]>([]);
   
   const [statusCounts, setStatusCounts] = useState({
@@ -74,14 +70,12 @@ export default function SaaS_ERPDashboard() {
   const [qsStatus, setQsStatus] = useState("WAITING_FOR_LOAD");
   const [qsRemarks, setQsRemarks] = useState("");
 
-  const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status"];
+  const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Driver Approvals"];
 
-  // Formatter for Strict .00 and Indian Number System
   const formatAmt = (amt: number) => {
     return (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // Hydrate Authentication from Session Storage
   useEffect(() => {
     const auth = sessionStorage.getItem("kss_auth");
     const role = sessionStorage.getItem("kss_role");
@@ -94,7 +88,6 @@ export default function SaaS_ERPDashboard() {
     setIsAuthLoading(false);
   }, []);
 
-  // 🚀 DATABASE-BACKED LOGIN HANDLER
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginUser.trim() || !loginPass.trim()) return;
@@ -153,7 +146,6 @@ export default function SaaS_ERPDashboard() {
   };
 
   const fetchDashboardData = async () => {
-    // 1. Fetch Vehicles & Statuses
     const { data: vehiclesData } = await supabase.from('vehicles').select('*').eq('is_active', true);
     if (vehiclesData && vehiclesData.length > 0) {
       setLiveVehicles(vehiclesData);
@@ -165,18 +157,23 @@ export default function SaaS_ERPDashboard() {
       });
     }
 
-    // 2. Fetch Pending PODs
     const { count: activeCount } = await supabase.from('trips').select('*', { count: 'exact', head: true }).neq('trip_status', 'COMPLETED');
     setActiveTripCount(activeCount || 0);
 
-    // 3. V2 FEATURE: Fetch Driver & Truck Compliance Expirations (30 Day Window)
+    // Fetch pending driver submissions count for dashboard notification
+    const { count: driverPendingCount } = await supabase
+      .from('driver_pending_entries')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'PENDING');
+    
+    setPendingDriverCount(driverPendingCount || 0);
+
     const today = new Date();
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(today.getDate() + 30);
 
     const alerts: any[] = [];
 
-    // Check Drivers
     const { data: drivers } = await supabase.from('drivers').select('driver_code, full_name, expiry_date').eq('is_active', true);
     if (drivers) {
       drivers.forEach(d => {
@@ -186,7 +183,6 @@ export default function SaaS_ERPDashboard() {
       });
     }
 
-    // Check Trucks (FC, Insurance, Q-Tax, PUC, National Permit, State Permit, Tank Cert)
     const { data: vehicles } = await supabase.from('vehicles').select('vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date').eq('is_active', true);
     if (vehicles) {
       vehicles.forEach(v => {
@@ -209,7 +205,6 @@ export default function SaaS_ERPDashboard() {
 
     setExpiringDocs(alerts);
 
-    // 4. Calculate Current Month Financials
     const now = new Date();
     const year = now.getFullYear();
     const monthStr = String(now.getMonth() + 1).padStart(2, '0');
@@ -281,11 +276,9 @@ export default function SaaS_ERPDashboard() {
 
   if (isAuthLoading) return null;
 
-  // --- RENDER MODERN LOGIN SCREEN ---
   if (showLoginScreen && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Ambient Background Glows */}
         <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#FF5A00]/30 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
 
@@ -294,7 +287,6 @@ export default function SaaS_ERPDashboard() {
             <div className="mx-auto mb-6 w-24 h-24 shadow-md rounded-2xl overflow-hidden border border-slate-200">
                <KssLogo className="w-full h-full" />
             </div>
-            
             <div className="inline-block bg-slate-900 px-4 py-2 rounded-xl shadow-sm mb-3">
               <h1 className="text-2xl sm:text-3xl font-black text-[#FF5A00] tracking-tight leading-none">KSS Roadways</h1>
             </div>
@@ -331,41 +323,28 @@ export default function SaaS_ERPDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative">
-      
-      {/* Universal Logout Confirmation Modal */}
       <ConfirmModal 
         isOpen={isLogoutModalOpen}
         title="Secure Sign Out"
-        message="Are you sure you want to log out of the KSS Roadways ERP system? You will need your credentials to access the system again."
+        message="Are you sure you want to log out of the KSS Roadways ERP system?"
         isDanger={true}
         confirmText="Log Out Now"
         onConfirm={executeLogout}
         onCancel={() => setIsLogoutModalOpen(false)}
       />
 
-      {/* SaaS Sticky Header */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4">
-            
-            {/* Embedded Logo in Header */}
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-sm border border-slate-100 overflow-hidden flex-shrink-0">
                <KssLogo className="w-full h-full" />
             </div>
-
-            {/* Black Background / Bright Orange Text Title */}
             <div className="bg-slate-900 px-3 py-1.5 rounded-lg shadow-sm">
               <h1 className="text-lg sm:text-xl font-black tracking-tight text-[#FF5A00] hidden sm:block leading-none">KSS Roadways Pvt Ltd</h1>
               <h1 className="text-base font-black tracking-tight text-[#FF5A00] sm:hidden leading-none">KSS Roadways</h1>
             </div>
-            
-            {/* Cochin Badge */}
             <span className="inline-flex items-center px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[11px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-widest whitespace-nowrap">
               Cochin
-            </span>
-            
-            <span className={`hidden lg:inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border ${userRole === 'ADMIN' ? 'bg-[#FF5A00]/10 text-[#FF5A00] border-[#FF5A00]/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-              {userRole === 'ADMIN' ? '👑 Admin' : '👁️ Public Viewer'}
             </span>
           </div>
 
@@ -373,32 +352,26 @@ export default function SaaS_ERPDashboard() {
             <span className="text-xs sm:text-sm font-bold text-slate-500 hidden md:block">Fleet: <span className="text-slate-900">{liveVehicles.length}</span></span>
             <div className="h-5 w-px bg-slate-200 hidden md:block"></div>
             
-            {/* Dynamic Auth Button */}
             {isAuthenticated ? (
               <button 
                 onClick={() => setIsLogoutModalOpen(true)}
                 className="flex items-center gap-2 text-sm font-black text-slate-600 hover:text-rose-700 hover:bg-rose-50 px-5 py-2.5 rounded-xl transition-all border border-slate-200 hover:border-rose-200 shadow-sm"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                <span className="hidden sm:block">Sign out</span>
+                <span>Sign out</span>
               </button>
             ) : (
               <button 
                 onClick={() => setShowLoginScreen(true)}
                 className="flex items-center gap-2 text-sm font-black text-white hover:bg-[#e04f00] bg-[#FF5A00] px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                <span className="hidden sm:block">Admin Login</span>
+                <span>Admin Login</span>
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        
-        {/* Navigation Bar */}
         <nav className="flex flex-wrap space-x-1 space-y-1 sm:space-y-0 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 shadow-sm w-fit">
           {navItems.map((item) => (
             <button
@@ -413,13 +386,30 @@ export default function SaaS_ERPDashboard() {
           ))}
         </nav>
 
-        {/* Dynamic Content Canvas */}
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out">
           
           {activeTab === "Dashboard" && (
             <div className="space-y-6">
               
-              {/* V2 COMPLIANCE ALERTS WIDGET */}
+              {/* PENDING DRIVER APPROVALS NOTIFICATION ALERT BANNER */}
+              {pendingDriverCount > 0 && (
+                <div className="bg-amber-50 border-l-4 border-amber-500 rounded-2xl shadow-sm p-5 animate-in slide-in-from-top-4 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">📥</span>
+                    <div>
+                      <h3 className="text-sm font-black text-amber-900 uppercase tracking-wide">Pending Driver Approvals</h3>
+                      <p className="text-xs text-amber-700 mt-0.5">There are <span className="font-black">{pendingDriverCount}</span> fuel bills or advances waiting for manager review in Operations.</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => { setActiveTab("Operations"); setOpSubTab("Driver Approvals"); }} 
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl transition-colors shadow-sm"
+                  >
+                    Review Queue &rarr;
+                  </button>
+                </div>
+              )}
+
               {expiringDocs.length > 0 && (
                 <div className="bg-rose-50 border-l-4 border-rose-500 rounded-2xl shadow-sm p-5 animate-in slide-in-from-top-4">
                   <div className="flex items-center gap-3 mb-3">
@@ -450,7 +440,6 @@ export default function SaaS_ERPDashboard() {
                 </div>
               )}
 
-              {/* CURRENT MONTH OPERATIONS SUMMARY */}
               <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Operations Summary</h3>
@@ -481,11 +470,6 @@ export default function SaaS_ERPDashboard() {
                         ₹{formatAmt(monthFreight)}
                       </p>
                     </div>
-                    <div className="mt-2 sm:mt-3">
-                      <span className="inline-block text-[8px] sm:text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-1 rounded-md">
-                        Diesel: ₹{formatAmt(monthDieselCost)} ({dieselPct.toFixed(1)}%)
-                      </span>
-                    </div>
                   </div>
                   
                   <div className="p-3 sm:p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between">
@@ -495,92 +479,13 @@ export default function SaaS_ERPDashboard() {
                         ₹{formatAmt(monthNetRetention)}
                       </p>
                     </div>
-                    <div className="mt-2 sm:mt-3">
-                      <span className="inline-block text-[8px] sm:text-[10px] font-bold text-white bg-slate-800 border border-slate-700 px-1.5 py-1 rounded-md">
-                        Margin: {retentionPct.toFixed(1)}%
-                      </span>
-                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* VEHICLE STATUS INTERACTIVE MONITOR */}
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                <h3 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-wide">Live Vehicle Status Monitor</h3>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                  {[
-                    { label: "Plant Loading", count: statusCounts["Plant Loading"], color: "bg-amber-50 text-amber-700 border-amber-200" },
-                    { label: "In Transit", count: statusCounts["In Transit"], color: "bg-[#FF5A00]/10 text-[#FF5A00] border-[#FF5A00]/20" },
-                    { label: "Workshop / Repairs", count: statusCounts["Workshop / Repairs"], color: "bg-rose-50 text-rose-700 border-rose-200" },
-                    { label: "No Driver / Leave", count: statusCounts["No Driver / Leave"], color: "bg-slate-100 text-slate-700 border-slate-300" }
-                  ].map((status) => (
-                    <button
-                      key={status.label}
-                      onClick={() => setSelectedStatus(selectedStatus === status.label ? null : status.label)}
-                      className={`p-3 sm:p-4 rounded-xl border text-left transition-all duration-200 ${
-                        selectedStatus === status.label ? `ring-2 ring-offset-2 ring-[#FF5A00] ${status.color}` : `bg-white hover:bg-slate-50 ${status.color.replace('bg-', 'hover:bg-').split(' ')[0]} border-slate-200`
-                      }`}
-                    >
-                      <p className="text-3xl sm:text-4xl font-black mb-1">{status.count}</p>
-                      <p className="text-[9px] sm:text-xs font-bold uppercase tracking-wider opacity-80">{status.label}</p>
-                    </button>
-                  ))}
-                </div>
-
-                {/* DYNAMIC DRILL-DOWN TABLE WITH AGING/DAYS */}
-                {selectedStatus && (
-                  <div className="mt-6 border-t border-slate-100 pt-6 animate-in slide-in-from-top-4 fade-in duration-300">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-sm font-bold text-slate-900">
-                        Trucks currently in: <span className="text-[#FF5A00]">{selectedStatus}</span>
-                      </h4>
-                    </div>
-                    <div className="overflow-x-auto rounded-xl border border-slate-200 w-full">
-                      <table className="min-w-full divide-y divide-slate-200 whitespace-nowrap">
-                        <thead className="bg-slate-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-black text-slate-500 uppercase">Truck No.</th>
-                            <th className="px-6 py-3 text-left text-xs font-black text-slate-500 uppercase">Remarks</th>
-                            <th className="px-6 py-3 text-left text-xs font-black text-slate-500 uppercase">Aging</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-slate-200">
-                          {currentDrillDownData.map((truck, idx) => {
-                            const truckNo = findStringProp(truck, ["veh", "truck", "reg", "plate", "number"]) || `Truck ${truck.id}`;
-                            const remarks = truck.status_remarks || "-";
-                            const targetDate = truck.status_updated_at || truck.updated_at || new Date();
-                            const daysDiff = Math.floor((new Date().getTime() - new Date(targetDate).getTime()) / (1000 * 3600 * 24));
-                            const daysText = daysDiff === 0 ? "Today" : `${daysDiff} Days`;
-                            const badgeColor = daysDiff > 3 ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700";
-
-                            return (
-                              <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{truckNo}</td>
-                                <td className="px-6 py-4 text-sm font-semibold text-slate-500">{remarks}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                  <span className={`px-3 py-1 rounded-md font-black text-[10px] uppercase ${badgeColor}`}>
-                                    {daysText}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                          {currentDrillDownData.length === 0 && (
-                            <tr><td colSpan={3} className="px-6 py-8 text-center text-sm font-bold text-slate-500">No detailed records found for this status.</td></tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}
 
-          {/* RENDER OTHER MODULES WITH ROLE PROTECTION */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6" style={{ colorScheme: 'light' }}>
-            
             {activeTab === "Operations" && userRole === "ADMIN" && (
               <div className="p-6 min-h-[60vh]">
                 <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4 mb-6">
@@ -602,6 +507,7 @@ export default function SaaS_ERPDashboard() {
                 {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
                 {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
                 {opSubTab === "Modify Trips" && <ModifyTrips onSuccess={() => fetchDashboardData()} />}
+                {opSubTab === "Driver Approvals" && <ApprovalQueue />}
                 
                 {opSubTab === "Quick Status" && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm max-w-2xl animate-in fade-in duration-300">
@@ -659,32 +565,9 @@ export default function SaaS_ERPDashboard() {
             {activeTab === "Financials" && <div className="p-6"><FinancialsModule /></div>}
             {activeTab === "P&L Statement" && <div className="p-6"><ProfitLossModule /></div>}
             {activeTab === "Setup" && userRole === "ADMIN" && <div className="p-6"><SetupModule /></div>}
-            
           </div>
         </div>
       </main>
-
-      {/* FULL SCREEN REPORT OVERLAY */}
-      {showFullReport && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-slate-200">
-              <div>
-                <h2 className="text-xl font-black text-slate-900">Detailed Truck Status Report</h2>
-                <p className="text-sm text-slate-500 mt-1 font-bold">Full fleet overview as of {currentDateText}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => setShowFullReport(false)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-auto p-6">
-              <FleetTable />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
