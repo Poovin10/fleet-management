@@ -24,10 +24,11 @@ export default function SaaS_ERPDashboard() {
   const [currentDateText, setCurrentDateText] = useState("");
   const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
   
-  // Real-time KPI States
-  const [monthTonnage, setMonthTonnage] = useState<number>(0);
+  // Real-time KPI States (Current Month + Pending PODs)
+  const [monthTripsCount, setMonthTripsCount] = useState<number>(0);
   const [monthFreight, setMonthFreight] = useState<number>(0);
-  const [activeTripCount, setActiveTripCount] = useState<number>(0);
+  const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
+  const [activeTripCount, setActiveTripCount] = useState<number>(0); // Pending PODs
   
   const [statusCounts, setStatusCounts] = useState({
     "In Transit": 0,
@@ -67,7 +68,7 @@ export default function SaaS_ERPDashboard() {
   const fetchDashboardData = async () => {
     const supabase = createClient();
     
-    // 1. Fetch Vehicles
+    // 1. Fetch Vehicles & Statuses
     const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
     if (vehicles && vehicles.length > 0) {
       setLiveVehicles(vehicles);
@@ -80,29 +81,43 @@ export default function SaaS_ERPDashboard() {
       });
     }
 
-    // 2. Fetch Active Trips (Pending PODs)
+    // 2. Fetch Active Trips (Pending PODs across all time)
     const { count: activeCount } = await supabase
       .from('trips')
       .select('*', { count: 'exact', head: true })
       .neq('trip_status', 'COMPLETED');
     setActiveTripCount(activeCount || 0);
 
-    // 3. Calculate Current Month Tonnage & Freight
+    // 3. Calculate Current Month Operations (Trips, Freight, Net Retention)
     const date = new Date();
+    // Creates a boundary for the current month
     const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
     const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
     const { data: monthTrips } = await supabase
       .from('trips')
-      .select('loaded_weight_mt, freight_revenue')
+      .select('freight_revenue, fuel_expense, driver_bata, halt_bata, enroute_repairs_maintenance')
       .gte('trip_start_date', firstDayOfMonth)
       .lte('trip_start_date', lastDayOfMonth);
 
     if (monthTrips) {
-      const totalTonnage = monthTrips.reduce((acc, curr) => acc + (Number(curr.loaded_weight_mt) || 0), 0);
-      const totalFreight = monthTrips.reduce((acc, curr) => acc + (Number(curr.freight_revenue) || 0), 0);
-      setMonthTonnage(totalTonnage);
+      setMonthTripsCount(monthTrips.length);
+
+      let totalFreight = 0;
+      let totalExpenses = 0;
+
+      monthTrips.forEach(t => {
+        totalFreight += Number(t.freight_revenue) || 0;
+        
+        // Retention Expenses = Fuel Cost + Driver Bata + Halt Bata + Enroute Repairs
+        totalExpenses += (Number(t.fuel_expense) || 0) + 
+                         (Number(t.driver_bata) || 0) + 
+                         (Number(t.halt_bata) || 0) + 
+                         (Number(t.enroute_repairs_maintenance) || 0);
+      });
+
       setMonthFreight(totalFreight);
+      setMonthNetRetention(totalFreight - totalExpenses);
     }
   };
 
@@ -197,25 +212,29 @@ export default function SaaS_ERPDashboard() {
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Operations Summary</h3>
                   <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-100">
-                    {currentMonthText.toUpperCase()} ONLY
+                    {currentMonthText.toUpperCase()}
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-xl bg-rose-50/50 border border-rose-100">
-                    <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Active Trips / Pending PODs</p>
-                    <p className="text-3xl font-black text-rose-900 mt-2">{activeTripCount}</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Trips Taken</p>
+                    <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">{monthTripsCount}</p>
                   </div>
-                  <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100">
-                    <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Tonnage Dispatched</p>
-                    <p className="text-3xl font-black text-indigo-900 mt-2">
-                      {monthTonnage.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} <span className="text-lg text-indigo-600">MT</span>
+                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200">
+                    <p className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">PODs Pending</p>
+                    <p className="text-2xl sm:text-3xl font-black text-rose-900 mt-2">{activeTripCount}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Freight Generated</p>
+                    <p className="text-2xl sm:text-3xl font-black text-emerald-700 mt-2">
+                      ₹ {monthFreight.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </p>
                   </div>
-                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 relative overflow-hidden shadow-sm">
-                    <p className="text-xs font-black text-rose-800 uppercase tracking-wider">Month Freight Generated</p>
-                    <p className="text-3xl font-black text-rose-700 mt-2">
-                      ₹ {monthFreight.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <div className="p-4 rounded-xl bg-indigo-600 text-white shadow-md">
+                    <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">Net Retention (Margin)</p>
+                    <p className="text-2xl sm:text-3xl font-black mt-2">
+                      ₹ {monthNetRetention.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </p>
                   </div>
                 </div>
