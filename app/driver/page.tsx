@@ -1,8 +1,4 @@
-"use client";
-
 import { DriverPortal } from "@/components/DriverPortal";
-
-export const dynamic = 'force-dynamic';
 
 export default function DriverPage() {
   return (
