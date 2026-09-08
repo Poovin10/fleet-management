@@ -360,44 +360,45 @@ export default function SaaS_ERPDashboard() {
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between overflow-hidden">
+                {/* Fixed Overflows on Mobile Grid! No truncate, scaled font sizes, balanced padding. */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                  <div className="p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
                     <div>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">Total Trips</p>
-                      <p className="text-xl sm:text-3xl font-black text-slate-900 mt-2 truncate">{monthTripsCount}</p>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Trips</p>
+                      <p className="text-lg sm:text-2xl lg:text-3xl font-black text-slate-900 mt-1 sm:mt-2">{monthTripsCount}</p>
                     </div>
                   </div>
                   
-                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex flex-col justify-between overflow-hidden">
+                  <div className="p-3 sm:p-4 rounded-xl bg-rose-50 border border-rose-200 flex flex-col justify-between">
                     <div>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase tracking-wider truncate">PODs Pending</p>
-                      <p className="text-xl sm:text-3xl font-black text-rose-900 mt-2 truncate">{activeTripCount}</p>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase tracking-wider">PODs Pending</p>
+                      <p className="text-lg sm:text-2xl lg:text-3xl font-black text-rose-900 mt-1 sm:mt-2">{activeTripCount}</p>
                     </div>
                   </div>
                   
-                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between overflow-hidden">
+                  <div className="p-3 sm:p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between">
                     <div>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-emerald-800 uppercase tracking-wider truncate">Freight Generated</p>
-                      <p className="text-lg sm:text-3xl font-black text-emerald-700 mt-2 truncate">
-                        ₹ {formatAmt(monthFreight)}
+                      <p className="text-[9px] sm:text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Freight Gen.</p>
+                      <p className="text-[15px] sm:text-xl lg:text-2xl font-black text-emerald-700 mt-1 sm:mt-2 tracking-tight">
+                        ₹{formatAmt(monthFreight)}
                       </p>
                     </div>
-                    <div className="mt-3">
-                      <span className="inline-flex items-center text-[9px] sm:text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded-md">
-                        Diesel: ₹ {formatAmt(monthDieselCost)} ({dieselPct.toFixed(1)}%)
+                    <div className="mt-2 sm:mt-3">
+                      <span className="inline-block text-[8px] sm:text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-1 rounded-md">
+                        Diesel: ₹{formatAmt(monthDieselCost)} ({dieselPct.toFixed(1)}%)
                       </span>
                     </div>
                   </div>
                   
-                  <div className="p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between overflow-hidden">
+                  <div className="p-3 sm:p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between">
                     <div>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Net Retention</p>
-                      <p className="text-lg sm:text-3xl font-black text-[#FF5A00] mt-2 truncate">
-                        ₹ {formatAmt(monthNetRetention)}
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Retention</p>
+                      <p className="text-[15px] sm:text-xl lg:text-2xl font-black text-[#FF5A00] mt-1 sm:mt-2 tracking-tight">
+                        ₹{formatAmt(monthNetRetention)}
                       </p>
                     </div>
-                    <div className="mt-3">
-                      <span className="inline-flex items-center text-[9px] sm:text-[10px] font-bold text-white bg-slate-800 border border-slate-700 px-2 py-1 rounded-md">
+                    <div className="mt-2 sm:mt-3">
+                      <span className="inline-block text-[8px] sm:text-[10px] font-bold text-white bg-slate-800 border border-slate-700 px-1.5 py-1 rounded-md">
                         Margin: {retentionPct.toFixed(1)}%
                       </span>
                     </div>
@@ -409,7 +410,7 @@ export default function SaaS_ERPDashboard() {
               <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
                 <h3 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-wide">Live Vehicle Status Monitor</h3>
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                   {[
                     { label: "Plant Loading", count: statusCounts["Plant Loading"], color: "bg-amber-50 text-amber-700 border-amber-200" },
                     { label: "In Transit", count: statusCounts["In Transit"], color: "bg-[#FF5A00]/10 text-[#FF5A00] border-[#FF5A00]/20" },
@@ -419,12 +420,12 @@ export default function SaaS_ERPDashboard() {
                     <button
                       key={status.label}
                       onClick={() => setSelectedStatus(selectedStatus === status.label ? null : status.label)}
-                      className={`p-4 rounded-xl border text-left transition-all duration-200 ${
+                      className={`p-3 sm:p-4 rounded-xl border text-left transition-all duration-200 ${
                         selectedStatus === status.label ? `ring-2 ring-offset-2 ring-[#FF5A00] ${status.color}` : `bg-white hover:bg-slate-50 ${status.color.replace('bg-', 'hover:bg-').split(' ')[0]} border-slate-200`
                       }`}
                     >
                       <p className="text-3xl sm:text-4xl font-black mb-1">{status.count}</p>
-                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider opacity-80">{status.label}</p>
+                      <p className="text-[9px] sm:text-xs font-bold uppercase tracking-wider opacity-80">{status.label}</p>
                     </button>
                   ))}
                 </div>
