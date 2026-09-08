@@ -27,11 +27,14 @@ const KssLogo = ({ className }: { className?: string }) => (
 );
 
 export default function SaaS_ERPDashboard() {
+  const supabase = createClient();
+
   // Authentication States
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<"ADMIN" | "VIEWER">("VIEWER");
   const [showLoginScreen, setShowLoginScreen] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
@@ -91,18 +94,37 @@ export default function SaaS_ERPDashboard() {
     setIsAuthLoading(false);
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // 🚀 DATABASE-BACKED LOGIN HANDLER
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginUser.toLowerCase() === "admin" && loginPass === "admin123") {
-      sessionStorage.setItem("kss_auth", "true");
-      sessionStorage.setItem("kss_role", "ADMIN");
-      setIsAuthenticated(true);
-      setUserRole("ADMIN");
-      setShowLoginScreen(false);
-      setLoginError("");
-    } else {
-      setLoginError("Invalid admin credentials.");
+    if (!loginUser.trim() || !loginPass.trim()) return;
+
+    setIsLoggingIn(true);
+    setLoginError("");
+
+    try {
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('*')
+        .eq('username', loginUser.trim().toLowerCase())
+        .eq('password', loginPass.trim())
+        .single();
+
+      if (error || !data) {
+        setLoginError("Invalid username or password.");
+      } else {
+        sessionStorage.setItem("kss_auth", "true");
+        sessionStorage.setItem("kss_role", data.role);
+        setIsAuthenticated(true);
+        setUserRole(data.role as "ADMIN" | "VIEWER");
+        setShowLoginScreen(false);
+        setLoginUser("");
+        setLoginPass("");
+      }
+    } catch (err) {
+      setLoginError("Database authentication error. Please try again.");
     }
+    setIsLoggingIn(false);
   };
 
   const executeLogout = () => {
@@ -129,8 +151,6 @@ export default function SaaS_ERPDashboard() {
   };
 
   const fetchDashboardData = async () => {
-    const supabase = createClient();
-    
     // 1. Fetch Vehicles & Statuses
     const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
     if (vehicles && vehicles.length > 0) {
@@ -214,7 +234,6 @@ export default function SaaS_ERPDashboard() {
     e.preventDefault();
     if (!qsTruckId) return alert("Please select a truck.");
     
-    const supabase = createClient();
     const { error } = await supabase.from('vehicles')
       .update({ 
         current_status: qsStatus, 
@@ -236,7 +255,7 @@ export default function SaaS_ERPDashboard() {
 
   if (isAuthLoading) return null;
 
-  // --- RENDER MODERN LOGIN SCREEN FOR ADMINS ---
+  // --- RENDER MODERN LOGIN SCREEN ---
   if (showLoginScreen && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
@@ -253,12 +272,12 @@ export default function SaaS_ERPDashboard() {
             <div className="inline-block bg-slate-900 px-4 py-2 rounded-xl shadow-sm mb-3">
               <h1 className="text-2xl sm:text-3xl font-black text-[#FF5A00] tracking-tight leading-none">KSS Roadways</h1>
             </div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">ERP Secure Access</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Database Secure Login</p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Admin Username</label>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Username</label>
               <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-white" required />
             </div>
             <div>
@@ -268,8 +287,8 @@ export default function SaaS_ERPDashboard() {
             {loginError && <p className="text-sm font-bold text-rose-500 text-center bg-rose-50 p-3 rounded-xl">{loginError}</p>}
             
             <div className="pt-2">
-              <button type="submit" className="w-full py-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-lg rounded-2xl transition-all shadow-[0_8px_30px_rgba(255,90,0,0.3)] active:scale-95">
-                Log In
+              <button type="submit" disabled={isLoggingIn} className="w-full py-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-lg rounded-2xl transition-all shadow-[0_8px_30px_rgba(255,90,0,0.3)] active:scale-95 disabled:bg-slate-300">
+                {isLoggingIn ? "Verifying..." : "Log In"}
               </button>
               <button type="button" onClick={() => setShowLoginScreen(false)} className="w-full py-4 text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors mt-2">
                 &larr; Back to Public Dashboard
