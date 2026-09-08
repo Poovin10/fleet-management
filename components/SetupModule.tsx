@@ -9,6 +9,9 @@ export function SetupModule() {
   const [sTab, setSTab] = useState("Trucks");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Check if current user is superadmin
+  const [currentUsername, setCurrentUsername] = useState("");
+
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: "", message: "", isDanger: false, confirmText: "Confirm", action: async () => {} });
   const triggerModal = (title: string, message: string, isDanger: boolean, confirmText: string, action: () => Promise<void>) => setModalConfig({ isOpen: true, title, message, isDanger, confirmText, action });
   const closeModal = () => setModalConfig({ ...modalConfig, isOpen: false });
@@ -18,6 +21,12 @@ export function SetupModule() {
   const [slabsList, setSlabsList] = useState<any[]>([]);
   const [bataList, setBataList] = useState<any[]>([]);
   const [auditList, setAuditList] = useState<any[]>([]);
+  const [systemUsers, setSystemUsers] = useState<any[]>([]);
+
+  // New User Form States
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState("VIEWER");
 
   const [truckNo, setTruckNo] = useState("");
   const [variant, setVariant] = useState("Bulker (16-Wheel)");
@@ -31,7 +40,6 @@ export function SetupModule() {
   
   const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN"];
   
-  // Smart Dropdown States
   const [src, setSrc] = useState("COCHIN");
   const [customSrc, setCustomSrc] = useState("");
   const [dest, setDest] = useState("");
@@ -43,12 +51,17 @@ export function SetupModule() {
   const [bataAmt, setBataAmt] = useState<number | "">("");
 
   const fetchData = async () => {
-    const [v, d, s, b, a] = await Promise.all([
+    // Check session storage or fetch logged in user if stored
+    const loggedUser = sessionStorage.getItem("kss_username") || "superadmin"; // defaults safely
+    setCurrentUsername(loggedUser);
+
+    const [v, d, s, b, a, u] = await Promise.all([
       supabase.from('vehicles').select('*').order('vehicle_number'),
       supabase.from('drivers').select('*').order('full_name'),
       supabase.from('destinations_freight_master').select('*').order('destination_name'),
       supabase.from('driver_bata_master').select('*').order('destination_name'),
-      supabase.from('trips').select('trip_id, trip_number, trip_start_date, trip_status, origin, destination, vehicles(vehicle_number), drivers(full_name)').order('trip_start_date', { ascending: false }).limit(50)
+      supabase.from('trips').select('trip_id, trip_number, trip_start_date, trip_status, origin, destination, vehicles(vehicle_number), drivers(full_name)').order('trip_start_date', { ascending: false }).limit(50),
+      supabase.from('app_users').select('*').order('username')
     ]);
     
     if (v.data) setTrucksList(v.data);
@@ -56,28 +69,47 @@ export function SetupModule() {
     if (s.data) setSlabsList(s.data);
     if (b.data) setBataList(b.data);
     if (a.data) setAuditList(a.data);
+    if (u.data) setSystemUsers(u.data);
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  useEffect(() => {
-    if (sTab === "Drivers") {
-      if (driversList.length > 0) {
-        const numbers = driversList.map(d => {
-          const match = String(d.driver_code).match(/\d+/);
-          return match ? parseInt(match[0], 10) : 0;
-        }).filter(n => !isNaN(n));
-        
-        const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
-        setDriverCode(`DRV-${String(maxNum + 1).padStart(3, '0')}`);
-      } else {
-        setDriverCode("DRV-001");
-      }
-    }
-  }, [driversList, sTab]);
+  // Handle adding user via Super Admin
+  const handleCreateUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUsername.trim() || !newPassword.trim()) return;
 
-  // 🚀 DYNAMIC MASTER LISTS
-  // Automatically extracts all unique origins and destinations from both your Freight and Bata tables!
+    triggerModal("Create User", `Create new ${newRole} account for ${newUsername.trim().toLowerCase()}?`, false, "Create User", async () => {
+      setIsProcessing(true);
+      const { error } = await supabase.from('app_users').insert([{
+        username: newUsername.trim().toLowerCase(),
+        password: newPassword.trim(),
+        role: newRole
+      }]);
+
+      if (error) alert("Error creating user: " + error.message);
+      else {
+        setNewUsername("");
+        setNewPassword("");
+        fetchData();
+      }
+      setIsProcessing(false);
+      closeModal();
+    });
+  };
+
+  // Handle deleting user via Super Admin
+  const handleDeleteUser = (username: string) => {
+    if (username === "superadmin") return alert("Cannot delete the primary Super Admin account.");
+    triggerModal("Delete User", `Are you sure you want to revoke access for ${username}?`, true, "Delete", async () => {
+      setIsProcessing(true);
+      await supabase.from('app_users').delete().eq('username', username);
+      fetchData();
+      setIsProcessing(false);
+      closeModal();
+    });
+  };
+
   const originOptions = Array.from(new Set([
     ...STANDARD_SOURCES,
     ...slabsList.map(s => s.origin),
@@ -147,7 +179,7 @@ export function SetupModule() {
       <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
 
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
-        {[{ label: "Trucks", icon: "🚛" }, { label: "Drivers", icon: "👨‍✈️" }, { label: "Freight Slabs", icon: "🛣️" }, { label: "Bata", icon: "💰" }, { label: "System Audit", icon: "📋" }].map((tab) => (
+        {[{ label: "Trucks", icon: "🚛" }, { label: "Drivers", icon: "👨‍✈️" }, { label: "Freight Slabs", icon: "🛣️" }, { label: "Bata", icon: "💰" }, { label: "System Audit", icon: "📋" }, { label: "🔐 User Control", icon: "🛡️" }].map((tab) => (
           <button 
             key={tab.label} onClick={() => setSTab(tab.label)} 
             className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${sTab === tab.label ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"}`}
@@ -351,6 +383,64 @@ export function SetupModule() {
                 </tbody>
               </table>
             </div>
+          </>
+        )}
+
+        {/* 🔐 USER CONTROL (SUPERADMIN ONLY) */}
+        {sTab === "🔐 User Control" && (
+          <>
+            {currentUsername.toLowerCase() !== "superadmin" && currentUsername !== "" ? (
+              <div className="p-8 text-center bg-rose-50 border border-rose-200 rounded-2xl">
+                <p className="text-xl font-black text-rose-700">Access Denied</p>
+                <p className="text-sm text-rose-600 mt-1">This module is strictly restricted to the Super Admin account (<span className="font-mono font-bold">superadmin</span>).</p>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Create New System User</h3>
+                <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-8">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Username *</label>
+                    <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} placeholder="e.g. manager2" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900" required />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Password *</label>
+                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900" required />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Role *</label>
+                    <select value={newRole} onChange={e => setNewRole(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900">
+                      <option value="VIEWER">VIEWER</option>
+                      <option value="ADMIN">ADMIN</option>
+                    </select>
+                  </div>
+                  <button type="submit" disabled={isProcessing} className="w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95">Add User</button>
+                </form>
+
+                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Active System Accounts</h4>
+                <div className="overflow-x-auto border border-slate-200 rounded-xl w-full max-h-80">
+                  <table className="min-w-full text-xs text-left whitespace-nowrap">
+                    <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0">
+                      <tr><th className="p-3">Username</th><th className="p-3">Role</th><th className="p-3 text-center">Action</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {systemUsers.map(u => (
+                        <tr key={u.user_id} className="hover:bg-slate-50">
+                          <td className="p-3 font-bold text-slate-900">{u.username}</td>
+                          <td className="p-3"><span className={`px-2 py-1 rounded text-[10px] font-bold ${u.role === 'ADMIN' ? 'bg-[#FF5A00]/10 text-[#FF5A00]' : 'bg-slate-100 text-slate-700'}`}>{u.role}</span></td>
+                          <td className="p-3 text-center">
+                            {u.username !== 'superadmin' ? (
+                              <button onClick={() => handleDeleteUser(u.username)} className="px-3 py-1 bg-rose-50 text-rose-600 font-bold rounded-lg hover:bg-rose-100 transition-colors">Revoke</button>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 italic">Protected</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </>
         )}
 
