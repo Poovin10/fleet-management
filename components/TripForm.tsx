@@ -188,6 +188,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
         vehicle_id: Number(selectedTruckId),
         primary_driver_id: Number(selectedDriverId),
         trip_start_date: startDate,
+        trip_end_date: startDate,
         origin: finalSource.toUpperCase(),
         destination: finalDest,
         start_km: finalStartKm,
