@@ -58,7 +58,7 @@ export function DriverPortal() {
       if (error) {
         alert("Submission failed: " + error.message);
       } else {
-        setSuccessMsg(`✅ ${actionType} submitted successfully! Sent to Cochin office for manager approval.`);
+        setSuccessMsg(`✅ ${actionType} submitted successfully! Sent to Cochin office for manager review.`);
       }
     } else {
       // INSTANT OPERATIONAL UPDATE (No approval required)
@@ -135,8 +135,8 @@ export function DriverPortal() {
               { id: "UNLOADED", label: "📦 Unloaded", desc: "Instant Update" },
               { id: "RETURNING", label: "🔄 Returning", desc: "Instant Update" },
               { id: "BREAKDOWN", label: "⚠️ Breakdown", desc: "Instant Update" },
-              { id: "FUEL", label: "⛽ Fuel Fill", desc: "Needs Approval" },
-              { id: "ADVANCE", label: "💵 Cash Advance", desc: "Needs Approval" },
+              { id: "FUEL", label: "⛽ Fuel Fill", desc: "Needs Review" },
+              { id: "ADVANCE", label: "💵 Cash Advance", desc: "Needs Review" },
             ].map(item => (
               <button
                 type="button"
@@ -151,7 +151,7 @@ export function DriverPortal() {
           </div>
         </div>
 
-        {/* CONDITIONAL INPUTS BASED ON ACTION TYPE */}
+        {/* CONDITIONAL INPUTS */}
         <div className="space-y-4 pt-2 border-t border-slate-100">
           {(actionType === "FUEL" || actionType === "ADVANCE" || actionType === "BREAKDOWN") && (
             <div>
