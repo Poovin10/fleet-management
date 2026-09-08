@@ -21,14 +21,19 @@ export function SetupModule() {
   const [bataList, setBataList] = useState<any[]>([]);
   const [auditList, setAuditList] = useState<any[]>([]);
 
-  // Form States
+  // Form States: Trucks
   const [truckNo, setTruckNo] = useState("");
   const [variant, setVariant] = useState("Bulker (16-Wheel)");
   const [capacity, setCapacity] = useState("35.0 MT");
   
+  // Form States: Drivers
   const [driverName, setDriverName] = useState("");
   const [driverCode, setDriverCode] = useState("");
+  const [mobileNo, setMobileNo] = useState("");
+  const [licenseNo, setLicenseNo] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
   
+  // Form States: Slabs & Bata
   const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN"];
   const [src, setSrc] = useState("COCHIN");
   const [dest, setDest] = useState("");
@@ -68,10 +73,26 @@ export function SetupModule() {
   const handleSaveDriver = (e: React.FormEvent) => {
     e.preventDefault();
     if (!driverName.trim() || !driverCode.trim()) return;
-    triggerModal("Add Driver", `Register ${driverName} (${driverCode}) to the master list?`, false, "Save Driver", async () => {
+    triggerModal("Add Driver", `Register ${driverName.toUpperCase()} to the master list?`, false, "Save Driver", async () => {
       setIsProcessing(true);
-      await supabase.from('drivers').insert([{ driver_code: driverCode.toUpperCase().trim(), full_name: driverName.toUpperCase().trim(), is_active: true }]);
-      setDriverName(""); setDriverCode(""); fetchData(); setIsProcessing(false); closeModal();
+      
+      // Fixed column names to perfectly match your Supabase Database
+      const { error } = await supabase.from('drivers').insert([{ 
+        driver_code: driverCode.toUpperCase().trim(), 
+        full_name: driverName.toUpperCase().trim(), 
+        phone_number: mobileNo.trim() || null,
+        license_no: licenseNo.toUpperCase().trim() || null,
+        expiry_date: expiryDate || null,
+        is_active: true 
+      }]);
+
+      if (error) {
+        alert("Error adding driver: " + error.message);
+      } else {
+        setDriverName(""); setDriverCode(""); setMobileNo(""); setLicenseNo(""); setExpiryDate("");
+        fetchData(); 
+      }
+      setIsProcessing(false); closeModal();
     });
   };
 
@@ -117,11 +138,11 @@ export function SetupModule() {
         {sTab === "Trucks" && (
           <>
             <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add New Truck</h3>
-            <form onSubmit={handleSaveTruck} className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
-              <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Truck No *</label><input type="text" value={truckNo} onChange={e=>setTruckNo(e.target.value)} placeholder="E.G. TN 56 F 0452" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase" required /></div>
-              <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Variant</label><select value={variant} onChange={e=>setVariant(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold"><option>Bulker (16-Wheel)</option><option>Bulker (14-Wheel)</option><option>Open Body (10-Wheel)</option><option>Trailer</option></select></div>
-              <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Capacity</label><select value={capacity} onChange={e=>setCapacity(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold"><option>35.0 MT</option><option>30.0 MT</option><option>25.0 MT</option></select></div>
-              <button type="submit" disabled={isProcessing} className="w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95">Save Truck</button>
+            <form onSubmit={handleSaveTruck} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Truck No *</label><input type="text" value={truckNo} onChange={e=>setTruckNo(e.target.value)} placeholder="E.G. TN 56 F 0452" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase" required /></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Variant</label><select value={variant} onChange={e=>setVariant(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold"><option>Bulker (16-Wheel)</option><option>Bulker (14-Wheel)</option><option>Open Body (10-Wheel)</option><option>Trailer</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Capacity</label><select value={capacity} onChange={e=>setCapacity(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold"><option>35.0 MT</option><option>30.0 MT</option><option>25.0 MT</option></select></div>
+              <button type="submit" disabled={isProcessing} className="md:col-span-1 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95">Save Truck</button>
             </form>
             <div className="mt-8 border-t border-slate-100 pt-6">
               <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Registered Fleet</h4>
@@ -134,14 +155,45 @@ export function SetupModule() {
         {sTab === "Drivers" && (
           <>
             <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add New Driver</h3>
-            <form onSubmit={handleSaveDriver} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-              <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Code *</label><input type="text" value={driverCode} onChange={e=>setDriverCode(e.target.value)} placeholder="e.g. DRV-001" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase" required /></div>
-              <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase" required /></div>
-              <button type="submit" disabled={isProcessing} className="w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95">Save Driver</button>
+            <form onSubmit={handleSaveDriver} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Code *</label><input type="text" value={driverCode} onChange={e=>setDriverCode(e.target.value)} placeholder="e.g. DRV-001" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase" required /></div>
+                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="e.g. ANEESH CR" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase" required /></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mobile Number</label><input type="tel" value={mobileNo} onChange={e=>setMobileNo(e.target.value)} placeholder="e.g. 9876543210" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold" /></div>
+                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">License Number</label><input type="text" value={licenseNo} onChange={e=>setLicenseNo(e.target.value)} placeholder="e.g. KL123456789" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold uppercase" /></div>
+                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">License Expiry Date</label><input type="date" value={expiryDate} onChange={e=>setExpiryDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold" /></div>
+              </div>
+              <div className="pt-2">
+                <button type="submit" disabled={isProcessing} className="w-full md:w-auto px-8 py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95">Save Driver</button>
+              </div>
             </form>
+            
             <div className="mt-8 border-t border-slate-100 pt-6">
               <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Registered Drivers</h4>
-              <div className="flex flex-wrap gap-2">{driversList.map(d => <span key={d.driver_id} className="px-3 py-1.5 bg-slate-50 text-slate-700 text-xs font-bold rounded-lg border border-slate-200">{d.driver_code} - {d.full_name}</span>)}</div>
+              {/* Upgraded from small pills to a full data table to show the new details */}
+              <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-80">
+                <table className="min-w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0">
+                    <tr><th className="p-3">Code</th><th className="p-3">Full Name</th><th className="p-3">Phone</th><th className="p-3">License Info</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {driversList.map(d => (
+                      <tr key={d.driver_id} className="hover:bg-slate-50">
+                        <td className="p-3 font-bold text-slate-900">{d.driver_code}</td>
+                        <td className="p-3 font-bold text-slate-800">{d.full_name}</td>
+                        <td className="p-3 text-slate-600 font-semibold">{d.phone_number || '-'}</td>
+                        <td className="p-3 text-slate-600">
+                          <span className="font-semibold">{d.license_no || '-'}</span>
+                          {d.expiry_date && <span className="block text-[10px] text-slate-400">Exp: {d.expiry_date}</span>}
+                        </td>
+                      </tr>
+                    ))}
+                    {driversList.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">No drivers active.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </>
         )}
@@ -150,17 +202,17 @@ export function SetupModule() {
         {sTab === "Freight Slabs" && (
           <>
             <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add Freight Slab</h3>
-            <form onSubmit={handleSaveSlab} className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
-              <div className="col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source</label><select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00]">{STANDARD_SOURCES.map(s=><option key={s}>{s}</option>)}</select></div>
-              <div className="col-span-2"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination *</label><input type="text" value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00]" required /></div>
-              <div className="col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"><option>BULK</option><option>BAG</option></select></div>
-              <div className="col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"><option>35</option><option>30</option><option>25</option></select></div>
-              <div className="col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rate(₹)</label><input type="number" value={fRate} onChange={e=>setFRate(parseFloat(e.target.value))} className="w-full text-xs p-3 rounded-xl border border-slate-300 outline-none font-black text-emerald-600 focus:ring-2 focus:ring-[#FF5A00]" required /></div>
-              <button type="submit" disabled={isProcessing} className="col-span-6 py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors mt-2 shadow-sm active:scale-95">Save Freight Rule</button>
+            <form onSubmit={handleSaveSlab} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source</label><select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00]">{STANDARD_SOURCES.map(s=><option key={s}>{s}</option>)}</select></div>
+              <div className="md:col-span-2"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination *</label><input type="text" value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00]" required /></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"><option>BULK</option><option>BAG</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"><option>35</option><option>30</option><option>25</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rate(₹)</label><input type="number" value={fRate} onChange={e=>setFRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-black text-emerald-600 focus:ring-2 focus:ring-[#FF5A00]" required /></div>
+              <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95 mt-2">Save Freight Rule</button>
             </form>
             <div className="mt-8 border-t border-slate-100 pt-6 overflow-auto max-h-80">
               <table className="min-w-full text-xs text-left border border-slate-200 rounded-xl overflow-hidden">
-                <thead className="bg-slate-50 text-slate-500 uppercase font-bold"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Rate/MT</th></tr></thead>
+                <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Rate/MT</th></tr></thead>
                 <tbody className="divide-y divide-slate-100">
                   {slabsList.map(s => <tr key={s.id} className="hover:bg-slate-50"><td className="p-3 font-bold text-slate-800">{s.origin} ➔ {s.destination_name}</td><td className="p-3 text-slate-600">{s.capacity_tons}MT {s.cargo_type}</td><td className="p-3 font-black text-emerald-600 text-right">₹{s.freight_rate_per_ton}</td></tr>)}
                   {slabsList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-slate-400">No slabs active.</td></tr>}
@@ -174,17 +226,17 @@ export function SetupModule() {
         {sTab === "Bata" && (
           <>
             <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add Bata Rule</h3>
-            <form onSubmit={handleSaveBata} className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
-              <div className="col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source</label><select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00]">{STANDARD_SOURCES.map(s=><option key={s}>{s}</option>)}</select></div>
-              <div className="col-span-2"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination *</label><input type="text" value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00]" required /></div>
-              <div className="col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"><option>BULK</option><option>BAG</option></select></div>
-              <div className="col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"><option>35</option><option>30</option><option>25</option></select></div>
-              <div className="col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bata(₹)</label><input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-xs p-3 rounded-xl border border-slate-300 outline-none font-black text-indigo-600 focus:ring-2 focus:ring-[#FF5A00]" required /></div>
-              <button type="submit" disabled={isProcessing} className="col-span-6 py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors mt-2 shadow-sm active:scale-95">Save Bata Rule</button>
+            <form onSubmit={handleSaveBata} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source</label><select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00]">{STANDARD_SOURCES.map(s=><option key={s}>{s}</option>)}</select></div>
+              <div className="md:col-span-2"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination *</label><input type="text" value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00]" required /></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"><option>BULK</option><option>BAG</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"><option>35</option><option>30</option><option>25</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bata(₹)</label><input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-black text-indigo-600 focus:ring-2 focus:ring-[#FF5A00]" required /></div>
+              <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors mt-2 shadow-sm active:scale-95">Save Bata Rule</button>
             </form>
             <div className="mt-8 border-t border-slate-100 pt-6 overflow-auto max-h-80">
               <table className="min-w-full text-xs text-left border border-slate-200 rounded-xl overflow-hidden">
-                <thead className="bg-slate-50 text-slate-500 uppercase font-bold"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Bata Amt</th></tr></thead>
+                <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Bata Amt</th></tr></thead>
                 <tbody className="divide-y divide-slate-100">
                   {bataList.map(b => <tr key={b.id} className="hover:bg-slate-50"><td className="p-3 font-bold text-slate-800">{b.origin} ➔ {b.destination_name}</td><td className="p-3 text-slate-600">{b.capacity_tons}MT {b.cargo_type}</td><td className="p-3 font-black text-indigo-600 text-right">₹{b.standard_bata_inr}</td></tr>)}
                   {bataList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-slate-400">No bata rules active.</td></tr>}
@@ -198,9 +250,9 @@ export function SetupModule() {
         {sTab === "System Audit" && (
           <>
             <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Recent Trip Activity Log</h3>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 max-h-[500px]">
               <table className="min-w-full text-xs text-left">
-                <thead className="bg-slate-50 text-slate-500 uppercase font-bold">
+                <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0">
                   <tr><th className="p-3">Date</th><th className="p-3">Trip LR</th><th className="p-3">Truck & Driver</th><th className="p-3">Route</th><th className="p-3 text-center">Status</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
