@@ -69,6 +69,11 @@ export default function SaaS_ERPDashboard() {
 
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status"];
 
+  // Formatter for Strict .00 and Indian Number System
+  const formatAmt = (amt: number) => {
+    return (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   // Hydrate Authentication from Session Storage
   useEffect(() => {
     const auth = sessionStorage.getItem("kss_auth");
@@ -89,7 +94,7 @@ export default function SaaS_ERPDashboard() {
       sessionStorage.setItem("kss_role", "ADMIN");
       setIsAuthenticated(true);
       setUserRole("ADMIN");
-      setShowLoginScreen(false); // Return to dashboard as admin
+      setShowLoginScreen(false);
       setLoginError("");
     } else {
       setLoginError("Invalid admin credentials.");
@@ -119,7 +124,6 @@ export default function SaaS_ERPDashboard() {
     return null;
   };
 
-  // Note: We removed the `!isAuthenticated` block here so public viewers can also load the dashboard data!
   const fetchDashboardData = async () => {
     const supabase = createClient();
     
@@ -357,44 +361,44 @@ export default function SaaS_ERPDashboard() {
                 </div>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between overflow-hidden">
                     <div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Trips Taken</p>
-                      <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">{monthTripsCount}</p>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">Total Trips</p>
+                      <p className="text-xl sm:text-3xl font-black text-slate-900 mt-2 truncate">{monthTripsCount}</p>
                     </div>
                   </div>
                   
-                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex flex-col justify-between">
+                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex flex-col justify-between overflow-hidden">
                     <div>
-                      <p className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">PODs Pending</p>
-                      <p className="text-2xl sm:text-3xl font-black text-rose-900 mt-2">{activeTripCount}</p>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase tracking-wider truncate">PODs Pending</p>
+                      <p className="text-xl sm:text-3xl font-black text-rose-900 mt-2 truncate">{activeTripCount}</p>
                     </div>
                   </div>
                   
-                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between">
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between overflow-hidden">
                     <div>
-                      <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Freight Generated</p>
-                      <p className="text-2xl sm:text-3xl font-black text-emerald-700 mt-2">
-                        ₹ {monthFreight.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      <p className="text-[9px] sm:text-[10px] font-bold text-emerald-800 uppercase tracking-wider truncate">Freight Generated</p>
+                      <p className="text-lg sm:text-3xl font-black text-emerald-700 mt-2 truncate">
+                        ₹ {formatAmt(monthFreight)}
                       </p>
                     </div>
                     <div className="mt-3">
-                      <span className="inline-flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-md">
-                        Diesel Cost: ₹ {monthDieselCost.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({dieselPct.toFixed(1)}%)
+                      <span className="inline-flex items-center text-[9px] sm:text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-1 rounded-md">
+                        Diesel: ₹ {formatAmt(monthDieselCost)} ({dieselPct.toFixed(1)}%)
                       </span>
                     </div>
                   </div>
                   
-                  <div className="p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between">
+                  <div className="p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between overflow-hidden">
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Retention (Margin)</p>
-                      <p className="text-2xl sm:text-3xl font-black text-[#FF5A00] mt-2">
-                        ₹ {monthNetRetention.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Net Retention</p>
+                      <p className="text-lg sm:text-3xl font-black text-[#FF5A00] mt-2 truncate">
+                        ₹ {formatAmt(monthNetRetention)}
                       </p>
                     </div>
                     <div className="mt-3">
-                      <span className="inline-flex items-center text-[10px] font-bold text-white bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-md">
-                        Retention: {retentionPct.toFixed(1)}%
+                      <span className="inline-flex items-center text-[9px] sm:text-[10px] font-bold text-white bg-slate-800 border border-slate-700 px-2 py-1 rounded-md">
+                        Margin: {retentionPct.toFixed(1)}%
                       </span>
                     </div>
                   </div>
@@ -419,8 +423,8 @@ export default function SaaS_ERPDashboard() {
                         selectedStatus === status.label ? `ring-2 ring-offset-2 ring-[#FF5A00] ${status.color}` : `bg-white hover:bg-slate-50 ${status.color.replace('bg-', 'hover:bg-').split(' ')[0]} border-slate-200`
                       }`}
                     >
-                      <p className="text-4xl font-black mb-1">{status.count}</p>
-                      <p className="text-xs font-bold uppercase tracking-wider opacity-80">{status.label}</p>
+                      <p className="text-3xl sm:text-4xl font-black mb-1">{status.count}</p>
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider opacity-80">{status.label}</p>
                     </button>
                   ))}
                 </div>
@@ -433,8 +437,8 @@ export default function SaaS_ERPDashboard() {
                         Trucks currently in: <span className="text-[#FF5A00]">{selectedStatus}</span>
                       </h4>
                     </div>
-                    <div className="overflow-hidden rounded-xl border border-slate-200">
-                      <table className="min-w-full divide-y divide-slate-200">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 w-full">
+                      <table className="min-w-full divide-y divide-slate-200 whitespace-nowrap">
                         <thead className="bg-slate-50">
                           <tr>
                             <th className="px-6 py-3 text-left text-xs font-black text-slate-500 uppercase">Truck No.</th>
@@ -476,7 +480,7 @@ export default function SaaS_ERPDashboard() {
           )}
 
           {/* RENDER OTHER MODULES WITH ROLE PROTECTION */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6" style={{ colorScheme: 'light' }}>
             
             {activeTab === "Operations" && userRole === "ADMIN" && (
               <div className="p-6 min-h-[60vh]">
