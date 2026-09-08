@@ -8,7 +8,6 @@ export function ApprovalQueue() {
   const [pendingEntries, setPendingEntries] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Edit state tracker for an active row
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLitres, setEditLitres] = useState<number>(0);
   const [editAmount, setEditAmount] = useState<number>(0);
@@ -38,7 +37,6 @@ export function ApprovalQueue() {
   };
 
   const handleApproveWithEdits = async (entry: any) => {
-    // 1. If it's FUEL, insert the corrected data into actual diesel_fuel_logs table
     if (entry.entry_type === 'FUEL') {
       await supabase.from('diesel_fuel_logs').insert([{
         vehicle_id: entry.vehicle_id,
@@ -50,7 +48,6 @@ export function ApprovalQueue() {
       }]);
     }
 
-    // 2. Mark staging entry as approved
     await supabase.from('driver_pending_entries').update({ 
       status: 'APPROVED',
       litres: editLitres,
@@ -106,7 +103,6 @@ export function ApprovalQueue() {
                     </span>
                   </td>
 
-                  {/* LITRES COLUMN */}
                   <td className="p-3">
                     {isEditing && entry.entry_type === 'FUEL' ? (
                       <input 
@@ -121,7 +117,6 @@ export function ApprovalQueue() {
                     )}
                   </td>
 
-                  {/* ODOMETER COLUMN */}
                   <td className="p-3">
                     {isEditing ? (
                       <input 
@@ -135,7 +130,6 @@ export function ApprovalQueue() {
                     )}
                   </td>
 
-                  {/* AMOUNT COLUMN */}
                   <td className="p-3">
                     {isEditing ? (
                       <input 
@@ -150,7 +144,6 @@ export function ApprovalQueue() {
                     )}
                   </td>
 
-                  {/* ACTIONS COLUMN */}
                   <td className="p-3 text-center space-x-2">
                     {isEditing ? (
                       <button 
