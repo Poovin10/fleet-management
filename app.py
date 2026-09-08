@@ -966,9 +966,32 @@ elif selected_nav == "📊 Financials":
         sub_tab_nav = st.radio("Analytics Submenu", ["📊 Fleet Retention", "⚖️ Variant Benchmarks", "👨‍✈️ Driver Scorecard"], horizontal=True, label_visibility="collapsed", key="sub_fin_nav")
         
         fleet_sql = f"""
-            WITH vehicle_fuel_summary AS (SELECT vehicle_id, COALESCE(SUM(litres_filled), 0.00) AS total_litres_pumped, COALESCE(SUM(total_fuel_cost), 0.00) AS total_diesel_expense FROM diesel_fuel_logs {'WHERE fuel_date::date >= %s AND fuel_date::date <= %s' if start_filter_date else ''} GROUP BY vehicle_id),
-            vehicle_trip_summary AS (SELECT t.vehicle_id, COUNT(t.trip_id) AS trips_count, COUNT(CASE WHEN t.trip_status != 'COMPLETED' THEN 1 END) AS pending_pod_count, COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km_run, COALESCE(SUM(COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)), 0.00) AS total_tonnage, COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS total_freight_revenue, COALESCE(SUM(COALESCE(t.driver_bata, 0.00) + COALESCE(t.halt_bata, 0.00) + COALESCE(t.enroute_repairs_maintenance, 0.00)), 0.00) AS non_fuel_trip_costs FROM trips t {'WHERE t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s' if start_filter_date else ''} GROUP BY t.vehicle_id)
-            SELECT v.vehicle_number, v.truck_type, COALESCE(ts.trips_count, 0) AS total_trips, COALESCE(ts.pending_pod_count, 0) AS incomplete_trips, COALESCE(ts.total_freight_revenue, 0.00) AS total_freight, COALESCE(fs.total_litres_pumped, 0.00) AS total_diesel_litres, COALESCE(fs.total_diesel_expense, 0.00) AS total_diesel_cost, (COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00))) AS net_retention, ROUND((COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00))) / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2) AS retention_pct, ROUND(COALESCE(fs.total_diesel_expense, 0.00) / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2) AS diesel_pct, ROUND(COALESCE(ts.total_km_run, 0.00) / NULLIF(fs.total_litres_pumped, 0.00), 2) AS kmpl FROM vehicles v LEFT JOIN vehicle_trip_summary ts ON v.vehicle_id = ts.vehicle_id LEFT JOIN vehicle_fuel_summary fs ON v.vehicle_id = fs.vehicle_id WHERE v.is_active = TRUE;
+            WITH vehicle_fuel_summary AS (
+                SELECT vehicle_id, COALESCE(SUM(litres_filled), 0.00) AS total_litres_pumped, COALESCE(SUM(total_fuel_cost), 0.00) AS total_diesel_expense 
+                FROM diesel_fuel_logs {'WHERE fuel_date::date >= %s AND fuel_date::date <= %s' if start_filter_date else ''} 
+                GROUP BY vehicle_id
+            ),
+            vehicle_trip_summary AS (
+                SELECT t.vehicle_id, COUNT(t.trip_id) AS trips_count, COUNT(CASE WHEN t.trip_status != 'COMPLETED' THEN 1 END) AS pending_pod_count, 
+                COALESCE(SUM(COALESCE(t.total_km_run, 0.00)), 0.00) AS total_km_run, 
+                COALESCE(SUM(COALESCE(NULLIF(t.loaded_weight_mt, 0.00), NULLIF(t.tonnage_loaded, 0.00), 0.00)), 0.00) AS total_tonnage, 
+                COALESCE(SUM(COALESCE(t.freight_revenue, 0.00)), 0.00) AS total_freight_revenue, 
+                COALESCE(SUM(COALESCE(t.driver_bata, 0.00) + COALESCE(t.halt_bata, 0.00) + COALESCE(t.enroute_repairs_maintenance, 0.00)), 0.00) AS non_fuel_trip_costs 
+                FROM trips t {'WHERE t.trip_start_date::date >= %s AND t.trip_start_date::date <= %s' if start_filter_date else ''} 
+                GROUP BY t.vehicle_id
+            )
+            SELECT v.vehicle_number, v.truck_type, COALESCE(ts.trips_count, 0) AS total_trips, 
+            COALESCE(ts.total_tonnage, 0.00) AS total_tons, 
+            COALESCE(ts.pending_pod_count, 0) AS incomplete_trips, COALESCE(ts.total_freight_revenue, 0.00) AS total_freight, 
+            COALESCE(fs.total_litres_pumped, 0.00) AS total_diesel_litres, COALESCE(fs.total_diesel_expense, 0.00) AS total_diesel_cost, 
+            (COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00))) AS net_retention, 
+            ROUND((COALESCE(ts.total_freight_revenue, 0.00) - (COALESCE(fs.total_diesel_expense, 0.00) + COALESCE(ts.non_fuel_trip_costs, 0.00))) / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2) AS retention_pct, 
+            ROUND(COALESCE(fs.total_diesel_expense, 0.00) / NULLIF(ts.total_freight_revenue, 0.00) * 100.0, 2) AS diesel_pct, 
+            ROUND(COALESCE(ts.total_km_run, 0.00) / NULLIF(fs.total_litres_pumped, 0.00), 2) AS kmpl 
+            FROM vehicles v 
+            LEFT JOIN vehicle_trip_summary ts ON v.vehicle_id = ts.vehicle_id 
+            LEFT JOIN vehicle_fuel_summary fs ON v.vehicle_id = fs.vehicle_id 
+            WHERE v.is_active = TRUE;
         """
         fleet_data = run_query(fleet_sql, (start_filter_date, end_filter_date, start_filter_date, end_filter_date) if start_filter_date else None)
 
