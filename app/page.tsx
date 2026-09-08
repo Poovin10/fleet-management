@@ -27,6 +27,7 @@ export default function SaaS_ERPDashboard() {
   // Real-time KPI States (Current Month + Pending PODs)
   const [monthTripsCount, setMonthTripsCount] = useState<number>(0);
   const [monthFreight, setMonthFreight] = useState<number>(0);
+  const [monthDieselCost, setMonthDieselCost] = useState<number>(0);
   const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
   const [activeTripCount, setActiveTripCount] = useState<number>(0); 
   
@@ -133,6 +134,7 @@ export default function SaaS_ERPDashboard() {
       });
 
       setMonthFreight(totalFreight);
+      setMonthDieselCost(totalDieselCost);
       setMonthNetRetention(totalFreight - totalDieselCost - nonFuelExpenses);
     }
   };
@@ -175,6 +177,10 @@ export default function SaaS_ERPDashboard() {
       fetchDashboardData();
     }
   };
+
+  // Dynamically calculate the margins
+  const dieselPct = monthFreight > 0 ? (monthDieselCost / monthFreight) * 100 : 0;
+  const retentionPct = monthFreight > 0 ? (monthNetRetention / monthFreight) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
@@ -233,25 +239,46 @@ export default function SaaS_ERPDashboard() {
                 </div>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Trips Taken</p>
-                    <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">{monthTripsCount}</p>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Trips Taken</p>
+                      <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">{monthTripsCount}</p>
+                    </div>
                   </div>
-                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200">
-                    <p className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">PODs Pending</p>
-                    <p className="text-2xl sm:text-3xl font-black text-rose-900 mt-2">{activeTripCount}</p>
+                  
+                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex flex-col justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">PODs Pending</p>
+                      <p className="text-2xl sm:text-3xl font-black text-rose-900 mt-2">{activeTripCount}</p>
+                    </div>
                   </div>
-                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
-                    <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Freight Generated</p>
-                    <p className="text-2xl sm:text-3xl font-black text-emerald-700 mt-2">
-                      ₹ {monthFreight.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
+                  
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Freight Generated</p>
+                      <p className="text-2xl sm:text-3xl font-black text-emerald-700 mt-2">
+                        ₹ {monthFreight.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div className="mt-3">
+                      <span className="inline-flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-md">
+                        Diesel Cost: ₹ {monthDieselCost.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({dieselPct.toFixed(1)}%)
+                      </span>
+                    </div>
                   </div>
-                  <div className="p-4 rounded-xl bg-indigo-600 text-white shadow-md">
-                    <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">Net Retention (Margin)</p>
-                    <p className="text-2xl sm:text-3xl font-black mt-2">
-                      ₹ {monthNetRetention.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
+                  
+                  <div className="p-4 rounded-xl bg-indigo-600 text-white shadow-md flex flex-col justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">Net Retention (Margin)</p>
+                      <p className="text-2xl sm:text-3xl font-black mt-2">
+                        ₹ {monthNetRetention.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div className="mt-3">
+                      <span className="inline-flex items-center text-[10px] font-bold text-white bg-indigo-500/80 px-2.5 py-1 rounded-md">
+                        Retention: {retentionPct.toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
