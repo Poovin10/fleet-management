@@ -9,7 +9,7 @@ export function DriverPortal() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [activeTrips, setActiveTrips] = useState<any[]>([]);
   
-  // Persistent driver memory state (locked name, flexible truck)
+  // Persistent driver memory state
   const [savedDriverCode, setSavedDriverCode] = useState("");
   const [isDriverLocked, setIsDriverLocked] = useState(false);
 
@@ -38,7 +38,6 @@ export function DriverPortal() {
       if (dRes.data) setDrivers(dRes.data);
       if (tRes.data) setActiveTrips(tRes.data);
 
-      // Check if phone has a remembered driver profile
       const storedDriver = localStorage.getItem("kss_device_driver");
       if (storedDriver) {
         setSavedDriverCode(storedDriver);
@@ -78,7 +77,6 @@ export function DriverPortal() {
     const currentTrip = activeTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
     const timestamp = new Date().toISOString();
 
-    // Fetch client IP footprint safely
     let clientIp = "Mobile Cellular / Dynamic IP";
     try {
       const ipRes = await fetch("https://api64.ipify.org?format=json");
@@ -90,7 +88,6 @@ export function DriverPortal() {
     const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown Truck";
 
     if (actionType === "FUEL" || actionType === "ADVANCE") {
-      // 🚀 SENT TO APPROVAL QUEUE WITH IP STAMP
       const { error } = await supabase.from('driver_pending_entries').insert([{
         vehicle_id: Number(selectedTruckId),
         driver_code: activeDriver || "DRV-MOBILE",
@@ -108,7 +105,6 @@ export function DriverPortal() {
         setSuccessMsg(`✅ ${actionType} for ${truckNumberText} submitted successfully! Sent to Cochin office.`);
       }
     } else {
-      // INSTANT OPERATIONAL UPDATE
       if (currentTrip) {
         let updatePayload: any = {};
         if (actionType === "REACHED") { updatePayload.reached_at = timestamp; updatePayload.trip_status = "REACHED_DESTINATION"; }
@@ -138,7 +134,6 @@ export function DriverPortal() {
         <p className="text-xs text-slate-500 mt-1">Frictionless highway reporting terminal.</p>
       </div>
 
-      {/* FIRST TIME SETUP: LOCK DRIVER PROFILE */}
       {!isDriverLocked ? (
         <form onSubmit={handleLockDriver} className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
           <div className="text-center mb-4">
@@ -164,7 +159,6 @@ export function DriverPortal() {
           </button>
         </form>
       ) : (
-        /* DAILY USE VIEW: LOCKED DRIVER, FLEXIBLE TRUCK SELECTOR */
         <div>
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 flex justify-between items-center">
             <div>
@@ -183,7 +177,6 @@ export function DriverPortal() {
           )}
 
           <form onSubmit={handleDriverSubmit} className="space-y-5">
-            {/* FLEXIBLE TRUCK SELECTOR (Handles swaps & different trucks daily) */}
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Select Active Truck For Today *</label>
               <select 
@@ -223,7 +216,6 @@ export function DriverPortal() {
               </div>
             </div>
 
-            {/* CONDITIONAL INPUTS */}
             <div className="space-y-4 pt-2 border-t border-slate-100">
               {(actionType === "FUEL" || actionType === "ADVANCE" || actionType === "BREAKDOWN") && (
                 <div>
