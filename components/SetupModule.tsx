@@ -60,6 +60,27 @@ export function SetupModule() {
 
   useEffect(() => { fetchData(); }, []);
 
+  // 🚀 SMART AUTO-GENERATOR FOR DRIVER CODE
+  useEffect(() => {
+    if (sTab === "Drivers") {
+      if (driversList.length > 0) {
+        // Extract all numbers from existing driver codes (e.g. "DRV-023" -> 23)
+        const numbers = driversList
+          .map(d => {
+            const match = String(d.driver_code).match(/\d+/);
+            return match ? parseInt(match[0], 10) : 0;
+          })
+          .filter(n => !isNaN(n));
+        
+        const maxNum = numbers.length > 0 ? Math.max(...numbers) : 0;
+        // Pad the next number with zeros (e.g. 24 -> "024")
+        setDriverCode(`DRV-${String(maxNum + 1).padStart(3, '0')}`);
+      } else {
+        setDriverCode("DRV-001");
+      }
+    }
+  }, [driversList, sTab]);
+
   const handleSaveTruck = (e: React.FormEvent) => {
     e.preventDefault();
     if (!truckNo.trim()) return;
@@ -73,10 +94,9 @@ export function SetupModule() {
   const handleSaveDriver = (e: React.FormEvent) => {
     e.preventDefault();
     if (!driverName.trim() || !driverCode.trim()) return;
-    triggerModal("Add Driver", `Register ${driverName.toUpperCase()} to the master list?`, false, "Save Driver", async () => {
+    triggerModal("Add Driver", `Register ${driverName.toUpperCase()} to the master list as ${driverCode}?`, false, "Save Driver", async () => {
       setIsProcessing(true);
       
-      // Fixed column names to perfectly match your Supabase Database
       const { error } = await supabase.from('drivers').insert([{ 
         driver_code: driverCode.toUpperCase().trim(), 
         full_name: driverName.toUpperCase().trim(), 
@@ -89,7 +109,7 @@ export function SetupModule() {
       if (error) {
         alert("Error adding driver: " + error.message);
       } else {
-        setDriverName(""); setDriverCode(""); setMobileNo(""); setLicenseNo(""); setExpiryDate("");
+        setDriverName(""); setMobileNo(""); setLicenseNo(""); setExpiryDate("");
         fetchData(); 
       }
       setIsProcessing(false); closeModal();
@@ -157,7 +177,17 @@ export function SetupModule() {
             <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add New Driver</h3>
             <form onSubmit={handleSaveDriver} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Code *</label><input type="text" value={driverCode} onChange={e=>setDriverCode(e.target.value)} placeholder="e.g. DRV-001" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase" required /></div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Code *</label>
+                  <input 
+                    type="text" 
+                    value={driverCode} 
+                    readOnly
+                    className="w-full text-sm p-3 rounded-xl border border-emerald-200 outline-none bg-emerald-50 text-emerald-700 font-black cursor-not-allowed uppercase" 
+                    required 
+                  />
+                  <p className="text-[9px] text-emerald-600 mt-1 font-bold italic">Auto-Generated</p>
+                </div>
                 <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="e.g. ANEESH CR" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase" required /></div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -172,7 +202,6 @@ export function SetupModule() {
             
             <div className="mt-8 border-t border-slate-100 pt-6">
               <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Registered Drivers</h4>
-              {/* Upgraded from small pills to a full data table to show the new details */}
               <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-80">
                 <table className="min-w-full text-xs text-left">
                   <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0">
