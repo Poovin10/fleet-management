@@ -35,7 +35,6 @@ export function FinancialsModule() {
   const [variantTypes, setVariantTypes] = useState<string[]>([]);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
 
-  // Helper for strict .00 formatting and Indian Number System
   const formatAmt = (amt: number) => {
     return (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
@@ -201,6 +200,56 @@ export function FinancialsModule() {
   const aggDiesel = sortedFleetData.reduce((acc, c) => acc + c.total_diesel_cost, 0);
   const aggRetention = sortedFleetData.reduce((acc, c) => acc + c.net_retention, 0);
   const aggRetentionPct = aggFreight > 0 ? (aggRetention / aggFreight) * 100 : 0;
+
+  // 🚀 CSV EXPORT FUNCTION FOR ANALYTICS
+  const exportAnalyticsToCSV = () => {
+    let headers: string[] = [];
+    let rows: string[] = [];
+    let filename = "";
+
+    if (analyticsSubTab === "👨‍✈️ Driver Scorecard") {
+      if (driverScorecard.length === 0) return alert("No data to export.");
+      headers = ["Driver Code", "Full Name", "Total Trips", "Total KM", "Est KMPL", "Revenue (INR)"];
+      rows = driverScorecard.map(d => [
+        d.driver_code, 
+        d.full_name, 
+        d.trips, 
+        d.total_km.toFixed(1), 
+        d.kmpl.toFixed(2), 
+        d.revenue.toFixed(2)
+      ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
+      filename = `Driver_Scorecard_${new Date().toISOString().split('T')[0]}.csv`;
+    } else {
+      const data = sortedFleetData;
+      if (data.length === 0) return alert("No data to export.");
+      headers = ["Truck No", "Type", "Trips", "Tons (MT)", "Inc. Trips", "Freight (INR)", "Diesel (L)", "Diesel Cost (INR)", "Net Retention (INR)", "Retention %", "Diesel %", "KMPL"];
+      rows = data.map(r => [
+        r.vehicle_number, 
+        r.truck_type, 
+        r.total_trips, 
+        r.total_tons.toFixed(2), 
+        r.incomplete_trips,
+        r.total_freight.toFixed(2), 
+        r.total_diesel_litres.toFixed(2), 
+        r.total_diesel_cost.toFixed(2),
+        r.net_retention.toFixed(2), 
+        r.retention_pct.toFixed(2), 
+        r.diesel_pct.toFixed(2), 
+        r.kmpl.toFixed(2)
+      ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
+      filename = `Fleet_Analytics_${new Date().toISOString().split('T')[0]}.csv`;
+    }
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300" style={{ colorScheme: 'light' }}>
@@ -388,24 +437,31 @@ export function FinancialsModule() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 mb-6">
-            {["📊 Fleet Retention", "⚖️ Variant Benchmarks", "👨‍✈️ Driver Scorecard"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setAnalyticsSubTab(tab)}
-                className={`pb-2 text-sm font-bold transition-all duration-200 border-b-2 ${
-                  analyticsSubTab === tab ? "border-[#FF5A00] text-[#FF5A00]" : "border-transparent text-slate-500 hover:text-slate-900"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-            {analyticsSubTab === "⚖️ Variant Benchmarks" && (
-              <select value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)} className="ml-auto text-xs p-1.5 rounded border border-slate-300 font-bold text-slate-700 bg-white outline-none">
-                <option value="All Variants">All Variants</option>
-                {variantTypes.map(v => <option key={v} value={v}>{v}</option>)}
-              </select>
-            )}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex flex-wrap gap-4">
+              {["📊 Fleet Retention", "⚖️ Variant Benchmarks", "👨‍✈️ Driver Scorecard"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setAnalyticsSubTab(tab)}
+                  className={`pb-2 text-sm font-bold transition-all duration-200 border-b-2 ${
+                    analyticsSubTab === tab ? "border-[#FF5A00] text-[#FF5A00]" : "border-transparent text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+              {analyticsSubTab === "⚖️ Variant Benchmarks" && (
+                <select value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)} className="ml-auto text-xs p-1.5 rounded border border-slate-300 font-bold text-slate-700 bg-white outline-none">
+                  <option value="All Variants">All Variants</option>
+                  {variantTypes.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              )}
+            </div>
+
+            {/* V2 EXPORT BUTTON */}
+            <button onClick={exportAnalyticsToCSV} className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold text-sm rounded-lg transition-all shadow-sm flex items-center gap-2">
+              <span className="text-lg leading-none">📊</span> Export CSV
+            </button>
           </div>
 
           {analyticsSubTab !== "👨‍✈️ Driver Scorecard" && (
