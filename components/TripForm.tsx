@@ -5,279 +5,364 @@ import { createClient } from "@/lib/supabase/client";
 
 export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const supabase = createClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Exact Schema Master Data States
+  // Master Data States
   const [vehicles, setVehicles] = useState<any[]>([]);
-  const [driversList, setDriversList] = useState<any[]>([]);
-  const [activeTrips, setActiveTrips] = useState<any[]>([]);
-  const [freightRates, setFreightRates] = useState<any[]>([]);
-  const [bataRates, setBataRates] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [freightMaster, setFreightMaster] = useState<any[]>([]);
+  const [bataMaster, setBataMaster] = useState<any[]>([]);
+  const [dieselRate, setDieselRate] = useState<number>(95.0);
 
-  // Form Field States
-  const [tripDate, setTripDate] = useState(new Date().toISOString().split('T')[0]);
+  // Basic Form States
+  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [lrNo, setLrNo] = useState("");
   const [cargoType, setCargoType] = useState("BULK");
-  const [selectedTruckNumber, setSelectedTruckNumber] = useState("");
-  const [origin, setOrigin] = useState("COCHIN");
-  const [destination, setDestination] = useState("");
-  const [tonnage, setTonnage] = useState<number | "">("");
-  const [driverName, setDriverName] = useState("");
-  const [freightRate, setFreightRate] = useState<number | "">("");
+  const [source, setSource] = useState("COCHIN");
+  const [customSource, setCustomSource] = useState("");
   
-  // Expenses
-  const [dieselIssued, setDieselIssued] = useState<number | "">("");
-  const [bata, setBata] = useState<number | "">("");
-  const [advancePaid, setAdvancePaid] = useState<number | "">("");
+  // Selection States
+  const [selectedTruckId, setSelectedTruckId] = useState("");
+  const [selectedDriverId, setSelectedDriverId] = useState("");
+  
+  // Route & Finance States
+  const [destinationLabel, setDestinationLabel] = useState("-- SELECT DESTINATION --");
+  const [customDest, setCustomDest] = useState("");
+  const [freightRate, setFreightRate] = useState<number | "">("");
+  const [isManualRoute, setIsManualRoute] = useState(false);
+  
+  const [loadedMt, setLoadedMt] = useState<number | "">("");
+  const [driverBata, setDriverBata] = useState<number | "">("");
+  const [advance, setAdvance] = useState<number | "">("");
+  
+  const [startKm, setStartKm] = useState<number | "">("");
+  const [expectedEndKm, setExpectedEndKm] = useState<number | "">("");
+  const [dieselL, setDieselL] = useState<number | "">("");
+  const [isTankFull, setIsTankFull] = useState(false);
 
-  // Validation
-  const [lrError, setLrError] = useState("");
+  const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"];
 
+  // 1. Fetch All Master Data on Load
   useEffect(() => {
     async function fetchMasterData() {
       setIsLoading(true);
-      
-      // Fetching from exact table names found in your Streamlit code
-      const [vehRes, drvRes, tripsRes, ratesRes, bataRes] = await Promise.all([
-        supabase.from('vehicles').select('*').eq('is_active', true),
-        supabase.from('drivers').select('*').eq('is_active', true),
-        supabase.from('trips').select('trip_number, vehicle_id, trip_status').neq('trip_status', 'COMPLETED'),
-        supabase.from('destinations_freight_master').select('*').eq('is_active', true),
-        supabase.from('driver_bata_master').select('*')
+      const [vehRes, drvRes, frRes, btRes] = await Promise.all([
+        supabase.from("vehicles").select("*").eq("is_active", true).order("vehicle_number"),
+        supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
+        supabase.from("destinations_freight_master").select("*").eq("is_active", true),
+        supabase.from("driver_bata_master").select("*")
       ]);
 
       if (vehRes.data) setVehicles(vehRes.data);
-      if (drvRes.data) setDriversList(drvRes.data);
-      if (tripsRes.data) setActiveTrips(tripsRes.data);
-      if (ratesRes.data) setFreightRates(ratesRes.data);
-      if (bataRes.data) setBataRates(bataRes.data);
-      
+      if (drvRes.data) setDrivers(drvRes.data);
+      if (frRes.data) setFreightMaster(frRes.data);
+      if (btRes.data) setBataMaster(btRes.data);
       setIsLoading(false);
     }
     fetchMasterData();
   }, [supabase]);
 
-  // Filtering Logic exactly matching Streamlit
-  const availableVehicles = vehicles.filter((v) => {
-    // 1. Check if truck is busy in active trips
-    const isBusy = activeTrips.some(t => t.vehicle_id === v.vehicle_id);
-    if (isBusy) return false;
-
-    // 2. Cargo Type Check
-    const vType = String(v.truck_type || "").toUpperCase();
-    if (cargoType === "BULK") {
-      return vType.includes("BULK");
-    } else {
-      return !vType.includes("BULK"); // Streamlit logic: Bags = not bulk
-    }
+  // 2. Filter Available Trucks based on Cargo Type
+  const availableTrucks = vehicles.filter((v) => {
+    const isBulkTruck = String(v.truck_type).toUpperCase().includes("BULK");
+    const isAvailable = v.current_status === "AVAILABLE_FOR_LOAD" || v.current_status === "WAITING_FOR_LOAD";
+    if (!isAvailable) return false;
+    return cargoType === "BULK" ? isBulkTruck : !isBulkTruck;
   });
 
-  // Auto-fill Driver and Capacity when Truck is selected
+  const activeTruck = vehicles.find((v) => String(v.vehicle_id) === selectedTruckId);
+  const activeTruckCap = activeTruck ? Number(activeTruck.carrying_capacity_tons) : 30.0;
+  const finalSource = source === "CUSTOM" ? customSource : source;
+
+  // 3. Filter Freight Routes dynamically based on Source, Cargo, and Truck Capacity
+  const validRoutes = freightMaster.filter((r) => {
+    return (
+      r.origin?.toUpperCase() === finalSource.toUpperCase() &&
+      r.cargo_type === cargoType &&
+      Number(r.capacity_tons) === activeTruckCap
+    );
+  });
+
+  // 4. Handle Truck Selection (Auto-fetch last driver & last odometer)
   useEffect(() => {
-    if (selectedTruckNumber) {
-      const truckData = vehicles.find(v => v.vehicle_number === selectedTruckNumber);
-      if (truckData) {
-        setTonnage(truckData.carrying_capacity_tons || "");
+    if (selectedTruckId) {
+      setLoadedMt(activeTruckCap);
+      
+      const fetchTruckHistory = async () => {
+        // Get last driver
+        const { data: lastTrip } = await supabase
+          .from("trips")
+          .select("primary_driver_id")
+          .eq("vehicle_id", selectedTruckId)
+          .not("primary_driver_id", "is", null)
+          .order("trip_id", { ascending: false })
+          .limit(1);
+          
+        if (lastTrip && lastTrip.length > 0 && lastTrip[0].primary_driver_id) {
+          setSelectedDriverId(String(lastTrip[0].primary_driver_id));
+        } else {
+          setSelectedDriverId("");
+        }
+
+        // Get last Odometer
+        const { data: lastOdoTrip } = await supabase.from("trips").select("end_km, start_km").eq("vehicle_id", selectedTruckId).order("trip_id", { ascending: false }).limit(1);
+        const { data: lastOdoFuel } = await supabase.from("diesel_fuel_logs").select("filling_odometer_km").eq("vehicle_id", selectedTruckId).order("fuel_log_id", { ascending: false }).limit(1);
+        
+        let odo = 0;
+        if (lastOdoTrip && lastOdoTrip.length > 0) odo = Math.max(odo, Number(lastOdoTrip[0].end_km || lastOdoTrip[0].start_km || 0));
+        if (lastOdoFuel && lastOdoFuel.length > 0) odo = Math.max(odo, Number(lastOdoFuel[0].filling_odometer_km || 0));
+        setStartKm(odo > 0 ? odo : "");
+      };
+      fetchTruckHistory();
+    } else {
+      setLoadedMt("");
+      setSelectedDriverId("");
+      setStartKm("");
+    }
+  }, [selectedTruckId, activeTruckCap]);
+
+  // 5. Handle Destination Selection (Auto-lock Freight Rate)
+  useEffect(() => {
+    if (destinationLabel === "-- MANUAL / SPOT ROUTE --") {
+      setIsManualRoute(true);
+      setFreightRate(""); // Unlock for manual entry
+    } else if (destinationLabel !== "-- SELECT DESTINATION --") {
+      setIsManualRoute(false);
+      const matchedRoute = validRoutes.find(r => r.destination_name === destinationLabel);
+      if (matchedRoute) {
+        setFreightRate(Number(matchedRoute.freight_rate_per_ton));
       }
     } else {
-      setTonnage("");
+      setIsManualRoute(false);
+      setFreightRate("");
     }
-  }, [selectedTruckNumber, vehicles]);
+  }, [destinationLabel, validRoutes]);
 
-  // Auto-fill Rates and Bata based on Master Data
+  // 6. Auto-fetch Bata Master
   useEffect(() => {
-    if (origin && destination && tonnage) {
-      // Find matching freight rate
-      const matchingRate = freightRates.find(r => 
-        String(r.origin).toUpperCase() === origin.toUpperCase() && 
-        String(r.destination_name).toUpperCase() === destination.toUpperCase() &&
-        String(r.cargo_type).toUpperCase() === cargoType &&
-        Number(r.capacity_tons) === Number(tonnage)
+    const finalDest = isManualRoute ? customDest : destinationLabel;
+    if (finalSource && finalDest && finalDest !== "-- SELECT DESTINATION --") {
+      const match = bataMaster.find(b => 
+        b.origin?.toUpperCase() === finalSource.toUpperCase() &&
+        b.destination_name?.toUpperCase() === finalDest.toUpperCase() &&
+        b.cargo_type === cargoType &&
+        Number(b.capacity_tons) === activeTruckCap
       );
-      if (matchingRate) setFreightRate(matchingRate.freight_rate_per_ton);
-
-      // Find matching bata
-      const matchingBata = bataRates.find(b => 
-        String(b.origin).toUpperCase() === origin.toUpperCase() &&
-        String(b.destination_name).toUpperCase() === destination.toUpperCase() &&
-        String(b.cargo_type).toUpperCase() === cargoType &&
-        Number(b.capacity_tons) === Number(tonnage)
-      );
-      if (matchingBata) setBata(matchingBata.standard_bata_inr);
+      if (match) setDriverBata(Number(match.standard_bata_inr));
+      else setDriverBata("");
     }
-  }, [origin, destination, tonnage, cargoType, freightRates, bataRates]);
+  }, [finalSource, destinationLabel, customDest, cargoType, activeTruckCap, bataMaster, isManualRoute]);
 
-  // LR Duplicate Check
-  const validateLR = (value: string) => {
-    setLrNo(value);
-    const isDuplicateActive = activeTrips.some(t => String(t.trip_number).trim().toUpperCase() === value.trim().toUpperCase());
-    setLrError(isDuplicateActive ? "This LR Number is currently active. Cannot dispatch duplicate." : "");
-  };
-
-  const expectedFreight = (Number(tonnage) || 0) * (Number(freightRate) || 0);
-  const totalTripCost = (Number(dieselIssued) || 0) + (Number(bata) || 0) + (Number(advancePaid) || 0);
-
-  const handleDispatch = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (lrError || !selectedTruckNumber) return;
+    if (!selectedTruckId || !selectedDriverId || !lrNo.trim() || !freightRate || !loadedMt) {
+      alert("Please fill all mandatory fields.");
+      return;
+    }
 
-    // Get the foreign keys needed for the trips table
-    const truckData = vehicles.find(v => v.vehicle_number === selectedTruckNumber);
-    const driverData = driversList.find(d => String(d.full_name).toUpperCase() === driverName.toUpperCase());
+    setIsSubmitting(true);
+    const finalDest = isManualRoute ? customDest.toUpperCase() : destinationLabel;
+    const finalStartKm = Number(startKm) || 0;
+    const finalEndKm = Number(expectedEndKm) || 0;
+    const totalKm = finalEndKm > finalStartKm ? finalEndKm - finalStartKm : 0;
+    const grossFreight = Math.round(Number(loadedMt) * Number(freightRate) * 100) / 100;
+    const fuelCost = Math.round((Number(dieselL) || 0) * dieselRate * 100) / 100;
 
-    const vehicle_id = truckData ? truckData.vehicle_id : null;
-    const driver_id = driverData ? driverData.driver_id : null;
-
-    if (!vehicle_id) return alert("Error: Vehicle ID not found.");
-
-    // 1. Insert into exact Streamlit Trips Schema
-    const { data: newTrip, error: tripError } = await supabase.from('trips').insert([
-      {
-        trip_number: lrNo,
-        vehicle_id: vehicle_id,
-        primary_driver_id: driver_id,
-        trip_start_date: tripDate,
-        origin: origin.toUpperCase(),
-        destination: destination.toUpperCase(),
-        tonnage_loaded: Number(tonnage) || 0,
-        loaded_weight_mt: Number(tonnage) || 0,
-        freight_revenue: expectedFreight,
-        fuel_litres: Number(dieselIssued) || 0, // Using liters field to store diesel amount for now
-        driver_bata: Number(bata) || 0,
-        cash_advance_issued: Number(advancePaid) || 0,
-        trip_status: 'IN_TRANSIT'
-      }
-    ]).select();
+    // 1. Insert Trip
+    const { data: newTrip, error: tripError } = await supabase
+      .from("trips")
+      .insert([{
+        trip_number: lrNo.toUpperCase().trim(),
+        branch_id: 1,
+        vehicle_id: selectedTruckId,
+        primary_driver_id: selectedDriverId,
+        trip_start_date: startDate,
+        origin: finalSource.toUpperCase(),
+        destination: finalDest,
+        start_km: finalStartKm,
+        end_km: finalEndKm,
+        total_km_run: totalKm,
+        tonnage_loaded: Number(loadedMt),
+        loaded_weight_mt: Number(loadedMt),
+        freight_revenue: grossFreight,
+        fuel_litres: Number(dieselL) || 0,
+        fuel_expense: fuelCost,
+        driver_bata: Number(driverBata) || 0,
+        cash_advance_issued: Number(advance) || 0,
+        trip_status: "IN_TRANSIT",
+        is_tank_full: isTankFull
+      }])
+      .select()
+      .single();
 
     if (tripError) {
-      return alert("Error dispatching trip: " + tripError.message);
+      alert("Error dispatching trip: " + tripError.message);
+      setIsSubmitting(false);
+      return;
     }
 
-    // 2. Update Vehicle Status
-    await supabase.from('vehicles')
-      .update({ 
-        current_status: 'IN_TRANSIT', 
-        status_remarks: `Trip ${lrNo}: ${origin.toUpperCase()} ➔ ${destination.toUpperCase()}` 
-      })
-      .eq('vehicle_id', vehicle_id);
+    // 2. Insert Fuel Log
+    if (Number(dieselL) > 0) {
+      await supabase.from("diesel_fuel_logs").insert([{
+        fuel_date: startDate,
+        vehicle_id: selectedTruckId,
+        trip_id: newTrip.trip_id,
+        lr_number: lrNo.toUpperCase().trim(),
+        diesel_category: "TRIP_DIESEL",
+        litres_filled: Number(dieselL),
+        diesel_rate_per_litre: dieselRate,
+        total_fuel_cost: fuelCost,
+        filling_odometer_km: finalStartKm,
+        is_tank_full: isTankFull
+      }]);
+    }
 
-    alert("Trip Dispatched Successfully!");
+    // 3. Update Vehicle Status
+    await supabase
+      .from("vehicles")
+      .update({
+        current_status: "IN_TRANSIT",
+        status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSource.toUpperCase()} ➔ ${finalDest}`,
+        status_updated_at: new Date().toISOString()
+      })
+      .eq("vehicle_id", selectedTruckId);
+
+    alert("Trip dispatched successfully!");
+    setIsSubmitting(false);
     if (onSuccess) onSuccess();
-    
-    // Reset Form
-    setLrNo(""); setSelectedTruckNumber(""); setDestination(""); setDriverName(""); 
-    setTonnage(""); setFreightRate(""); setDieselIssued(""); setBata(""); setAdvancePaid("");
   };
 
-  const uniqueOrigins = Array.from(new Set(freightRates.map(r => r.origin))).filter(Boolean);
-  const uniqueDestinations = Array.from(new Set(freightRates.map(r => r.destination_name))).filter(Boolean);
-  const uniqueDrivers = Array.from(new Set(driversList.map(d => d.full_name))).filter(Boolean);
-
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in fade-in duration-300">
-      <div className="mb-6 border-b border-slate-200 pb-4">
-        <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Trip Dispatch Entry</h3>
-        <p className="text-xs text-slate-500 mt-1">Smart automated dispatch mapping directly to your Supabase schema.</p>
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300">
+      <div className="border-b border-slate-200 pb-4 mb-6">
+        <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Initiate Trip Dispatch</h3>
+        <p className="text-xs text-slate-500 mt-1">Select source, destination, and assign a truck to compute precise freight rules.</p>
       </div>
 
-      <form onSubmit={handleDispatch} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         
-        {/* ROW 1: Date & LR Number */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* ROW 1: Basic Identifiers */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Trip Date *</label>
-            <input type="date" value={tripDate} onChange={(e) => setTripDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" required />
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start Date *</label>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" required />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">LR / Invoice No *</label>
-            <input type="text" value={lrNo} onChange={(e) => validateLR(e.target.value)} placeholder="e.g. 40080069852" className={`w-full text-sm p-3 rounded-xl border ${lrError ? 'border-rose-500 bg-rose-50' : 'border-slate-300 bg-white'} outline-none focus:ring-2 focus:ring-indigo-500 font-semibold uppercase transition-all`} required />
-            {lrError && <p className="text-[10px] text-rose-600 font-bold mt-1">{lrError}</p>}
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">LR Number *</label>
+            <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value)} placeholder="E.G. 40080069852" className="w-full text-sm p-3 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required />
           </div>
-        </div>
-
-        {/* ROW 2: Cargo Type & Filtered Truck Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Cargo Type</label>
-            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <button type="button" onClick={() => { setCargoType("BULK"); setSelectedTruckNumber(""); }} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${cargoType === "BULK" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>BULK</button>
-              <button type="button" onClick={() => { setCargoType("BAGS"); setSelectedTruckNumber(""); }} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${cargoType === "BAGS" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>BAGS</button>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo Type *</label>
+            <div className="flex bg-slate-100 p-1 rounded-xl">
+              <button type="button" onClick={() => { setCargoType("BULK"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BULK" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>BULK</button>
+              <button type="button" onClick={() => { setCargoType("BAG"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BAG" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>BAGS</button>
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Truck No. ({availableVehicles.length} Ready)</label>
-            <select value={selectedTruckNumber} onChange={(e) => setSelectedTruckNumber(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900" required disabled={isLoading || availableVehicles.length === 0}>
-              <option value="">{isLoading ? "Loading..." : availableVehicles.length === 0 ? `No ${cargoType} trucks available` : `-- SELECT TRUCK --`}</option>
-              {availableVehicles.map((v, i) => (
-                <option key={v.vehicle_id || i} value={v.vehicle_number}>{v.vehicle_number}</option>
-              ))}
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Diesel Rate (₹/L)</label>
+            <input type="number" step="0.1" value={dieselRate} onChange={e => setDieselRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-slate-600 font-bold" />
+          </div>
+        </div>
+
+        <hr className="border-slate-100" />
+
+        {/* ROW 2: Entities (Strict Dropdowns) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source (Origin) *</label>
+            <select value={source} onChange={e => setSource(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold">
+              {STANDARD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            {source === "CUSTOM" && (
+              <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-indigo-500" required />
+            )}
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Assigned Truck ({cargoType}) *</label>
+            <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700" required disabled={isLoading}>
+              <option value="">-- SELECT TRUCK --</option>
+              {availableTrucks.map(v => <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} [{v.truck_type}]</option>)}
+            </select>
+            {availableTrucks.length === 0 && !isLoading && <p className="text-[10px] text-rose-500 mt-1 font-bold">No {cargoType} trucks available.</p>}
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Name *</label>
+            <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required disabled={isLoading || !selectedTruckId}>
+              <option value="">-- SELECT DRIVER --</option>
+              {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
             </select>
           </div>
         </div>
 
-        {/* ROW 3: Source & Destination */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Source (Origin) *</label>
-            <input list="origin-master" value={origin} onChange={(e) => setOrigin(e.target.value)} placeholder="Select or type new..." className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white uppercase outline-none focus:ring-2 focus:ring-indigo-500" required />
-            <datalist id="origin-master">{uniqueOrigins.map((org, i) => <option key={i} value={String(org)} />)}</datalist>
+        {/* ROW 3: Route & Rates */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+          <div className="md:col-span-2">
+            <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1">Destination *</label>
+            <select value={destinationLabel} onChange={e => setDestinationLabel(e.target.value)} className="w-full text-sm p-3 rounded-xl border-2 border-indigo-200 outline-none focus:border-indigo-500 font-bold text-slate-900" disabled={!selectedTruckId}>
+              <option value="-- SELECT DESTINATION --">-- SELECT DESTINATION --</option>
+              {validRoutes.map(r => <option key={r.id} value={r.destination_name}>{r.destination_name} (₹{r.freight_rate_per_ton}/MT)</option>)}
+              <option value="-- MANUAL / SPOT ROUTE --">-- MANUAL / SPOT ROUTE --</option>
+            </select>
+            {isManualRoute && (
+              <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-indigo-500" required />
+            )}
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Destination *</label>
-            <input list="destination-master" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Select or type new..." className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white uppercase outline-none focus:ring-2 focus:ring-indigo-500" required />
-            <datalist id="destination-master">{uniqueDestinations.map((dest, i) => <option key={i} value={String(dest)} />)}</datalist>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Loaded MT *</label>
+            <input type="number" step="0.01" value={loadedMt} onChange={e => setLoadedMt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold" required />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Freight Rate / MT (₹) *</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              value={freightRate} 
+              onChange={e => setFreightRate(parseFloat(e.target.value))} 
+              className={`w-full text-sm p-3 rounded-xl border outline-none font-black ${isManualRoute ? 'border-slate-300 focus:ring-2 focus:ring-indigo-500 text-indigo-700 bg-white' : 'border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed'}`} 
+              disabled={!isManualRoute} 
+              readOnly={!isManualRoute}
+              required 
+            />
+            {!isManualRoute && <p className="text-[9px] text-emerald-600 mt-1 font-bold italic">Auto-fetched & Locked</p>}
           </div>
         </div>
 
-        {/* ROW 4: Driver & Tonnage */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* ROW 4: Financials & Tracking */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Driver Name *</label>
-            <input list="driver-master" type="text" value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Enter or select driver" className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-emerald-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-500 transition-colors" required />
-            <datalist id="driver-master">{uniqueDrivers.map((drv, i) => <option key={i} value={String(drv)} />)}</datalist>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Bata (₹) *</label>
+            <input type="number" value={driverBata} onChange={e => setDriverBata(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-700 uppercase mb-2">Ton Dispatched (MT)</label>
-              <input type="number" step="0.01" value={tonnage} onChange={(e) => setTonnage(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-emerald-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-500" required />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-700 uppercase mb-2">Freight Rate / MT (₹)</label>
-              <input type="number" step="0.01" value={freightRate} onChange={(e) => setFreightRate(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-emerald-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-500" />
-            </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Direct Advance (₹)</label>
+            <input type="number" value={advance} onChange={e => setAdvance(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div className="md:col-span-2 grid grid-cols-2 gap-4 border border-slate-200 p-2 rounded-xl bg-white">
+             <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start Odo KM</label>
+                <input type="number" value={startKm} onChange={e => setStartKm(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-indigo-500" />
+             </div>
+             <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Diesel Issued (L)</label>
+                <input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-indigo-500" />
+             </div>
           </div>
         </div>
 
-        {/* ROW 5: Expenses */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-200 pt-6">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Diesel Issued (Litres)</label>
-            <input type="number" step="0.1" value={dieselIssued} onChange={(e) => setDieselIssued(parseFloat(e.target.value))} placeholder="0.0 L" className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-rose-500" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Bata (₹)</label>
-            <input type="number" value={bata} onChange={(e) => setBata(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-emerald-50 focus:bg-white outline-none focus:ring-2 focus:ring-rose-500" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Advance Paid (₹)</label>
-            <input type="number" value={advancePaid} onChange={(e) => setAdvancePaid(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-rose-500" />
-          </div>
-        </div>
-
-        {/* Trip Summary Footer */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-6 flex flex-wrap justify-between items-center gap-4">
+        <div className="pt-4 border-t border-slate-200 flex flex-wrap gap-4 items-center justify-between">
           <div className="flex gap-6">
             <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase">Expected Freight</p>
-              <p className="text-lg font-black text-indigo-700">₹{expectedFreight.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase mb-0">Expected Gross Freight</p>
+              <p className="text-xl font-black text-indigo-700">₹{(Number(loadedMt || 0) * Number(freightRate || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase">Total Trip Expense</p>
-              <p className="text-lg font-black text-rose-600">₹{totalTripCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase mb-0">Upfront Trip Expense</p>
+              <p className="text-xl font-black text-rose-600">₹{((Number(dieselL || 0) * dieselRate) + Number(driverBata || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
             </div>
           </div>
-          <button type="submit" disabled={!!lrError || !selectedTruckNumber} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
-            Dispatch Trip
+          <button type="submit" disabled={isSubmitting} className="px-10 py-3.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-black text-sm rounded-xl transition-all shadow-md active:scale-95">
+            {isSubmitting ? "Dispatching..." : "🚀 Finalize Dispatch"}
           </button>
         </div>
 
