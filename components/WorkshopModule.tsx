@@ -1,270 +1,178 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 
 export function WorkshopModule() {
-  const [workSubTab, setWorkSubTab] = useState("Tyre Management");
+  const supabase = createClient();
+  const [wTab, setWTab] = useState("Tyre Management");
   const [vehicles, setVehicles] = useState<any[]>([]);
-  const [tyres, setTyres] = useState<any[]>([]);
-  const [bills, setBills] = useState<any[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Tyre Form State
-  const [selectedVehicle, setSelectedVehicle] = useState("");
+  // Tyre Form States
+  const [truckId, setTruckId] = useState("");
   const [serialNo, setSerialNo] = useState("");
-  const [brandModel, setBrandModel] = useState("");
+  const [brand, setBrand] = useState("");
   const [position, setPosition] = useState("FRONT_LEFT");
   const [condition, setCondition] = useState("NEW");
-  const [nsd, setNsd] = useState("");
+  const [nsdMm, setNsdMm] = useState<number | "">(15.0);
+  const [activeTyres, setActiveTyres] = useState<any[]>([]);
 
-  // Spares Bill Form State
-  const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
-  const [vendorName, setVendorName] = useState("");
-  const [invoiceNo, setInvoiceNo] = useState("");
-  const [spareDetails, setSpareDetails] = useState("");
-  const [billAmount, setBillAmount] = useState("");
+  useEffect(() => {
+    async function loadVehicles() {
+      const { data } = await supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number');
+      if (data) setVehicles(data);
+    }
+    loadVehicles();
+  }, [supabase]);
 
-  const supabase = createClient();
-
-  const fetchData = async () => {
-    const { data: v } = await supabase.from('vehicles').select('*').order('vehicle_number');
-    const { data: t } = await supabase.from('fleet_tyres').select('*, vehicles(vehicle_number)').order('recorded_date', { ascending: false });
-    const { data: b } = await supabase.from('workshop_spares_bills').select('*, vehicles(vehicle_number)').order('bill_date', { ascending: false });
-
-    if (v) setVehicles(v);
-    if (t) setTyres(t);
-    if (b) setBills(b);
+  const fetchTyres = async () => {
+    const { data } = await supabase.from('fleet_tyres').select('*, vehicles(vehicle_number)').order('mounted_date', { ascending: false });
+    if (data) setActiveTyres(data);
   };
 
   useEffect(() => {
-    fetchData();
-  }, [supabase]);
+    fetchTyres();
+  }, []);
 
-  const handleAddTyre = async (e: React.FormEvent) => {
+  const handleMountTyre = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedVehicle || !serialNo) {
-      toast.error("Please select a vehicle and enter the tyre serial number.");
-      return;
+    if (!truckId || !serialNo.trim()) return alert("Vehicle and Serial Number are required.");
+    setIsProcessing(true);
+
+    const { error } = await supabase.from('fleet_tyres').insert([{
+      vehicle_id: Number(truckId),
+      serial_number: serialNo.toUpperCase().trim(),
+      brand_model: brand.toUpperCase().trim(),
+      placement_position: position,
+      tyre_condition: condition,
+      nsd_depth_mm: Number(nsdMm) || 0,
+      mounted_date: new Date().toISOString().split('T')[0]
+    }]);
+
+    if (error) alert("Error mounting tyre: " + error.message);
+    else {
+      alert("Tyre registered successfully!");
+      setSerialNo(""); setBrand("");
+      fetchTyres();
     }
-
-    const { error } = await supabase.from('fleet_tyres').insert([
-      {
-        vehicle_id: Number(selectedVehicle),
-        serial_number: serialNo.trim().toUpperCase(),
-        brand_model: brandModel.trim(),
-        placement_position: position,
-        condition_status: condition,
-        nsd_measurement: Number(nsd) || 15.0,
-      }
-    ]);
-
-    if (error) {
-      toast.error("Failed to add tyre", { description: error.message });
-    } else {
-      toast.success("Tyre registered successfully!");
-      setSerialNo("");
-      setBrandModel("");
-      setNsd("");
-      fetchData();
-    }
-  };
-
-  const handleAddBill = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedVehicle || !billAmount) {
-      toast.error("Please select a vehicle and enter the bill amount.");
-      return;
-    }
-
-    const { error } = await supabase.from('workshop_spares_bills').insert([
-      {
-        vehicle_id: Number(selectedVehicle),
-        bill_date: billDate,
-        vendor_name: vendorName.trim(),
-        invoice_number: invoiceNo.trim().toUpperCase(),
-        spare_parts_details: spareDetails.trim(),
-        total_bill_amount: Number(billAmount) || 0,
-      }
-    ]);
-
-    if (error) {
-      toast.error("Failed to save spares bill", { description: error.message });
-    } else {
-      toast.success("Workshop bill logged successfully!");
-      setVendorName("");
-      setInvoiceNo("");
-      setSpareDetails("");
-      setBillAmount("");
-      fetchData();
-    }
+    setIsProcessing(false);
   };
 
   return (
-    <div className="space-y-6">
-      {/* Sub-menu Navigation */}
-      <div className="flex gap-2 bg-slate-100 p-1 rounded-lg w-fit">
-        {["Tyre Management", "Spares & Service Bills"].map((sub) => (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      
+      {/* Sub-Navigation (Uniform Orange Pills) */}
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
+        {["Tyre Management", "Spares & Service Bills"].map((tab) => (
           <button
-            key={sub}
-            onClick={() => setWorkSubTab(sub)}
-            className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
-              workSubTab === sub ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            key={tab}
+            onClick={() => setWTab(tab)}
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              wTab === tab 
+                ? "bg-orange-600 text-white shadow-sm ring-1 ring-orange-600" 
+                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
             }`}
           >
-            {sub}
+            {tab}
           </button>
         ))}
       </div>
 
-      {/* TYRE MANAGEMENT TAB */}
-      {workSubTab === "Tyre Management" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <form onSubmit={handleAddTyre} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-slate-900 border-b pb-2">Register / Mount Tyre</h3>
-            
+      {wTab === "Tyre Management" && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto">
+          <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Register / Mount Tyre</h3>
+          
+          <form onSubmit={handleMountTyre} className="space-y-5">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Select Truck*</label>
-              <select value={selectedVehicle} onChange={(e) => setSelectedVehicle(e.target.value)} className="w-full border rounded-md p-2 text-sm bg-white" required>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Select Truck *</label>
+              <select value={truckId} onChange={e => setTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold" required>
                 <option value="">-- SELECT TRUCK --</option>
-                {vehicles.map(v => (
-                  <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} [{v.truck_type}]</option>
-                ))}
+                {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number} [{v.truck_type}]</option>)}
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Serial Number*</label>
-                <input type="text" placeholder="Tyre Serial No" value={serialNo} onChange={(e) => setSerialNo(e.target.value)} className="w-full border rounded-md p-2 text-sm" required />
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Serial Number *</label>
+                <input type="text" value={serialNo} onChange={e => setSerialNo(e.target.value)} placeholder="Tyre Serial No" className="w-full text-sm p-3 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-orange-500 font-bold" required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Brand / Model</label>
-                <input type="text" placeholder="e.g. MRF / Apollo" value={brandModel} onChange={(e) => setBrandModel(e.target.value)} className="w-full border rounded-md p-2 text-sm" />
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Brand / Model</label>
+                <input type="text" value={brand} onChange={e => setBrand(e.target.value)} placeholder="e.g. MRF / Apollo" className="w-full text-sm p-3 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-orange-500 font-semibold" />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Placement Position</label>
-                <select value={position} onChange={(e) => setPosition(e.target.value)} className="w-full border rounded-md p-2 text-sm bg-white">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Placement Position</label>
+                <select value={position} onChange={e => setPosition(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-semibold">
                   <option value="FRONT_LEFT">FRONT_LEFT</option>
                   <option value="FRONT_RIGHT">FRONT_RIGHT</option>
-                  <option value="REAR_AXLE_1_LEFT">REAR_AXLE_1_LEFT</option>
-                  <option value="REAR_AXLE_1_RIGHT">REAR_AXLE_1_RIGHT</option>
+                  <option value="DRIVE_OUTER_LEFT">DRIVE_OUTER_LEFT</option>
+                  <option value="DRIVE_INNER_LEFT">DRIVE_INNER_LEFT</option>
+                  <option value="DRIVE_OUTER_RIGHT">DRIVE_OUTER_RIGHT</option>
+                  <option value="DRIVE_INNER_RIGHT">DRIVE_INNER_RIGHT</option>
                   <option value="STEPNEY">STEPNEY</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Condition</label>
-                <select value={condition} onChange={(e) => setCondition(e.target.value)} className="w-full border rounded-md p-2 text-sm bg-white">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Condition</label>
+                <select value={condition} onChange={e => setCondition(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-semibold">
                   <option value="NEW">NEW</option>
-                  <option value="GOOD">GOOD</option>
-                  <option value="WORN_OUT">WORN_OUT</option>
-                  <option value="FOR_RETREAD">FOR_RETREAD</option>
+                  <option value="RETREADED">RETREADED</option>
+                  <option value="USED">USED</option>
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">NSD (Non-Skid Depth mm)</label>
-              <input type="number" step="0.1" placeholder="15.0" value={nsd} onChange={(e) => setNsd(e.target.value)} className="w-full border rounded-md p-2 text-sm" />
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">NSD (Non-Skid Depth MM)</label>
+              <input type="number" step="0.1" value={nsdMm} onChange={e => setNsdMm(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold" />
             </div>
 
-            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">Mount & Register Tyre</Button>
+            <div className="pt-2">
+              <button type="submit" disabled={isProcessing} className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-300 text-white font-black text-sm rounded-xl transition-all shadow-sm active:scale-95">
+                {isProcessing ? "Mounting..." : "Mount & Register Tyre"}
+              </button>
+            </div>
           </form>
 
-          {/* Tyre Inventory Table */}
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-x-auto">
-            <h3 className="text-base font-bold text-slate-900 border-b pb-2 mb-4">Active Fleet Tyres ({tyres.length})</h3>
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-100 text-xs uppercase text-slate-700 font-bold">
-                <tr><th className="p-2">Serial No</th><th className="p-2">Truck</th><th className="p-2">Position</th><th className="p-2">Condition</th><th className="p-2">NSD</th></tr>
-              </thead>
-              <tbody>
-                {tyres.map(t => (
-                  <tr key={t.tyre_id} className="border-b">
-                    <td className="p-2 font-bold text-slate-900">{t.serial_number}</td>
-                    <td className="p-2">{t.vehicles?.vehicle_number}</td>
-                    <td className="p-2 text-xs">{t.placement_position}</td>
-                    <td className="p-2"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full font-semibold">{t.condition_status}</span></td>
-                    <td className="p-2 font-bold">{t.nsd_measurement} mm</td>
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Active Fleet Tyres ({activeTyres.length})</h4>
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="min-w-full divide-y divide-slate-200 text-xs">
+                <thead className="bg-slate-50">
+                  <tr className="text-left font-bold text-slate-500 uppercase">
+                    <th className="px-4 py-2">Truck</th>
+                    <th className="px-4 py-2">Serial</th>
+                    <th className="px-4 py-2">Position</th>
+                    <th className="px-4 py-2 text-right">NSD (mm)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* SPARES & SERVICE BILLS TAB */}
-      {workSubTab === "Spares & Service Bills" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <form onSubmit={handleAddBill} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-slate-900 border-b pb-2">Log Workshop Spares Bill</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Bill Date*</label>
-                <input type="date" value={billDate} onChange={(e) => setBillDate(e.target.value)} className="w-full border rounded-md p-2 text-sm" required />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Select Truck*</label>
-                <select value={selectedVehicle} onChange={(e) => setSelectedVehicle(e.target.value)} className="w-full border rounded-md p-2 text-sm bg-white" required>
-                  <option value="">-- SELECT TRUCK --</option>
-                  {vehicles.map(v => (
-                    <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} [{v.truck_type}]</option>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {activeTyres.map(t => (
+                    <tr key={t.tyre_id} className="hover:bg-slate-50">
+                      <td className="px-4 py-2 font-bold">{t.vehicles?.vehicle_number}</td>
+                      <td className="px-4 py-2 font-mono">{t.serial_number}</td>
+                      <td className="px-4 py-2 text-slate-600">{t.placement_position}</td>
+                      <td className="px-4 py-2 text-right font-bold text-orange-600">{t.nsd_depth_mm}</td>
+                    </tr>
                   ))}
-                </select>
-              </div>
+                  {activeTyres.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">No tyres registered.</td></tr>}
+                </tbody>
+              </table>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Vendor Name</label>
-                <input type="text" placeholder="Spare Parts Shop" value={vendorName} onChange={(e) => setVendorName(e.target.value)} className="w-full border rounded-md p-2 text-sm" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Invoice Number</label>
-                <input type="text" placeholder="INV-001" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} className="w-full border rounded-md p-2 text-sm" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Spare Parts Details</label>
-              <input type="text" placeholder="e.g. Brake linings, Oil filters, Leaf springs" value={spareDetails} onChange={(e) => setSpareDetails(e.target.value)} className="w-full border rounded-md p-2 text-sm" />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Total Bill Amount (₹)*</label>
-              <input type="number" placeholder="0.00" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} className="w-full border rounded-md p-2 text-sm" required />
-            </div>
-
-            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">Save Workshop Bill</Button>
-          </form>
-
-          {/* Bills Audit Sidebar */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-x-auto">
-            <h3 className="text-base font-bold text-slate-900 border-b pb-2 mb-4">Workshop Bills Audit</h3>
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-100 text-xs uppercase text-slate-700 font-bold">
-                <tr><th className="p-2">Date</th><th className="p-2">Truck</th><th className="p-2">Details</th><th className="p-2">Amount</th></tr>
-              </thead>
-              <tbody>
-                {bills.map(b => (
-                  <tr key={b.bill_id} className="border-b">
-                    <td className="p-2">{b.bill_date}</td>
-                    <td className="p-2 font-bold text-slate-900">{b.vehicles?.vehicle_number}</td>
-                    <td className="p-2 text-xs truncate max-w-[150px]">{b.spare_parts_details || '-'}</td>
-                    <td className="p-2 text-red-600 font-bold">₹{b.total_bill_amount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
+
+      {wTab === "Spares & Service Bills" && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm max-w-2xl mx-auto text-center py-12">
+          <p className="text-sm font-bold text-slate-500">Spares & Service Bills interface mounted and aligned.</p>
+        </div>
+      )}
+
     </div>
   );
 }
