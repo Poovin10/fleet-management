@@ -9,7 +9,6 @@ export function SetupModule() {
   const [sTab, setSTab] = useState("Trucks");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Check if current user is superadmin
   const [currentUsername, setCurrentUsername] = useState("");
 
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: "", message: "", isDanger: false, confirmText: "Confirm", action: async () => {} });
@@ -22,6 +21,16 @@ export function SetupModule() {
   const [bataList, setBataList] = useState<any[]>([]);
   const [auditList, setAuditList] = useState<any[]>([]);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
+
+  // Selected truck for Compliance Editing
+  const [selectedTruckForCompliance, setSelectedTruckForCompliance] = useState<any>(null);
+  const [fcExp, setFcExp] = useState("");
+  const [insExp, setInsExp] = useState("");
+  const [qtaxExp, setQtaxExp] = useState("");
+  const [pucExp, setPucExp] = useState("");
+  const [npExp, setNpExp] = useState("");
+  const [spExp, setSpExp] = useState("");
+  const [tankExp, setTankExp] = useState("");
 
   // New User Form States
   const [newUsername, setNewUsername] = useState("");
@@ -51,8 +60,7 @@ export function SetupModule() {
   const [bataAmt, setBataAmt] = useState<number | "">("");
 
   const fetchData = async () => {
-    // Check session storage or fetch logged in user if stored
-    const loggedUser = sessionStorage.getItem("kss_username") || "superadmin"; // defaults safely
+    const loggedUser = sessionStorage.getItem("kss_username") || "superadmin";
     setCurrentUsername(loggedUser);
 
     const [v, d, s, b, a, u] = await Promise.all([
@@ -74,7 +82,45 @@ export function SetupModule() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Handle adding user via Super Admin
+  // Populate compliance fields when a truck is selected
+  useEffect(() => {
+    if (selectedTruckForCompliance) {
+      setFcExp(selectedTruckForCompliance.fc_expiry_date || "");
+      setInsExp(selectedTruckForCompliance.insurance_expiry_date || "");
+      setQtaxExp(selectedTruckForCompliance.qtax_expiry_date || "");
+      setPucExp(selectedTruckForCompliance.puc_expiry_date || "");
+      setNpExp(selectedTruckForCompliance.np_expiry_date || "");
+      setSpExp(selectedTruckForCompliance.state_permit_expiry_date || "");
+      setTankExp(selectedTruckForCompliance.tank_cert_expiry_date || "");
+    }
+  }, [selectedTruckForCompliance]);
+
+  const handleSaveTruckCompliance = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTruckForCompliance) return;
+
+    triggerModal("Update Compliance", `Save document expiry dates for ${selectedTruckForCompliance.vehicle_number}?`, false, "Save Dates", async () => {
+      setIsProcessing(true);
+      const { error } = await supabase.from('vehicles').update({
+        fc_expiry_date: fcExp || null,
+        insurance_expiry_date: insExp || null,
+        qtax_expiry_date: qtaxExp || null,
+        puc_expiry_date: pucExp || null,
+        np_expiry_date: npExp || null,
+        state_permit_expiry_date: spExp || null,
+        tank_cert_expiry_date: tankExp || null
+      }).eq('vehicle_id', selectedTruckForCompliance.vehicle_id);
+
+      if (error) alert("Error updating compliance: " + error.message);
+      else {
+        alert("Truck compliance records updated successfully!");
+        fetchData();
+      }
+      setIsProcessing(false);
+      closeModal();
+    });
+  };
+
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername.trim() || !newPassword.trim()) return;
@@ -98,7 +144,6 @@ export function SetupModule() {
     });
   };
 
-  // Handle deleting user via Super Admin
   const handleDeleteUser = (username: string) => {
     if (username === "superadmin") return alert("Cannot delete the primary Super Admin account.");
     triggerModal("Delete User", `Are you sure you want to revoke access for ${username}?`, true, "Delete", async () => {
@@ -179,7 +224,15 @@ export function SetupModule() {
       <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
 
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
-        {[{ label: "Trucks", icon: "🚛" }, { label: "Drivers", icon: "👨‍✈️" }, { label: "Freight Slabs", icon: "🛣️" }, { label: "Bata", icon: "💰" }, { label: "System Audit", icon: "📋" }, { label: "🔐 User Control", icon: "🛡️" }].map((tab) => (
+        {[
+          { label: "Trucks", icon: "🚛" }, 
+          { label: "Drivers", icon: "👨‍✈️" }, 
+          { label: "Freight Slabs", icon: "🛣️" }, 
+          { label: "Bata", icon: "💰" }, 
+          { label: "System Audit", icon: "📋" }, 
+          { label: "🚚 Truck Compliance", icon: "🛡️" },
+          { label: "🔐 User Control", icon: "⚙️" }
+        ].map((tab) => (
           <button 
             key={tab.label} onClick={() => setSTab(tab.label)} 
             className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${sTab === tab.label ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"}`}
@@ -384,6 +437,87 @@ export function SetupModule() {
               </table>
             </div>
           </>
+        )}
+
+        {/* 🚚 TRUCK COMPLIANCE & PERMITS */}
+        {sTab === "🚚 Truck Compliance" && (
+          <div>
+            <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Truck Document & Permit Expiries</h3>
+            
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Select Truck to Manage Permits</label>
+              <select 
+                value={selectedTruckForCompliance ? selectedTruckForCompliance.vehicle_id : ""} 
+                onChange={e => {
+                  const found = trucksList.find(t => String(t.vehicle_id) === e.target.value);
+                  setSelectedTruckForCompliance(found || null);
+                }}
+                className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-[#FF5A00]"
+              >
+                <option value="">-- SELECT TRUCK --</option>
+                {trucksList.map(t => (
+                  <option key={t.vehicle_id} value={t.vehicle_id}>
+                    {t.vehicle_number} [{t.truck_type}]
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedTruckForCompliance && (
+              <form onSubmit={handleSaveTruckCompliance} className="space-y-6 animate-in slide-in-from-bottom-4">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase">Selected Vehicle</p>
+                    <p className="text-base font-black text-[#FF5A00]">{selectedTruckForCompliance.vehicle_number}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase">Variant</p>
+                    <p className="text-sm font-bold text-slate-800">{selectedTruckForCompliance.truck_type}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">FC Test Expiry</label>
+                    <input type="date" value={fcExp} onChange={e => setFcExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Insurance Expiry</label>
+                    <input type="date" value={insExp} onChange={e => setInsExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Quarterly Tax (Q-Tax) Expiry</label>
+                    <input type="date" value={qtaxExp} onChange={e => setQtaxExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">PUC Expiry</label>
+                    <input type="date" value={pucExp} onChange={e => setPucExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">National Permit (NP) Expiry</label>
+                    <input type="date" value={npExp} onChange={e => setNpExp(e.target.value)} placeholder="Leave blank if N/A" className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">State Permit Expiry</label>
+                    <input type="date" value={spExp} onChange={e => setSpExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
+                  </div>
+
+                  {String(selectedTruckForCompliance.truck_type).toUpperCase().includes("BULK") && (
+                    <div className="sm:col-span-2 md:col-span-3 bg-amber-50 p-4 rounded-xl border border-amber-200">
+                      <label className="block text-[10px] font-black text-amber-800 uppercase mb-1">⚡ Bulker Tank / Pressure Certificate Expiry</label>
+                      <input type="date" value={tankExp} onChange={e => setTankExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-amber-300 font-semibold bg-white text-slate-900 outline-none" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-slate-200 flex justify-end">
+                  <button type="submit" disabled={isProcessing} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl transition-all shadow-sm active:scale-95">
+                    Save Compliance Dates
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
 
         {/* 🔐 USER CONTROL (SUPERADMIN ONLY) */}
