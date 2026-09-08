@@ -12,6 +12,19 @@ import { FinancialsModule } from "@/components/FinancialsModule";
 import { WorkshopModule } from "@/components/WorkshopModule";
 import { SetupModule } from "@/components/SetupModule";
 import { FleetTable } from "@/components/FleetTable";
+import { ConfirmModal } from "@/components/ConfirmModal";
+
+// 🚀 HIGH-QUALITY VECTOR LOGO COMPONENT
+// This perfectly replicates your logo in pure code. It will never blur!
+const KssLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <rect width="200" height="200" fill="#ea580c" />
+    <rect x="20" y="20" width="160" height="160" fill="none" stroke="white" strokeWidth="12" />
+    <path d="M 45 35 L 45 165" stroke="white" strokeWidth="16" strokeLinecap="square" />
+    <path d="M 45 125 L 145 35" stroke="white" strokeWidth="16" strokeLinecap="square" />
+    <path d="M 85 85 C 130 95, 150 135, 150 165" stroke="white" strokeWidth="16" fill="none" />
+  </svg>
+);
 
 export default function SaaS_ERPDashboard() {
   // Authentication States
@@ -22,6 +35,9 @@ export default function SaaS_ERPDashboard() {
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginError, setLoginError] = useState("");
+  
+  // Logout Modal State
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [opSubTab, setOpSubTab] = useState("Trips");
@@ -33,14 +49,13 @@ export default function SaaS_ERPDashboard() {
   const [currentDateText, setCurrentDateText] = useState("");
   const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
   
-  // Real-time KPI States (Current Month + Pending PODs)
+  // Real-time KPI States
   const [monthTripsCount, setMonthTripsCount] = useState<number>(0);
   const [monthFreight, setMonthFreight] = useState<number>(0);
   const [monthDieselCost, setMonthDieselCost] = useState<number>(0);
   const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
   const [activeTripCount, setActiveTripCount] = useState<number>(0); 
   
-  // 4 Core Operational Statuses
   const [statusCounts, setStatusCounts] = useState({
     "Plant Loading": 0,
     "In Transit": 0,
@@ -54,7 +69,7 @@ export default function SaaS_ERPDashboard() {
 
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status"];
 
-  // Hydrate Authentication from Session Storage to survive reloads
+  // Hydrate Authentication from Session Storage
   useEffect(() => {
     const auth = sessionStorage.getItem("kss_auth");
     const role = sessionStorage.getItem("kss_role");
@@ -82,7 +97,7 @@ export default function SaaS_ERPDashboard() {
     }
   };
 
-  const handleLogout = () => {
+  const executeLogout = () => {
     sessionStorage.removeItem("kss_auth");
     sessionStorage.removeItem("kss_role");
     setIsAuthenticated(false);
@@ -90,6 +105,7 @@ export default function SaaS_ERPDashboard() {
     setLoginUser("");
     setLoginPass("");
     setActiveTab("Dashboard");
+    setIsLogoutModalOpen(false);
   };
 
   const extractStatus = (v: any) => String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
@@ -108,7 +124,6 @@ export default function SaaS_ERPDashboard() {
     if (!isAuthenticated) return;
     const supabase = createClient();
     
-    // 1. Fetch Vehicles & Statuses
     const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
     if (vehicles && vehicles.length > 0) {
       setLiveVehicles(vehicles);
@@ -120,11 +135,9 @@ export default function SaaS_ERPDashboard() {
       });
     }
 
-    // 2. Fetch Pending PODs
     const { count: activeCount } = await supabase.from('trips').select('*', { count: 'exact', head: true }).neq('trip_status', 'COMPLETED');
     setActiveTripCount(activeCount || 0);
 
-    // 3. Calculate Current Month Financials
     const now = new Date();
     const year = now.getFullYear();
     const monthStr = String(now.getMonth() + 1).padStart(2, '0');
@@ -197,33 +210,38 @@ export default function SaaS_ERPDashboard() {
   const dieselPct = monthFreight > 0 ? (monthDieselCost / monthFreight) * 100 : 0;
   const retentionPct = monthFreight > 0 ? (monthNetRetention / monthFreight) * 100 : 0;
 
-  // --- RENDER LOGIN SCREEN ---
-  if (isAuthLoading) return null; // Prevent hydration flash
+  if (isAuthLoading) return null;
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 border border-slate-200">
-          <div className="text-center mb-8">
-            <div className="w-12 h-12 bg-orange-600 rounded-xl flex items-center justify-center shadow-inner mx-auto mb-4">
-              <span className="text-white font-black text-xl tracking-tighter">KS</span>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Ambient Background Glows */}
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-orange-600/30 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+        <div className="relative bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md p-10 border border-white/20">
+          <div className="text-center mb-10">
+            {/* Embedded Custom High Quality Logo */}
+            <div className="mx-auto mb-6 w-24 h-24 shadow-md rounded-2xl overflow-hidden border border-slate-200">
+               <KssLogo className="w-full h-full" />
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">KSS Roadways Pvt Ltd</h1>
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">ERP Secure Login</p>
+            
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">KSS Roadways</h1>
+            <p className="text-xs font-bold text-orange-600 uppercase tracking-widest mt-2">ERP Secure Access</p>
           </div>
           
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Username</label>
-              <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-semibold" required />
+              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Username</label>
+              <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500 font-semibold bg-slate-50 transition-all hover:bg-white" required />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Password</label>
-              <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-semibold" required />
+              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Password</label>
+              <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500 font-semibold bg-slate-50 transition-all hover:bg-white" required />
             </div>
-            {loginError && <p className="text-xs font-bold text-rose-500 text-center">{loginError}</p>}
-            <button type="submit" className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-black text-sm rounded-xl transition-all shadow-md active:scale-95 mt-2">
-              Access System
+            {loginError && <p className="text-sm font-bold text-rose-500 text-center bg-rose-50 p-3 rounded-xl">{loginError}</p>}
+            <button type="submit" className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white font-black text-lg rounded-2xl transition-all shadow-[0_8px_30px_rgb(234,88,12,0.3)] active:scale-95 mt-4">
+              Log In
             </button>
           </form>
         </div>
@@ -231,42 +249,52 @@ export default function SaaS_ERPDashboard() {
     );
   }
 
-  // Define Navigation based on Role
   const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "Setup"];
   const navItems = userRole === "ADMIN" ? allNavItems : ["Dashboard", "Financials"];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-orange-100 selection:text-orange-900">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-orange-100 selection:text-orange-900 relative">
       
+      {/* Universal Logout Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={isLogoutModalOpen}
+        title="Secure Sign Out"
+        message="Are you sure you want to log out of the KSS Roadways ERP system? You will need your credentials to access the system again."
+        isDanger={true}
+        confirmText="Log Out Now"
+        onConfirm={executeLogout}
+        onCancel={() => setIsLogoutModalOpen(false)}
+      />
+
       {/* SaaS Sticky Header */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center shadow-inner">
-              <span className="text-white font-black text-sm tracking-tighter">KS</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {/* Embedded Logo in Header */}
+            <div className="w-12 h-12 rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+               <KssLogo className="w-full h-full" />
             </div>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-orange-600 hidden sm:block">KSS Roadways Pvt Ltd</h1>
-            <h1 className="text-lg font-black tracking-tight text-orange-600 sm:hidden">KSS Roadways</h1>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 hidden sm:block">KSS Roadways Pvt Ltd</h1>
+              <h1 className="text-xl font-black tracking-tight text-slate-900 sm:hidden">KSS Roadways</h1>
+            </div>
             
-            <span className="items-center px-2.5 py-1 rounded-md text-[9px] sm:text-[10px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wider">
-              Cochin Branch
+            <span className="items-center px-3 py-1.5 rounded-lg text-[11px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-widest hidden md:inline-flex">
+              Cochin
             </span>
             
-            <span className={`hidden md:inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${userRole === 'ADMIN' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+            <span className={`hidden lg:inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border ${userRole === 'ADMIN' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
               {userRole === 'ADMIN' ? '👑 Admin' : '👁️ Viewer'}
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs sm:text-sm font-bold text-slate-500">Fleet: <span className="text-slate-900">{liveVehicles.length}</span></span>
-            <div className="h-5 w-px bg-slate-200"></div>
-            
-            {/* Modern Signout Button */}
+          <div className="flex items-center gap-4">
+            {/* Enlarged Modern Signout Button */}
             <button 
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-all"
+              onClick={() => setIsLogoutModalOpen(true)}
+              className="flex items-center gap-2 text-sm font-black text-slate-600 hover:text-rose-700 hover:bg-rose-50 px-5 py-2.5 rounded-xl transition-all border border-slate-200 hover:border-rose-200 shadow-sm"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               <span className="hidden sm:block">Sign out</span>
             </button>
           </div>
@@ -282,7 +310,7 @@ export default function SaaS_ERPDashboard() {
             <button
               key={item}
               onClick={() => setActiveTab(item)}
-              className={`px-4 py-2 text-sm font-bold rounded-lg transition-all duration-200 ease-out ${
+              className={`px-5 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 ease-out ${
                 activeTab === item ? "bg-white text-orange-600 shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
               }`}
             >
@@ -430,8 +458,6 @@ export default function SaaS_ERPDashboard() {
             
             {activeTab === "Operations" && userRole === "ADMIN" && (
               <div className="p-6 min-h-[60vh]">
-                
-                {/* --- UNIFORM ORANGE PILL NAVIGATION ADDED HERE --- */}
                 <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4 mb-6">
                   {opTabs.map((sub) => (
                     <button
@@ -512,7 +538,7 @@ export default function SaaS_ERPDashboard() {
         </div>
       </main>
 
-      {/* FULL SCREEN MODAL OVERLAY */}
+      {/* FULL SCREEN REPORT OVERLAY */}
       {showFullReport && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
