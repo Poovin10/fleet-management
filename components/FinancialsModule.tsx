@@ -36,13 +36,11 @@ export function FinancialsModule() {
   const [analyticsSubTab, setAnalyticsSubTab] = useState("📊 Fleet Retention");
   const [selectedVariant, setSelectedVariant] = useState("All Variants");
 
-  // Analytics Data
   const [fleetData, setFleetData] = useState<any[]>([]);
   const [driverScorecard, setDriverScorecard] = useState<any[]>([]);
   const [variantTypes, setVariantTypes] = useState<string[]>([]);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
 
-  // --- Fetch Base Drivers for Settlement ---
   useEffect(() => {
     async function fetchDrivers() {
       setIsLoading(true);
@@ -53,9 +51,6 @@ export function FinancialsModule() {
     fetchDrivers();
   }, [supabase]);
 
-  // ==========================================
-  // SETTLEMENT LOGIC
-  // ==========================================
   const generateSettlement = async () => {
     if (!selectedDriverId) return alert("Please select a driver first.");
     setIsProcessing(true);
@@ -101,57 +96,38 @@ export function FinancialsModule() {
     generateSettlement(); 
   };
 
-  // ==========================================
-  // PROFESSIONAL PDF GENERATOR
-  // ==========================================
   const handlePrintSettlement = () => {
     const printWindow = window.open('', '', 'height=800,width=1000');
-    if (!printWindow) {
-      alert("Please allow pop-ups to generate the PDF.");
-      return;
-    }
+    if (!printWindow) return alert("Please allow pop-ups to generate PDF.");
 
     const driverName = selectedDriverObj?.full_name || "Unknown Driver";
     const driverCode = selectedDriverObj?.driver_code || "";
 
-    // Generate Trip Table HTML
-    let tripRowsHtml = '';
-    if (driverTrips.length > 0) {
-      tripRowsHtml = driverTrips.map(t => {
-        const tripBata = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0);
-        const tripAdv = Number(t.cash_advance_issued) || 0;
-        const tripBal = tripBata - tripAdv;
-        return `
-          <tr>
-            <td><strong>${t.trip_start_date}</strong><br><span style="color:#6b7280; font-size:9px;">LR: ${t.trip_number}</span></td>
-            <td><strong>${t.vehicles?.vehicle_number || "Unknown"}</strong><br><span style="color:#6b7280; font-size:9px;">${t.origin} &rarr; ${t.destination}</span></td>
-            <td class="text-right">${t.fuel_litres || 0}</td>
-            <td class="text-right text-emerald-600">${tripBata}</td>
-            <td class="text-right text-rose-600">${tripAdv}</td>
-            <td class="text-right"><strong>${tripBal}</strong></td>
-          </tr>
-        `;
-      }).join('');
-    } else {
-      tripRowsHtml = `<tr><td colspan="6" class="text-center" style="padding: 20px;">No trips logged in this period.</td></tr>`;
-    }
-
-    // Generate Advances Table HTML
-    let advanceRowsHtml = '';
-    if (driverAdvances.length > 0) {
-      advanceRowsHtml = driverAdvances.map(a => `
+    let tripRowsHtml = driverTrips.length > 0 ? driverTrips.map(t => {
+      const tripBata = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0);
+      const tripAdv = Number(t.cash_advance_issued) || 0;
+      const tripBal = tripBata - tripAdv;
+      return `
         <tr>
-          <td><strong>${a.advance_date}</strong></td>
-          <td>${a.advance_type}</td>
-          <td style="color:#6b7280;">${a.reference_remarks || "-"}</td>
-          <td class="text-right text-rose-600"><strong>${a.amount_inr}</strong></td>
+          <td><strong>${t.trip_start_date}</strong><br><span style="color:#6b7280; font-size:9px;">LR: ${t.trip_number}</span></td>
+          <td><strong>${t.vehicles?.vehicle_number || "Unknown"}</strong><br><span style="color:#6b7280; font-size:9px;">${t.origin} &rarr; ${t.destination}</span></td>
+          <td class="text-right">${t.fuel_litres || 0}</td>
+          <td class="text-right text-emerald-600">${tripBata}</td>
+          <td class="text-right text-rose-600">${tripAdv}</td>
+          <td class="text-right"><strong>${tripBal}</strong></td>
         </tr>
-      `).join('');
-    } else {
-      advanceRowsHtml = `<tr><td colspan="4" class="text-center" style="padding: 20px;">No direct advances in this period.</td></tr>`;
-    }
+      `;
+    }).join('') : `<tr><td colspan="6" class="text-center" style="padding: 20px;">No trips logged in this period.</td></tr>`;
 
-    // Construct final HTML Template
+    let advanceRowsHtml = driverAdvances.length > 0 ? driverAdvances.map(a => `
+      <tr>
+        <td><strong>${a.advance_date}</strong></td>
+        <td>${a.advance_type}</td>
+        <td style="color:#6b7280;">${a.reference_remarks || "-"}</td>
+        <td class="text-right text-rose-600"><strong>${a.amount_inr}</strong></td>
+      </tr>
+    `).join('') : `<tr><td colspan="4" class="text-center" style="padding: 20px;">No direct advances in this period.</td></tr>`;
+
     const htmlString = `
       <!DOCTYPE html>
       <html>
@@ -159,150 +135,77 @@ export function FinancialsModule() {
         <title>Settlement_${driverCode}_${fromDate}</title>
         <style>
           @page { size: A4 portrait; margin: 15mm; }
-          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111827; line-height: 1.4; font-size: 12px; margin: 0; padding: 0; }
-          * { box-sizing: border-box; }
-          
-          /* Header */
-          .header { text-align: center; border-bottom: 2px solid #1f2937; padding-bottom: 10px; margin-bottom: 20px; }
-          .header h1 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 1px; color: #111827; text-transform: uppercase; }
-          .header p { margin: 4px 0 0 0; font-size: 12px; color: #4b5563; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-          
-          /* Meta Information */
-          .meta-row { display: flex; justify-content: space-between; margin-bottom: 20px; padding: 12px 15px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; }
-          
-          /* KPI Summary Cards */
-          .kpi-row { display: flex; gap: 15px; margin-bottom: 25px; }
-          .kpi-card { flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; text-align: center; background: #fff; }
-          .kpi-card h4 { margin: 0 0 8px 0; font-size: 10px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px; }
-          .kpi-card p { margin: 0; font-size: 18px; font-weight: 900; }
-          
-          /* Ensure dark purple box prints accurately */
-          .kpi-payable { background-color: #4f46e5; color: white; border-color: #4f46e5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .kpi-payable h4 { color: #e0e7ff; }
-          
-          /* Tables */
-          .section-title { font-size: 13px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; color: #1f2937; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-          th, td { border: 1px solid #e5e7eb; padding: 10px 8px; text-align: left; }
-          th { background-color: #f3f4f6; font-size: 10px; text-transform: uppercase; color: #4b5563; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          td { font-size: 11px; }
-          
-          /* Typography Utilities */
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; font-size: 12px; margin: 0; padding: 0; }
+          .header { text-align: center; border-bottom: 2px solid #ea580c; padding-bottom: 10px; margin-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 24px; font-weight: 900; color: #ea580c; text-transform: uppercase; }
+          .header p { margin: 4px 0 0 0; font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+          .meta-row { display: flex; justify-content: space-between; margin-bottom: 20px; padding: 12px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 6px; }
+          .kpi-row { display: flex; gap: 12px; margin-bottom: 20px; }
+          .kpi-card { flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; background: #fff; }
+          .kpi-card h4 { margin: 0 0 6px 0; font-size: 10px; text-transform: uppercase; color: #64748b; }
+          .kpi-card p { margin: 0; font-size: 16px; font-weight: 900; }
+          .kpi-payable { background: #ea580c; color: white; border-color: #ea580c; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .kpi-payable h4 { color: #ffedd5; }
+          .section-title { font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+          th { background: #f8fafc; font-size: 10px; text-transform: uppercase; color: #64748b; -webkit-print-color-adjust: exact; }
           .text-right { text-align: right; }
           .text-center { text-align: center; }
           .text-rose-600 { color: #e11d48; }
           .text-emerald-600 { color: #059669; }
-          
-          /* Footer Signatures */
-          .footer-sigs { display: flex; justify-content: space-between; margin-top: 60px; padding: 0 40px; page-break-inside: avoid; }
-          .sig-box { text-align: center; width: 200px; }
-          .sig-line { border-top: 1px solid #111827; margin-bottom: 5px; }
-          
-          /* Print Fixes */
-          @media print {
-            .kpi-payable { background-color: #4f46e5 !important; color: white !important; }
-            th { background-color: #f3f4f6 !important; }
-          }
+          .footer-sigs { display: flex; justify-content: space-between; margin-top: 50px; padding: 0 30px; }
+          .sig-box { text-align: center; width: 180px; }
+          .sig-line { border-top: 1px solid #0f172a; margin-bottom: 4px; }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1>KSS ROADWAYS</h1>
-          <p>Official Driver Settlement Statement</p>
+          <h1>KSS Roadways Pvt Ltd</h1>
+          <p>Cochin Branch &bull; Official Driver Settlement Statement</p>
         </div>
-
         <div class="meta-row">
           <div><strong>Driver:</strong> ${driverCode} - ${driverName}</div>
-          <div><strong>Settlement Period:</strong> ${fromDate} to ${toDate}</div>
-          <div><strong>Generated:</strong> ${new Date().toLocaleDateString()}</div>
+          <div><strong>Period:</strong> ${fromDate} to ${toDate}</div>
+          <div><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
         </div>
-
         <div class="kpi-row">
-          <div class="kpi-card">
-            <h4>Total Diesel Issued</h4>
-            <p>${grandTotalDiesel.toFixed(1)} L</p>
-          </div>
-          <div class="kpi-card">
-            <h4>Total Bata Earned</h4>
-            <p class="text-emerald-600">₹ ${grandTotalBata.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-          </div>
-          <div class="kpi-card">
-            <h4>Total Adv Deducted</h4>
-            <p class="text-rose-600">₹ ${grandTotalAdv.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-          </div>
-          <div class="kpi-card kpi-payable">
-            <h4>Final Balance Payable</h4>
-            <p>₹ ${finalBalancePayable.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-          </div>
+          <div class="kpi-card"><h4>Diesel Issued</h4><p>${grandTotalDiesel.toFixed(1)} L</p></div>
+          <div class="kpi-card"><h4>Bata Earned</h4><p class="text-emerald-600">₹${grandTotalBata.toLocaleString(undefined, {minimumFractionDigits: 2})}</p></div>
+          <div class="kpi-card"><h4>Adv Deducted</h4><p class="text-rose-600">₹${grandTotalAdv.toLocaleString(undefined, {minimumFractionDigits: 2})}</p></div>
+          <div class="kpi-card kpi-payable"><h4>Balance Payable</h4><p>₹${finalBalancePayable.toLocaleString(undefined, {minimumFractionDigits: 2})}</p></div>
         </div>
-
-        <div class="section-title">Trip Details & Bata Adjustments</div>
+        <div class="section-title">Trip Breakdown</div>
         <table>
           <thead>
-            <tr>
-              <th>Date / LR No</th>
-              <th>Truck & Route</th>
-              <th class="text-right">Diesel (L)</th>
-              <th class="text-right">Bata (₹)</th>
-              <th class="text-right">Advance (₹)</th>
-              <th class="text-right">Trip Balance (₹)</th>
-            </tr>
+            <tr><th>Date / LR</th><th>Truck & Route</th><th class="text-right">Diesel (L)</th><th class="text-right">Bata (₹)</th><th class="text-right">Adv (₹)</th><th class="text-right">Balance (₹)</th></tr>
           </thead>
-          <tbody>
-            ${tripRowsHtml}
-          </tbody>
+          <tbody>${tripRowsHtml}</tbody>
         </table>
-
-        <div class="section-title">Direct Cash Advances (Fuel & Adv Module)</div>
+        <div class="section-title">Direct Advances</div>
         <table>
           <thead>
-            <tr>
-              <th>Date</th>
-              <th>Category</th>
-              <th>Remarks / Reference</th>
-              <th class="text-right">Amount (₹)</th>
-            </tr>
+            <tr><th>Date</th><th>Category</th><th>Remarks</th><th class="text-right">Amount (₹)</th></tr>
           </thead>
-          <tbody>
-            ${advanceRowsHtml}
-          </tbody>
+          <tbody>${advanceRowsHtml}</tbody>
         </table>
-
         <div class="footer-sigs">
-          <div class="sig-box">
-            <div class="sig-line"></div>
-            <strong>Driver Signature</strong>
-          </div>
-          <div class="sig-box">
-            <div class="sig-line"></div>
-            <strong>Authorized Signatory</strong>
-          </div>
+          <div class="sig-box"><div class="sig-line"></div><strong>Driver Signature</strong></div>
+          <div class="sig-box"><div class="sig-line"></div><strong>Authorized Signatory</strong></div>
         </div>
-
         <script>
-          window.onload = () => {
-            setTimeout(() => {
-              window.print();
-              window.close();
-            }, 250);
-          };
+          window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 250); };
         </script>
       </body>
       </html>
     `;
 
-    // Write and trigger PDF generation
     printWindow.document.write(htmlString);
     printWindow.document.close();
   };
 
-  // ==========================================
-  // ANALYTICS & MARGIN ENGINE
-  // ==========================================
   const fetchAnalyticsData = async () => {
     setIsAnalyticsLoading(true);
-
-    // 1. Determine Date Boundaries strictly to avoid UTC shift
     let sDate = null; let eDate = null;
     if (analysisWindow === "Current Fiscal Month") {
       const now = new Date();
@@ -312,7 +215,6 @@ export function FinancialsModule() {
       sDate = customStart; eDate = customEnd;
     }
 
-    // 2. Fetch Source Data
     const { data: activeVehicles } = await supabase.from('vehicles').select('vehicle_id, vehicle_number, truck_type').eq('is_active', true);
     const { data: activeDrivers } = await supabase.from('drivers').select('driver_id, driver_code, full_name').eq('is_active', true);
     
@@ -327,7 +229,6 @@ export function FinancialsModule() {
     const { data: trips } = await tQuery;
     const { data: fuels } = await fQuery;
 
-    // 3. Process Fleet Data (Vehicle by Vehicle)
     const fleetMetrics: any[] = [];
     const variants = new Set<string>();
 
@@ -369,7 +270,6 @@ export function FinancialsModule() {
     setVariantTypes(Array.from(variants).sort());
     setFleetData(fleetMetrics);
 
-    // 4. Process Driver Scorecard
     const driverMetrics: any[] = [];
     (activeDrivers || []).forEach(d => {
       const dTrips = (trips || []).filter(t => t.primary_driver_id === d.driver_id);
@@ -396,7 +296,6 @@ export function FinancialsModule() {
     if (finNav === "📈 Analytics & Margins") fetchAnalyticsData();
   }, [finNav, analysisWindow, customStart, customEnd]);
 
-  // Handle Sorting
   const getSortedFleetData = () => {
     const METRIC_MAP: any = {
       "Total Net Retention (₹)": "net_retention", "Total Freight Revenue (₹)": "total_freight", 
@@ -417,8 +316,6 @@ export function FinancialsModule() {
   };
 
   const sortedFleetData = getSortedFleetData();
-  
-  // Aggregate Top-Level KPIs
   const aggFreight = sortedFleetData.reduce((acc, c) => acc + c.total_freight, 0);
   const aggDiesel = sortedFleetData.reduce((acc, c) => acc + c.total_diesel_cost, 0);
   const aggRetention = sortedFleetData.reduce((acc, c) => acc + c.net_retention, 0);
@@ -427,14 +324,16 @@ export function FinancialsModule() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* Sub-Navigation */}
+      {/* Sub-Navigation (Uniform Orange Active Tab) */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
         {["💵 Driver Settlement", "📈 Analytics & Margins"].map((tab) => (
           <button
             key={tab}
             onClick={() => setFinNav(tab)}
             className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              finNav === tab ? "bg-indigo-600 text-white shadow-md" : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              finNav === tab 
+                ? "bg-orange-600 text-white shadow-sm ring-1 ring-orange-600" 
+                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
             }`}
           >
             {tab}
@@ -444,14 +343,13 @@ export function FinancialsModule() {
 
       {finNav === "💵 Driver Settlement" && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
-          {/* SEARCH FILTERS */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="md:col-span-2">
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Select Driver *</label>
               <select 
                 value={selectedDriverId} 
                 onChange={(e) => { setSelectedDriverId(e.target.value); setHasSearched(false); }}
-                className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold"
                 disabled={isLoading}
               >
                 <option value="">-- SELECT DRIVER --</option>
@@ -460,14 +358,14 @@ export function FinancialsModule() {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Date *</label>
-              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-semibold" />
             </div>
             <div className="flex items-end">
               <div className="w-full">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Date *</label>
                 <div className="flex gap-2">
-                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" />
-                  <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors disabled:bg-slate-300">
+                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-semibold" />
+                  <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl transition-all shadow-sm disabled:bg-slate-300">
                     Load
                   </button>
                 </div>
@@ -475,7 +373,6 @@ export function FinancialsModule() {
             </div>
           </div>
 
-          {/* SETTLEMENT RESULTS AREA */}
           {hasSearched && (
             <div className="space-y-8 animate-in slide-in-from-bottom-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -491,8 +388,8 @@ export function FinancialsModule() {
                   <p className="text-[10px] font-bold text-rose-700 uppercase mb-1">Total Adv Deducted</p>
                   <p className="text-xl font-black text-rose-700">₹{grandTotalAdv.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
                 </div>
-                <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-600 text-white shadow-md">
-                  <p className="text-[10px] font-bold text-indigo-200 uppercase mb-1">Balance Payable</p>
+                <div className="p-4 rounded-xl border border-orange-200 bg-orange-600 text-white shadow-sm">
+                  <p className="text-[10px] font-bold text-orange-100 uppercase mb-1">Balance Payable</p>
                   <p className="text-2xl font-black">₹{finalBalancePayable.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
                 </div>
               </div>
@@ -516,7 +413,10 @@ export function FinancialsModule() {
                           <tr key={t.trip_id} className="hover:bg-slate-50">
                             <td className="px-4 py-3 font-semibold text-slate-900">{t.trip_start_date}<br/><span className="text-slate-500 font-normal">{t.trip_number}</span></td>
                             <td className="px-4 py-3 text-slate-700 font-bold">{t.vehicles?.vehicle_number}<br/><span className="text-[10px] font-normal text-slate-500">{t.origin} ➔ {t.destination}</span></td>
-                            <td className="px-4 py-3 text-right font-bold text-slate-700">{t.fuel_litres || 0}</td><td className="px-4 py-3 text-right font-bold text-emerald-600">{tripBata}</td><td className="px-4 py-3 text-right font-bold text-rose-500">{tripAdv}</td><td className="px-4 py-3 text-right font-black text-indigo-700">{tripBal}</td>
+                            <td className="px-4 py-3 text-right font-bold text-slate-700">{t.fuel_litres || 0}</td>
+                            <td className="px-4 py-3 text-right font-bold text-emerald-600">{tripBata}</td>
+                            <td className="px-4 py-3 text-right font-bold text-rose-500">{tripAdv}</td>
+                            <td className="px-4 py-3 text-right font-black text-orange-600">{tripBal}</td>
                             <td className="px-4 py-3 text-center">
                               {isSettled ? <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[9px] font-bold">SETTLED</span> : <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[9px] font-bold">PENDING</span>}
                             </td>
@@ -549,8 +449,8 @@ export function FinancialsModule() {
               </div>
 
               <div className="pt-4 border-t border-slate-200 flex justify-end gap-4">
-                <button onClick={handlePrintSettlement} className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all shadow-sm flex gap-2 items-center">🖨️ Print / Save PDF</button>
-                <button onClick={handleMarkSettled} disabled={isProcessing} className="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
+                <button onClick={handlePrintSettlement} className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all shadow-sm">🖨️ Print / Save PDF</button>
+                <button onClick={handleMarkSettled} disabled={isProcessing} className="px-8 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
                   {isProcessing ? "Processing..." : "✅ Mark All as Settled"}
                 </button>
               </div>
@@ -561,12 +461,10 @@ export function FinancialsModule() {
 
       {finNav === "📈 Analytics & Margins" && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
-          
-          {/* ANALYTICS FILTERS */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="md:col-span-2">
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Analysis Window</label>
-              <select value={analysisWindow} onChange={e => setAnalysisWindow(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500 font-bold bg-slate-50">
+              <select value={analysisWindow} onChange={e => setAnalysisWindow(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500 font-bold bg-slate-50">
                 <option value="Current Fiscal Month">Current Fiscal Month</option>
                 <option value="Lifetime Fleet">Lifetime Fleet</option>
                 <option value="Custom Dates">Custom Dates</option>
@@ -576,11 +474,11 @@ export function FinancialsModule() {
               <>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Date</label>
-                  <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Date</label>
-                  <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
               </>
             )}
@@ -589,7 +487,7 @@ export function FinancialsModule() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-200 pb-6 mb-6">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Sort By Metric</label>
-              <select value={sortMetric} onChange={e => setSortMetric(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500">
+              <select value={sortMetric} onChange={e => setSortMetric(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500">
                 <option value="Total Net Retention (₹)">Total Net Retention (₹)</option>
                 <option value="Total Freight Revenue (₹)">Total Freight Revenue (₹)</option>
                 <option value="Total Trips">Total Trips</option>
@@ -604,20 +502,22 @@ export function FinancialsModule() {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Sort Order</label>
-              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500">
+              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-orange-500">
                 <option value="Top Performers (Descending)">Top Performers (Descending)</option>
                 <option value="Underperformers (Ascending)">Underperformers (Ascending)</option>
               </select>
             </div>
           </div>
 
-          {/* ANALYTICS SUB-NAV */}
+          {/* ANALYTICS SUB-NAV (Uniform Orange Active Border) */}
           <div className="flex flex-wrap gap-4 mb-6">
             {["📊 Fleet Retention", "⚖️ Variant Benchmarks", "👨‍✈️ Driver Scorecard"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setAnalyticsSubTab(tab)}
-                className={`pb-2 text-sm font-bold transition-all duration-200 border-b-2 ${analyticsSubTab === tab ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-900"}`}
+                className={`pb-2 text-sm font-bold transition-all duration-200 border-b-2 ${
+                  analyticsSubTab === tab ? "border-orange-600 text-orange-600" : "border-transparent text-slate-500 hover:text-slate-900"
+                }`}
               >
                 {tab}
               </button>
@@ -630,7 +530,7 @@ export function FinancialsModule() {
             )}
           </div>
 
-          {/* MASTER KPI WIDGETS (Only for Fleet/Variant views) */}
+          {/* MASTER KPI WIDGETS */}
           {analyticsSubTab !== "👨‍✈️ Driver Scorecard" && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="p-4 rounded-xl border border-slate-200">
@@ -645,7 +545,7 @@ export function FinancialsModule() {
                 <p className="text-[10px] font-bold text-emerald-700 uppercase mb-1">Net Margin</p>
                 <p className="text-xl font-black text-emerald-700">₹{aggRetention.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</p>
               </div>
-              <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700">
+              <div className="p-4 rounded-xl border border-orange-200 bg-orange-50 text-orange-700">
                 <p className="text-[10px] font-bold uppercase mb-1">Retention %</p>
                 <p className="text-2xl font-black">{aggRetentionPct.toFixed(2)}%</p>
               </div>
@@ -656,7 +556,7 @@ export function FinancialsModule() {
           <div className="overflow-x-auto rounded-xl border border-slate-200 relative min-h-[300px]">
             {isAnalyticsLoading && (
               <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center">
-                <span className="font-bold text-indigo-600 animate-pulse">Aggregating Metrics...</span>
+                <span className="font-bold text-orange-600 animate-pulse">Aggregating Metrics...</span>
               </div>
             )}
             
@@ -689,7 +589,7 @@ export function FinancialsModule() {
                       <td className="px-4 py-2 font-bold text-slate-800">{row.total_freight.toFixed(2)}</td>
                       <td className="px-4 py-2 text-slate-600">{row.total_diesel_litres.toFixed(2)}</td>
                       <td className="px-4 py-2 text-rose-600">{row.total_diesel_cost.toFixed(2)}</td>
-                      <td className="px-4 py-2 font-black text-indigo-600">{row.net_retention.toFixed(2)}</td>
+                      <td className="px-4 py-2 font-black text-orange-600">{row.net_retention.toFixed(2)}</td>
                       <td className="px-4 py-2 font-bold text-emerald-600">{row.retention_pct.toFixed(2)}%</td>
                       <td className="px-4 py-2 text-slate-600">{row.diesel_pct.toFixed(2)}%</td>
                       <td className="px-4 py-2 font-bold text-amber-600">{row.kmpl.toFixed(2)}</td>
@@ -719,7 +619,7 @@ export function FinancialsModule() {
                     <tr key={row.driver_code} className="hover:bg-slate-50">
                       <td className="px-6 py-3 text-left font-bold text-slate-900">{row.driver_code}</td>
                       <td className="px-6 py-3 text-left text-slate-700 font-semibold">{row.full_name}</td>
-                      <td className="px-6 py-3 font-bold text-indigo-600">{row.trips}</td>
+                      <td className="px-6 py-3 font-bold text-orange-600">{row.trips}</td>
                       <td className="px-6 py-3 text-slate-600">{row.total_km.toFixed(1)}</td>
                       <td className="px-6 py-3 font-bold text-amber-600">{row.kmpl.toFixed(2)}</td>
                       <td className="px-6 py-3 font-black text-emerald-600">₹{row.revenue.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
@@ -732,7 +632,6 @@ export function FinancialsModule() {
               </table>
             )}
           </div>
-          
         </div>
       )}
 
