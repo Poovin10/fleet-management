@@ -15,7 +15,6 @@ import { FleetTable } from "@/components/FleetTable";
 import { ConfirmModal } from "@/components/ConfirmModal";
 
 // 🚀 HIGH-QUALITY CUSTOM VECTOR LOGO
-// Matches your reference image perfectly: Vibrant Orange background, White inner box, Orange lines.
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
     <rect width="200" height="200" fill="#FF5A00" />
@@ -30,7 +29,8 @@ export default function SaaS_ERPDashboard() {
   // Authentication States
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<"ADMIN" | "VIEWER" | null>(null);
+  const [userRole, setUserRole] = useState<"ADMIN" | "VIEWER">("VIEWER");
+  const [showLoginScreen, setShowLoginScreen] = useState(false);
   
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
@@ -69,12 +69,15 @@ export default function SaaS_ERPDashboard() {
 
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status"];
 
+  // Hydrate Authentication from Session Storage
   useEffect(() => {
     const auth = sessionStorage.getItem("kss_auth");
     const role = sessionStorage.getItem("kss_role");
-    if (auth === "true" && role) {
+    if (auth === "true" && role === "ADMIN") {
       setIsAuthenticated(true);
-      setUserRole(role as "ADMIN" | "VIEWER");
+      setUserRole("ADMIN");
+    } else {
+      setUserRole("VIEWER");
     }
     setIsAuthLoading(false);
   }, []);
@@ -86,13 +89,10 @@ export default function SaaS_ERPDashboard() {
       sessionStorage.setItem("kss_role", "ADMIN");
       setIsAuthenticated(true);
       setUserRole("ADMIN");
-    } else if (loginUser.toLowerCase() === "user" && loginPass === "user123") {
-      sessionStorage.setItem("kss_auth", "true");
-      sessionStorage.setItem("kss_role", "VIEWER");
-      setIsAuthenticated(true);
-      setUserRole("VIEWER");
+      setShowLoginScreen(false); // Return to dashboard as admin
+      setLoginError("");
     } else {
-      setLoginError("Invalid username or password.");
+      setLoginError("Invalid admin credentials.");
     }
   };
 
@@ -100,7 +100,7 @@ export default function SaaS_ERPDashboard() {
     sessionStorage.removeItem("kss_auth");
     sessionStorage.removeItem("kss_role");
     setIsAuthenticated(false);
-    setUserRole(null);
+    setUserRole("VIEWER");
     setLoginUser("");
     setLoginPass("");
     setActiveTab("Dashboard");
@@ -119,8 +119,8 @@ export default function SaaS_ERPDashboard() {
     return null;
   };
 
+  // Note: We removed the `!isAuthenticated` block here so public viewers can also load the dashboard data!
   const fetchDashboardData = async () => {
-    if (!isAuthenticated) return;
     const supabase = createClient();
     
     const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
@@ -165,12 +165,10 @@ export default function SaaS_ERPDashboard() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
-      setCurrentDateText(new Date().toLocaleDateString());
-      fetchDashboardData();
-    }
-  }, [activeTab, isAuthenticated]);
+    setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
+    setCurrentDateText(new Date().toLocaleDateString());
+    fetchDashboardData();
+  }, [activeTab]);
 
   const getDrillDownData = (statusLabel: string) => {
     const statusMap: Record<string, string[]> = {
@@ -209,19 +207,18 @@ export default function SaaS_ERPDashboard() {
   const dieselPct = monthFreight > 0 ? (monthDieselCost / monthFreight) * 100 : 0;
   const retentionPct = monthFreight > 0 ? (monthNetRetention / monthFreight) * 100 : 0;
 
-  // --- RENDER MODERN LOGIN SCREEN ---
   if (isAuthLoading) return null;
 
-  if (!isAuthenticated) {
+  // --- RENDER MODERN LOGIN SCREEN FOR ADMINS ---
+  if (showLoginScreen && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
         {/* Ambient Background Glows */}
         <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#FF5A00]/30 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-[#FF5A00]/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
 
         <div className="relative bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md p-10 border border-white/20">
           <div className="text-center mb-10">
-            {/* Embedded Custom High Quality Logo */}
             <div className="mx-auto mb-6 w-24 h-24 shadow-md rounded-2xl overflow-hidden border border-slate-200">
                <KssLogo className="w-full h-full" />
             </div>
@@ -234,7 +231,7 @@ export default function SaaS_ERPDashboard() {
           
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Username</label>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Admin Username</label>
               <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-white" required />
             </div>
             <div>
@@ -242,9 +239,15 @@ export default function SaaS_ERPDashboard() {
               <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-white" required />
             </div>
             {loginError && <p className="text-sm font-bold text-rose-500 text-center bg-rose-50 p-3 rounded-xl">{loginError}</p>}
-            <button type="submit" className="w-full py-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-lg rounded-2xl transition-all shadow-[0_8px_30px_rgba(255,90,0,0.3)] active:scale-95 mt-4">
-              Log In
-            </button>
+            
+            <div className="pt-2">
+              <button type="submit" className="w-full py-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-lg rounded-2xl transition-all shadow-[0_8px_30px_rgba(255,90,0,0.3)] active:scale-95">
+                Log In
+              </button>
+              <button type="button" onClick={() => setShowLoginScreen(false)} className="w-full py-4 text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors mt-2">
+                &larr; Back to Public Dashboard
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -284,25 +287,38 @@ export default function SaaS_ERPDashboard() {
               <h1 className="text-base font-black tracking-tight text-[#FF5A00] sm:hidden leading-none">KSS Roadways</h1>
             </div>
             
-            {/* Cochin Badge forced to show on all screens */}
+            {/* Cochin Badge */}
             <span className="inline-flex items-center px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[11px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-widest whitespace-nowrap">
               Cochin
             </span>
             
             <span className={`hidden lg:inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border ${userRole === 'ADMIN' ? 'bg-[#FF5A00]/10 text-[#FF5A00] border-[#FF5A00]/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-              {userRole === 'ADMIN' ? '👑 Admin' : '👁️ Viewer'}
+              {userRole === 'ADMIN' ? '👑 Admin' : '👁️ Public Viewer'}
             </span>
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Enlarged Modern Signout Button */}
-            <button 
-              onClick={() => setIsLogoutModalOpen(true)}
-              className="flex items-center gap-2 text-sm font-black text-slate-600 hover:text-rose-700 hover:bg-rose-50 px-5 py-2.5 rounded-xl transition-all border border-slate-200 hover:border-rose-200 shadow-sm"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              <span className="hidden sm:block">Sign out</span>
-            </button>
+            <span className="text-xs sm:text-sm font-bold text-slate-500 hidden md:block">Fleet: <span className="text-slate-900">{liveVehicles.length}</span></span>
+            <div className="h-5 w-px bg-slate-200 hidden md:block"></div>
+            
+            {/* Dynamic Auth Button */}
+            {isAuthenticated ? (
+              <button 
+                onClick={() => setIsLogoutModalOpen(true)}
+                className="flex items-center gap-2 text-sm font-black text-slate-600 hover:text-rose-700 hover:bg-rose-50 px-5 py-2.5 rounded-xl transition-all border border-slate-200 hover:border-rose-200 shadow-sm"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                <span className="hidden sm:block">Sign out</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => setShowLoginScreen(true)}
+                className="flex items-center gap-2 text-sm font-black text-white hover:bg-[#e04f00] bg-[#FF5A00] px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <span className="hidden sm:block">Admin Login</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
