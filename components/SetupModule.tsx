@@ -2,583 +2,120 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ConfirmModal } from "@/components/ConfirmModal"; 
+import { AlertModal } from "@/components/AlertModal";
 
 export function SetupModule() {
   const supabase = createClient();
-  const [sTab, setSTab] = useState("Trucks");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [currentUsername, setCurrentUsername] = useState("");
+  const [alertConfig, setAlertConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info" as "success" | "error" | "info"
+  });
 
-  const [modalConfig, setModalConfig] = useState({ isOpen: false, title: "", message: "", isDanger: false, confirmText: "Confirm", action: async () => {} });
-  const triggerModal = (title: string, message: string, isDanger: boolean, confirmText: string, action: () => Promise<void>) => setModalConfig({ isOpen: true, title, message, isDanger, confirmText, action });
-  const closeModal = () => setModalConfig({ ...modalConfig, isOpen: false });
-
-  const [trucksList, setTrucksList] = useState<any[]>([]);
-  const [driversList, setDriversList] = useState<any[]>([]);
-  const [slabsList, setSlabsList] = useState<any[]>([]);
-  const [bataList, setBataList] = useState<any[]>([]);
-  const [auditList, setAuditList] = useState<any[]>([]);
-  const [systemUsers, setSystemUsers] = useState<any[]>([]);
-
-  // Selected truck for Compliance Editing
-  const [selectedTruckForCompliance, setSelectedTruckForCompliance] = useState<any>(null);
-  const [fcExp, setFcExp] = useState("");
-  const [insExp, setInsExp] = useState("");
-  const [qtaxExp, setQtaxExp] = useState("");
-  const [pucExp, setPucExp] = useState("");
-  const [npExp, setNpExp] = useState("");
-  const [spExp, setSpExp] = useState("");
-  const [tankExp, setTankExp] = useState("");
-
-  // New User Form States
-  const [newUsername, setNewUsername] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newRole, setNewRole] = useState("VIEWER");
-
-  const [truckNo, setTruckNo] = useState("");
-  const [variant, setVariant] = useState("Bulker (16-Wheel)");
-  const [capacity, setCapacity] = useState("35.0 MT");
-  
-  const [driverName, setDriverName] = useState("");
-  const [driverCode, setDriverCode] = useState("");
-  const [mobileNo, setMobileNo] = useState("");
-  const [licenseNo, setLicenseNo] = useState("");
-  const [expiryDate, setExpiryDate] = useState("");
-  
-  const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN"];
-  
-  const [src, setSrc] = useState("COCHIN");
-  const [customSrc, setCustomSrc] = useState("");
-  const [dest, setDest] = useState("");
-  const [customDest, setCustomDest] = useState("");
-  
-  const [cType, setCType] = useState("BULK");
-  const [cap, setCap] = useState("35");
-  const [fRate, setFRate] = useState<number | "">("");
-  const [bataAmt, setBataAmt] = useState<number | "">("");
-
-  const fetchData = async () => {
-    const loggedUser = sessionStorage.getItem("kss_username") || "superadmin";
-    setCurrentUsername(loggedUser);
-
-    const [v, d, s, b, a, u] = await Promise.all([
-      supabase.from('vehicles').select('*').order('vehicle_number'),
-      supabase.from('drivers').select('*').order('full_name'),
-      supabase.from('destinations_freight_master').select('*').order('destination_name'),
-      supabase.from('driver_bata_master').select('*').order('destination_name'),
-      supabase.from('trips').select('trip_id, trip_number, trip_start_date, trip_status, origin, destination, vehicles(vehicle_number), drivers(full_name)').order('trip_start_date', { ascending: false }).limit(50),
-      supabase.from('app_users').select('*').order('username')
-    ]);
-    
-    if (v.data) setTrucksList(v.data);
-    if (d.data) setDriversList(d.data);
-    if (s.data) setSlabsList(s.data);
-    if (b.data) setBataList(b.data);
-    if (a.data) setAuditList(a.data);
-    if (u.data) setSystemUsers(u.data);
+  const fetchDrivers = async () => {
+    setIsLoading(true);
+    const { data } = await supabase.from('drivers').select('*').order('full_name');
+    if (data) setDrivers(data);
+    setIsLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
-
-  // Populate compliance fields when a truck is selected
   useEffect(() => {
-    if (selectedTruckForCompliance) {
-      setFcExp(selectedTruckForCompliance.fc_expiry_date || "");
-      setInsExp(selectedTruckForCompliance.insurance_expiry_date || "");
-      setQtaxExp(selectedTruckForCompliance.qtax_expiry_date || "");
-      setPucExp(selectedTruckForCompliance.puc_expiry_date || "");
-      setNpExp(selectedTruckForCompliance.np_expiry_date || "");
-      setSpExp(selectedTruckForCompliance.state_permit_expiry_date || "");
-      setTankExp(selectedTruckForCompliance.tank_cert_expiry_date || "");
+    fetchDrivers();
+  }, [supabase]);
+
+  // Admin action to reset driver PIN
+  const handleResetPin = async (driverId: number, driverName: string) => {
+    const newPin = prompt(`Enter new 4-digit security PIN for ${driverName}:`, "1234");
+    if (!newPin || newPin.length !== 4) {
+      if (newPin !== null) {
+        setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "PIN must be exactly 4 digits.", type: "error" });
+      }
+      return;
     }
-  }, [selectedTruckForCompliance]);
 
-  const handleSaveTruckCompliance = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTruckForCompliance) return;
+    const { error } = await supabase
+      .from('drivers')
+      .update({ pin: newPin })
+      .eq('driver_id', driverId);
 
-    triggerModal("Update Compliance", `Save document expiry dates for ${selectedTruckForCompliance.vehicle_number}?`, false, "Save Dates", async () => {
-      setIsProcessing(true);
-      const { error } = await supabase.from('vehicles').update({
-        fc_expiry_date: fcExp || null,
-        insurance_expiry_date: insExp || null,
-        qtax_expiry_date: qtaxExp || null,
-        puc_expiry_date: pucExp || null,
-        np_expiry_date: npExp || null,
-        state_permit_expiry_date: spExp || null,
-        tank_cert_expiry_date: tankExp || null
-      }).eq('vehicle_id', selectedTruckForCompliance.vehicle_id);
-
-      if (error) alert("Error updating compliance: " + error.message);
-      else {
-        alert("Truck compliance records updated successfully!");
-        fetchData();
-      }
-      setIsProcessing(false);
-      closeModal();
-    });
-  };
-
-  const handleCreateUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUsername.trim() || !newPassword.trim()) return;
-
-    triggerModal("Create User", `Create new ${newRole} account for ${newUsername.trim().toLowerCase()}?`, false, "Create User", async () => {
-      setIsProcessing(true);
-      const { error } = await supabase.from('app_users').insert([{
-        username: newUsername.trim().toLowerCase(),
-        password: newPassword.trim(),
-        role: newRole
-      }]);
-
-      if (error) alert("Error creating user: " + error.message);
-      else {
-        setNewUsername("");
-        setNewPassword("");
-        fetchData();
-      }
-      setIsProcessing(false);
-      closeModal();
-    });
-  };
-
-  const handleDeleteUser = (username: string) => {
-    if (username === "superadmin") return alert("Cannot delete the primary Super Admin account.");
-    triggerModal("Delete User", `Are you sure you want to revoke access for ${username}?`, true, "Delete", async () => {
-      setIsProcessing(true);
-      await supabase.from('app_users').delete().eq('username', username);
-      fetchData();
-      setIsProcessing(false);
-      closeModal();
-    });
-  };
-
-  const originOptions = Array.from(new Set([
-    ...STANDARD_SOURCES,
-    ...slabsList.map(s => s.origin),
-    ...bataList.map(b => b.origin)
-  ])).filter(Boolean).sort();
-
-  const destOptions = Array.from(new Set([
-    ...slabsList.map(s => s.destination_name),
-    ...bataList.map(b => b.destination_name)
-  ])).filter(Boolean).sort();
-
-  const handleSaveTruck = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!truckNo.trim()) return;
-    triggerModal("Add Truck", `Register ${truckNo.toUpperCase()} to the fleet?`, false, "Save Truck", async () => {
-      setIsProcessing(true);
-      await supabase.from('vehicles').insert([{ vehicle_number: truckNo.toUpperCase().trim(), truck_type: variant, carrying_capacity_tons: parseFloat(capacity), current_status: "WAITING_FOR_LOAD", is_active: true }]);
-      setTruckNo(""); fetchData(); setIsProcessing(false); closeModal();
-    });
-  };
-
-  const handleSaveDriver = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!driverName.trim() || !driverCode.trim()) return;
-    triggerModal("Add Driver", `Register ${driverName.toUpperCase()} to the master list as ${driverCode}?`, false, "Save Driver", async () => {
-      setIsProcessing(true);
-      const { error } = await supabase.from('drivers').insert([{ 
-        driver_code: driverCode.toUpperCase().trim(), full_name: driverName.toUpperCase().trim(), phone_number: mobileNo.trim() || null,
-        license_no: licenseNo.toUpperCase().trim() || null, expiry_date: expiryDate || null, is_active: true 
-      }]);
-      if (error) alert("Error adding driver: " + error.message);
-      else { setDriverName(""); setMobileNo(""); setLicenseNo(""); setExpiryDate(""); fetchData(); }
-      setIsProcessing(false); closeModal();
-    });
-  };
-
-  const handleSaveSlab = (e: React.FormEvent) => {
-    e.preventDefault();
-    const finalSrc = src === "CUSTOM" ? customSrc : src;
-    const finalDest = dest === "CUSTOM" ? customDest : dest;
-
-    if (!finalDest.trim() || !fRate) return;
-    
-    triggerModal("Add Freight Slab", `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Slab", async () => {
-      setIsProcessing(true);
-      await supabase.from('destinations_freight_master').insert([{ origin: finalSrc.toUpperCase().trim(), destination_name: finalDest.toUpperCase().trim(), cargo_type: cType, capacity_tons: Number(cap), freight_rate_per_ton: Number(fRate), is_active: true }]);
-      setDest(""); setCustomDest(""); setFRate(""); fetchData(); setIsProcessing(false); closeModal();
-    });
-  };
-
-  const handleSaveBata = (e: React.FormEvent) => {
-    e.preventDefault();
-    const finalSrc = src === "CUSTOM" ? customSrc : src;
-    const finalDest = dest === "CUSTOM" ? customDest : dest;
-
-    if (!finalDest.trim() || !bataAmt) return;
-    
-    triggerModal("Add Bata Master", `Set ₹${bataAmt} default Bata for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Bata", async () => {
-      setIsProcessing(true);
-      await supabase.from('driver_bata_master').insert([{ origin: finalSrc.toUpperCase().trim(), destination_name: finalDest.toUpperCase().trim(), cargo_type: cType, capacity_tons: Number(cap), standard_bata_inr: Number(bataAmt) }]);
-      setDest(""); setCustomDest(""); setBataAmt(""); fetchData(); setIsProcessing(false); closeModal();
-    });
+    if (error) {
+      setAlertConfig({ isOpen: true, title: "Failed", message: "Failed to reset PIN: " + error.message, type: "error" });
+    } else {
+      setAlertConfig({ isOpen: true, title: "PIN Reset Successful", message: `Security PIN successfully updated to ${newPin} for ${driverName}!`, type: "success" });
+      fetchDrivers();
+    }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300" style={{ colorScheme: 'light' }}>
-      <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
+    <div className="space-y-6" style={{ colorScheme: 'light' }}>
+      
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+      />
 
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
-        {[
-          { label: "Trucks", icon: "🚛" }, 
-          { label: "Drivers", icon: "👨‍✈️" }, 
-          { label: "Freight Slabs", icon: "🛣️" }, 
-          { label: "Bata", icon: "💰" }, 
-          { label: "System Audit", icon: "📋" }, 
-          { label: "🚚 Truck Compliance", icon: "🛡️" },
-          { label: "🔐 User Control", icon: "⚙️" }
-        ].map((tab) => (
-          <button 
-            key={tab.label} onClick={() => setSTab(tab.label)} 
-            className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${sTab === tab.label ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"}`}
-          >
-            <span>{tab.icon}</span> {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto">
-        
-        {sTab === "Trucks" && (
-          <>
-            <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add New Truck</h3>
-            <form onSubmit={handleSaveTruck} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Truck No *</label><input type="text" value={truckNo} onChange={e=>setTruckNo(e.target.value)} placeholder="E.G. TN 56 F 0452" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase bg-white text-slate-900" required /></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Variant</label><select value={variant} onChange={e=>setVariant(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-white text-slate-900"><option>Bulker (16-Wheel)</option><option>Bulker (14-Wheel)</option><option>Open Body (10-Wheel)</option><option>Trailer</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Capacity</label><select value={capacity} onChange={e=>setCapacity(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-white text-slate-900"><option>35.0 MT</option><option>30.0 MT</option><option>25.0 MT</option></select></div>
-              <button type="submit" disabled={isProcessing} className="md:col-span-1 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95">Save Truck</button>
-            </form>
-            <div className="mt-8 border-t border-slate-100 pt-6">
-              <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Registered Fleet</h4>
-              <div className="flex flex-wrap gap-2">{trucksList.map(t => <span key={t.vehicle_id} className="px-3 py-1.5 bg-slate-50 text-slate-700 text-xs font-bold rounded-lg border border-slate-200">{t.vehicle_number}</span>)}</div>
-            </div>
-          </>
-        )}
-
-        {sTab === "Drivers" && (
-          <>
-            <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add New Driver</h3>
-            <form onSubmit={handleSaveDriver} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Driver Code *</label>
-                  <input type="text" value={driverCode} readOnly className="w-full text-sm p-3 rounded-xl border border-emerald-200 outline-none bg-emerald-50 text-emerald-700 font-black cursor-not-allowed uppercase" required />
-                  <p className="text-[9px] text-emerald-600 mt-1 font-bold italic">Auto-Generated</p>
-                </div>
-                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="e.g. ANEESH CR" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold uppercase bg-white text-slate-900" required /></div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mobile Number</label><input type="tel" value={mobileNo} onChange={e=>setMobileNo(e.target.value)} placeholder="e.g. 9876543210" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-white text-slate-900" /></div>
-                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">License Number</label><input type="text" value={licenseNo} onChange={e=>setLicenseNo(e.target.value)} placeholder="e.g. KL123456789" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold uppercase bg-white text-slate-900" /></div>
-                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">License Expiry Date</label><input type="date" value={expiryDate} onChange={e=>setExpiryDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-white text-slate-900" /></div>
-              </div>
-              <div className="pt-2">
-                <button type="submit" disabled={isProcessing} className="w-full md:w-auto px-8 py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95">Save Driver</button>
-              </div>
-            </form>
-            
-            <div className="mt-8 border-t border-slate-100 pt-6 w-full">
-              <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Registered Drivers</h4>
-              <div className="overflow-x-auto border border-slate-200 rounded-xl w-full max-h-80">
-                <table className="min-w-full text-xs text-left whitespace-nowrap">
-                  <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0">
-                    <tr><th className="p-3">Code</th><th className="p-3">Full Name</th><th className="p-3">Phone</th><th className="p-3">License Info</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {driversList.map(d => (
-                      <tr key={d.driver_id} className="hover:bg-slate-50">
-                        <td className="p-3 font-bold text-slate-900">{d.driver_code}</td>
-                        <td className="p-3 font-bold text-slate-800">{d.full_name}</td>
-                        <td className="p-3 text-slate-600 font-semibold">{d.phone_number || '-'}</td>
-                        <td className="p-3 text-slate-600">
-                          <span className="font-semibold">{d.license_no || '-'}</span>
-                          {d.expiry_date && <span className="ml-2 text-[10px] text-slate-400">Exp: {d.expiry_date}</span>}
-                        </td>
-                      </tr>
-                    ))}
-                    {driversList.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">No drivers active.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* FREIGHT SLABS */}
-        {sTab === "Freight Slabs" && (
-          <>
-            <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add Freight Slab</h3>
-            <form onSubmit={handleSaveSlab} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
-              
-              <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source</label>
-                <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900">
-                  {originOptions.map(s=><option key={s} value={s}>{s}</option>)}
-                  <option value="CUSTOM">-- TYPE NEW --</option>
-                </select>
-                {src === "CUSTOM" && (
-                  <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900 animate-in fade-in" required />
-                )}
-              </div>
-              
-              <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination *</label>
-                <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900 uppercase" required>
-                  <option value="">-- SELECT DEST --</option>
-                  {destOptions.map(d=><option key={d} value={d}>{d}</option>)}
-                  <option value="CUSTOM">-- TYPE NEW --</option>
-                </select>
-                {dest === "CUSTOM" && (
-                  <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900 animate-in fade-in" required />
-                )}
-              </div>
-              
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900"><option>BULK</option><option>BAG</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900"><option>35</option><option>30</option><option>25</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rate(₹)</label><input type="number" value={fRate} onChange={e=>setFRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-black text-emerald-600 focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required /></div>
-              
-              <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95 mt-2">Save Freight Rule</button>
-            </form>
-            
-            <div className="mt-8 border-t border-slate-100 pt-6 w-full">
-              <div className="overflow-x-auto border border-slate-200 rounded-xl w-full max-h-80">
-                <table className="min-w-full text-xs text-left whitespace-nowrap">
-                  <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Rate/MT</th></tr></thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {slabsList.map(s => <tr key={s.id} className="hover:bg-slate-50"><td className="p-3 font-bold text-slate-800">{s.origin} ➔ {s.destination_name}</td><td className="p-3 text-slate-600">{s.capacity_tons}MT {s.cargo_type}</td><td className="p-3 font-black text-emerald-600 text-right">₹{s.freight_rate_per_ton}</td></tr>)}
-                    {slabsList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-slate-400">No slabs active.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* BATA */}
-        {sTab === "Bata" && (
-          <>
-            <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Add Bata Rule</h3>
-            <form onSubmit={handleSaveBata} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
-              
-              <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source</label>
-                <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900">
-                  {originOptions.map(s=><option key={s} value={s}>{s}</option>)}
-                  <option value="CUSTOM">-- TYPE NEW --</option>
-                </select>
-                {src === "CUSTOM" && (
-                  <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900 animate-in fade-in" required />
-                )}
-              </div>
-              
-              <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination *</label>
-                <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required>
-                  <option value="">-- SELECT DEST --</option>
-                  {destOptions.map(d=><option key={d} value={d}>{d}</option>)}
-                  <option value="CUSTOM">-- TYPE NEW --</option>
-                </select>
-                {dest === "CUSTOM" && (
-                  <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 outline-none uppercase font-bold focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900 animate-in fade-in" required />
-                )}
-              </div>
-
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900"><option>BULK</option><option>BAG</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900"><option>35</option><option>30</option><option>25</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bata(₹)</label><input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none font-black text-indigo-600 focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required /></div>
-              
-              <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors mt-2 shadow-sm active:scale-95">Save Bata Rule</button>
-            </form>
-            
-            <div className="mt-8 border-t border-slate-100 pt-6 w-full">
-              <div className="overflow-x-auto border border-slate-200 rounded-xl w-full max-h-80">
-                <table className="min-w-full text-xs text-left whitespace-nowrap">
-                  <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Bata Amt</th></tr></thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {bataList.map(b => <tr key={b.id} className="hover:bg-slate-50"><td className="p-3 font-bold text-slate-800">{b.origin} ➔ {b.destination_name}</td><td className="p-3 text-slate-600">{b.capacity_tons}MT {b.cargo_type}</td><td className="p-3 font-black text-indigo-600 text-right">₹{b.standard_bata_inr}</td></tr>)}
-                    {bataList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-slate-400">No bata rules active.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* SYSTEM AUDIT */}
-        {sTab === "System Audit" && (
-          <>
-            <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Recent Trip Activity Log</h3>
-            <div className="overflow-x-auto rounded-xl border border-slate-200 w-full max-h-[500px]">
-              <table className="min-w-full text-xs text-left whitespace-nowrap">
-                <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0">
-                  <tr><th className="p-3">Date</th><th className="p-3">Trip LR</th><th className="p-3">Truck & Driver</th><th className="p-3">Route</th><th className="p-3 text-center">Status</th></tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {auditList.map(a => (
-                    <tr key={a.trip_id} className="hover:bg-slate-50">
-                      <td className="p-3 font-semibold text-slate-700">{a.trip_start_date}</td>
-                      <td className="p-3 font-bold text-slate-900">{a.trip_number}</td>
-                      <td className="p-3 text-slate-600"><span className="font-bold text-slate-800">{a.vehicles?.vehicle_number}</span><br/><span className="text-[10px]">{a.drivers?.full_name}</span></td>
-                      <td className="p-3 text-slate-600">{a.origin} ➔ {a.destination}</td>
-                      <td className="p-3 text-center">
-                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${a.trip_status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {a.trip_status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {auditList.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-slate-400">No recent system activity.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-
-        {/* 🚚 TRUCK COMPLIANCE & PERMITS */}
-        {sTab === "🚚 Truck Compliance" && (
+      {/* Driver Security & PIN Management Card */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex justify-between items-center border-b pb-3">
           <div>
-            <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Truck Document & Permit Expiries</h3>
-            
-            <div className="mb-6">
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Select Truck to Manage Permits</label>
-              <select 
-                value={selectedTruckForCompliance ? selectedTruckForCompliance.vehicle_id : ""} 
-                onChange={e => {
-                  const found = trucksList.find(t => String(t.vehicle_id) === e.target.value);
-                  setSelectedTruckForCompliance(found || null);
-                }}
-                className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-[#FF5A00]"
-              >
-                <option value="">-- SELECT TRUCK --</option>
-                {trucksList.map(t => (
-                  <option key={t.vehicle_id} value={t.vehicle_id}>
-                    {t.vehicle_number} [{t.truck_type}]
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedTruckForCompliance && (
-              <form onSubmit={handleSaveTruckCompliance} className="space-y-6 animate-in slide-in-from-bottom-4">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase">Selected Vehicle</p>
-                    <p className="text-base font-black text-[#FF5A00]">{selectedTruckForCompliance.vehicle_number}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase">Variant</p>
-                    <p className="text-sm font-bold text-slate-800">{selectedTruckForCompliance.truck_type}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">FC Test Expiry</label>
-                    <input type="date" value={fcExp} onChange={e => setFcExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Insurance Expiry</label>
-                    <input type="date" value={insExp} onChange={e => setInsExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Quarterly Tax (Q-Tax) Expiry</label>
-                    <input type="date" value={qtaxExp} onChange={e => setQtaxExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">PUC Expiry</label>
-                    <input type="date" value={pucExp} onChange={e => setPucExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">National Permit (NP) Expiry</label>
-                    <input type="date" value={npExp} onChange={e => setNpExp(e.target.value)} placeholder="Leave blank if N/A" className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">State Permit Expiry</label>
-                    <input type="date" value={spExp} onChange={e => setSpExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" />
-                  </div>
-
-                  {String(selectedTruckForCompliance.truck_type).toUpperCase().includes("BULK") && (
-                    <div className="sm:col-span-2 md:col-span-3 bg-amber-50 p-4 rounded-xl border border-amber-200">
-                      <label className="block text-[10px] font-black text-amber-800 uppercase mb-1">⚡ Bulker Tank / Pressure Certificate Expiry</label>
-                      <input type="date" value={tankExp} onChange={e => setTankExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-amber-300 font-semibold bg-white text-slate-900 outline-none" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-4 border-t border-slate-200 flex justify-end">
-                  <button type="submit" disabled={isProcessing} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl transition-all shadow-sm active:scale-95">
-                    Save Compliance Dates
-                  </button>
-                </div>
-              </form>
-            )}
+            <h3 className="text-base font-black uppercase text-slate-900">Driver Mobile App Security & PINs</h3>
+            <p className="text-xs text-slate-500 mt-0.5">View active driver security PINs or reset them if a driver forgets their code.</p>
           </div>
-        )}
+          <button 
+            onClick={fetchDrivers} 
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors"
+          >
+            🔄 Refresh List
+          </button>
+        </div>
 
-        {/* 🔐 USER CONTROL (SUPERADMIN ONLY) */}
-        {sTab === "🔐 User Control" && (
-          <>
-            {currentUsername.toLowerCase() !== "superadmin" && currentUsername !== "" ? (
-              <div className="p-8 text-center bg-rose-50 border border-rose-200 rounded-2xl">
-                <p className="text-xl font-black text-rose-700">Access Denied</p>
-                <p className="text-sm text-rose-600 mt-1">This module is strictly restricted to the Super Admin account (<span className="font-mono font-bold">superadmin</span>).</p>
-              </div>
-            ) : (
-              <div>
-                <h3 className="text-sm font-black text-slate-900 uppercase border-b border-slate-100 pb-3 mb-6">Create New System User</h3>
-                <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-8">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Username *</label>
-                    <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} placeholder="e.g. manager2" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900" required />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Password *</label>
-                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900" required />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Role *</label>
-                    <select value={newRole} onChange={e => setNewRole(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900">
-                      <option value="VIEWER">VIEWER</option>
-                      <option value="ADMIN">ADMIN</option>
-                    </select>
-                  </div>
-                  <button type="submit" disabled={isProcessing} className="w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-sm active:scale-95">Add User</button>
-                </form>
-
-                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Active System Accounts</h4>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl w-full max-h-80">
-                  <table className="min-w-full text-xs text-left whitespace-nowrap">
-                    <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0">
-                      <tr><th className="p-3">Username</th><th className="p-3">Role</th><th className="p-3 text-center">Action</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
-                      {systemUsers.map(u => (
-                        <tr key={u.user_id} className="hover:bg-slate-50">
-                          <td className="p-3 font-bold text-slate-900">{u.username}</td>
-                          <td className="p-3"><span className={`px-2 py-1 rounded text-[10px] font-bold ${u.role === 'ADMIN' ? 'bg-[#FF5A00]/10 text-[#FF5A00]' : 'bg-slate-100 text-slate-700'}`}>{u.role}</span></td>
-                          <td className="p-3 text-center">
-                            {u.username !== 'superadmin' ? (
-                              <button onClick={() => handleDeleteUser(u.username)} className="px-3 py-1 bg-rose-50 text-rose-600 font-bold rounded-lg hover:bg-rose-100 transition-colors">Revoke</button>
-                            ) : (
-                              <span className="text-[10px] text-slate-400 italic">Protected</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead className="bg-slate-50 sticky top-0">
+              <tr className="text-slate-700 uppercase">
+                <th className="p-3 border-b">Driver Code</th>
+                <th className="p-3 border-b">Full Name</th>
+                <th className="p-3 border-b">Phone Number</th>
+                <th className="p-3 border-b">Assigned PIN</th>
+                <th className="p-3 border-b text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {drivers.map(d => (
+                <tr key={d.driver_id} className="hover:bg-slate-50">
+                  <td className="p-3 font-bold text-slate-900">{d.driver_code}</td>
+                  <td className="p-3 font-semibold">{d.full_name}</td>
+                  <td className="p-3 text-slate-600">{d.phone_number || '-'}</td>
+                  <td className="p-3 font-mono font-black text-[#FF5A00]">
+                    {d.pin ? d.pin : <span className="text-slate-400 font-normal italic">Not Set Yet</span>}
+                  </td>
+                  <td className="p-3 text-center">
+                    <button 
+                      onClick={() => handleResetPin(d.driver_id, d.full_name)}
+                      className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 font-bold rounded-lg transition-colors shadow-sm"
+                    >
+                      🔑 Reset PIN
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {drivers.length === 0 && !isLoading && (
+                <tr>
+                  <td colSpan={5} className="p-6 text-center text-slate-400">No drivers found in database.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
     </div>
   );
 }
