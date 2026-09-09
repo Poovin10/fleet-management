@@ -80,7 +80,7 @@ export function LiveAlertsWidget() {
             type: "CRITICAL",
             title: "Document Expiry Warning",
             message: `${v.vehicle_number} has expiring documents: ${expiries.join(', ')}`,
-            timestamp: now, // Static timestamp for expiries
+            timestamp: now,
             icon: "⚠️",
             color: "text-rose-600 bg-rose-50 border-rose-200"
           });
@@ -101,18 +101,21 @@ export function LiveAlertsWidget() {
       const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000)).toISOString();
       const { data: trips } = await supabase
         .from('trips')
-        .select('trip_id, trip_number, trip_status, updated_at, origin, destination, vehicles(vehicle_number)')
-        .gte('updated_at', yesterday)
-        .order('updated_at', { ascending: false })
+        .select('trip_id, trip_number, trip_status, trip_start_date, origin, destination, vehicles(vehicle_number)')
+        .order('trip_start_date', { ascending: false })
         .limit(10);
 
-      trips?.forEach(t => {
+      trips?.forEach((t: any) => {
+        const vehData = Array.isArray(t.vehicles) ? t.vehicles[0] : t.vehicles;
+        const vNum = vehData?.vehicle_number || "Truck";
+        const tripDate = t.trip_start_date ? new Date(t.trip_start_date) : now;
+
         newAlerts.push({
           id: `trip_${t.trip_id}_${t.trip_status}`,
           type: "TRIP",
-          title: `Trip Update: ${t.trip_status.replace(/_/g, ' ')}`,
-          message: `${t.vehicles?.vehicle_number} | ${t.origin} ➔ ${t.destination}`,
-          timestamp: new Date(t.updated_at || now),
+          title: `Trip Status: ${String(t.trip_status || '').replace(/_/g, ' ')}`,
+          message: `${vNum} | ${t.origin || 'Origin'} ➔ ${t.destination || 'Dest'}`,
+          timestamp: tripDate,
           icon: "🚚",
           color: "text-blue-700 bg-blue-50 border-blue-200"
         });
@@ -121,18 +124,21 @@ export function LiveAlertsWidget() {
       // 3. CHECK RECENT FUEL FILLS
       const { data: fuelLogs } = await supabase
         .from('diesel_fuel_logs')
-        .select('fuel_log_id, created_at, litres_filled, vehicles(vehicle_number)')
-        .gte('created_at', yesterday)
-        .order('created_at', { ascending: false })
+        .select('fuel_log_id, fuel_date, litres_filled, vehicles(vehicle_number)')
+        .order('fuel_date', { ascending: false })
         .limit(5);
 
-      fuelLogs?.forEach(f => {
+      fuelLogs?.forEach((f: any) => {
+        const vehData = Array.isArray(f.vehicles) ? f.vehicles[0] : f.vehicles;
+        const vNum = vehData?.vehicle_number || "Truck";
+        const fuelDate = f.fuel_date ? new Date(f.fuel_date) : now;
+
         newAlerts.push({
           id: `fuel_${f.fuel_log_id}`,
           type: "FUEL",
           title: "Fuel Filled",
-          message: `${f.litres_filled}L added to ${f.vehicles?.vehicle_number}`,
-          timestamp: new Date(f.created_at),
+          message: `${f.litres_filled}L added to ${vNum}`,
+          timestamp: fuelDate,
           icon: "⛽",
           color: "text-emerald-700 bg-emerald-50 border-emerald-200"
         });
