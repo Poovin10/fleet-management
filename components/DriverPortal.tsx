@@ -49,6 +49,7 @@ export function DriverPortal() {
   // History/Reports state
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
+  const [directAdvances, setDirectAdvances] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
@@ -75,17 +76,18 @@ export function DriverPortal() {
     if (tRes.data) setActiveTrips(tRes.data);
   };
 
-  // Fetch Driver Specific History
+  // Fetch Driver Specific History (Trips & Direct Advances)
   const fetchDriverReports = async (drvCode: string, drvId: number) => {
-    const [reqRes, tripRes] = await Promise.all([
+    const [reqRes, tripRes, advRes] = await Promise.all([
       supabase.from('driver_pending_entries').select('*').eq('driver_code', drvCode).order('created_at', { ascending: false }).limit(10),
-      supabase.from('trips').select('*').eq('primary_driver_id', drvId).eq('trip_status', 'COMPLETED').order('trip_start_date', { ascending: false }).limit(10)
+      supabase.from('trips').select('*').eq('primary_driver_id', drvId).order('trip_start_date', { ascending: true }),
+      supabase.from('driver_direct_advances').select('*').eq('driver_id', drvId).order('advance_date', { ascending: true })
     ]);
     if (reqRes.data) setPendingRequests(reqRes.data);
     if (tripRes.data) setRecentTrips(tripRes.data);
+    if (advRes.data) setDirectAdvances(advRes.data);
   };
 
-  // Init Data
   useEffect(() => {
     fetchPortalData();
     const storedDriver = localStorage.getItem("kss_device_driver");
@@ -96,7 +98,6 @@ export function DriverPortal() {
     }
   }, []);
 
-  // Auto-Select Truck & Fetch Reports when locked
   useEffect(() => {
     if (isDriverLocked && drivers.length > 0) {
       const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
@@ -120,10 +121,59 @@ export function DriverPortal() {
   const isAlreadyReached = currentTrip?.trip_status === "REACHED_DESTINATION" && actionType === "REACHED";
   const isAlreadyUnloaded = currentTrip?.trip_status === "UNLOADED" && actionType === "UNLOADED";
 
-  // Calculate Cumulative Bata Balance from completed trips up to previous trip
-  const totalBataEarned = recentTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
-  const totalAdvancesTaken = recentTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
-  const bataBalance = totalBataEarned - totalAdvancesTaken;
+  // --- FISCAL MONTH GROUPING & ROLLOVER LEDGER CALCULATION ---
+  const calculateMonthlyLedger = () => {
+    const monthsMap: { [key: string]: { monthKey: string; earnedBata: number; advances: number; trips: any[]; advList: any[] } } = {};
+
+    recentTrips.forEach(t => {
+      const dateStr = t.trip_start_date || new Date().toISOString().split('T')[0];
+      const mKey = dateStr.substring(0, 7); // YYYY-MM
+      if (!monthsMap[mKey]) {
+        monthsMap[mKey] = { monthKey: mKey, earnedBata: 0, advances: 0, trips: [], advList: [] };
+      }
+      monthsMap[mKey].earnedBata += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0);
+      monthsMap[mKey].trips.push(t);
+    });
+
+    directAdvances.forEach(a => {
+      const dateStr = a.advance_date || new Date().toISOString().split('T')[0];
+      const mKey = dateStr.substring(0, 7);
+      if (!monthsMap[mKey]) {
+        monthsMap[mKey] = { monthKey: mKey, earnedBata: 0, advances: 0, trips: [], advList: [] };
+      }
+      monthsMap[mKey].advances += Number(a.amount_inr) || 0;
+      monthsMap[mKey].advList.push(a);
+    });
+
+    const sortedMonths = Object.keys(monthsMap).sort();
+    let rollingRollover = 0;
+    const ledgerResult: any[] = [];
+
+    sortedMonths.forEach(mKey => {
+      const mData = monthsMap[mKey];
+      const openingBalance = rollingRollover; // Negative means deficit carried over
+      const netThisMonth = mData.earnedBata - mData.advances;
+      const closingBalance = openingBalance + netThisMonth;
+
+      ledgerResult.push({
+        monthKey: mKey,
+        openingBalance,
+        earnedBata: mData.earnedBata,
+        advances: mData.advances,
+        closingBalance,
+        trips: mData.trips,
+        advList: mData.advList
+      });
+
+      rollingRollover = closingBalance; // Rolls over to next month
+    });
+
+    return ledgerResult.reverse(); // Show latest month on top
+  };
+
+  const monthlyLedger = calculateMonthlyLedger();
+  const currentMonthLedger = monthlyLedger[0] || { closingBalance: 0 };
+  const bataBalance = currentMonthLedger.closingBalance;
 
   const handleLockDriver = (e: React.FormEvent) => {
     e.preventDefault();
@@ -377,18 +427,14 @@ export function DriverPortal() {
           {activeTab === "REPORTS" && (
             <div className="p-6 grid gap-6 bg-slate-50 min-h-[400px] animate-in fade-in">
               
-              {/* CUMULATIVE BATA BALANCE CARD */}
+              {/* CUMULATIVE BATA BALANCE CARD WITH ROLLOVER */}
               <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Cumulative Bata Balance</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current Balance Ledger</p>
                 <div className="flex justify-between items-baseline mt-1">
                   <span className={`text-2xl font-black ${bataBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     ₹{bataBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
-                  <span className="text-[10px] text-slate-400">Up to previous trips</span>
-                </div>
-                <div className="mt-3 pt-3 border-t border-slate-800 flex justify-between text-xs text-slate-300">
-                  <span>Total Earned: <strong>₹{totalBataEarned}</strong></span>
-                  <span>Advances Taken: <strong>₹{totalAdvancesTaken}</strong></span>
+                  <span className="text-[10px] text-slate-400">{bataBalance < 0 ? 'Deficit Carried Over' : 'Net Payable'}</span>
                 </div>
               </div>
 
@@ -421,25 +467,34 @@ export function DriverPortal() {
                 )}
               </div>
 
-              {/* SETTLED TRIPS */}
+              {/* FISCAL MONTH ROLLOVER BREAKDOWN */}
               <div>
-                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Completed Trips & Bata History</h4>
-                {recentTrips.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">No completed trips found.</p>
+                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Fiscal Month Rollover Ledger</h4>
+                {monthlyLedger.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic">No historical ledger found.</p>
                 ) : (
-                  <div className="space-y-3">
-                    {recentTrips.map(t => (
-                      <div key={t.trip_id} className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                        <div className="flex justify-between items-start mb-2 border-b border-slate-100 pb-2">
-                          <div>
-                            <p className="text-sm font-black text-slate-900">{t.trip_number}</p>
-                            <p className="text-[10px] font-bold text-slate-500 truncate max-w-[150px]">{t.origin} ➔ {t.destination}</p>
-                          </div>
-                          <span className="text-xs font-black text-emerald-600">+₹{t.driver_bata || 0} Bata</span>
+                  <div className="space-y-4">
+                    {monthlyLedger.map(m => (
+                      <div key={m.monthKey} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-2">
+                        <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                          <span className="text-xs font-black text-slate-900 uppercase">Month: {m.monthKey}</span>
+                          <span className={`text-xs font-black ${m.closingBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            Closing: ₹{m.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          </span>
                         </div>
-                        <div className="flex justify-between text-xs text-slate-600">
-                          <span>Date: {formatDate(t.trip_end_date || t.trip_start_date)}</span>
-                          <span>Advance Deducted: <strong>₹{t.cash_advance_issued || 0}</strong></span>
+                        <div className="text-[11px] text-slate-600 space-y-1">
+                          <div className="flex justify-between">
+                            <span>Opening Balance (Rollover):</span>
+                            <span className={m.openingBalance < 0 ? 'text-rose-600 font-bold' : ''}>₹{m.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Earned Bata:</span>
+                            <span className="text-emerald-700 font-bold">+₹{m.earnedBata.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Direct Advances:</span>
+                            <span className="text-rose-600 font-bold">-₹{m.advances.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                          </div>
                         </div>
                       </div>
                     ))}
