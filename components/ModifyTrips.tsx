@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { AlertModal } from "@/components/AlertModal";
 
 export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
   const supabase = createClient();
@@ -47,6 +48,14 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
   const [tripStatus, setTripStatus] = useState("IN_TRANSIT");
 
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Sleek Alert State
+  const [alertConfig, setAlertConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info" as "success" | "error" | "info"
+  });
 
   // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
   const formatDate = (dateStr: string) => {
@@ -156,9 +165,13 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
   const handleCommitUpdates = async () => {
     if (!activeTrip) return;
     
-    // Explicit Validation Guard for Zero/Negative numbers (Issue #7)
     if (loadedMt === "" || Number(loadedMt) <= 0 || freight === "" || Number(freight) < 0) {
-      alert("⚠️ Loaded MT and Freight must have valid positive values.");
+      setAlertConfig({
+        isOpen: true,
+        title: "Validation Error",
+        message: "⚠️ Loaded MT and Freight must have valid positive values.",
+        type: "error"
+      });
       return;
     }
     
@@ -193,7 +206,12 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
     }).eq('trip_id', activeTrip.trip_id);
 
     if (tripError) {
-      alert("Error updating trip: " + tripError.message);
+      setAlertConfig({
+        isOpen: true,
+        title: "Update Failed",
+        message: "Error updating trip: " + tripError.message,
+        type: "error"
+      });
       setIsProcessing(false);
       return;
     }
@@ -212,9 +230,15 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
       }).eq('trip_id', activeTrip.trip_id);
     }
 
-    alert("Trip updated successfully!");
+    setAlertConfig({
+      isOpen: true,
+      title: "Success",
+      message: "Trip updated successfully!",
+      type: "success"
+    });
     if (onSuccess) onSuccess();
     handleSearch(); 
+    setIsProcessing(false);
   };
 
   const handleReopenTrip = async () => {
@@ -222,8 +246,9 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
     setIsProcessing(true);
     await supabase.from('trips').update({ trip_status: 'IN_TRANSIT', pod_number: null }).eq('trip_id', activeTrip.trip_id);
     await supabase.from('vehicles').update({ current_status: 'IN_TRANSIT' }).eq('vehicle_id', activeTrip.vehicle_id);
-    alert("Trip Reopened!");
+    setAlertConfig({ isOpen: true, title: "Reopened", message: "Trip Reopened!", type: "success" });
     handleSearch();
+    setIsProcessing(false);
   };
 
   const handleDeleteTrip = async () => {
@@ -232,15 +257,24 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
     await supabase.from('diesel_fuel_logs').update({ trip_id: null }).eq('trip_id', activeTrip.trip_id);
     await supabase.from('trips').delete().eq('trip_id', activeTrip.trip_id);
     await supabase.from('vehicles').update({ current_status: 'AVAILABLE_FOR_LOAD', status_remarks: 'Available' }).eq('vehicle_id', activeTrip.vehicle_id);
-    alert("Trip Deleted Successfully!");
+    setAlertConfig({ isOpen: true, title: "Deleted", message: "Trip Deleted Successfully!", type: "success" });
     setSelectedTripId("");
     setActiveTrip(null);
     handleSearch();
+    setIsProcessing(false);
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300" style={{ colorScheme: 'light' }}>
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
       
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+      />
+
       {/* Header & Search */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
         <div>
