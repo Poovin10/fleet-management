@@ -15,7 +15,7 @@ import { SetupModule } from "@/components/SetupModule";
 import { FleetTable } from "@/components/FleetTable";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ApprovalQueue } from "@/components/ApprovalQueue";
-import { DriverPortal } from "@/components/DriverPortal"; // <-- Added Driver Portal Import
+import { DriverPortal } from "@/components/DriverPortal";
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -150,6 +150,16 @@ export default function SaaS_ERPDashboard() {
 
   const extractStatus = (v: any) => String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
 
+  const findStringProp = (obj: any, hints: string[]) => {
+    if (!obj) return null;
+    const keys = Object.keys(obj);
+    for (const hint of hints) {
+      const foundKey = keys.find(k => k.toLowerCase().includes(hint.toLowerCase()) && k.toLowerCase() !== 'id' && !k.toLowerCase().endsWith('_id'));
+      if (foundKey && obj[foundKey] !== null && obj[foundKey] !== '') return obj[foundKey];
+    }
+    return null;
+  };
+
   const fetchDashboardData = async () => {
     const { data: vehiclesData } = await supabase.from('vehicles').select('*').eq('is_active', true);
     if (vehiclesData && vehiclesData.length > 0) {
@@ -242,6 +252,19 @@ export default function SaaS_ERPDashboard() {
     fetchDashboardData();
   }, [activeTab]);
 
+  const getDrillDownData = (statusLabel: string) => {
+    const statusMap: Record<string, string[]> = {
+      "Plant Loading": ["WAITING_FOR_LOAD", "AVAILABLE_FOR_LOAD"],
+      "In Transit": ["IN_TRANSIT"],
+      "Workshop / Repairs": ["WORKSHOP_MAINTENANCE"],
+      "No Driver / Leave": ["DRIVER_UNAVAILABLE"]
+    };
+    const dbStatuses = statusMap[statusLabel] || [];
+    return liveVehicles.filter(v => dbStatuses.includes(extractStatus(v)));
+  };
+
+  const currentDrillDownData = selectedStatus ? getDrillDownData(selectedStatus) : [];
+
   const handleQuickStatusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!qsTruckId) return alert("Please select a truck.");
@@ -261,6 +284,9 @@ export default function SaaS_ERPDashboard() {
       fetchDashboardData();
     }
   };
+
+  const dieselPct = monthFreight > 0 ? (monthDieselCost / monthFreight) * 100 : 0;
+  const retentionPct = monthFreight > 0 ? (monthNetRetention / monthFreight) * 100 : 0;
 
   // ==========================================
   // VIEW 1: PUBLIC DRIVER PORTAL (Bypasses Login)
@@ -491,6 +517,79 @@ export default function SaaS_ERPDashboard() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* LIVE VEHICLE STATUS MONITOR */}
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 mt-6">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-6">Live Vehicle Status Monitor</h3>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {/* Plant Loading */}
+                  <div 
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Plant Loading' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                    onClick={() => setSelectedStatus(selectedStatus === 'Plant Loading' ? null : 'Plant Loading')}
+                  >
+                    <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["Plant Loading"]}</p>
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Plant Loading</p>
+                  </div>
+                  
+                  {/* In Transit */}
+                  <div 
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'In Transit' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                    onClick={() => setSelectedStatus(selectedStatus === 'In Transit' ? null : 'In Transit')}
+                  >
+                    <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["In Transit"]}</p>
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">In Transit</p>
+                  </div>
+                  
+                  {/* Workshop / Repairs */}
+                  <div 
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Workshop / Repairs' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                    onClick={() => setSelectedStatus(selectedStatus === 'Workshop / Repairs' ? null : 'Workshop / Repairs')}
+                  >
+                    <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["Workshop / Repairs"]}</p>
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Workshop</p>
+                  </div>
+                  
+                  {/* No Driver / Leave */}
+                  <div 
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'No Driver / Leave' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                    onClick={() => setSelectedStatus(selectedStatus === 'No Driver / Leave' ? null : 'No Driver / Leave')}
+                  >
+                    <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["No Driver / Leave"]}</p>
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">No Driver</p>
+                  </div>
+                </div>
+
+                {/* Drilldown view when a status is clicked */}
+                {selectedStatus && (
+                  <div className="mt-6 border-t border-slate-200 pt-6 animate-in slide-in-from-top-2">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-xs font-black text-[#FF5A00] uppercase tracking-wider">
+                        {selectedStatus} Details
+                      </h4>
+                      <button onClick={() => setSelectedStatus(null)} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">CLOSE</button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {currentDrillDownData.map(v => (
+                        <div key={v.vehicle_id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-black text-slate-900">{v.vehicle_number}</p>
+                            <p className="text-[10px] font-bold text-slate-500">{v.truck_type}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] font-bold px-2 py-1 bg-white border border-slate-200 rounded text-slate-600 shadow-sm">
+                              {v.carrying_capacity_tons} MT
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {currentDrillDownData.length === 0 && (
+                        <p className="text-sm text-slate-500 font-medium col-span-full">No vehicles currently in this status.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
