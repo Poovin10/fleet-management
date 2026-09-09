@@ -68,7 +68,7 @@ export function DriverPortal() {
   const fetchDriverReports = async (drvCode: string, drvId: number) => {
     const [reqRes, tripRes] = await Promise.all([
       supabase.from('driver_pending_entries').select('*').eq('driver_code', drvCode).order('created_at', { ascending: false }).limit(10),
-      supabase.from('trips').select('*').eq('primary_driver_id', drvId).eq('trip_status', 'COMPLETED').order('trip_start_date', { ascending: false }).limit(5)
+      supabase.from('trips').select('*').eq('primary_driver_id', drvId).eq('trip_status', 'COMPLETED').order('trip_start_date', { ascending: false }).limit(10)
     ]);
     if (reqRes.data) setPendingRequests(reqRes.data);
     if (tripRes.data) setRecentTrips(tripRes.data);
@@ -106,9 +106,13 @@ export function DriverPortal() {
   const currentTrip = activeTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
   const isBulk = selectedTruckObj ? String(selectedTruckObj.truck_type).toUpperCase().includes("BULK") : true;
 
-  // Check for duplicate actions
   const isAlreadyReached = currentTrip?.trip_status === "REACHED_DESTINATION" && actionType === "REACHED";
   const isAlreadyUnloaded = currentTrip?.trip_status === "UNLOADED" && actionType === "UNLOADED";
+
+  // Calculate Cumulative Bata Balance from completed trips up to previous trip
+  const totalBataEarned = recentTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
+  const totalAdvancesTaken = recentTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
+  const bataBalance = totalBataEarned - totalAdvancesTaken;
 
   const handleLockDriver = (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,10 +195,9 @@ export function DriverPortal() {
 
     setOdometer(""); setFuelLitres(""); setAdvanceAmt(""); setRemarks(""); setUnloadedMt(""); setDamagedBags("");
     setIsSubmitting(false);
-    await fetchPortalData(); // Refresh UI instantly
+    await fetchPortalData(); 
   };
 
-  // --- REVERT MISTAKEN STATUS ---
   const handleRevertStatus = async (type: string) => {
     if (!currentTrip || !confirm("Undo this status update?")) return;
     setIsSubmitting(true);
@@ -210,7 +213,6 @@ export function DriverPortal() {
     setIsSubmitting(false);
   };
 
-  // --- CANCEL PENDING FUEL/ADVANCE ---
   const handleCancelRequest = async (id: number) => {
     if (!confirm("Delete this request?")) return;
     await supabase.from('driver_pending_entries').delete().eq('id', id);
@@ -296,7 +298,6 @@ export function DriverPortal() {
               </div>
 
               <div className="space-y-4">
-                {/* DUPLICATE CHECK WARNINGS */}
                 {(isAlreadyReached || isAlreadyUnloaded) ? (
                   <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl text-center">
                     <p className="text-sm font-bold text-orange-900 mb-1">Trip Already Marked as {actionType}</p>
@@ -365,22 +366,44 @@ export function DriverPortal() {
           {activeTab === "REPORTS" && (
             <div className="p-6 grid gap-6 bg-slate-50 min-h-[400px] animate-in fade-in">
               
-              {/* PENDING FUEL / ADVANCES */}
+              {/* CUMULATIVE BATA BALANCE CARD */}
+              <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Cumulative Bata Balance</p>
+                <div className="flex justify-between items-baseline mt-1">
+                  <span className={`text-2xl font-black ${bataBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    ₹{bataBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[10px] text-slate-400">Up to previous trips</span>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-800 flex justify-between text-xs text-slate-300">
+                  <span>Total Earned: <strong>₹{totalBataEarned}</strong></span>
+                  <span>Advances Taken: <strong>₹{totalAdvancesTaken}</strong></span>
+                </div>
+              </div>
+
+              {/* REJECTION NOTIFICATIONS / PENDING REQUESTS */}
               <div>
-                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Pending Requests</h4>
+                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Pending & Recent Requests</h4>
                 {pendingRequests.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">No pending fuel or advance requests.</p>
+                  <p className="text-xs text-slate-500 italic">No pending requests.</p>
                 ) : (
                   <div className="space-y-3">
                     {pendingRequests.map(r => (
-                      <div key={r.id} className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm flex justify-between items-center">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase">{new Date(r.created_at).toLocaleDateString()}</p>
-                          <p className="text-sm font-black text-[#FF5A00]">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : `₹${r.amount_inr}`}</p>
+                      <div key={r.id} className={`p-3 bg-white border rounded-xl shadow-sm ${r.status === 'REJECTED' ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200'}`}>
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-xs font-black text-slate-900">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : `₹${r.amount_inr}`}</span>
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : r.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
+                            {r.status}
+                          </span>
                         </div>
-                        <button onClick={() => handleCancelRequest(r.id)} className="px-3 py-1.5 text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-lg hover:bg-rose-100 transition-colors">
-                          Cancel ❌
-                        </button>
+                        {r.status === 'REJECTED' && (
+                          <p className="text-[11px] text-rose-600 font-bold mt-1">Reason: {r.rejection_reason || "Rejected by office"}</p>
+                        )}
+                        {r.status === 'PENDING' && (
+                          <div className="flex justify-end mt-2">
+                            <button onClick={() => handleCancelRequest(r.id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-white border border-rose-200 rounded-lg">Cancel Request ❌</button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -389,9 +412,9 @@ export function DriverPortal() {
 
               {/* SETTLED TRIPS */}
               <div>
-                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Recent Settled Trips</h4>
+                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Completed Trips & Bata History</h4>
                 {recentTrips.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">No recently completed trips.</p>
+                  <p className="text-xs text-slate-500 italic">No completed trips found.</p>
                 ) : (
                   <div className="space-y-3">
                     {recentTrips.map(t => (
@@ -401,11 +424,11 @@ export function DriverPortal() {
                             <p className="text-sm font-black text-slate-900">{t.trip_number}</p>
                             <p className="text-[10px] font-bold text-slate-500 truncate max-w-[150px]">{t.origin} ➔ {t.destination}</p>
                           </div>
-                          <span className="px-2 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[9px] font-black uppercase rounded">Settled</span>
+                          <span className="text-xs font-black text-emerald-600">+₹{t.driver_bata || 0} Bata</span>
                         </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-slate-600 font-medium">Bata Issued: <b className="text-slate-900">₹{t.driver_bata || 0}</b></span>
-                          <span className="text-slate-600 font-medium">Advance: <b className="text-slate-900">₹{t.cash_advance_issued || 0}</b></span>
+                        <div className="flex justify-between text-xs text-slate-600">
+                          <span>Date: {t.trip_end_date || t.trip_start_date}</span>
+                          <span>Advance Deducted: <strong>₹{t.cash_advance_issued || 0}</strong></span>
                         </div>
                       </div>
                     ))}
