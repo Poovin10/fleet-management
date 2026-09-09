@@ -44,6 +44,17 @@ export function WorkshopModule() {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState<number | "">("");
 
+  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
+    if (!dateStr.includes('-')) return dateStr;
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   const fetchData = async () => {
     const { data: vData } = await supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number');
     if (vData) setVehicles(vData);
@@ -254,20 +265,21 @@ export function WorkshopModule() {
             <h4 className="text-xs font-black text-slate-900 uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Currently Mounted on Fleet</h4>
             <div className="overflow-x-auto rounded-xl border border-slate-200 w-full max-h-[400px]">
               <table className="min-w-full divide-y divide-slate-200 text-xs text-left whitespace-nowrap">
-                <thead className="bg-slate-50 sticky top-0"><tr className="font-bold text-slate-500 uppercase"><th className="px-4 py-3">Truck</th><th className="px-4 py-3">Serial & Brand</th><th className="px-4 py-3">Position</th><th className="px-4 py-3">Current KM Run</th><th className="px-4 py-3 text-center">Action</th></tr></thead>
+                <thead className="bg-slate-50 sticky top-0"><tr className="font-bold text-slate-500 uppercase"><th className="px-4 py-3">Truck</th><th className="px-4 py-3">Serial & Brand</th><th className="px-4 py-3">Position</th><th className="px-4 py-3">Mounted Date</th><th className="px-4 py-3">Current KM Run</th><th className="px-4 py-3 text-center">Action</th></tr></thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {mountedTyres.map(t => (
                     <tr key={t.tyre_id} className="hover:bg-slate-50">
                       <td className="px-4 py-2 font-black text-slate-900">{t.vehicles?.vehicle_number}</td>
                       <td className="px-4 py-2 font-mono font-bold text-slate-700">{t.serial_number} <br/><span className="font-sans font-normal text-[10px] text-slate-400">{t.brand_model}</span></td>
                       <td className="px-4 py-2 text-slate-600 font-semibold">{t.placement_position}</td>
+                      <td className="px-4 py-2 text-slate-600">{formatDate(t.mounted_date)}</td>
                       <td className="px-4 py-2 font-bold text-indigo-600">{t.total_km_run || 0} km</td>
                       <td className="px-4 py-2 text-center">
                         <button onClick={() => { setNextState("IN_STORE"); setActionOdo(""); setActionNsd(""); setActionModal({ isOpen: true, tyre: t, mode: "UNMOUNT" }); }} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors border border-slate-200">Unmount / Update</button>
                       </td>
                     </tr>
                   ))}
-                  {mountedTyres.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-slate-400">No mounted tyres.</td></tr>}
+                  {mountedTyres.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-slate-400">No mounted tyres.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -357,7 +369,7 @@ export function WorkshopModule() {
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {activeBills.map(b => (
                     <tr key={b.bill_id} className="hover:bg-slate-50">
-                      <td className="px-4 py-2 font-semibold text-slate-700">{b.bill_date}</td><td className="px-4 py-2 font-bold text-slate-900">{b.vehicles?.vehicle_number}</td><td className="px-4 py-2 text-slate-600">{b.vendor_name} <br/><span className="text-[10px] text-slate-400">{b.service_description}</span></td><td className="px-4 py-2 text-right font-black text-rose-600">₹{(b.bill_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                      <td className="px-4 py-2 font-semibold text-slate-700">{formatDate(b.bill_date)}</td><td className="px-4 py-2 font-bold text-slate-900">{b.vehicles?.vehicle_number}</td><td className="px-4 py-2 text-slate-600">{b.vendor_name} <br/><span className="text-[10px] text-slate-400">{b.service_description}</span></td><td className="px-4 py-2 text-right font-black text-rose-600">₹{(b.bill_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                     </tr>
                   ))}
                   {activeBills.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">No service bills recorded.</td></tr>}
