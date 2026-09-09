@@ -16,6 +16,7 @@ import { FleetTable } from "@/components/FleetTable";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { DriverPortal } from "@/components/DriverPortal";
+import { LiveAlertsWidget } from "@/components/LiveAlertsWidget"; // <-- NEW IMPORT
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -410,166 +411,179 @@ export default function SaaS_ERPDashboard() {
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out">
           
           {activeTab === "Dashboard" && (
-            <div className="space-y-6">
+            <div className="flex flex-col lg:flex-row gap-6">
               
-              {pendingDriverCount > 0 && (
-                <div className="bg-amber-50 border-l-4 border-amber-500 rounded-2xl shadow-sm p-5 animate-in slide-in-from-top-4 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">📥</span>
-                    <div>
-                      <h3 className="text-sm font-black text-amber-900 uppercase tracking-wide">Pending Driver Approvals</h3>
-                      <p className="text-xs text-amber-700 mt-0.5">There are <span className="font-black">{pendingDriverCount}</span> fuel bills waiting for manager review in Operations.</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => { setActiveTab("Operations"); setOpSubTab("Driver Approvals"); }} 
-                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl transition-colors shadow-sm"
-                  >
-                    Review Queue &rarr;
-                  </button>
-                </div>
-              )}
-
-              {expiringDocs.length > 0 && (
-                <div className="bg-rose-50 border-l-4 border-rose-500 rounded-2xl shadow-sm p-5 animate-in slide-in-from-top-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-xl">🚨</span>
-                    <h3 className="text-sm font-black text-rose-900 uppercase tracking-wide">Action Required: Compliance Alerts</h3>
-                  </div>
-                  <div className="overflow-x-auto w-full">
-                    <table className="min-w-full text-xs text-left whitespace-nowrap">
-                      <thead className="text-rose-700 uppercase font-bold">
-                        <tr><th className="pb-2 pr-4">Asset / Entity</th><th className="pb-2 pr-4">Document / Permit</th><th className="pb-2">Expiry Date</th></tr>
-                      </thead>
-                      <tbody className="divide-y divide-rose-200/50">
-                        {expiringDocs.map((d, idx) => {
-                          const isExpired = new Date(d.date) < new Date();
-                          return (
-                            <tr key={idx}>
-                              <td className="py-2 pr-4 font-bold text-slate-900">{d.name}</td>
-                              <td className="py-2 pr-4 font-semibold text-slate-700">{d.doc}</td>
-                              <td className={`py-2 font-black ${isExpired ? 'text-rose-600' : 'text-amber-600'}`}>
-                                {d.date} {isExpired ? '(EXPIRED)' : '(Expiring Soon)'}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Operations Summary</h3>
-                  <span className="px-3 py-1 bg-[#FF5A00]/10 text-[#FF5A00] text-xs font-bold rounded-full border border-[#FF5A00]/20">
-                    {currentMonthText.toUpperCase()}
-                  </span>
-                </div>
+              {/* --- LEFT / MAIN DASHBOARD COLUMN --- */}
+              <div className="flex-1 space-y-6">
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                  <div className="p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-                    <div>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Trips</p>
-                      <p className="text-lg sm:text-2xl lg:text-3xl font-black text-slate-900 mt-1 sm:mt-2">{monthTripsCount}</p>
+                {/* Driver Approvals Alert */}
+                {pendingDriverCount > 0 && (
+                  <div className="bg-amber-50 border-l-4 border-amber-500 rounded-2xl shadow-sm p-5 animate-in slide-in-from-top-4 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">📥</span>
+                      <div>
+                        <h3 className="text-sm font-black text-amber-900 uppercase tracking-wide">Pending Driver Approvals</h3>
+                        <p className="text-xs text-amber-700 mt-0.5">There are <span className="font-black">{pendingDriverCount}</span> fuel bills waiting for manager review in Operations.</p>
+                      </div>
                     </div>
+                    <button 
+                      onClick={() => { setActiveTab("Operations"); setOpSubTab("Driver Approvals"); }} 
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl transition-colors shadow-sm"
+                    >
+                      Review Queue &rarr;
+                    </button>
                   </div>
-                  
-                  <div className="p-3 sm:p-4 rounded-xl bg-rose-50 border border-rose-200 flex flex-col justify-between">
-                    <div>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase tracking-wider">PODs Pending</p>
-                      <p className="text-lg sm:text-2xl lg:text-3xl font-black text-rose-900 mt-1 sm:mt-2">{activeTripCount}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="p-3 sm:p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between">
-                    <div>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Freight Gen.</p>
-                      <p className="text-[15px] sm:text-xl lg:text-2xl font-black text-emerald-700 mt-1 sm:mt-2 tracking-tight">
-                        ₹{formatAmt(monthFreight)}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="p-3 sm:p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between">
-                    <div>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Retention</p>
-                      <p className="text-[15px] sm:text-xl lg:text-2xl font-black text-[#FF5A00] mt-1 sm:mt-2 tracking-tight">
-                        ₹{formatAmt(monthNetRetention)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                )}
 
-              {/* LIVE VEHICLE STATUS MONITOR */}
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 mt-6">
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-6">Live Vehicle Status Monitor</h3>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div 
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Plant Loading' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
-                    onClick={() => setSelectedStatus(selectedStatus === 'Plant Loading' ? null : 'Plant Loading')}
-                  >
-                    <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["Plant Loading"]}</p>
-                    <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Plant Loading</p>
-                  </div>
-                  
-                  <div 
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'In Transit' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
-                    onClick={() => setSelectedStatus(selectedStatus === 'In Transit' ? null : 'In Transit')}
-                  >
-                    <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["In Transit"]}</p>
-                    <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">In Transit</p>
-                  </div>
-                  
-                  <div 
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Workshop / Repairs' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
-                    onClick={() => setSelectedStatus(selectedStatus === 'Workshop / Repairs' ? null : 'Workshop / Repairs')}
-                  >
-                    <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["Workshop / Repairs"]}</p>
-                    <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Workshop</p>
-                  </div>
-                  
-                  <div 
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'No Driver / Leave' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
-                    onClick={() => setSelectedStatus(selectedStatus === 'No Driver / Leave' ? null : 'No Driver / Leave')}
-                  >
-                    <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["No Driver / Leave"]}</p>
-                    <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">No Driver</p>
-                  </div>
-                </div>
-
-                {selectedStatus && (
-                  <div className="mt-6 border-t border-slate-200 pt-6 animate-in slide-in-from-top-2">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-xs font-black text-[#FF5A00] uppercase tracking-wider">
-                        {selectedStatus} Details
-                      </h4>
-                      <button onClick={() => setSelectedStatus(null)} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">CLOSE</button>
+                {/* Optional Static Expiry Table (Fallback) */}
+                {expiringDocs.length > 0 && (
+                  <div className="bg-rose-50 border-l-4 border-rose-500 rounded-2xl shadow-sm p-5 animate-in slide-in-from-top-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-xl">🚨</span>
+                      <h3 className="text-sm font-black text-rose-900 uppercase tracking-wide">Action Required: Compliance Alerts</h3>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {currentDrillDownData.map(v => (
-                        <div key={v.vehicle_id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 flex justify-between items-center">
-                          <div>
-                            <p className="text-sm font-black text-slate-900">{v.vehicle_number}</p>
-                            <p className="text-[10px] font-bold text-slate-500">{v.truck_type}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[9px] font-bold px-2 py-1 bg-white border border-slate-200 rounded text-slate-600 shadow-sm">
-                              {v.carrying_capacity_tons} MT
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      {currentDrillDownData.length === 0 && (
-                        <p className="text-sm text-slate-500 font-medium col-span-full">No vehicles currently in this status.</p>
-                      )}
+                    <div className="overflow-x-auto w-full">
+                      <table className="min-w-full text-xs text-left whitespace-nowrap">
+                        <thead className="text-rose-700 uppercase font-bold">
+                          <tr><th className="pb-2 pr-4">Asset / Entity</th><th className="pb-2 pr-4">Document / Permit</th><th className="pb-2">Expiry Date</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-rose-200/50">
+                          {expiringDocs.map((d, idx) => {
+                            const isExpired = new Date(d.date) < new Date();
+                            return (
+                              <tr key={idx}>
+                                <td className="py-2 pr-4 font-bold text-slate-900">{d.name}</td>
+                                <td className="py-2 pr-4 font-semibold text-slate-700">{d.doc}</td>
+                                <td className={`py-2 font-black ${isExpired ? 'text-rose-600' : 'text-amber-600'}`}>
+                                  {d.date} {isExpired ? '(EXPIRED)' : '(Expiring Soon)'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
+
+                {/* Operations Summary */}
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Operations Summary</h3>
+                    <span className="px-3 py-1 bg-[#FF5A00]/10 text-[#FF5A00] text-xs font-bold rounded-full border border-[#FF5A00]/20">
+                      {currentMonthText.toUpperCase()}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                      <div>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Trips</p>
+                        <p className="text-lg sm:text-2xl lg:text-3xl font-black text-slate-900 mt-1 sm:mt-2">{monthTripsCount}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="p-3 sm:p-4 rounded-xl bg-rose-50 border border-rose-200 flex flex-col justify-between">
+                      <div>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase tracking-wider">PODs Pending</p>
+                        <p className="text-lg sm:text-2xl lg:text-3xl font-black text-rose-900 mt-1 sm:mt-2">{activeTripCount}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="p-3 sm:p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between">
+                      <div>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Freight Gen.</p>
+                        <p className="text-[15px] sm:text-xl lg:text-2xl font-black text-emerald-700 mt-1 sm:mt-2 tracking-tight">
+                          ₹{formatAmt(monthFreight)}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="p-3 sm:p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between">
+                      <div>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Retention</p>
+                        <p className="text-[15px] sm:text-xl lg:text-2xl font-black text-[#FF5A00] mt-1 sm:mt-2 tracking-tight">
+                          ₹{formatAmt(monthNetRetention)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* LIVE VEHICLE STATUS MONITOR */}
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 mt-6">
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide mb-6">Live Vehicle Status Monitor</h3>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div 
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Plant Loading' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      onClick={() => setSelectedStatus(selectedStatus === 'Plant Loading' ? null : 'Plant Loading')}
+                    >
+                      <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["Plant Loading"]}</p>
+                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Plant Loading</p>
+                    </div>
+                    
+                    <div 
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'In Transit' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      onClick={() => setSelectedStatus(selectedStatus === 'In Transit' ? null : 'In Transit')}
+                    >
+                      <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["In Transit"]}</p>
+                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">In Transit</p>
+                    </div>
+                    
+                    <div 
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Workshop / Repairs' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      onClick={() => setSelectedStatus(selectedStatus === 'Workshop / Repairs' ? null : 'Workshop / Repairs')}
+                    >
+                      <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["Workshop / Repairs"]}</p>
+                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Workshop</p>
+                    </div>
+                    
+                    <div 
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'No Driver / Leave' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      onClick={() => setSelectedStatus(selectedStatus === 'No Driver / Leave' ? null : 'No Driver / Leave')}
+                    >
+                      <p className="text-3xl sm:text-4xl font-black text-slate-900">{statusCounts["No Driver / Leave"]}</p>
+                      <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">No Driver</p>
+                    </div>
+                  </div>
+
+                  {selectedStatus && (
+                    <div className="mt-6 border-t border-slate-200 pt-6 animate-in slide-in-from-top-2">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-xs font-black text-[#FF5A00] uppercase tracking-wider">
+                          {selectedStatus} Details
+                        </h4>
+                        <button onClick={() => setSelectedStatus(null)} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">CLOSE</button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {currentDrillDownData.map(v => (
+                          <div key={v.vehicle_id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 flex justify-between items-center">
+                            <div>
+                              <p className="text-sm font-black text-slate-900">{v.vehicle_number}</p>
+                              <p className="text-[10px] font-bold text-slate-500">{v.truck_type}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[9px] font-bold px-2 py-1 bg-white border border-slate-200 rounded text-slate-600 shadow-sm">
+                                {v.carrying_capacity_tons} MT
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        {currentDrillDownData.length === 0 && (
+                          <p className="text-sm text-slate-500 font-medium col-span-full">No vehicles currently in this status.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* --- RIGHT COLUMN: LIVE NOTIFICATION RADAR --- */}
+              <div className="w-full lg:w-[380px] shrink-0">
+                <LiveAlertsWidget />
+              </div>
+
             </div>
           )}
 
