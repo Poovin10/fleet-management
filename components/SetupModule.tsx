@@ -4,6 +4,15 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 
+const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN"];
+const BATA_SLAB_OPTIONS = [
+  "25MT Body (Bag)",
+  "30MT Body (Bag)",
+  "25MT Bulk (Bulker)",
+  "30MT Bulk (Bulker)",
+  "35MT Bulk (Bulker)"
+];
+
 export function SetupModule() {
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState("TRUCKS");
@@ -24,8 +33,16 @@ export function SetupModule() {
   const [vVariant, setVVariant] = useState("Bulker (16-Wheel)");
   const [vCapacity, setVCapacity] = useState("35.0");
   const [vOdoWorking, setVOdoWorking] = useState(true);
+  const [vFc, setVFc] = useState("");
+  const [vIns, setVIns] = useState("");
+  const [vQtax, setVQtax] = useState("");
+  const [vPuc, setVPuc] = useState("");
+  const [vNp, setVNp] = useState("");
+  const [vSp, setVSp] = useState("");
+  const [vTank, setVTank] = useState("");
 
   // --- DRIVER FORM ---
+  const [dCode, setDCode] = useState("");
   const [dName, setDName] = useState("");
   const [dPhone, setDPhone] = useState("");
   const [dLicense, setDLicense] = useState("");
@@ -33,24 +50,25 @@ export function SetupModule() {
 
   // --- SLAB FORM ---
   const [sCargo, setSCargo] = useState("BULK");
-  const [sOrigin, setSOrigin] = useState("");
+  const [sOrigin, setSOrigin] = useState(STANDARD_SOURCES[0]);
   const [sDestination, setSDestination] = useState("");
   const [sCapacity, setSCapacity] = useState("35.0");
   const [sRate, setSRate] = useState("");
   const [sStdKm, setSStdKm] = useState("0.0");
 
   // --- BATA FORM ---
-  const [bOrigin, setBOrigin] = useState("");
+  const [bOrigin, setBOrigin] = useState(STANDARD_SOURCES[0]);
   const [bDestination, setBDestination] = useState("");
-  const [bTruckSlab, setBTruckSlab] = useState("35MT Bulk");
+  const [bTruckSlab, setBTruckSlab] = useState("35MT Bulk (Bulker)");
   const [bDriverBata, setBDriverBata] = useState("");
 
   const resetForms = () => {
     setEditingId(null);
     setVNumber(""); setVVariant("Bulker (16-Wheel)"); setVCapacity("35.0"); setVOdoWorking(true);
+    setVFc(""); setVIns(""); setVQtax(""); setVPuc(""); setVNp(""); setVSp(""); setVTank("");
     setDName(""); setDPhone(""); setDLicense(""); setDExpiry("");
-    setSCargo("BULK"); setSOrigin(""); setSDestination(""); setSCapacity("35.0"); setSRate(""); setSStdKm("0.0");
-    setBOrigin(""); setBDestination(""); setBTruckSlab("35MT Bulk"); setBDriverBata("");
+    setSCargo("BULK"); setSOrigin(STANDARD_SOURCES[0]); setSDestination(""); setSCapacity("35.0"); setSRate(""); setSStdKm("0.0");
+    setBOrigin(STANDARD_SOURCES[0]); setBDestination(""); setBTruckSlab("35MT Bulk (Bulker)"); setBDriverBata("");
   };
 
   const handleTabChange = (tab: string) => {
@@ -64,8 +82,8 @@ export function SetupModule() {
       supabase.from("vehicles").select("*").eq("is_active", true).order("vehicle_number"),
       supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
       supabase.from("destinations_freight_master").select("*").order("destination_name"),
-      supabase.from("driver_bata_master").select("*").order("route_name"),
-      supabase.from("trips").select("*").order("trip_start_date", { ascending: false }).limit(50)
+      supabase.from("driver_bata_master").select("*").order("destination_name"),
+      supabase.from("trips").select("trip_id, trip_number, trip_start_date, vehicle_id, origin, destination, start_km, end_km").order("trip_start_date", { ascending: false }).limit(50)
     ]);
 
     if (vRes.data) setVehicles(vRes.data);
@@ -100,9 +118,22 @@ export function SetupModule() {
     ? drivers.find(d => d.driver_id === editingId)?.driver_code || ""
     : getNextDriverCode();
 
-  // Dynamic dropdowns for Bata
-  const uniqueOrigins = Array.from(new Set(freightSlabs.map(f => f.orgin))).sort();
-  const availableDestinations = Array.from(new Set(freightSlabs.filter(f => f.orgin === bOrigin).map(f => f.destination_name))).sort();
+  // Parse Bata Slab Selection to DB columns
+  const getBataSlabData = (slabName: string) => {
+    if (slabName.includes("25MT Body")) return { type: "BAG", cap: 25.0 };
+    if (slabName.includes("30MT Body")) return { type: "BAG", cap: 30.0 };
+    if (slabName.includes("25MT Bulk")) return { type: "BULK", cap: 25.0 };
+    if (slabName.includes("30MT Bulk")) return { type: "BULK", cap: 30.0 };
+    return { type: "BULK", cap: 35.0 }; // Default 35MT Bulk
+  };
+
+  const formatBataSlabDisplay = (cargo: string, cap: number) => {
+    if (cargo === "BAG" && cap === 25) return "25MT Body (Bag)";
+    if (cargo === "BAG" && cap === 30) return "30MT Body (Bag)";
+    if (cargo === "BULK" && cap === 25) return "25MT Bulk (Bulker)";
+    if (cargo === "BULK" && cap === 30) return "30MT Bulk (Bulker)";
+    return "35MT Bulk (Bulker)";
+  };
 
   // --- SUBMIT HANDLERS ---
   const handleSaveVehicle = async (e: React.FormEvent) => {
@@ -111,6 +142,11 @@ export function SetupModule() {
       vehicle_number: vNumber.trim().toUpperCase(),
       truck_type: vVariant,
       carrying_capacity_tons: Number(vCapacity) || 0,
+      odometer_working: vOdoWorking,
+      fc_expiry_date: vFc || null, insurance_expiry_date: vIns || null,
+      qtax_expiry_date: vQtax || null, puc_expiry_date: vPuc || null,
+      np_expiry_date: vNp || null, state_permit_expiry_date: vSp || null,
+      tank_cert_expiry_date: vTank || null,
       is_active: true
     };
     const res = editingId ? await supabase.from("vehicles").update(payload).eq("vehicle_id", editingId) : await supabase.from("vehicles").insert([payload]);
@@ -125,10 +161,11 @@ export function SetupModule() {
       driver_code: currentDriverCodeDisplay,
       full_name: dName.trim(),
       phone_number: dPhone.trim(),
+      license_number: dLicense.trim().toUpperCase(),
       expiry_date: dExpiry || null,
       is_active: true
     };
-    if (!editingId) payload.pin = "1234";
+    if (!editingId) payload.pin = "1234"; // Setup PIN for driver portal login
     
     const res = editingId ? await supabase.from("drivers").update(payload).eq("driver_id", editingId) : await supabase.from("drivers").insert([payload]);
     if (res.error) return setAlertConfig({ isOpen: true, title: "Error", message: res.error.message, type: "error" });
@@ -140,7 +177,7 @@ export function SetupModule() {
     e.preventDefault();
     const payload = {
       cargo_type: sCargo,
-      orgin: sOrigin.trim().toUpperCase(),
+      orgin: sOrigin,
       destination_name: sDestination.trim().toUpperCase(),
       capacity_tons: Number(sCapacity) || 0,
       freight_rate_per_ton: Number(sRate) || 0,
@@ -154,8 +191,15 @@ export function SetupModule() {
 
   const handleSaveBata = async (e: React.FormEvent) => {
     e.preventDefault();
-    const routeName = `${bOrigin} - ${bDestination}`.toUpperCase();
-    const payload = { route_name: routeName, driver_bata_amount: Number(bDriverBata), halt_bata_amount: 300 }; // Default halt or adjust as needed
+    const slabData = getBataSlabData(bTruckSlab);
+    const payload = { 
+      origin: bOrigin,
+      destination_name: bDestination.trim().toUpperCase(),
+      cargo_type: slabData.type,
+      capacity_tons: slabData.cap,
+      standard_bata_inr: Number(bDriverBata), 
+      halt_bata_amount: 300 
+    };
     const res = await supabase.from("driver_bata_master").insert([payload]);
     if (res.error) return setAlertConfig({ isOpen: true, title: "Error", message: res.error.message, type: "error" });
     setAlertConfig({ isOpen: true, title: "Success", message: "Bata saved!", type: "success" });
@@ -165,7 +209,7 @@ export function SetupModule() {
   // --- STYLING (Streamlit Replica) ---
   const inputStyle = "w-full h-10 bg-white border border-slate-200 rounded-lg px-3 text-sm text-slate-800 outline-none focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] shadow-sm disabled:bg-slate-50 disabled:text-slate-500";
   const labelStyle = "block text-[11px] font-bold text-slate-600 mb-1 ml-0.5";
-  const buttonStyle = "h-10 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-sm rounded-lg px-6 transition-colors shadow-sm";
+  const buttonStyle = "w-full h-10 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-sm rounded-lg px-6 transition-colors shadow-sm";
   const thStyle = "px-3 py-2 bg-slate-50 border-b border-slate-200 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0";
   const tdStyle = "px-3 py-2 border-b border-slate-100 text-xs text-slate-700 whitespace-nowrap";
 
@@ -213,29 +257,44 @@ export function SetupModule() {
                 <div>
                   <label className={labelStyle}>Variant</label>
                   <select value={vVariant} onChange={e => setVVariant(e.target.value)} className={inputStyle}>
-                    <option value="35MT Bulk (Bulker)">35MT Bulk (Bulker)</option>
-                    <option value="30MT Bulk (Bulker)">30MT Bulk (Bulker)</option>
-                    <option value="25MT Bags (Body)">25MT Bags (Body)</option>
-                    <option value="30MT Bags (Body)">30MT Bags (Body)</option>
+                    <option value="Bulker (16-Wheel)">Bulker (16-Wheel)</option>
+                    <option value="Bulker (14-Wheel)">Bulker (14-Wheel)</option>
+                    <option value="Bulker">Bulker</option>
+                    <option value="Body Truck">Body Truck</option>
                   </select>
                 </div>
                 <div>
                   <label className={labelStyle}>Capacity (MT)</label>
                   <select value={vCapacity} onChange={e => setVCapacity(e.target.value)} className={inputStyle}>
-                    <option value="35.0">35.0</option><option value="30.0">30.0</option><option value="25.0">25.0</option>
+                    <option value="25.0">25.0</option><option value="30.0">30.0</option><option value="35.0">35.0</option>
                   </select>
                 </div>
-                <div className="flex items-center gap-2 pt-1 pb-2">
+                <div className="flex items-center gap-2 pt-1 pb-1">
                   <input type="checkbox" checked={vOdoWorking} onChange={e => setVOdoWorking(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00]" />
                   <label className="text-xs font-bold text-emerald-700">✅ Odometer Working</label>
                 </div>
+                
+                {/* DOCUMENT EXPIRIES (Added per request) */}
+                <div className="border-t border-slate-200 pt-3 mt-2">
+                  <label className="block text-[10px] font-black text-slate-800 uppercase tracking-widest mb-2">Expiries</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><label className={labelStyle}>FC</label><input type="date" value={vFc} onChange={e => setVFc(e.target.value)} className={inputStyle} /></div>
+                    <div><label className={labelStyle}>Ins</label><input type="date" value={vIns} onChange={e => setVIns(e.target.value)} className={inputStyle} /></div>
+                    <div><label className={labelStyle}>Q-Tax</label><input type="date" value={vQtax} onChange={e => setVQtax(e.target.value)} className={inputStyle} /></div>
+                    <div><label className={labelStyle}>PUC</label><input type="date" value={vPuc} onChange={e => setVPuc(e.target.value)} className={inputStyle} /></div>
+                    <div><label className={labelStyle}>NP</label><input type="date" value={vNp} onChange={e => setVNp(e.target.value)} className={inputStyle} /></div>
+                    <div><label className={labelStyle}>SP</label><input type="date" value={vSp} onChange={e => setVSp(e.target.value)} className={inputStyle} /></div>
+                    <div className="col-span-2"><label className={labelStyle}>Tank Cert</label><input type="date" value={vTank} onChange={e => setVTank(e.target.value)} className={inputStyle} /></div>
+                  </div>
+                </div>
+
                 <button type="submit" className={buttonStyle}>{editingId ? "Update Truck" : "Save Truck"}</button>
               </form>
             )}
 
             {activeTab === "DRIVERS" && (
               <form onSubmit={handleSaveDriver} className="space-y-4">
-                <div><label className={labelStyle}>Driver Code *</label><input type="text" value={currentDriverCodeDisplay} disabled className={inputStyle} /></div>
+                <div><label className={labelStyle}>Driver Code *</label><input type="text" value={currentDriverCodeDisplay} onChange={e => setDCode(e.target.value)} className={inputStyle} required /></div>
                 <div><label className={labelStyle}>Full Name *</label><input type="text" value={dName} onChange={e => setDName(e.target.value)} className={inputStyle} required /></div>
                 <div><label className={labelStyle}>Phone *</label><input type="text" value={dPhone} onChange={e => setDPhone(e.target.value)} className={inputStyle} required /></div>
                 <div><label className={labelStyle}>License No</label><input type="text" value={dLicense} onChange={e => setDLicense(e.target.value)} className={inputStyle} /></div>
@@ -250,10 +309,20 @@ export function SetupModule() {
                   <label className={labelStyle}>Cargo</label>
                   <select value={sCargo} onChange={e => setSCargo(e.target.value)} className={inputStyle}><option value="BULK">BULK</option><option value="BAG">BAG</option></select>
                 </div>
-                <div><label className={labelStyle}>Origin</label><input type="text" value={sOrigin} onChange={e => setSOrigin(e.target.value)} className={inputStyle} required /></div>
+                <div>
+                  <label className={labelStyle}>Origin</label>
+                  <select value={sOrigin} onChange={e => setSOrigin(e.target.value)} className={inputStyle}>
+                    {STANDARD_SOURCES.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
                 <div><label className={labelStyle}>Destination *</label><input type="text" value={sDestination} onChange={e => setSDestination(e.target.value)} className={inputStyle} required /></div>
                 <div className="flex gap-2">
-                  <div className="w-1/2"><label className={labelStyle}>Class (MT)</label><input type="number" step="0.1" value={sCapacity} onChange={e => setSCapacity(e.target.value)} className={inputStyle} /></div>
+                  <div className="w-1/2">
+                    <label className={labelStyle}>Class (MT)</label>
+                    <select value={sCapacity} onChange={e => setSCapacity(e.target.value)} className={inputStyle}>
+                      <option value="25.0">25.0</option><option value="30.0">30.0</option><option value="35.0">35.0</option>
+                    </select>
+                  </div>
                   <div className="w-1/2"><label className={labelStyle}>Std KM</label><input type="number" step="0.1" value={sStdKm} onChange={e => setSStdKm(e.target.value)} className={inputStyle} /></div>
                 </div>
                 <div><label className={labelStyle}>Rate/MT (₹) *</label><input type="number" step="0.01" value={sRate} onChange={e => setSRate(e.target.value)} className={inputStyle} required /></div>
@@ -266,22 +335,17 @@ export function SetupModule() {
                 <div>
                   <label className={labelStyle}>Origin Source *</label>
                   <select value={bOrigin} onChange={e => setBOrigin(e.target.value)} className={inputStyle} required>
-                    <option value="" disabled>Select Origin</option>
-                    {uniqueOrigins.map(o => <option key={o} value={o}>{o}</option>)}
+                    {STANDARD_SOURCES.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className={labelStyle}>Destination *</label>
-                  <select value={bDestination} onChange={e => setBDestination(e.target.value)} className={inputStyle} required disabled={!bOrigin}>
-                    <option value="" disabled>Select Destination</option>
-                    {availableDestinations.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
+                  <input type="text" value={bDestination} onChange={e => setBDestination(e.target.value)} className={inputStyle} required />
                 </div>
                 <div>
-                  <label className={labelStyle}>Truck Slab</label>
+                  <label className={labelStyle}>Truck Slab *</label>
                   <select value={bTruckSlab} onChange={e => setBTruckSlab(e.target.value)} className={inputStyle}>
-                    <option value="35MT Bulk">35MT Bulk</option>
-                    <option value="25MT Body (Bag)">25MT Body (Bag)</option>
+                    {BATA_SLAB_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                 </div>
                 <div><label className={labelStyle}>Bata (₹) *</label><input type="number" value={bDriverBata} onChange={e => setBDriverBata(e.target.value)} className={inputStyle} required /></div>
@@ -298,7 +362,7 @@ export function SetupModule() {
               
               {activeTab === "TRUCKS" && (
                 <>
-                  <thead><tr><th className={thStyle}>vehicle_number</th><th className={thStyle}>truck_type</th><th className={thStyle}>carrying_capacity_tons</th><th className={thStyle}>current_status</th><th className={thStyle}>Actions</th></tr></thead>
+                  <thead><tr><th className={thStyle}>VEHICLE_NUMBER</th><th className={thStyle}>TRUCK_TYPE</th><th className={thStyle}>CARRYING_CAPACITY_TONS</th><th className={thStyle}>CURRENT_STATUS</th><th className={thStyle}>ACTIONS</th></tr></thead>
                   <tbody>
                     {vehicles.map(v => (
                       <tr key={v.vehicle_id} className="hover:bg-slate-50">
@@ -306,7 +370,13 @@ export function SetupModule() {
                         <td className={tdStyle}>{v.truck_type}</td>
                         <td className={tdStyle}>{v.carrying_capacity_tons}</td>
                         <td className={tdStyle}>{v.current_status || "AVAILABLE_FOR_LOAD"}</td>
-                        <td className={tdStyle}><button onClick={() => { setEditingId(v.vehicle_id); setVNumber(v.vehicle_number); setVVariant(v.truck_type); setVCapacity(v.carrying_capacity_tons); }} className="text-blue-600 mr-2">Edit</button></td>
+                        <td className={tdStyle}>
+                          <button onClick={() => { 
+                            setEditingId(v.vehicle_id); setVNumber(v.vehicle_number); setVVariant(v.truck_type); setVCapacity(v.carrying_capacity_tons);
+                            setVFc(v.fc_expiry_date||""); setVIns(v.insurance_expiry_date||""); setVQtax(v.qtax_expiry_date||"");
+                            setVPuc(v.puc_expiry_date||""); setVNp(v.np_expiry_date||""); setVSp(v.state_permit_expiry_date||""); setVTank(v.tank_cert_expiry_date||"");
+                          }} className="text-blue-600 font-bold">Edit</button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -315,15 +385,19 @@ export function SetupModule() {
 
               {activeTab === "DRIVERS" && (
                 <>
-                  <thead><tr><th className={thStyle}>driver_code</th><th className={thStyle}>full_name</th><th className={thStyle}>phone_number</th><th className={thStyle}>license_number</th><th className={thStyle}>Actions</th></tr></thead>
+                  <thead><tr><th className={thStyle}>DRIVER_CODE</th><th className={thStyle}>FULL_NAME</th><th className={thStyle}>PHONE_NUMBER</th><th className={thStyle}>LICENSE_NUMBER</th><th className={thStyle}>ACTIONS</th></tr></thead>
                   <tbody>
                     {drivers.map(d => (
                       <tr key={d.driver_id} className="hover:bg-slate-50">
                         <td className={`${tdStyle} font-bold`}>{d.driver_code}</td>
                         <td className={tdStyle}>{d.full_name}</td>
                         <td className={tdStyle}>{d.phone_number}</td>
-                        <td className={tdStyle}>{formatDate(d.expiry_date)}</td>
-                        <td className={tdStyle}><button onClick={() => { setEditingId(d.driver_id); setDName(d.full_name); setDPhone(d.phone_number); }} className="text-blue-600 mr-2">Edit</button></td>
+                        <td className={tdStyle}>{d.license_number || "-"}</td>
+                        <td className={tdStyle}>
+                          <button onClick={() => { 
+                            setEditingId(d.driver_id); setDCode(d.driver_code); setDName(d.full_name); setDPhone(d.phone_number); setDLicense(d.license_number||""); setDExpiry(d.expiry_date||"");
+                          }} className="text-blue-600 font-bold">Edit</button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -332,7 +406,7 @@ export function SetupModule() {
 
               {activeTab === "SLABS" && (
                 <>
-                  <thead><tr><th className={thStyle}>cargo_type</th><th className={thStyle}>orgin</th><th className={thStyle}>destination_name</th><th className={thStyle}>capacity_tons</th><th className={thStyle}>freight_rate_per_ton</th><th className={thStyle}>standard_km</th></tr></thead>
+                  <thead><tr><th className={thStyle}>CARGO_TYPE</th><th className={thStyle}>ORGIN</th><th className={thStyle}>DESTINATION_NAME</th><th className={thStyle}>CAPACITY_TONS</th><th className={thStyle}>FREIGHT_RATE_PER_TON</th><th className={thStyle}>STANDARD_KM</th></tr></thead>
                   <tbody>
                     {freightSlabs.map(f => (
                       <tr key={f.destination_id} className="hover:bg-slate-50">
@@ -350,13 +424,14 @@ export function SetupModule() {
 
               {activeTab === "BATA" && (
                 <>
-                  <thead><tr><th className={thStyle}>route_name</th><th className={thStyle}>driver_bata_amount</th><th className={thStyle}>halt_bata_amount</th></tr></thead>
+                  <thead><tr><th className={thStyle}>ORIGIN</th><th className={thStyle}>DESTINATION_NAME</th><th className={thStyle}>TRUCK_SLAB</th><th className={thStyle}>STANDARD_BATA_INR</th></tr></thead>
                   <tbody>
                     {bataSlabs.map((b, idx) => (
                       <tr key={idx} className="hover:bg-slate-50">
-                        <td className={`${tdStyle} font-bold`}>{b.route_name}</td>
-                        <td className={tdStyle}>{b.driver_bata_amount}</td>
-                        <td className={tdStyle}>{b.halt_bata_amount}</td>
+                        <td className={tdStyle}>{b.origin || "-"}</td>
+                        <td className={`${tdStyle} font-bold`}>{b.destination_name}</td>
+                        <td className={tdStyle}>{formatBataSlabDisplay(b.cargo_type, b.capacity_tons)}</td>
+                        <td className={tdStyle}>{b.standard_bata_inr}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -365,7 +440,7 @@ export function SetupModule() {
 
               {activeTab === "AUDIT" && (
                 <>
-                  <thead><tr><th className={thStyle}>trip_id</th><th className={thStyle}>trip_number</th><th className={thStyle}>trip_start_date</th><th className={thStyle}>vehicle_id</th><th className={thStyle}>origin</th><th className={thStyle}>destination</th><th className={thStyle}>start_km</th><th className={thStyle}>end_km</th></tr></thead>
+                  <thead><tr><th className={thStyle}>TRIP_ID</th><th className={thStyle}>TRIP_NUMBER</th><th className={thStyle}>TRIP_START_DATE</th><th className={thStyle}>VEHICLE_ID</th><th className={thStyle}>ORIGIN</th><th className={thStyle}>DESTINATION</th><th className={thStyle}>START_KM</th><th className={thStyle}>END_KM</th></tr></thead>
                   <tbody>
                     {auditLogs.map(t => (
                       <tr key={t.trip_id} className="hover:bg-slate-50">
