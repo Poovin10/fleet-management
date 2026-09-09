@@ -34,6 +34,8 @@ export function DriverPortal() {
   const [selectedTruckId, setSelectedTruckId] = useState("");
   const [driverCode, setDriverCode] = useState("");
   const [driverPin, setDriverPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
   const [actionType, setActionType] = useState("REACHED"); 
   
   // Standard Form fields
@@ -52,7 +54,6 @@ export function DriverPortal() {
   const [currentMonthAdvances, setCurrentMonthAdvances] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Helper to format dates & timestamps to DD/MM/YYYY HH:MM
   const formatDateTime = (dateStr: string) => {
     if (!dateStr) return 'N/A';
     try {
@@ -76,7 +77,6 @@ export function DriverPortal() {
     return dateStr;
   };
 
-  // Fetch Core Data
   const fetchPortalData = async () => {
     const [vRes, dRes, tRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true),
@@ -89,7 +89,6 @@ export function DriverPortal() {
     if (tRes.data) setActiveTrips(tRes.data);
   };
 
-  // Fetch Driver Specific History for Current Fiscal Month
   const fetchDriverCurrentMonthReports = async (drvCode: string, drvId: number) => {
     const now = new Date();
     const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -129,6 +128,23 @@ export function DriverPortal() {
     }
   }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab]);
 
+  // Check if selected driver needs first-time PIN setup
+  const handleDriverChange = (code: string) => {
+    setDriverCode(code);
+    setDriverPin("");
+    setConfirmPin("");
+    if (code) {
+      const drv = drivers.find(d => d.driver_code === code);
+      if (!drv || !drv.pin || drv.pin.trim() === "") {
+        setIsFirstTimeSetup(true);
+      } else {
+        setIsFirstTimeSetup(false);
+      }
+    } else {
+      setIsFirstTimeSetup(false);
+    }
+  };
+
   const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
   const displayDriverName = activeDriverObj ? `${activeDriverObj.full_name} (${activeDriverObj.driver_code})` : savedDriverCode;
   
@@ -136,7 +152,6 @@ export function DriverPortal() {
   const currentTrip = activeTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
   const isBulk = selectedTruckObj ? String(selectedTruckObj.truck_type).toUpperCase().includes("BULK") : true;
 
-  // Current Month Calculations (Using Dispatch-issued direct advances and trip advances)
   const monthEarnedBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
   const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
   const monthTripAdvances = currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
@@ -146,23 +161,46 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
-  const handleLockDriver = (e: React.FormEvent) => {
+  const handleLockDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!driverCode) {
       return setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Please select your driver profile.", type: "error" });
     }
 
     const selectedDrv = drivers.find(d => d.driver_code === driverCode);
-    const expectedPin = selectedDrv?.pin || "1234";
+    if (!selectedDrv) return;
 
-    if (driverPin.trim() !== expectedPin.toString().trim()) {
-      return setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "Incorrect security PIN. Please check with dispatch.", type: "error" });
+    if (isFirstTimeSetup) {
+      if (driverPin.length !== 4) {
+        return setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "PIN must be exactly 4 digits.", type: "error" });
+      }
+      if (driverPin !== confirmPin) {
+        return setAlertConfig({ isOpen: true, title: "Mismatch", message: "PINs do not match. Please re-enter.", type: "error" });
+      }
+
+      // Save PIN to Supabase Database
+      const { error } = await supabase
+        .from('drivers')
+        .update({ pin: driverPin })
+        .eq('driver_id', selectedDrv.driver_id);
+
+      if (error) {
+        return setAlertConfig({ isOpen: true, title: "Setup Failed", message: error.message, type: "error" });
+      }
+
+      setAlertConfig({ isOpen: true, title: "PIN Saved!", message: "Your security PIN has been successfully set.", type: "success" });
+      await fetchPortalData();
+    } else {
+      if (driverPin.trim() !== (selectedDrv.pin || "").toString().trim()) {
+        return setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "Incorrect PIN. Please contact admin to reset your PIN if forgotten.", type: "error" });
+      }
     }
 
     localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
     setSavedDriverCode(driverCode.toUpperCase().trim());
     setIsDriverLocked(true);
     setDriverPin("");
+    setConfirmPin("");
   };
 
   const handleResetDriver = () => {
@@ -172,6 +210,7 @@ export function DriverPortal() {
       setSavedDriverCode("");
       setSelectedTruckId("");
       setDriverPin("");
+      setConfirmPin("");
     }
   };
 
@@ -291,19 +330,22 @@ export function DriverPortal() {
       {!isDriverLocked ? (
         <form onSubmit={handleLockDriver} className="flex flex-col">
           <div className="flex flex-col p-6 space-y-1">
-            <h3 className="font-bold tracking-tight text-xl">Secure Device Setup</h3>
-            <p className="text-sm text-slate-500">Select your profile and enter your 4-digit security PIN.</p>
+            <h3 className="font-bold tracking-tight text-xl">{isFirstTimeSetup ? "First-Time PIN Setup" : "Secure Login"}</h3>
+            <p className="text-sm text-slate-500">
+              {isFirstTimeSetup ? "Create a 4-digit security PIN for your account. Keep it safe!" : "Select your profile and enter your 4-digit PIN."}
+            </p>
           </div>
           <div className="p-6 pt-0 grid gap-5">
             <div className="grid gap-1.5">
               <label className={labelStyle}>Driver Name</label>
-              <select value={driverCode} onChange={e => setDriverCode(e.target.value)} className={inputStyle} required>
+              <select value={driverCode} onChange={e => handleDriverChange(e.target.value)} className={inputStyle} required>
                 <option value="">Select your profile...</option>
                 {drivers.map(d => (<option key={d.driver_id} value={d.driver_code}>{d.full_name} ({d.driver_code})</option>))}
               </select>
             </div>
+
             <div className="grid gap-1.5">
-              <label className={labelStyle}>4-Digit Security PIN</label>
+              <label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Security PIN"}</label>
               <input 
                 type="password" 
                 maxLength={4} 
@@ -314,8 +356,28 @@ export function DriverPortal() {
                 required 
               />
             </div>
+
+            {isFirstTimeSetup && (
+              <div className="grid gap-1.5">
+                <label className={labelStyle}>Confirm 4-Digit PIN</label>
+                <input 
+                  type="password" 
+                  maxLength={4} 
+                  value={confirmPin} 
+                  onChange={e => setConfirmPin(e.target.value)} 
+                  placeholder="••••" 
+                  className={inputStyle} 
+                  required 
+                />
+              </div>
+            )}
+
+            {!isFirstTimeSetup && driverCode && (
+              <p className="text-[11px] text-slate-400 italic">Forgot your PIN? Contact office Admin or Superadmin to reset it.</p>
+            )}
+
             <button type="submit" className="inline-flex items-center justify-center rounded-lg text-sm font-black bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-10 px-4 py-2 w-full mt-2">
-              Verify & Lock Device
+              {isFirstTimeSetup ? "Save & Lock Device" : "Verify & Login"}
             </button>
           </div>
         </form>
@@ -347,7 +409,6 @@ export function DriverPortal() {
                 </select>
               </div>
 
-              {/* CURRENT ACTIVE LR BANNER & PROFESSIONAL TIMELINE */}
               {currentTrip && (
                 <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-2">
                   <div className="flex justify-between items-center">
@@ -430,7 +491,6 @@ export function DriverPortal() {
           {activeTab === "LEDGER" && (
             <div className="p-6 grid gap-6 bg-slate-50 min-h-[400px] animate-in fade-in">
               
-              {/* NET BALANCE CARD */}
               <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current Month Net Balance</p>
                 <div className="flex justify-between items-baseline mt-1">
@@ -446,7 +506,6 @@ export function DriverPortal() {
                 </div>
               </div>
 
-              {/* PENDING FUEL REQUESTS */}
               {pendingRequests.length > 0 && (
                 <div>
                   <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Pending Requests</h4>
@@ -466,7 +525,6 @@ export function DriverPortal() {
                 </div>
               )}
 
-              {/* TRIPWISE BREAKDOWN FOR CURRENT MONTH */}
               <div>
                 <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Current Month Tripwise Ledger</h4>
                 {currentMonthTrips.length === 0 ? (
