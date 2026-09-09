@@ -75,7 +75,8 @@ export function SetupModule() {
       supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
       supabase.from("destinations_freight_master").select("*").order("destination_name"),
       supabase.from("driver_bata_master").select("*").order("route_name"),
-      supabase.from("trips").select("trip_number, trip_status, origin, destination, updated_at").order("updated_at", { ascending: false }).limit(20)
+      // Switched to trip_start_date since updated_at does not exist in your schema
+      supabase.from("trips").select("trip_number, trip_status, origin, destination, trip_start_date").order("trip_start_date", { ascending: false }).limit(20)
     ]);
 
     if (vRes.data) setVehicles(vRes.data);
@@ -94,6 +95,22 @@ export function SetupModule() {
     const parts = dateStr.split("T")[0].split("-");
     return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
   };
+
+  // --- AUTO GENERATE DRIVER CODE ---
+  const getNextDriverCode = () => {
+    if (drivers.length === 0) return "DRV-001";
+    const nums = drivers.map(d => {
+      const match = (d.driver_code || "").match(/\d+/);
+      return match ? parseInt(match[0], 10) : 0;
+    });
+    const nextNum = Math.max(...nums, 0) + 1;
+    return `DRV-${String(nextNum).padStart(3, '0')}`;
+  };
+
+  const currentDriverCodeDisplay = editingId ? dCode : getNextDriverCode();
+
+  // --- EXTRACT UNIQUE ROUTES FOR BATA DROPDOWN ---
+  const uniqueRoutes = Array.from(new Set(freightSlabs.map(f => `${f.orgin} - ${f.destination_name}`))).sort();
 
   // --- VEHICLE HANDLERS ---
   const handleEditVehicle = (v: any) => {
@@ -151,7 +168,7 @@ export function SetupModule() {
   const handleSaveDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload: any = {
-      driver_code: dCode.trim().toUpperCase(),
+      driver_code: currentDriverCodeDisplay,
       full_name: dName.trim(),
       phone_number: dPhone.trim(),
       expiry_date: dExpiry || null,
@@ -219,8 +236,30 @@ export function SetupModule() {
     fetchAllData();
   };
 
+  // --- BATA HANDLERS ---
+  const handleSaveBata = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = { 
+      route_name: bRoute.trim().toUpperCase(), 
+      driver_bata_amount: Number(bDriverBata), 
+      halt_bata_amount: Number(bHaltBata) 
+    };
+    const { error } = await supabase.from("driver_bata_master").insert([payload]);
+    if (error) setAlertConfig({ isOpen: true, title: "Error", message: error.message, type: "error" });
+    else {
+      setAlertConfig({ isOpen: true, title: "Saved", message: "Bata slab saved successfully!", type: "success" });
+      resetForms(); fetchAllData();
+    }
+  };
+
+  const handleDeleteBata = async (routeName: string) => {
+    if (!confirm("Delete this bata rule?")) return;
+    await supabase.from("driver_bata_master").delete().eq("route_name", routeName);
+    fetchAllData();
+  };
+
   // --- STYLING ---
-  const inputStyle = "w-full h-12 bg-white border border-slate-200 rounded-[14px] px-4 text-sm font-semibold text-slate-900 outline-none focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] shadow-sm";
+  const inputStyle = "w-full h-12 bg-white border border-slate-200 rounded-[14px] px-4 text-sm font-semibold text-slate-900 outline-none focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] shadow-sm disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-100";
   const labelStyle = "block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1";
   const buttonStyle = "w-full h-12 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-[14px] transition-colors mt-2 shadow-sm active:scale-[0.98]";
   const cardStyle = "bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm";
@@ -339,8 +378,8 @@ export function SetupModule() {
             </h3>
             <form onSubmit={handleSaveDriver} className="space-y-5">
               <div>
-                <label className={labelStyle}>Driver Code *</label>
-                <input type="text" value={dCode} onChange={e => setDCode(e.target.value)} placeholder="E.G. DRV-01" className={inputStyle} required />
+                <label className={labelStyle}>Driver Code (Auto Generated)</label>
+                <input type="text" value={currentDriverCodeDisplay} disabled className={inputStyle} />
               </div>
               <div>
                 <label className={labelStyle}>Full Name *</label>
@@ -440,18 +479,17 @@ export function SetupModule() {
       {/* 4. BATA SLABS */}
       {activeTab === "BATA" && (
         <div className="space-y-6 animate-in fade-in">
-          {/* Bata forms kept identical but with edit capability ready if needed */}
           <div className={cardStyle}>
             <h3 className={headingStyle}><span>ADD BATA SLAB</span></h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const payload = { route_name: bRoute.trim().toUpperCase(), driver_bata_amount: Number(bDriverBata), halt_bata_amount: Number(bHaltBata) };
-              await supabase.from("driver_bata_master").insert([payload]);
-              resetForms(); fetchAllData();
-            }} className="space-y-5">
+            <form onSubmit={handleSaveBata} className="space-y-5">
               <div>
-                <label className={labelStyle}>Route Name *</label>
-                <input type="text" value={bRoute} onChange={e => setBRoute(e.target.value)} placeholder="E.G. COCHIN - PALAKKAD" className={inputStyle} required />
+                <label className={labelStyle}>Route (Origin ➔ Destination) *</label>
+                <select value={bRoute} onChange={e => setBRoute(e.target.value)} className={inputStyle} required>
+                  <option value="" disabled>Select route from Freight Slabs...</option>
+                  {uniqueRoutes.map(route => (
+                    <option key={route} value={route}>{route.replace(' - ', ' ➔ ')}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className={labelStyle}>Driver Bata / Trip (₹) *</label>
@@ -477,12 +515,7 @@ export function SetupModule() {
                        <p className="text-[11px] text-slate-500 font-bold uppercase">Halt: <span className="text-amber-600 font-black text-xs ml-1">₹{b.halt_bata_amount}</span></p>
                      </div>
                    </div>
-                   <button onClick={async () => {
-                     if(confirm("Delete this bata rule?")) {
-                       await supabase.from("driver_bata_master").delete().eq("route_name", b.route_name);
-                       fetchAllData();
-                     }
-                   }} className={`${actionBtnStyle} h-fit bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100`}>Delete</button>
+                   <button onClick={() => handleDeleteBata(b.route_name)} className={`${actionBtnStyle} h-fit bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100`}>Delete</button>
                  </div>
                ))}
              </div>
@@ -510,7 +543,7 @@ export function SetupModule() {
                         Trip <span className="text-[#FF5A00] font-black">{log.trip_number}</span> status updated to <span className="font-black">{log.trip_status}</span>
                       </p>
                       <p className="text-[10px] text-slate-500 mt-1 uppercase font-semibold">
-                        Route: {log.origin} ➔ {log.destination} • {new Date(log.updated_at).toLocaleString()}
+                        Route: {log.origin} ➔ {log.destination} • Started: {formatDate(log.trip_start_date)}
                       </p>
                     </div>
                   </div>
