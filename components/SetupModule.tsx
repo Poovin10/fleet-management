@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -48,11 +47,12 @@ export function SetupModule() {
 
   const fetchAllData = async () => {
     setIsLoading(true);
+    // Removed the .catch() to fix the TypeScript Vercel Build Error
     const [vRes, dRes, fRes, bRes] = await Promise.all([
       supabase.from("vehicles").select("*").eq("is_active", true).order("vehicle_number"),
       supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
       supabase.from("destinations_freight_master").select("*").order("destination_name"),
-      supabase.from("driver_bata_master").select("*").order("route_name").catch(() => ({ data: [] })) // Fallback if table missing
+      supabase.from("driver_bata_master").select("*").order("route_name")
     ]);
 
     if (vRes.data) setVehicles(vRes.data);
@@ -150,12 +150,12 @@ export function SetupModule() {
     }
   };
 
-  // --- STYLING (Matched exactly to your screenshot) ---
-  const inputStyle = "w-full h-12 bg-white border border-slate-200 rounded-[14px] px-4 text-sm font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm";
+  // --- KSS BRANDED STYLING ---
+  const inputStyle = "w-full h-12 bg-white border border-slate-200 rounded-[14px] px-4 text-sm font-semibold text-slate-900 outline-none focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] shadow-sm";
   const labelStyle = "block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1";
-  const buttonStyle = "w-full h-12 bg-[#5145cd] hover:bg-[#4338ca] text-white font-semibold text-sm rounded-[14px] transition-colors mt-2 shadow-sm";
-  const cardStyle = "bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm";
-  const headingStyle = "text-[13px] font-black uppercase text-slate-800 mb-6 tracking-wide";
+  const buttonStyle = "w-full h-12 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-[14px] transition-colors mt-2 shadow-sm active:scale-[0.98]";
+  const cardStyle = "bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm";
+  const headingStyle = "text-[13px] font-black uppercase text-slate-900 mb-6 tracking-wide border-b border-slate-100 pb-3";
 
   const tabs = [
     { id: "TRUCKS", icon: "🚚", label: "Trucks" },
@@ -170,15 +170,15 @@ export function SetupModule() {
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
       {/* PILL TABS NAVIGATION */}
-      <div className="flex flex-wrap gap-2.5">
+      <div className="flex flex-wrap gap-2.5 bg-slate-50 p-2 rounded-2xl border border-slate-200">
         {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all border shadow-sm ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
               activeTab === t.id 
-                ? "bg-slate-900 text-white border-slate-900" 
-                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                ? "bg-[#FF5A00] text-white shadow-md" 
+                : "bg-transparent text-slate-500 hover:bg-slate-200/50 hover:text-slate-900"
             }`}
           >
             <span className="text-base leading-none">{t.icon}</span>
@@ -214,7 +214,7 @@ export function SetupModule() {
                 </select>
               </div>
               <div className="flex items-center gap-2 px-1">
-                <input type="checkbox" checked={vOdoWorking} onChange={e => setVOdoWorking(e.target.checked)} className="w-4 h-4 rounded text-[#5145cd] focus:ring-[#5145cd]" />
+                <input type="checkbox" checked={vOdoWorking} onChange={e => setVOdoWorking(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-[#FF5A00] focus:ring-[#FF5A00]" />
                 <label className="text-[13px] font-bold text-slate-700">✅ Odometer Working</label>
               </div>
               <button type="submit" className={buttonStyle}>Save Truck</button>
@@ -222,13 +222,13 @@ export function SetupModule() {
           </div>
 
           <div className={cardStyle}>
-             <h3 className={headingStyle}>ACTIVE FLEET</h3>
+             <h3 className={headingStyle}>ACTIVE FLEET ({vehicles.length})</h3>
              <div className="space-y-3">
                {vehicles.map(v => (
-                 <div key={v.vehicle_id} className="flex justify-between items-center p-3 border border-slate-100 rounded-2xl bg-slate-50">
+                 <div key={v.vehicle_id} className="flex justify-between items-center p-4 border border-slate-200 rounded-2xl bg-slate-50">
                    <div>
-                     <p className="font-bold text-sm text-slate-900">{v.vehicle_number}</p>
-                     <p className="text-[10px] text-slate-500 font-semibold uppercase">{v.truck_type} • {v.carrying_capacity_tons} MT</p>
+                     <p className="font-black text-sm text-slate-900">{v.vehicle_number}</p>
+                     <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">{v.truck_type} • {v.carrying_capacity_tons} MT</p>
                    </div>
                  </div>
                ))}
@@ -264,15 +264,15 @@ export function SetupModule() {
           </div>
 
           <div className={cardStyle}>
-             <h3 className={headingStyle}>ACTIVE DRIVERS</h3>
+             <h3 className={headingStyle}>ACTIVE DRIVERS ({drivers.length})</h3>
              <div className="space-y-3">
                {drivers.map(d => (
-                 <div key={d.driver_id} className="flex justify-between items-center p-4 border border-slate-100 rounded-2xl bg-slate-50">
+                 <div key={d.driver_id} className="flex justify-between items-center p-4 border border-slate-200 rounded-2xl bg-slate-50">
                    <div>
-                     <p className="font-bold text-sm text-slate-900">{d.driver_code} - {d.full_name}</p>
-                     <p className="text-[10px] text-slate-500 font-semibold uppercase mt-0.5">PIN: <span className="font-mono text-[#5145cd] tracking-widest">{d.pin || "NOT SET"}</span></p>
+                     <p className="font-black text-sm text-slate-900">{d.driver_code} - {d.full_name}</p>
+                     <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">PIN: <span className="font-mono text-[#FF5A00] tracking-widest">{d.pin || "NOT SET"}</span></p>
                    </div>
-                   <button onClick={() => handleResetDriverPin(d.driver_id, d.full_name)} className="text-[10px] font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-slate-600 shadow-sm">
+                   <button onClick={() => handleResetDriverPin(d.driver_id, d.full_name)} className="text-[10px] font-black bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg text-amber-700 shadow-sm transition-colors hover:bg-amber-100">
                      Reset PIN
                    </button>
                  </div>
@@ -312,15 +312,15 @@ export function SetupModule() {
           </div>
 
           <div className={cardStyle}>
-             <h3 className={headingStyle}>CONFIGURED SLABS</h3>
+             <h3 className={headingStyle}>CONFIGURED SLABS ({freightSlabs.length})</h3>
              <div className="space-y-3">
                {freightSlabs.map(f => (
-                 <div key={f.destination_id} className="p-4 border border-slate-100 rounded-2xl bg-slate-50">
-                   <div className="flex justify-between items-start mb-1">
-                     <p className="font-bold text-sm text-slate-900">{f.orgin} ➔ {f.destination_name}</p>
-                     <span className="text-[9px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded uppercase">{f.cargo_type}</span>
+                 <div key={f.destination_id} className="p-4 border border-slate-200 rounded-2xl bg-slate-50">
+                   <div className="flex justify-between items-start mb-2">
+                     <p className="font-black text-sm text-slate-900">{f.orgin} ➔ {f.destination_name}</p>
+                     <span className="text-[9px] font-black bg-slate-200 text-slate-600 px-2 py-1 rounded uppercase tracking-wider">{f.cargo_type}</span>
                    </div>
-                   <p className="text-[11px] text-slate-500 font-semibold uppercase">Freight: <span className="text-[#5145cd] font-black">₹{f.freight_rate_per_ton} / MT</span></p>
+                   <p className="text-[11px] text-slate-500 font-bold uppercase">Freight: <span className="text-[#FF5A00] font-black text-xs ml-1">₹{f.freight_rate_per_ton} / MT</span></p>
                  </div>
                ))}
              </div>
@@ -351,14 +351,14 @@ export function SetupModule() {
           </div>
 
           <div className={cardStyle}>
-             <h3 className={headingStyle}>CONFIGURED BATA</h3>
+             <h3 className={headingStyle}>CONFIGURED BATA ({bataSlabs.length})</h3>
              <div className="space-y-3">
                {bataSlabs.map((b, idx) => (
-                 <div key={idx} className="p-4 border border-slate-100 rounded-2xl bg-slate-50">
-                   <p className="font-bold text-sm text-slate-900 mb-1">{b.route_name}</p>
-                   <div className="flex gap-4">
-                     <p className="text-[11px] text-slate-500 font-semibold uppercase">Driver: <span className="text-[#5145cd] font-black">₹{b.driver_bata_amount}</span></p>
-                     <p className="text-[11px] text-slate-500 font-semibold uppercase">Halt: <span className="text-slate-700 font-black">₹{b.halt_bata_amount}</span></p>
+                 <div key={idx} className="p-4 border border-slate-200 rounded-2xl bg-slate-50">
+                   <p className="font-black text-sm text-slate-900 mb-2">{b.route_name}</p>
+                   <div className="flex gap-6">
+                     <p className="text-[11px] text-slate-500 font-bold uppercase">Driver: <span className="text-emerald-600 font-black text-xs ml-1">₹{b.driver_bata_amount}</span></p>
+                     <p className="text-[11px] text-slate-500 font-bold uppercase">Halt: <span className="text-amber-600 font-black text-xs ml-1">₹{b.halt_bata_amount}</span></p>
                    </div>
                  </div>
                ))}
@@ -369,10 +369,10 @@ export function SetupModule() {
 
       {/* 5. SYSTEM AUDIT (Placeholder) */}
       {activeTab === "AUDIT" && (
-        <div className="animate-in fade-in text-center p-12 bg-white rounded-3xl border border-slate-100 shadow-sm">
+        <div className="animate-in fade-in text-center p-12 bg-white rounded-3xl border border-slate-200 shadow-sm">
           <p className="text-4xl mb-4">📋</p>
-          <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">System Audit Logs</h3>
-          <p className="text-xs text-slate-500 mt-2">Audit tracking will appear here.</p>
+          <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">System Audit Logs</h3>
+          <p className="text-xs font-medium text-slate-500 mt-2">Activity tracking will appear here.</p>
         </div>
       )}
     </div>
