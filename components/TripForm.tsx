@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { AlertModal } from "@/components/AlertModal"; // <-- Imported the new modal!
+import { AlertModal } from "@/components/AlertModal";
 
 export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const supabase = createClient();
@@ -188,11 +188,13 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTruckId || !selectedDriverId || !lrNo.trim() || !freightRate || !loadedMt) {
+    
+    // Explicit Validation Guards for Zero or Negative numbers (Issue #7)
+    if (!selectedTruckId || !selectedDriverId || !lrNo.trim() || freightRate === "" || Number(freightRate) <= 0 || loadedMt === "" || Number(loadedMt) <= 0) {
       setAlertConfig({
         isOpen: true,
-        title: "Missing Information",
-        message: "Please fill out all mandatory fields before dispatching.",
+        title: "Invalid Input",
+        message: "Please ensure all mandatory fields have valid positive values (> 0) before dispatching.",
         type: "error"
       });
       return;
@@ -268,7 +270,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       })
       .eq("vehicle_id", Number(selectedTruckId));
 
-    // Show Custom Success Alert
     setAlertConfig({
       isOpen: true,
       title: "Trip Dispatched!",
@@ -284,7 +285,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
       
-      {/* RENDER THE CUSTOM ALERT MODAL */}
       <AlertModal 
         isOpen={alertConfig.isOpen}
         title={alertConfig.title}
@@ -364,8 +364,9 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
             <input 
               type="number" 
               step="0.01" 
+              min="0.01"
               value={freightRate} 
-              onChange={e => setFreightRate(parseFloat(e.target.value))} 
+              onChange={e => setFreightRate(e.target.value === "" ? "" : parseFloat(e.target.value))} 
               className={`w-full text-sm p-3 rounded-xl border outline-none font-black ${isManualRoute ? 'border-slate-300 focus:ring-2 focus:ring-[#FF5A00] text-[#FF5A00] bg-white' : 'border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed'}`} 
               disabled={!isManualRoute} 
               readOnly={!isManualRoute}
@@ -376,7 +377,15 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           {/* 8. Loaded MT */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">8. Loaded MT *</label>
-            <input type="number" step="0.01" value={loadedMt} onChange={e => setLoadedMt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900" required />
+            <input 
+              type="number" 
+              step="0.01" 
+              min="0.01"
+              value={loadedMt} 
+              onChange={e => setLoadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900" 
+              required 
+            />
           </div>
 
           {/* 9. Driver Name */}
@@ -391,30 +400,66 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           {/* 10. Driver Bata */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">10. Driver Bata (₹) *</label>
-            <input type="number" value={driverBata} onChange={e => setDriverBata(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required />
+            <input 
+              type="number" 
+              min="0"
+              value={driverBata} 
+              onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" 
+              required 
+            />
           </div>
 
           {/* 11. Advance */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">11. Direct Advance (₹)</label>
-            <input type="number" value={advance} onChange={e => setAdvance(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" />
+            <input 
+              type="number" 
+              min="0"
+              value={advance} 
+              onChange={e => setAdvance(e.target.value === "" ? "" : parseFloat(e.target.value))} 
+              placeholder="0.00" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" 
+            />
           </div>
 
           {/* 12. Diesel Rate */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">12. Diesel Rate (₹/L)</label>
-            <input type="number" step="0.1" value={dieselRate} onChange={e => setDieselRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-slate-50 text-slate-900 font-bold" />
+            <input 
+              type="number" 
+              step="0.1" 
+              min="0"
+              value={dieselRate} 
+              onChange={e => setDieselRate(e.target.value === "" ? 0 : parseFloat(e.target.value))} 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-slate-50 text-slate-900 font-bold" 
+            />
           </div>
 
           {/* 13. Diesel Issued & Odo (Grouped) */}
           <div className="grid grid-cols-2 gap-3 border border-slate-200 p-2 rounded-xl bg-slate-50">
              <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">13. Diesel Issued (L)</label>
-                <input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-[#FF5A00] bg-white text-slate-900" />
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  min="0"
+                  value={dieselL} 
+                  onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} 
+                  placeholder="0.0" 
+                  className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-[#FF5A00] bg-white text-slate-900" 
+                />
              </div>
              <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start Odo KM</label>
-                <input type="number" value={startKm} onChange={e => setStartKm(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-[#FF5A00] bg-white text-slate-900" />
+                <input 
+                  type="number" 
+                  min="0"
+                  value={startKm} 
+                  onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} 
+                  placeholder="0.0" 
+                  className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-[#FF5A00] bg-white text-slate-900" 
+                />
              </div>
           </div>
 
