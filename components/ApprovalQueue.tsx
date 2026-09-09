@@ -15,7 +15,6 @@ export function ApprovalQueue({ onSuccess }: { onSuccess?: () => void }) {
   // Editable fields local state
   const [edits, setEdits] = useState<Record<string, { litres: number; amount: number; rate: number }>>({});
 
-  // Helper to dynamically find the primary key column regardless of what you named it
   const getIdCol = (item: any) => ("id" in item ? "id" : "entry_id" in item ? "entry_id" : "request_id");
   const getId = (item: any) => item[getIdCol(item)];
 
@@ -117,10 +116,15 @@ export function ApprovalQueue({ onSuccess }: { onSuccess?: () => void }) {
 
     try {
       if (action === "REJECTED") {
-        const { error } = await supabase.from("driver_pending_entries").update({ status: "REJECTED" }).eq(idCol, itemId);
+        const reason = prompt("Enter a brief reason for rejection (optional):", "Incorrect bill amount or details");
+        
+        const { error } = await supabase.from("driver_pending_entries").update({ 
+          status: "REJECTED",
+          rejection_reason: reason || "Rejected by office dispatch"
+        }).eq(idCol, itemId);
+
         if (error) throw new Error("Failed to reject: " + error.message);
         
-        // Refresh directly from the database to guarantee sync
         await fetchQueueData(); 
         setProcessingId(null);
         if (onSuccess) onSuccess();
@@ -180,7 +184,6 @@ export function ApprovalQueue({ onSuccess }: { onSuccess?: () => void }) {
         
       if (finalErr) throw new Error("Final Approval Failed: " + finalErr.message);
 
-      // Successfully processed. Pull fresh data!
       await fetchQueueData();
       setProcessingId(null);
       if (onSuccess) onSuccess();
