@@ -212,11 +212,19 @@ export function FinancialsModule() {
   const aggRetention = sortedFleetData.reduce((acc, c) => acc + c.net_retention, 0);
   const aggRetentionPct = aggFreight > 0 ? (aggRetention / aggFreight) * 100 : 0;
 
-  // 🚀 CSV EXPORT FUNCTION FOR ANALYTICS
+  // 🚀 CSV EXPORT FUNCTION WITH INJECTION PROTECTION
   const exportAnalyticsToCSV = () => {
     let headers: string[] = [];
     let rows: string[] = [];
     let filename = "";
+
+    const sanitizeCsv = (val: any) => {
+      let str = String(val ?? "");
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = `'${str}`;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    };
 
     if (analyticsSubTab === "👨‍✈️ Driver Scorecard") {
       if (driverScorecard.length === 0) return alert("No data to export.");
@@ -228,7 +236,7 @@ export function FinancialsModule() {
         d.total_km.toFixed(1), 
         d.kmpl.toFixed(2), 
         d.revenue.toFixed(2)
-      ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
+      ].map(sanitizeCsv).join(","));
       filename = `Driver_Scorecard_${new Date().toISOString().split('T')[0]}.csv`;
     } else {
       const data = sortedFleetData;
@@ -247,7 +255,7 @@ export function FinancialsModule() {
         r.retention_pct.toFixed(2), 
         r.diesel_pct.toFixed(2), 
         r.kmpl.toFixed(2)
-      ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
+      ].map(sanitizeCsv).join(","));
       filename = `Fleet_Analytics_${new Date().toISOString().split('T')[0]}.csv`;
     }
 
@@ -469,7 +477,6 @@ export function FinancialsModule() {
               )}
             </div>
 
-            {/* V2 EXPORT BUTTON */}
             <button onClick={exportAnalyticsToCSV} className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold text-sm rounded-lg transition-all shadow-sm flex items-center gap-2">
               <span className="text-lg leading-none">📊</span> Export CSV
             </button>
