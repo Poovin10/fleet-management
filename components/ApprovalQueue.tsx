@@ -52,60 +52,18 @@ export function ApprovalQueue() {
   const handleApprove = async (entry: any) => {
     setIsProcessing(true);
     try {
-      if (entry.entry_type === "FUEL") {
-        const { data: latestRateRes } = await supabase
-          .from('diesel_fuel_logs')
-          .select('diesel_rate_per_litre')
-          .order('fuel_date', { ascending: false })
-          .limit(1);
+      // Execute the atomic RPC function
+      const { data, error } = await supabase.rpc('approve_driver_entry', { 
+        p_entry_id: entry.id 
+      });
 
-        const rate = (latestRateRes && latestRateRes.length > 0) ? Number(latestRateRes[0].diesel_rate_per_litre) : 95.0;
-        const totalCost = Math.round((Number(entry.litres) * rate) * 100) / 100;
-
-        const { error: fuelErr } = await supabase.from('diesel_fuel_logs').insert([{
-          fuel_date: new Date().toISOString().split('T')[0],
-          vehicle_id: entry.vehicle_id,
-          lr_number: "MOBILE-FILL",
-          diesel_category: "TRIP_DIESEL",
-          litres_filled: Number(entry.litres),
-          diesel_rate_per_litre: rate,
-          total_fuel_cost: totalCost,
-          filling_odometer_km: Number(entry.odometer_km) || 0,
-          is_tank_full: false
-        }]);
-
-        if (fuelErr) throw fuelErr;
-      } else if (entry.entry_type === "ADVANCE") {
-        const { data: driverData } = await supabase
-          .from('drivers')
-          .select('driver_id')
-          .eq('driver_code', entry.driver_code)
-          .single();
-
-        if (!driverData) throw new Error("Associated driver profile not found.");
-
-        const { error: advErr } = await supabase.from('driver_direct_advances').insert([{
-          advance_date: new Date().toISOString().split('T')[0],
-          driver_id: driverData.driver_id,
-          amount_inr: Number(entry.amount_inr),
-          advance_type: "GENERAL_ADVANCE",
-          reference_remarks: `Mobile Request Approved: ${entry.receipt_remarks || '-'}`
-        }]);
-
-        if (advErr) throw advErr;
-      }
-
-      const { error: statusErr } = await supabase
-        .from('driver_pending_entries')
-        .update({ status: 'APPROVED' })
-        .eq('id', entry.id);
-
-      if (statusErr) throw statusErr;
+      if (error) throw error;
+      if (!data.success) throw new Error(data.message);
 
       setAlertConfig({
         isOpen: true,
         title: "Approved Successfully",
-        message: `${entry.entry_type} request for ${entry.driver_code} has been approved and posted to ledgers.`,
+        message: data.message,
         type: "success"
       });
 
