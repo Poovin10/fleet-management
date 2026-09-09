@@ -48,6 +48,17 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
 
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
+    if (!dateStr.includes('-')) return dateStr;
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   useEffect(() => {
     async function fetchMaster() {
       const { data } = await supabase.from('destinations_freight_master').select('*').eq('is_active', true);
@@ -100,7 +111,6 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
         setOrigin(trip.origin || "");
         setDestination(trip.destination || "");
         
-        // FIXED: Using "match" instead of "r" for the template string
         const match = routeMaster.find(route => route.origin === trip.origin && route.destination_name === trip.destination);
         if (match) {
           setRouteSlab(`${match.origin} ➔ ${match.destination_name}`);
@@ -224,7 +234,7 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300" style={{ colorScheme: 'light' }}>
       
       {/* Header & Search */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
@@ -238,12 +248,12 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
             placeholder="Search LR or Truck No..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full md:w-48 text-sm p-2.5 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-indigo-500" 
+            className="w-full md:w-48 text-sm p-2.5 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" 
           />
           <select 
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-36 text-sm p-2.5 rounded-lg border border-slate-300 bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-36 text-sm p-2.5 rounded-lg border border-slate-300 bg-slate-50 outline-none focus:ring-2 focus:ring-[#FF5A00]"
           >
             <option value="All Statuses">All Statuses</option>
             <option value="IN_TRANSIT">In Transit</option>
@@ -262,16 +272,16 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
       {/* Target Trip Selector */}
       {matchedTrips.length > 0 && (
         <div className="mb-8">
-          <label className="block text-xs font-bold text-slate-700 uppercase mb-2 text-indigo-600">Target Trip ({matchedTrips.length} found)</label>
+          <label className="block text-xs font-bold text-slate-700 uppercase mb-2 text-[#FF5A00]">Target Trip ({matchedTrips.length} found)</label>
           <select 
             value={selectedTripId}
             onChange={(e) => setSelectedTripId(e.target.value)}
-            className="w-full text-sm p-3 rounded-xl border-2 border-indigo-100 bg-indigo-50 focus:bg-white outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-slate-900 cursor-pointer"
+            className="w-full text-sm p-3 rounded-xl border-2 border-orange-100 bg-orange-50/50 focus:bg-white outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold text-slate-900 cursor-pointer"
           >
             <option value="">-- SELECT TRIP TO MODIFY --</option>
             {matchedTrips.map(t => (
               <option key={t.trip_id} value={t.trip_id}>
-                LR: {t.trip_number} | Truck: {t.vehicles?.vehicle_number} | Status: {t.trip_status}
+                LR: {t.trip_number} | Date: {formatDate(t.trip_start_date)} | Truck: {t.vehicles?.vehicle_number} | Status: {t.trip_status}
               </option>
             ))}
           </select>
@@ -294,19 +304,19 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start Date</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Closing Date</label>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">LR No</label>
-              <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-indigo-500 font-bold" />
+              <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-[#FF5A00] font-bold" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Route Slab</label>
-              <select value={routeSlab} onChange={e => setRouteSlab(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500">
+              <select value={routeSlab} onChange={e => setRouteSlab(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]">
                 <option value="-- MANUAL / SPOT ROUTE --">-- MANUAL / SPOT ROUTE --</option>
                 <option value={`${origin} ➔ ${destination}`}>{origin} ➔ {destination} (Current)</option>
               </select>
@@ -316,19 +326,19 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Origin</label>
-              <input type="text" value={origin} onChange={e => setOrigin(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-indigo-500" />
+              <input type="text" value={origin} onChange={e => setOrigin(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination</label>
-              <input type="text" value={destination} onChange={e => setDestination(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-indigo-500" />
+              <input type="text" value={destination} onChange={e => setDestination(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Spot Rate/MT (₹)</label>
-              <input type="number" step="0.01" value={spotRate} onChange={e => setSpotRate(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="number" step="0.01" value={spotRate} onChange={e => setSpotRate(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Standard KM</label>
-              <input type="number" value={stdKm} onChange={e => setStdKm(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="number" value={stdKm} onChange={e => setStdKm(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
           </div>
 
@@ -337,11 +347,11 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start KM</label>
-              <input type="number" value={startKm} onChange={e => setStartKm(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="number" value={startKm} onChange={e => setStartKm(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">End KM</label>
-              <input type="number" value={endKm} onChange={e => setEndKm(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="number" value={endKm} onChange={e => setEndKm(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Total Dist (KM)</label>
@@ -352,46 +362,46 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Loaded MT</label>
-              <input type="number" step="0.01" value={loadedMt} onChange={e => setLoadedMt(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500 font-bold" />
+              <input type="number" step="0.01" value={loadedMt} onChange={e => setLoadedMt(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00] font-bold" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Freight (₹)</label>
-              <input type="number" step="0.01" value={freight} onChange={e => setFreight(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500 text-indigo-600 font-bold" />
+              <input type="number" step="0.01" value={freight} onChange={e => setFreight(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00] text-[#FF5A00] font-bold" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bata (₹)</label>
-              <input type="number" value={bata} onChange={e => setBata(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="number" value={bata} onChange={e => setBata(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Advance (₹)</label>
-              <input type="number" value={advance} onChange={e => setAdvance(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="number" value={advance} onChange={e => setAdvance(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Diesel (L)</label>
-              <input type="number" step="0.1" value={diesel} onChange={e => setDiesel(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="number" step="0.1" value={diesel} onChange={e => setDiesel(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">POD No</label>
-              <input type="text" value={podNo} onChange={e => setPodNo(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-indigo-500" />
+              <input type="text" value={podNo} onChange={e => setPodNo(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Unloaded MT</label>
-              <input type="number" step="0.01" value={unloadedMt} onChange={e => setUnloadedMt(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="number" step="0.01" value={unloadedMt} onChange={e => setUnloadedMt(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Halt Bata (₹)</label>
-              <input type="number" value={haltBata} onChange={e => setHaltBata(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="number" value={haltBata} onChange={e => setHaltBata(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Claims (₹)</label>
-              <input type="number" value={claims} onChange={e => setClaims(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500" />
+              <input type="number" value={claims} onChange={e => setClaims(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Trip Status</label>
-              <select value={tripStatus} onChange={e => setTripStatus(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-indigo-500 font-bold text-indigo-700">
+              <select value={tripStatus} onChange={e => setTripStatus(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00] font-bold text-[#FF5A00]">
                 <option value="IN_TRANSIT">IN TRANSIT</option>
                 <option value="COMPLETED">COMPLETED</option>
               </select>
@@ -410,7 +420,7 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
               </button>
             </div>
             
-            <button type="button" onClick={handleCommitUpdates} disabled={isProcessing} className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
+            <button type="button" onClick={handleCommitUpdates} disabled={isProcessing} className="px-8 py-2.5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
               {isProcessing ? "Processing..." : "💾 Commit Updates"}
             </button>
           </div>
