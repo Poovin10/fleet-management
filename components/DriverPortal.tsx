@@ -128,7 +128,6 @@ export function DriverPortal() {
     }
   }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab]);
 
-  // Check if selected driver needs first-time PIN setup
   const handleDriverChange = (code: string) => {
     setDriverCode(code);
     setDriverPin("");
@@ -178,7 +177,6 @@ export function DriverPortal() {
         return setAlertConfig({ isOpen: true, title: "Mismatch", message: "PINs do not match. Please re-enter.", type: "error" });
       }
 
-      // Save PIN to Supabase Database
       const { error } = await supabase
         .from('drivers')
         .update({ pin: driverPin })
@@ -289,8 +287,19 @@ export function DriverPortal() {
           updatePayload.status_remarks = statusRemarksText;
         }
 
-        await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
-        await supabase.from('vehicles').update({ current_status: vehicleStatusUpdate, status_remarks: statusRemarksText }).eq('vehicle_id', selectedTruckId);
+        // Call the atomic RPC to ensure both tables update together safely
+        const { error: rpcError } = await supabase.rpc('update_trip_status_atomic', {
+          p_trip_id: currentTrip.trip_id,
+          p_vehicle_id: selectedTruckId,
+          p_payload: updatePayload,
+          p_vehicle_status: vehicleStatusUpdate,
+          p_vehicle_remarks: statusRemarksText
+        });
+
+        if (rpcError) {
+          setIsSubmitting(false);
+          return setAlertConfig({ isOpen: true, title: "Failed", message: rpcError.message, type: "error" });
+        }
       }
       
       setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
