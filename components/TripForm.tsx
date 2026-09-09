@@ -46,6 +46,17 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const [isTankFull, setIsTankFull] = useState(false);
   const [isManualRoute, setIsManualRoute] = useState(false);
 
+  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
+    if (!dateStr.includes('-')) return dateStr;
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   // --- DYNAMIC SOURCES LOGIC ---
   const dynamicSources = Array.from(
     new Set(freightMaster.map(r => r.origin?.toUpperCase().trim()).filter(Boolean))
@@ -271,7 +282,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in fade-in duration-300 relative">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
       
       {/* RENDER THE CUSTOM ALERT MODAL */}
       <AlertModal 
@@ -289,7 +300,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         
-        {/* EXACT REQUESTED FIELD ORDER: 2-Column Desktop, 1-Column Mobile Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
           {/* 1. Date */}
