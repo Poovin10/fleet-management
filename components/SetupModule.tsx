@@ -10,12 +10,7 @@ export function SetupModule() {
   const [isLoading, setIsLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | string | null>(null);
 
-  const [alertConfig, setAlertConfig] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    type: "info" as "success" | "error" | "info"
-  });
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
 
   // --- DATA STATES ---
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -29,38 +24,33 @@ export function SetupModule() {
   const [vVariant, setVVariant] = useState("Bulker (16-Wheel)");
   const [vCapacity, setVCapacity] = useState("35.0");
   const [vOdoWorking, setVOdoWorking] = useState(true);
-  const [vFc, setVFc] = useState("");
-  const [vIns, setVIns] = useState("");
-  const [vQtax, setVQtax] = useState("");
-  const [vPuc, setVPuc] = useState("");
-  const [vNp, setVNp] = useState("");
-  const [vSp, setVSp] = useState("");
-  const [vTank, setVTank] = useState("");
 
   // --- DRIVER FORM ---
-  const [dCode, setDCode] = useState("");
   const [dName, setDName] = useState("");
   const [dPhone, setDPhone] = useState("");
+  const [dLicense, setDLicense] = useState("");
   const [dExpiry, setDExpiry] = useState("");
 
   // --- SLAB FORM ---
   const [sCargo, setSCargo] = useState("BULK");
   const [sOrigin, setSOrigin] = useState("");
   const [sDestination, setSDestination] = useState("");
+  const [sCapacity, setSCapacity] = useState("35.0");
   const [sRate, setSRate] = useState("");
+  const [sStdKm, setSStdKm] = useState("0.0");
 
   // --- BATA FORM ---
-  const [bRoute, setBRoute] = useState("");
+  const [bOrigin, setBOrigin] = useState("");
+  const [bDestination, setBDestination] = useState("");
+  const [bTruckSlab, setBTruckSlab] = useState("35MT Bulk");
   const [bDriverBata, setBDriverBata] = useState("");
-  const [bHaltBata, setBHaltBata] = useState("");
 
   const resetForms = () => {
     setEditingId(null);
     setVNumber(""); setVVariant("Bulker (16-Wheel)"); setVCapacity("35.0"); setVOdoWorking(true);
-    setVFc(""); setVIns(""); setVQtax(""); setVPuc(""); setVNp(""); setVSp(""); setVTank("");
-    setDCode(""); setDName(""); setDPhone(""); setDExpiry("");
-    setSCargo("BULK"); setSOrigin(""); setSDestination(""); setSRate("");
-    setBRoute(""); setBDriverBata(""); setBHaltBata("");
+    setDName(""); setDPhone(""); setDLicense(""); setDExpiry("");
+    setSCargo("BULK"); setSOrigin(""); setSDestination(""); setSCapacity("35.0"); setSRate(""); setSStdKm("0.0");
+    setBOrigin(""); setBDestination(""); setBTruckSlab("35MT Bulk"); setBDriverBata("");
   };
 
   const handleTabChange = (tab: string) => {
@@ -75,8 +65,7 @@ export function SetupModule() {
       supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
       supabase.from("destinations_freight_master").select("*").order("destination_name"),
       supabase.from("driver_bata_master").select("*").order("route_name"),
-      // Switched to trip_start_date since updated_at does not exist in your schema
-      supabase.from("trips").select("trip_number, trip_status, origin, destination, trip_start_date").order("trip_start_date", { ascending: false }).limit(20)
+      supabase.from("trips").select("*").order("trip_start_date", { ascending: false }).limit(50)
     ]);
 
     if (vRes.data) setVehicles(vRes.data);
@@ -89,6 +78,7 @@ export function SetupModule() {
 
   useEffect(() => { fetchAllData(); }, []);
 
+  // --- HELPERS ---
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "-";
     if (!dateStr.includes("-")) return dateStr;
@@ -96,7 +86,6 @@ export function SetupModule() {
     return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
   };
 
-  // --- AUTO GENERATE DRIVER CODE ---
   const getNextDriverCode = () => {
     if (drivers.length === 0) return "DRV-001";
     const nums = drivers.map(d => {
@@ -107,62 +96,27 @@ export function SetupModule() {
     return `DRV-${String(nextNum).padStart(3, '0')}`;
   };
 
-  const currentDriverCodeDisplay = editingId ? dCode : getNextDriverCode();
+  const currentDriverCodeDisplay = editingId && activeTab === "DRIVERS" 
+    ? drivers.find(d => d.driver_id === editingId)?.driver_code || ""
+    : getNextDriverCode();
 
-  // --- EXTRACT UNIQUE ROUTES FOR BATA DROPDOWN ---
-  const uniqueRoutes = Array.from(new Set(freightSlabs.map(f => `${f.orgin} - ${f.destination_name}`))).sort();
+  // Dynamic dropdowns for Bata
+  const uniqueOrigins = Array.from(new Set(freightSlabs.map(f => f.orgin))).sort();
+  const availableDestinations = Array.from(new Set(freightSlabs.filter(f => f.orgin === bOrigin).map(f => f.destination_name))).sort();
 
-  // --- VEHICLE HANDLERS ---
-  const handleEditVehicle = (v: any) => {
-    setEditingId(v.vehicle_id);
-    setVNumber(v.vehicle_number || "");
-    setVVariant(v.truck_type || "Bulker (16-Wheel)");
-    setVCapacity(v.carrying_capacity_tons ? String(v.carrying_capacity_tons) : "35.0");
-    setVFc(v.fc_expiry_date || ""); setVIns(v.insurance_expiry_date || "");
-    setVQtax(v.qtax_expiry_date || ""); setVPuc(v.puc_expiry_date || "");
-    setVNp(v.np_expiry_date || ""); setVSp(v.state_permit_expiry_date || "");
-    setVTank(v.tank_cert_expiry_date || "");
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
+  // --- SUBMIT HANDLERS ---
   const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
       vehicle_number: vNumber.trim().toUpperCase(),
       truck_type: vVariant,
       carrying_capacity_tons: Number(vCapacity) || 0,
-      fc_expiry_date: vFc || null, insurance_expiry_date: vIns || null,
-      qtax_expiry_date: vQtax || null, puc_expiry_date: vPuc || null,
-      np_expiry_date: vNp || null, state_permit_expiry_date: vSp || null,
-      tank_cert_expiry_date: vTank || null,
       is_active: true
     };
-    
-    const res = editingId 
-      ? await supabase.from("vehicles").update(payload).eq("vehicle_id", editingId)
-      : await supabase.from("vehicles").insert([payload]);
-      
-    if (res.error) setAlertConfig({ isOpen: true, title: "Error", message: res.error.message, type: "error" });
-    else {
-      setAlertConfig({ isOpen: true, title: "Success", message: "Truck saved successfully!", type: "success" });
-      resetForms(); fetchAllData();
-    }
-  };
-
-  const handleDeleteVehicle = async (id: number) => {
-    if (!confirm("Deactivate this truck?")) return;
-    await supabase.from("vehicles").update({ is_active: false }).eq("vehicle_id", id);
-    fetchAllData();
-  };
-
-  // --- DRIVER HANDLERS ---
-  const handleEditDriver = (d: any) => {
-    setEditingId(d.driver_id);
-    setDCode(d.driver_code || "");
-    setDName(d.full_name || "");
-    setDPhone(d.phone_number || "");
-    setDExpiry(d.expiry_date || "");
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const res = editingId ? await supabase.from("vehicles").update(payload).eq("vehicle_id", editingId) : await supabase.from("vehicles").insert([payload]);
+    if (res.error) return setAlertConfig({ isOpen: true, title: "Error", message: res.error.message, type: "error" });
+    setAlertConfig({ isOpen: true, title: "Success", message: "Truck saved!", type: "success" });
+    resetForms(); fetchAllData();
   };
 
   const handleSaveDriver = async (e: React.FormEvent) => {
@@ -176,38 +130,10 @@ export function SetupModule() {
     };
     if (!editingId) payload.pin = "1234";
     
-    const res = editingId 
-      ? await supabase.from("drivers").update(payload).eq("driver_id", editingId)
-      : await supabase.from("drivers").insert([payload]);
-
-    if (res.error) setAlertConfig({ isOpen: true, title: "Error", message: res.error.message, type: "error" });
-    else {
-      setAlertConfig({ isOpen: true, title: "Success", message: "Driver saved successfully!", type: "success" });
-      resetForms(); fetchAllData();
-    }
-  };
-
-  const handleDeleteDriver = async (id: number) => {
-    if (!confirm("Deactivate this driver?")) return;
-    await supabase.from("drivers").update({ is_active: false }).eq("driver_id", id);
-    fetchAllData();
-  };
-
-  const handleResetDriverPin = async (driverId: number, driverName: string) => {
-    const newPin = prompt(`Enter new 4-digit PIN for ${driverName}:`, "1234");
-    if (!newPin || newPin.length !== 4) return;
-    await supabase.from("drivers").update({ pin: newPin }).eq("driver_id", driverId);
-    setAlertConfig({ isOpen: true, title: "Updated", message: `PIN reset for ${driverName}`, type: "success" });
-  };
-
-  // --- SLAB HANDLERS ---
-  const handleEditSlab = (f: any) => {
-    setEditingId(f.destination_id);
-    setSCargo(f.cargo_type || "BULK");
-    setSOrigin(f.orgin || "");
-    setSDestination(f.destination_name || "");
-    setSRate(f.freight_rate_per_ton ? String(f.freight_rate_per_ton) : "");
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const res = editingId ? await supabase.from("drivers").update(payload).eq("driver_id", editingId) : await supabase.from("drivers").insert([payload]);
+    if (res.error) return setAlertConfig({ isOpen: true, title: "Error", message: res.error.message, type: "error" });
+    setAlertConfig({ isOpen: true, title: "Success", message: "Driver saved!", type: "success" });
+    resetForms(); fetchAllData();
   };
 
   const handleSaveSlab = async (e: React.FormEvent) => {
@@ -216,55 +142,32 @@ export function SetupModule() {
       cargo_type: sCargo,
       orgin: sOrigin.trim().toUpperCase(),
       destination_name: sDestination.trim().toUpperCase(),
-      freight_rate_per_ton: Number(sRate)
+      capacity_tons: Number(sCapacity) || 0,
+      freight_rate_per_ton: Number(sRate) || 0,
+      standard_km: Number(sStdKm) || 0
     };
-    
-    const res = editingId 
-      ? await supabase.from("destinations_freight_master").update(payload).eq("destination_id", editingId)
-      : await supabase.from("destinations_freight_master").insert([payload]);
-
-    if (res.error) setAlertConfig({ isOpen: true, title: "Error", message: res.error.message, type: "error" });
-    else {
-      setAlertConfig({ isOpen: true, title: "Success", message: "Freight slab saved successfully!", type: "success" });
-      resetForms(); fetchAllData();
-    }
+    const res = editingId ? await supabase.from("destinations_freight_master").update(payload).eq("destination_id", editingId) : await supabase.from("destinations_freight_master").insert([payload]);
+    if (res.error) return setAlertConfig({ isOpen: true, title: "Error", message: res.error.message, type: "error" });
+    setAlertConfig({ isOpen: true, title: "Success", message: "Slab saved!", type: "success" });
+    resetForms(); fetchAllData();
   };
 
-  const handleDeleteSlab = async (id: number) => {
-    if (!confirm("Delete this freight slab?")) return;
-    await supabase.from("destinations_freight_master").delete().eq("destination_id", id);
-    fetchAllData();
-  };
-
-  // --- BATA HANDLERS ---
   const handleSaveBata = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { 
-      route_name: bRoute.trim().toUpperCase(), 
-      driver_bata_amount: Number(bDriverBata), 
-      halt_bata_amount: Number(bHaltBata) 
-    };
-    const { error } = await supabase.from("driver_bata_master").insert([payload]);
-    if (error) setAlertConfig({ isOpen: true, title: "Error", message: error.message, type: "error" });
-    else {
-      setAlertConfig({ isOpen: true, title: "Saved", message: "Bata slab saved successfully!", type: "success" });
-      resetForms(); fetchAllData();
-    }
+    const routeName = `${bOrigin} - ${bDestination}`.toUpperCase();
+    const payload = { route_name: routeName, driver_bata_amount: Number(bDriverBata), halt_bata_amount: 300 }; // Default halt or adjust as needed
+    const res = await supabase.from("driver_bata_master").insert([payload]);
+    if (res.error) return setAlertConfig({ isOpen: true, title: "Error", message: res.error.message, type: "error" });
+    setAlertConfig({ isOpen: true, title: "Success", message: "Bata saved!", type: "success" });
+    resetForms(); fetchAllData();
   };
 
-  const handleDeleteBata = async (routeName: string) => {
-    if (!confirm("Delete this bata rule?")) return;
-    await supabase.from("driver_bata_master").delete().eq("route_name", routeName);
-    fetchAllData();
-  };
-
-  // --- STYLING ---
-  const inputStyle = "w-full h-12 bg-white border border-slate-200 rounded-[14px] px-4 text-sm font-semibold text-slate-900 outline-none focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] shadow-sm disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-100";
-  const labelStyle = "block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1";
-  const buttonStyle = "w-full h-12 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-[14px] transition-colors mt-2 shadow-sm active:scale-[0.98]";
-  const cardStyle = "bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm";
-  const headingStyle = "text-[13px] font-black uppercase text-slate-900 mb-6 tracking-wide border-b border-slate-100 pb-3 flex justify-between";
-  const actionBtnStyle = "text-[10px] font-black px-3 py-1.5 rounded-lg shadow-sm transition-colors border";
+  // --- STYLING (Streamlit Replica) ---
+  const inputStyle = "w-full h-10 bg-white border border-slate-200 rounded-lg px-3 text-sm text-slate-800 outline-none focus:border-[#FF5A00] focus:ring-1 focus:ring-[#FF5A00] shadow-sm disabled:bg-slate-50 disabled:text-slate-500";
+  const labelStyle = "block text-[11px] font-bold text-slate-600 mb-1 ml-0.5";
+  const buttonStyle = "h-10 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-sm rounded-lg px-6 transition-colors shadow-sm";
+  const thStyle = "px-3 py-2 bg-slate-50 border-b border-slate-200 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0";
+  const tdStyle = "px-3 py-2 border-b border-slate-100 text-xs text-slate-700 whitespace-nowrap";
 
   const tabs = [
     { id: "TRUCKS", icon: "🚚", label: "Trucks" },
@@ -275,284 +178,216 @@ export function SetupModule() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-20" style={{ colorScheme: "light" }}>
+    <div className="space-y-6 pb-20" style={{ colorScheme: "light" }}>
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
-      {/* PILL TABS NAVIGATION */}
-      <div className="flex flex-wrap gap-2.5 bg-slate-50 p-2 rounded-2xl border border-slate-200">
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => handleTabChange(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
-              activeTab === t.id ? "bg-[#FF5A00] text-white shadow-md" : "bg-transparent text-slate-500 hover:bg-slate-200/50 hover:text-slate-900"
-            }`}
-          >
-            <span className="text-base leading-none">{t.icon}</span>
-            <span>{t.label}</span>
-          </button>
-        ))}
+      <div>
+        <h2 className="text-sm font-black uppercase text-slate-900 tracking-wide mb-4">Master Database Configuration</h2>
+        <div className="flex flex-wrap gap-2">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => handleTabChange(t.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
+                activeTab === t.id ? "border-slate-300 bg-white text-slate-900 shadow-sm" : "border-transparent text-slate-500 hover:bg-slate-100"
+              }`}
+            >
+              {activeTab === t.id && <span className="text-[#FF5A00] animate-pulse">●</span>}
+              <span className="text-sm">{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="w-full h-px bg-slate-200 mt-4"></div>
       </div>
 
-      {/* 1. TRUCKS */}
-      {activeTab === "TRUCKS" && (
-        <div className="space-y-6 animate-in fade-in">
-          <div className={cardStyle}>
-            <h3 className={headingStyle}>
-              <span>{editingId ? "EDIT TRUCK" : "ADD NEW TRUCK"}</span>
-              {editingId && <button onClick={resetForms} className="text-rose-500 hover:underline">Cancel Edit</button>}
-            </h3>
-            <form onSubmit={handleSaveVehicle} className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className={labelStyle}>Truck No *</label>
-                  <input type="text" value={vNumber} onChange={e => setVNumber(e.target.value)} placeholder="E.G. TN 56 F 0452" className={inputStyle} required />
-                </div>
+      <div className={`flex flex-col lg:flex-row gap-8 ${activeTab === "AUDIT" ? "lg:flex-col" : ""}`}>
+        
+        {/* LEFT PANEL: FORM (Hidden on Audit) */}
+        {activeTab !== "AUDIT" && (
+          <div className="w-full lg:w-[320px] shrink-0 bg-slate-50/50 p-6 rounded-2xl border border-slate-100 h-fit">
+            
+            {activeTab === "TRUCKS" && (
+              <form onSubmit={handleSaveVehicle} className="space-y-4">
+                <div><label className={labelStyle}>Truck No *</label><input type="text" value={vNumber} onChange={e => setVNumber(e.target.value)} className={inputStyle} required /></div>
                 <div>
                   <label className={labelStyle}>Variant</label>
                   <select value={vVariant} onChange={e => setVVariant(e.target.value)} className={inputStyle}>
-                    <option value="Bulker (16-Wheel)">Bulker (16-Wheel)</option>
-                    <option value="Bulker (14-Wheel)">Bulker (14-Wheel)</option>
-                    <option value="Open Body (10-Wheel)">Open Body (10-Wheel)</option>
+                    <option value="35MT Bulk (Bulker)">35MT Bulk (Bulker)</option>
+                    <option value="30MT Bulk (Bulker)">30MT Bulk (Bulker)</option>
+                    <option value="25MT Bags (Body)">25MT Bags (Body)</option>
+                    <option value="30MT Bags (Body)">30MT Bags (Body)</option>
                   </select>
                 </div>
                 <div>
                   <label className={labelStyle}>Capacity (MT)</label>
-                  <input type="number" step="0.1" value={vCapacity} onChange={e => setVCapacity(e.target.value)} placeholder="35.0" className={inputStyle} required />
+                  <select value={vCapacity} onChange={e => setVCapacity(e.target.value)} className={inputStyle}>
+                    <option value="35.0">35.0</option><option value="30.0">30.0</option><option value="25.0">25.0</option>
+                  </select>
                 </div>
-              </div>
-
-              {/* DOCUMENT EXPIRIES */}
-              <div className="pt-4 border-t border-slate-100">
-                <label className="block text-[11px] font-black text-slate-800 uppercase tracking-widest mb-4">Document Expiry Dates</label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div><label className={labelStyle}>FC Expiry</label><input type="date" value={vFc} onChange={e => setVFc(e.target.value)} className={inputStyle} /></div>
-                  <div><label className={labelStyle}>Insurance</label><input type="date" value={vIns} onChange={e => setVIns(e.target.value)} className={inputStyle} /></div>
-                  <div><label className={labelStyle}>Q-Tax</label><input type="date" value={vQtax} onChange={e => setVQtax(e.target.value)} className={inputStyle} /></div>
-                  <div><label className={labelStyle}>PUC Emission</label><input type="date" value={vPuc} onChange={e => setVPuc(e.target.value)} className={inputStyle} /></div>
-                  <div><label className={labelStyle}>National Permit</label><input type="date" value={vNp} onChange={e => setVNp(e.target.value)} className={inputStyle} /></div>
-                  <div><label className={labelStyle}>State Permit</label><input type="date" value={vSp} onChange={e => setVSp(e.target.value)} className={inputStyle} /></div>
-                  <div><label className={labelStyle}>Tank Cert</label><input type="date" value={vTank} onChange={e => setVTank(e.target.value)} className={inputStyle} /></div>
+                <div className="flex items-center gap-2 pt-1 pb-2">
+                  <input type="checkbox" checked={vOdoWorking} onChange={e => setVOdoWorking(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00]" />
+                  <label className="text-xs font-bold text-emerald-700">✅ Odometer Working</label>
                 </div>
-              </div>
+                <button type="submit" className={buttonStyle}>{editingId ? "Update Truck" : "Save Truck"}</button>
+              </form>
+            )}
 
-              <div className="flex items-center gap-2 px-1 pt-2">
-                <input type="checkbox" checked={vOdoWorking} onChange={e => setVOdoWorking(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-[#FF5A00] focus:ring-[#FF5A00]" />
-                <label className="text-[13px] font-bold text-slate-700">✅ Odometer Working</label>
-              </div>
-              <button type="submit" className={buttonStyle}>{editingId ? "Update Truck" : "Save Truck"}</button>
-            </form>
-          </div>
+            {activeTab === "DRIVERS" && (
+              <form onSubmit={handleSaveDriver} className="space-y-4">
+                <div><label className={labelStyle}>Driver Code *</label><input type="text" value={currentDriverCodeDisplay} disabled className={inputStyle} /></div>
+                <div><label className={labelStyle}>Full Name *</label><input type="text" value={dName} onChange={e => setDName(e.target.value)} className={inputStyle} required /></div>
+                <div><label className={labelStyle}>Phone *</label><input type="text" value={dPhone} onChange={e => setDPhone(e.target.value)} className={inputStyle} required /></div>
+                <div><label className={labelStyle}>License No</label><input type="text" value={dLicense} onChange={e => setDLicense(e.target.value)} className={inputStyle} /></div>
+                <div><label className={labelStyle}>Expiry Date</label><input type="date" value={dExpiry} onChange={e => setDExpiry(e.target.value)} className={inputStyle} /></div>
+                <button type="submit" className={buttonStyle}>{editingId ? "Update Driver" : "Save Driver"}</button>
+              </form>
+            )}
 
-          <div className={cardStyle}>
-             <h3 className={headingStyle}><span>ACTIVE FLEET ({vehicles.length})</span></h3>
-             <div className="space-y-3">
-               {vehicles.map(v => (
-                 <div key={v.vehicle_id} className="p-4 border border-slate-200 rounded-2xl bg-slate-50 flex flex-col sm:flex-row justify-between gap-3">
-                   <div>
-                     <p className="font-black text-sm text-slate-900">{v.vehicle_number}</p>
-                     <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">{v.truck_type} • {v.carrying_capacity_tons} MT</p>
-                     <div className="flex gap-2 mt-2 flex-wrap">
-                       {v.fc_expiry_date && <span className="text-[9px] bg-slate-200 px-2 py-0.5 rounded text-slate-700 font-bold">FC: {formatDate(v.fc_expiry_date)}</span>}
-                       {v.insurance_expiry_date && <span className="text-[9px] bg-slate-200 px-2 py-0.5 rounded text-slate-700 font-bold">INS: {formatDate(v.insurance_expiry_date)}</span>}
-                     </div>
-                   </div>
-                   <div className="flex gap-2 items-start">
-                     <button onClick={() => handleEditVehicle(v)} className={`${actionBtnStyle} bg-white text-slate-700 border-slate-300 hover:bg-slate-100`}>Edit</button>
-                     <button onClick={() => handleDeleteVehicle(v.vehicle_id)} className={`${actionBtnStyle} bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100`}>Deactivate</button>
-                   </div>
-                 </div>
-               ))}
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. DRIVERS */}
-      {activeTab === "DRIVERS" && (
-        <div className="space-y-6 animate-in fade-in">
-          <div className={cardStyle}>
-            <h3 className={headingStyle}>
-              <span>{editingId ? "EDIT DRIVER" : "ADD NEW DRIVER"}</span>
-              {editingId && <button onClick={resetForms} className="text-rose-500 hover:underline">Cancel Edit</button>}
-            </h3>
-            <form onSubmit={handleSaveDriver} className="space-y-5">
-              <div>
-                <label className={labelStyle}>Driver Code (Auto Generated)</label>
-                <input type="text" value={currentDriverCodeDisplay} disabled className={inputStyle} />
-              </div>
-              <div>
-                <label className={labelStyle}>Full Name *</label>
-                <input type="text" value={dName} onChange={e => setDName(e.target.value)} placeholder="Driver Name" className={inputStyle} required />
-              </div>
-              <div>
-                <label className={labelStyle}>Mobile Number</label>
-                <input type="text" value={dPhone} onChange={e => setDPhone(e.target.value)} placeholder="10-digit number" className={inputStyle} />
-              </div>
-              <div>
-                <label className={labelStyle}>License Expiry Date</label>
-                <input type="date" value={dExpiry} onChange={e => setDExpiry(e.target.value)} className={inputStyle} />
-              </div>
-              <button type="submit" className={buttonStyle}>{editingId ? "Update Driver" : "Save Driver"}</button>
-            </form>
-          </div>
-
-          <div className={cardStyle}>
-             <h3 className={headingStyle}><span>ACTIVE DRIVERS ({drivers.length})</span></h3>
-             <div className="space-y-3">
-               {drivers.map(d => (
-                 <div key={d.driver_id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 border border-slate-200 rounded-2xl bg-slate-50">
-                   <div>
-                     <p className="font-black text-sm text-slate-900">{d.driver_code} - {d.full_name}</p>
-                     <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
-                       EXP: <span className="text-slate-800">{formatDate(d.expiry_date)}</span> 
-                       {d.phone_number && <span className="ml-3">PH: {d.phone_number}</span>}
-                     </p>
-                   </div>
-                   <div className="flex gap-2">
-                     <button onClick={() => handleResetDriverPin(d.driver_id, d.full_name)} className={`${actionBtnStyle} bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100`}>Reset PIN</button>
-                     <button onClick={() => handleEditDriver(d)} className={`${actionBtnStyle} bg-white text-slate-700 border-slate-300 hover:bg-slate-100`}>Edit</button>
-                     <button onClick={() => handleDeleteDriver(d.driver_id)} className={`${actionBtnStyle} bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100`}>Deactivate</button>
-                   </div>
-                 </div>
-               ))}
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. SLABS (FREIGHT) */}
-      {activeTab === "SLABS" && (
-        <div className="space-y-6 animate-in fade-in">
-          <div className={cardStyle}>
-            <h3 className={headingStyle}>
-              <span>{editingId ? "EDIT FREIGHT SLAB" : "ADD FREIGHT SLAB"}</span>
-              {editingId && <button onClick={resetForms} className="text-rose-500 hover:underline">Cancel Edit</button>}
-            </h3>
-            <form onSubmit={handleSaveSlab} className="space-y-5">
-              <div>
-                <label className={labelStyle}>Cargo Type</label>
-                <select value={sCargo} onChange={e => setSCargo(e.target.value)} className={inputStyle}>
-                  <option value="BULK">BULK</option>
-                  <option value="BAG">BAG</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelStyle}>Origin (From) *</label>
-                <input type="text" value={sOrigin} onChange={e => setSOrigin(e.target.value)} placeholder="E.G. COCHIN" className={inputStyle} required />
-              </div>
-              <div>
-                <label className={labelStyle}>Destination (To) *</label>
-                <input type="text" value={sDestination} onChange={e => setSDestination(e.target.value)} placeholder="E.G. PALAKKAD" className={inputStyle} required />
-              </div>
-              <div>
-                <label className={labelStyle}>Freight Rate / MT (₹) *</label>
-                <input type="number" step="0.01" value={sRate} onChange={e => setSRate(e.target.value)} placeholder="450.00" className={inputStyle} required />
-              </div>
-              <button type="submit" className={buttonStyle}>{editingId ? "Update Slab" : "Save Freight Slab"}</button>
-            </form>
-          </div>
-
-          <div className={cardStyle}>
-             <h3 className={headingStyle}><span>CONFIGURED SLABS ({freightSlabs.length})</span></h3>
-             <div className="space-y-3">
-               {freightSlabs.map(f => (
-                 <div key={f.destination_id} className="p-4 border border-slate-200 rounded-2xl bg-slate-50 flex flex-col sm:flex-row justify-between gap-3">
-                   <div>
-                     <div className="flex items-center gap-2 mb-2">
-                       <span className="text-[9px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded uppercase tracking-wider">{f.cargo_type}</span>
-                       <p className="font-black text-sm text-slate-900">{f.orgin} ➔ {f.destination_name}</p>
-                     </div>
-                     <p className="text-[11px] text-slate-500 font-bold uppercase">Freight: <span className="text-[#FF5A00] font-black text-xs ml-1">₹{f.freight_rate_per_ton} / MT</span></p>
-                   </div>
-                   <div className="flex gap-2 items-start">
-                     <button onClick={() => handleEditSlab(f)} className={`${actionBtnStyle} bg-white text-slate-700 border-slate-300 hover:bg-slate-100`}>Edit</button>
-                     <button onClick={() => handleDeleteSlab(f.destination_id)} className={`${actionBtnStyle} bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100`}>Delete</button>
-                   </div>
-                 </div>
-               ))}
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. BATA SLABS */}
-      {activeTab === "BATA" && (
-        <div className="space-y-6 animate-in fade-in">
-          <div className={cardStyle}>
-            <h3 className={headingStyle}><span>ADD BATA SLAB</span></h3>
-            <form onSubmit={handleSaveBata} className="space-y-5">
-              <div>
-                <label className={labelStyle}>Route (Origin ➔ Destination) *</label>
-                <select value={bRoute} onChange={e => setBRoute(e.target.value)} className={inputStyle} required>
-                  <option value="" disabled>Select route from Freight Slabs...</option>
-                  {uniqueRoutes.map(route => (
-                    <option key={route} value={route}>{route.replace(' - ', ' ➔ ')}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelStyle}>Driver Bata / Trip (₹) *</label>
-                <input type="number" step="0.01" value={bDriverBata} onChange={e => setBDriverBata(e.target.value)} placeholder="1200.00" className={inputStyle} required />
-              </div>
-              <div>
-                <label className={labelStyle}>Halt Bata / Day (₹)</label>
-                <input type="number" step="0.01" value={bHaltBata} onChange={e => setBHaltBata(e.target.value)} placeholder="300.00" className={inputStyle} />
-              </div>
-              <button type="submit" className={buttonStyle}>Save Bata Details</button>
-            </form>
-          </div>
-
-          <div className={cardStyle}>
-             <h3 className={headingStyle}><span>CONFIGURED BATA ({bataSlabs.length})</span></h3>
-             <div className="space-y-3">
-               {bataSlabs.map((b, idx) => (
-                 <div key={idx} className="p-4 border border-slate-200 rounded-2xl bg-slate-50 flex justify-between">
-                   <div>
-                     <p className="font-black text-sm text-slate-900 mb-2">{b.route_name}</p>
-                     <div className="flex gap-4">
-                       <p className="text-[11px] text-slate-500 font-bold uppercase">Driver: <span className="text-emerald-600 font-black text-xs ml-1">₹{b.driver_bata_amount}</span></p>
-                       <p className="text-[11px] text-slate-500 font-bold uppercase">Halt: <span className="text-amber-600 font-black text-xs ml-1">₹{b.halt_bata_amount}</span></p>
-                     </div>
-                   </div>
-                   <button onClick={() => handleDeleteBata(b.route_name)} className={`${actionBtnStyle} h-fit bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100`}>Delete</button>
-                 </div>
-               ))}
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5. SYSTEM AUDIT */}
-      {activeTab === "AUDIT" && (
-        <div className="space-y-6 animate-in fade-in">
-          <div className={cardStyle}>
-            <h3 className={headingStyle}><span>RECENT ACTIVITY LOGS</span></h3>
-            <div className="space-y-3">
-              {auditLogs.length === 0 ? (
-                <div className="text-center p-8">
-                  <p className="text-4xl mb-4">📋</p>
-                  <p className="text-xs font-medium text-slate-500">No recent trip activity recorded yet.</p>
+            {activeTab === "SLABS" && (
+              <form onSubmit={handleSaveSlab} className="space-y-4">
+                <div>
+                  <label className={labelStyle}>Cargo</label>
+                  <select value={sCargo} onChange={e => setSCargo(e.target.value)} className={inputStyle}><option value="BULK">BULK</option><option value="BAG">BAG</option></select>
                 </div>
-              ) : (
-                auditLogs.map((log, idx) => (
-                  <div key={idx} className="p-3 border border-slate-100 rounded-xl bg-slate-50 flex items-start gap-3">
-                    <div className="text-xl pt-1">✅</div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">
-                        Trip <span className="text-[#FF5A00] font-black">{log.trip_number}</span> status updated to <span className="font-black">{log.trip_status}</span>
-                      </p>
-                      <p className="text-[10px] text-slate-500 mt-1 uppercase font-semibold">
-                        Route: {log.origin} ➔ {log.destination} • Started: {formatDate(log.trip_start_date)}
-                      </p>
-                    </div>
-                  </div>
-                ))
+                <div><label className={labelStyle}>Origin</label><input type="text" value={sOrigin} onChange={e => setSOrigin(e.target.value)} className={inputStyle} required /></div>
+                <div><label className={labelStyle}>Destination *</label><input type="text" value={sDestination} onChange={e => setSDestination(e.target.value)} className={inputStyle} required /></div>
+                <div className="flex gap-2">
+                  <div className="w-1/2"><label className={labelStyle}>Class (MT)</label><input type="number" step="0.1" value={sCapacity} onChange={e => setSCapacity(e.target.value)} className={inputStyle} /></div>
+                  <div className="w-1/2"><label className={labelStyle}>Std KM</label><input type="number" step="0.1" value={sStdKm} onChange={e => setSStdKm(e.target.value)} className={inputStyle} /></div>
+                </div>
+                <div><label className={labelStyle}>Rate/MT (₹) *</label><input type="number" step="0.01" value={sRate} onChange={e => setSRate(e.target.value)} className={inputStyle} required /></div>
+                <button type="submit" className={buttonStyle}>{editingId ? "Update Route" : "Save Route"}</button>
+              </form>
+            )}
+
+            {activeTab === "BATA" && (
+              <form onSubmit={handleSaveBata} className="space-y-4">
+                <div>
+                  <label className={labelStyle}>Origin Source *</label>
+                  <select value={bOrigin} onChange={e => setBOrigin(e.target.value)} className={inputStyle} required>
+                    <option value="" disabled>Select Origin</option>
+                    {uniqueOrigins.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelStyle}>Destination *</label>
+                  <select value={bDestination} onChange={e => setBDestination(e.target.value)} className={inputStyle} required disabled={!bOrigin}>
+                    <option value="" disabled>Select Destination</option>
+                    {availableDestinations.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelStyle}>Truck Slab</label>
+                  <select value={bTruckSlab} onChange={e => setBTruckSlab(e.target.value)} className={inputStyle}>
+                    <option value="35MT Bulk">35MT Bulk</option>
+                    <option value="25MT Body (Bag)">25MT Body (Bag)</option>
+                  </select>
+                </div>
+                <div><label className={labelStyle}>Bata (₹) *</label><input type="number" value={bDriverBata} onChange={e => setBDriverBata(e.target.value)} className={inputStyle} required /></div>
+                <button type="submit" className={buttonStyle}>Save Bata Slab</button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* RIGHT PANEL: DATA TABLE */}
+        <div className="flex-1 w-full bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto max-h-[600px]">
+            <table className="w-full text-left border-collapse">
+              
+              {activeTab === "TRUCKS" && (
+                <>
+                  <thead><tr><th className={thStyle}>vehicle_number</th><th className={thStyle}>truck_type</th><th className={thStyle}>carrying_capacity_tons</th><th className={thStyle}>current_status</th><th className={thStyle}>Actions</th></tr></thead>
+                  <tbody>
+                    {vehicles.map(v => (
+                      <tr key={v.vehicle_id} className="hover:bg-slate-50">
+                        <td className={`${tdStyle} font-bold`}>{v.vehicle_number}</td>
+                        <td className={tdStyle}>{v.truck_type}</td>
+                        <td className={tdStyle}>{v.carrying_capacity_tons}</td>
+                        <td className={tdStyle}>{v.current_status || "AVAILABLE_FOR_LOAD"}</td>
+                        <td className={tdStyle}><button onClick={() => { setEditingId(v.vehicle_id); setVNumber(v.vehicle_number); setVVariant(v.truck_type); setVCapacity(v.carrying_capacity_tons); }} className="text-blue-600 mr-2">Edit</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </>
               )}
-            </div>
+
+              {activeTab === "DRIVERS" && (
+                <>
+                  <thead><tr><th className={thStyle}>driver_code</th><th className={thStyle}>full_name</th><th className={thStyle}>phone_number</th><th className={thStyle}>license_number</th><th className={thStyle}>Actions</th></tr></thead>
+                  <tbody>
+                    {drivers.map(d => (
+                      <tr key={d.driver_id} className="hover:bg-slate-50">
+                        <td className={`${tdStyle} font-bold`}>{d.driver_code}</td>
+                        <td className={tdStyle}>{d.full_name}</td>
+                        <td className={tdStyle}>{d.phone_number}</td>
+                        <td className={tdStyle}>{formatDate(d.expiry_date)}</td>
+                        <td className={tdStyle}><button onClick={() => { setEditingId(d.driver_id); setDName(d.full_name); setDPhone(d.phone_number); }} className="text-blue-600 mr-2">Edit</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </>
+              )}
+
+              {activeTab === "SLABS" && (
+                <>
+                  <thead><tr><th className={thStyle}>cargo_type</th><th className={thStyle}>orgin</th><th className={thStyle}>destination_name</th><th className={thStyle}>capacity_tons</th><th className={thStyle}>freight_rate_per_ton</th><th className={thStyle}>standard_km</th></tr></thead>
+                  <tbody>
+                    {freightSlabs.map(f => (
+                      <tr key={f.destination_id} className="hover:bg-slate-50">
+                        <td className={tdStyle}>{f.cargo_type}</td>
+                        <td className={`${tdStyle} font-bold`}>{f.orgin}</td>
+                        <td className={`${tdStyle} font-bold`}>{f.destination_name}</td>
+                        <td className={tdStyle}>{f.capacity_tons}</td>
+                        <td className={tdStyle}>{f.freight_rate_per_ton}</td>
+                        <td className={tdStyle}>{f.standard_km || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </>
+              )}
+
+              {activeTab === "BATA" && (
+                <>
+                  <thead><tr><th className={thStyle}>route_name</th><th className={thStyle}>driver_bata_amount</th><th className={thStyle}>halt_bata_amount</th></tr></thead>
+                  <tbody>
+                    {bataSlabs.map((b, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className={`${tdStyle} font-bold`}>{b.route_name}</td>
+                        <td className={tdStyle}>{b.driver_bata_amount}</td>
+                        <td className={tdStyle}>{b.halt_bata_amount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </>
+              )}
+
+              {activeTab === "AUDIT" && (
+                <>
+                  <thead><tr><th className={thStyle}>trip_id</th><th className={thStyle}>trip_number</th><th className={thStyle}>trip_start_date</th><th className={thStyle}>vehicle_id</th><th className={thStyle}>origin</th><th className={thStyle}>destination</th><th className={thStyle}>start_km</th><th className={thStyle}>end_km</th></tr></thead>
+                  <tbody>
+                    {auditLogs.map(t => (
+                      <tr key={t.trip_id} className="hover:bg-slate-50">
+                        <td className={tdStyle}>{t.trip_id}</td>
+                        <td className={`${tdStyle} font-bold text-blue-700`}>{t.trip_number}</td>
+                        <td className={tdStyle}>{formatDate(t.trip_start_date)}</td>
+                        <td className={tdStyle}>{t.vehicle_id}</td>
+                        <td className={tdStyle}>{t.origin}</td>
+                        <td className={tdStyle}>{t.destination}</td>
+                        <td className={tdStyle}>{t.start_km || 0}</td>
+                        <td className={tdStyle}>{t.end_km || 0}</td>
+                      </tr>
+                    ))}
+                    {auditLogs.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-slate-500">No trips recorded yet.</td></tr>}
+                  </tbody>
+                </>
+              )}
+            </table>
           </div>
         </div>
-      )}
+
+      </div>
     </div>
   );
 }
