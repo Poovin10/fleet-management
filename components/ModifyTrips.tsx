@@ -111,11 +111,11 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
         setOrigin(trip.origin || "");
         setDestination(trip.destination || "");
         
-        const match = routeMaster.find(route => route.origin === trip.origin && route.destination_name === trip.destination);
+        const match = routeMaster.find(route => route.origin === trip.origin && (route.destination_name === trip.destination || route.destination === trip.destination));
         if (match) {
-          setRouteSlab(`${match.origin} ➔ ${match.destination_name}`);
-          setSpotRate(match.freight_rate_per_ton);
-          setStdKm(match.standard_km);
+          setRouteSlab(`${match.origin} ➔ ${match.destination_name || match.destination}`);
+          setSpotRate(match.freight_rate_per_ton || match.freight_rate_per_mt || 0);
+          setStdKm(match.standard_km || 0);
         } else {
           setRouteSlab("-- MANUAL / SPOT ROUTE --");
           setSpotRate(Number(trip.freight_revenue) / (Number(trip.loaded_weight_mt) || 1) || 0);
@@ -155,7 +155,12 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
 
   const handleCommitUpdates = async () => {
     if (!activeTrip) return;
-    if (Number(loadedMt) <= 0) return alert("⚠️ Loaded MT cannot be zero.");
+    
+    // Explicit Validation Guard for Zero/Negative numbers (Issue #7)
+    if (loadedMt === "" || Number(loadedMt) <= 0 || freight === "" || Number(freight) < 0) {
+      alert("⚠️ Loaded MT and Freight must have valid positive values.");
+      return;
+    }
     
     setIsProcessing(true);
     const totalKm = calcTotalKm();
@@ -334,11 +339,11 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Spot Rate/MT (₹)</label>
-              <input type="number" step="0.01" value={spotRate} onChange={e => setSpotRate(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
+              <input type="number" step="0.01" min="0" value={spotRate} onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Standard KM</label>
-              <input type="number" value={stdKm} onChange={e => setStdKm(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
+              <input type="number" min="0" value={stdKm} onChange={e => setStdKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
           </div>
 
@@ -347,11 +352,11 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start KM</label>
-              <input type="number" value={startKm} onChange={e => setStartKm(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
+              <input type="number" min="0" value={startKm} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">End KM</label>
-              <input type="number" value={endKm} onChange={e => setEndKm(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
+              <input type="number" min="0" value={endKm} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Total Dist (KM)</label>
@@ -362,23 +367,23 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Loaded MT</label>
-              <input type="number" step="0.01" value={loadedMt} onChange={e => setLoadedMt(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00] font-bold" />
+              <input type="number" step="0.01" min="0.01" value={loadedMt} onChange={e => setLoadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00] font-bold" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Freight (₹)</label>
-              <input type="number" step="0.01" value={freight} onChange={e => setFreight(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00] text-[#FF5A00] font-bold" />
+              <input type="number" step="0.01" min="0" value={freight} onChange={e => setFreight(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00] text-[#FF5A00] font-bold" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bata (₹)</label>
-              <input type="number" value={bata} onChange={e => setBata(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
+              <input type="number" min="0" value={bata} onChange={e => setBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Advance (₹)</label>
-              <input type="number" value={advance} onChange={e => setAdvance(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
+              <input type="number" min="0" value={advance} onChange={e => setAdvance(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Diesel (L)</label>
-              <input type="number" step="0.1" value={diesel} onChange={e => setDiesel(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
+              <input type="number" step="0.1" min="0" value={diesel} onChange={e => setDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
           </div>
 
@@ -389,15 +394,15 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Unloaded MT</label>
-              <input type="number" step="0.01" value={unloadedMt} onChange={e => setUnloadedMt(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
+              <input type="number" step="0.01" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Halt Bata (₹)</label>
-              <input type="number" value={haltBata} onChange={e => setHaltBata(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
+              <input type="number" min="0" value={haltBata} onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Claims (₹)</label>
-              <input type="number" value={claims} onChange={e => setClaims(parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
+              <input type="number" min="0" value={claims} onChange={e => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Trip Status</label>
