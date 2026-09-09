@@ -51,6 +51,17 @@ export function DriverPortal() {
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
+    if (!dateStr.includes('-')) return dateStr;
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   // Fetch Core Data
   const fetchPortalData = async () => {
     const [vRes, dRes, tRes] = await Promise.all([
@@ -427,7 +438,7 @@ export function DriverPortal() {
                           <span className="text-xs font-black text-emerald-600">+₹{t.driver_bata || 0} Bata</span>
                         </div>
                         <div className="flex justify-between text-xs text-slate-600">
-                          <span>Date: {t.trip_end_date || t.trip_start_date}</span>
+                          <span>Date: {formatDate(t.trip_end_date || t.trip_start_date)}</span>
                           <span>Advance Deducted: <strong>₹{t.cash_advance_issued || 0}</strong></span>
                         </div>
                       </div>
