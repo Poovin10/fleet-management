@@ -235,7 +235,7 @@ export function DriverPortal() {
   const labelStyle = "text-xs font-bold text-slate-600 uppercase tracking-wide leading-none mb-1";
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10">
+    <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: 'light' }}>
       
       {/* Branding */}
       <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
@@ -322,19 +322,19 @@ export function DriverPortal() {
                     {(actionType === "FUEL" || actionType === "BREAKDOWN" || actionType === "REACHED") && (
                       <div className="grid gap-1.5">
                         <label className={labelStyle}>Odometer (KM)</label>
-                        <input type="number" value={odometer} onChange={e => setOdometer(Number(e.target.value))} placeholder="e.g. 145230" className={inputStyle} required={actionType === "FUEL"}/>
+                        <input type="number" min="0" value={odometer} onChange={e => setOdometer(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 145230" className={inputStyle} required={actionType === "FUEL"}/>
                       </div>
                     )}
                     {actionType === "FUEL" && (
                       <div className="grid gap-1.5">
                         <label className={labelStyle}>Litres Filled</label>
-                        <input type="number" step="0.01" value={fuelLitres} onChange={e => setFuelLitres(Number(e.target.value))} placeholder="0.0" className={inputStyle} required />
+                        <input type="number" step="0.01" min="0.1" value={fuelLitres} onChange={e => setFuelLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={inputStyle} required />
                       </div>
                     )}
                     {actionType === "ADVANCE" && (
                       <div className="grid gap-1.5">
                         <label className={labelStyle}>Requested Amount (₹)</label>
-                        <input type="number" step="0.01" value={advanceAmt} onChange={e => setAdvanceAmt(Number(e.target.value))} placeholder="0.00" className={inputStyle} required />
+                        <input type="number" step="0.01" min="1" value={advanceAmt} onChange={e => setAdvanceAmt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={inputStyle} required />
                       </div>
                     )}
                     {actionType === "UNLOADED" && (
@@ -343,7 +343,7 @@ export function DriverPortal() {
                           <>
                             <div className="grid gap-1.5">
                               <label className="text-xs font-bold text-orange-900 uppercase">Unloaded Weight (MT)</label>
-                              <input type="number" step="0.01" value={unloadedMt} onChange={e => setUnloadedMt(Number(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} />
+                              <input type="number" step="0.01" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} />
                             </div>
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                               <input type="checkbox" checked={noWeighment} onChange={(e) => setNoWeighment(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-orange-300" />
@@ -353,7 +353,7 @@ export function DriverPortal() {
                         ) : (
                           <div className="grid gap-1.5">
                             <label className="text-xs font-bold text-orange-900 uppercase">Damaged Bags Count</label>
-                            <input type="number" value={damagedBags} onChange={e => setDamagedBags(Number(e.target.value))} placeholder="0" className={inputStyle} required />
+                            <input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required />
                           </div>
                         )}
                       </div>
