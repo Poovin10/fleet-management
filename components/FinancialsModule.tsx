@@ -35,6 +35,17 @@ export function FinancialsModule() {
   const [variantTypes, setVariantTypes] = useState<string[]>([]);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
 
+  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
+    if (!dateStr.includes('-')) return dateStr;
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   const formatAmt = (amt: number) => {
     return (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
@@ -340,7 +351,7 @@ export function FinancialsModule() {
                         const isSettled = t.settlement_status === "SETTLED";
                         return (
                           <tr key={t.trip_id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 font-semibold text-slate-900">{t.trip_start_date}<br/><span className="text-slate-500 font-normal">{t.trip_number}</span></td>
+                            <td className="px-4 py-3 font-semibold text-slate-900">{formatDate(t.trip_start_date)}<br/><span className="text-slate-500 font-normal">{t.trip_number}</span></td>
                             <td className="px-4 py-3 text-slate-700 font-bold">{t.vehicles?.vehicle_number}<br/><span className="text-[10px] font-normal text-slate-500">{t.origin} ➔ {t.destination}</span></td>
                             <td className="px-4 py-3 text-right font-bold text-slate-700">{formatDec(t.fuel_litres)}</td>
                             <td className="px-4 py-3 text-right font-bold text-emerald-600">{formatAmt(tripBata)}</td>
@@ -368,7 +379,7 @@ export function FinancialsModule() {
                     <tbody className="bg-white divide-y divide-slate-100">
                       {driverAdvances.map(a => (
                         <tr key={a.advance_id} className="hover:bg-slate-50">
-                          <td className="px-4 py-3 font-semibold text-slate-900">{a.advance_date}</td><td className="px-4 py-3 text-slate-700">{a.advance_type}</td><td className="px-4 py-3 text-slate-500">{a.reference_remarks || "-"}</td><td className="px-4 py-3 text-right font-bold text-rose-500">{formatAmt(a.amount_inr)}</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900">{formatDate(a.advance_date)}</td><td className="px-4 py-3 text-slate-700">{a.advance_type}</td><td className="px-4 py-3 text-slate-500">{a.reference_remarks || "-"}</td><td className="px-4 py-3 text-right font-bold text-rose-500">{formatAmt(a.amount_inr)}</td>
                         </tr>
                       ))}
                       {driverAdvances.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">No direct advances in this period.</td></tr>}
