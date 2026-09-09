@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { AlertModal } from "@/components/AlertModal";
 
 export function DriverSettlementModule() {
   const [loading, setLoading] = useState(false);
@@ -14,6 +15,14 @@ export function DriverSettlementModule() {
   const [destination, setDestination] = useState("");
   const [cargoType, setCargoType] = useState("BULK");
   const [ratePerMt, setRatePerMt] = useState<number | "">("");
+
+  // Sleek Alert State
+  const [alertConfig, setAlertConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info" as "success" | "error" | "info"
+  });
 
   const supabase = createClient();
 
@@ -33,11 +42,9 @@ export function DriverSettlementModule() {
   };
 
   async function fetchData() {
-    // 1. Fetch Route Freight Slabs
     const { data: rateData } = await supabase.from('destinations_freight_master').select('*');
     if (rateData) setRates(rateData);
 
-    // 2. Fetch Trips to calculate Driver Settlements & Bata Ledger
     const { data: tripData } = await supabase
       .from('trips')
       .select('trip_id, trip_number, trip_start_date, trip_status, driver_bata, cash_advance_issued, drivers(full_name, driver_code), vehicles(vehicle_number)')
@@ -51,16 +58,20 @@ export function DriverSettlementModule() {
   const handleAddRateSlab = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!destination || ratePerMt === "" || Number(ratePerMt) <= 0) {
-      alert("Please provide a valid destination and positive rate per MT.");
+      setAlertConfig({
+        isOpen: true,
+        title: "Invalid Input",
+        message: "Please provide a valid destination and positive rate per MT.",
+        type: "error"
+      });
       return;
     }
 
     setLoading(true);
-    // Unifying column schemas to support both legacy keys and trip lookup keys (Issue #1)
     const destFormatted = destination.trim().toUpperCase();
     const rateVal = Number(ratePerMt);
 
-    const { error } = await supabase.from('destinations_freight_master'].insert([
+    const { error } = await supabase.from('destinations_freight_master').insert([
       {
         origin: source.toUpperCase(),
         destination: destFormatted,
@@ -74,9 +85,19 @@ export function DriverSettlementModule() {
     ]);
 
     if (error) {
-      alert("Failed to add rate slab: " + error.message);
+      setAlertConfig({
+        isOpen: true,
+        title: "Failed",
+        message: "Failed to add rate slab: " + error.message,
+        type: "error"
+      });
     } else {
-      alert("Rate slab added successfully!");
+      setAlertConfig({
+        isOpen: true,
+        title: "Success",
+        message: "Rate slab added successfully!",
+        type: "success"
+      });
       setDestination("");
       setRatePerMt("");
       fetchData();
@@ -85,8 +106,16 @@ export function DriverSettlementModule() {
   };
 
   return (
-    <div className="space-y-6" style={{ colorScheme: 'light' }}>
+    <div className="space-y-6 relative" style={{ colorScheme: 'light' }}>
       
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+      />
+
       {/* SECTION 1: Route Rate Slab Management */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
         <h3 className="text-base font-black uppercase text-slate-900 border-b pb-2">Route Rate Slabs Master</h3>
