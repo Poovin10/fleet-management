@@ -155,6 +155,25 @@ export function SetupModule() {
     });
   };
 
+  const handleResetDriverPin = async (driverId: number, driverName: string) => {
+    const newPin = prompt(`Enter a new 4-digit PIN for ${driverName}'s App Login:`, "1234");
+    if (!newPin) return; // User cancelled
+    if (newPin.length !== 4 || isNaN(Number(newPin))) {
+      alert("Invalid PIN. It must be exactly 4 digits.");
+      return;
+    }
+
+    setIsProcessing(true);
+    const { error } = await supabase.from('drivers').update({ pin: newPin }).eq('driver_id', driverId);
+    if (error) {
+      alert("Error resetting PIN: " + error.message);
+    } else {
+      alert(`PIN for ${driverName} successfully reset to ${newPin}`);
+      fetchData();
+    }
+    setIsProcessing(false);
+  };
+
   const originOptions = Array.from(new Set([
     ...STANDARD_SOURCES,
     ...slabsList.map(s => s.origin),
@@ -183,7 +202,7 @@ export function SetupModule() {
       setIsProcessing(true);
       const { error } = await supabase.from('drivers').insert([{ 
         driver_code: driverCode.toUpperCase().trim(), full_name: driverName.toUpperCase().trim(), phone_number: mobileNo.trim() || null,
-        license_no: licenseNo.toUpperCase().trim() || null, expiry_date: expiryDate || null, is_active: true 
+        license_no: licenseNo.toUpperCase().trim() || null, expiry_date: expiryDate || null, pin: "1234", is_active: true 
       }]);
       if (error) alert("Error adding driver: " + error.message);
       else { setDriverName(""); setMobileNo(""); setLicenseNo(""); setExpiryDate(""); fetchData(); }
@@ -551,7 +570,7 @@ export function SetupModule() {
                 </form>
 
                 <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Active System Accounts</h4>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl w-full max-h-80">
+                <div className="overflow-x-auto border border-slate-200 rounded-xl w-full max-h-80 mb-8">
                   <table className="min-w-full text-xs text-left whitespace-nowrap">
                     <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0">
                       <tr><th className="p-3">Username</th><th className="p-3">Role</th><th className="p-3 text-center">Action</th></tr>
@@ -573,6 +592,36 @@ export function SetupModule() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* ADDED: DRIVER APP PIN MANAGEMENT SECTION */}
+                <h4 className="text-xs font-black text-slate-900 uppercase mb-3 border-t border-slate-100 pt-8">Driver App Access (PIN Management)</h4>
+                <div className="overflow-x-auto border border-slate-200 rounded-xl w-full max-h-80">
+                  <table className="min-w-full text-xs text-left whitespace-nowrap">
+                    <thead className="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0">
+                      <tr><th className="p-3">Driver Code</th><th className="p-3">Full Name</th><th className="p-3 text-center">App Access</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {driversList.map(d => (
+                        <tr key={d.driver_id} className="hover:bg-slate-50">
+                          <td className="p-3 font-bold text-slate-900">{d.driver_code}</td>
+                          <td className="p-3 text-slate-700 font-semibold">{d.full_name}</td>
+                          <td className="p-3 text-center">
+                            <button 
+                              onClick={() => handleResetDriverPin(d.driver_id, d.full_name)} 
+                              className="px-4 py-1.5 bg-amber-50 text-amber-700 font-bold rounded-lg hover:bg-amber-100 transition-colors border border-amber-200"
+                            >
+                              Reset PIN
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {driversList.length === 0 && (
+                        <tr><td colSpan={3} className="p-4 text-center text-slate-400">No drivers available.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
               </div>
             )}
           </>
