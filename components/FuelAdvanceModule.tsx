@@ -328,15 +328,15 @@ export function FuelAdvanceModule() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filling KM</label>
-                  <input type="number" value={fFillingKm} onChange={e => setFFillingKm(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                  <input type="number" min="0" value={fFillingKm} onChange={e => setFFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Litres *</label>
-                  <input type="number" step="0.1" value={fLitres} onChange={e => setFLitres(parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-orange-600" required />
+                  <input type="number" step="0.1" min="0.1" value={fLitres} onChange={e => setFLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-orange-600" required />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rate (₹/L) *</label>
-                  <input type="number" step="0.1" value={fDieselRate} onChange={e => setFDieselRate(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required />
+                  <input type="number" step="0.1" min="0.1" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required />
                 </div>
               </div>
               
@@ -442,15 +442,15 @@ export function FuelAdvanceModule() {
                 </div>
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filling KM *</label>
-                  <input type="number" value={eFillingKm} onChange={e => setEFillingKm(parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
+                  <input type="number" min="0" value={eFillingKm} onChange={e => setEFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
                 </div>
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Litres *</label>
-                  <input type="number" step="0.1" value={eLitres} onChange={e => setELitres(parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required />
+                  <input type="number" step="0.1" min="0.1" value={eLitres} onChange={e => setELitres(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required />
                 </div>
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rate (₹/L) *</label>
-                  <input type="number" step="0.1" value={eRate} onChange={e => setERate(parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
+                  <input type="number" step="0.1" min="0.1" value={eRate} onChange={e => setERate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
                 </div>
               </div>
 
@@ -496,7 +496,7 @@ export function FuelAdvanceModule() {
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Advance Amount (₹) *</label>
-                <input type="number" value={advAmount} onChange={e => setAdvAmount(parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-emerald-700" required />
+                <input type="number" min="1" value={advAmount} onChange={e => setAdvAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-emerald-700" required />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Category</label>
