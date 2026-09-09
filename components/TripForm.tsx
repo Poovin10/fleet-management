@@ -37,7 +37,11 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const [dieselL, setDieselL] = useState<number | "">("");
   const [isTankFull, setIsTankFull] = useState(false);
 
-  const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN", "CUSTOM"];
+  // --- DYNAMIC SOURCES LOGIC ---
+  // Automatically extract unique origins from your freight slab table
+  const dynamicSources = Array.from(
+    new Set(freightMaster.map(r => r.origin?.toUpperCase().trim()).filter(Boolean))
+  ).sort();
 
   useEffect(() => {
     async function fetchMasterData() {
@@ -256,8 +260,11 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Source (Origin) *</label>
+            {/* The Dropdown now maps through the dynamically generated sources! */}
             <select value={source} onChange={e => setSource(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900">
-              {STANDARD_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+              {dynamicSources.length === 0 && <option value="COCHIN">COCHIN</option>}
+              {dynamicSources.map(s => <option key={s} value={s}>{s}</option>)}
+              <option value="CUSTOM">CUSTOM (MANUAL)</option>
             </select>
             {source === "CUSTOM" && (
               <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required />
