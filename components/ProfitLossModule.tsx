@@ -90,20 +90,26 @@ export function ProfitLossModule() {
   const netProfit = totalFreight - totalOperatingExpenses;
   const netMarginPct = totalFreight > 0 ? (netProfit / totalFreight) * 100 : 0;
 
-  // CSV Export
+  // CSV Export with Injection Protection
   const exportPLToCSV = () => {
+    const sanitize = (val: any) => {
+      let str = String(val ?? "");
+      if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
     const csvContent = [
-      `"KSS ROADWAYS PVT LTD - MONTHLY PROFIT & LOSS STATEMENT (${selectedMonth})"`,
+      sanitize(`KSS ROADWAYS PVT LTD - MONTHLY PROFIT & LOSS STATEMENT (${selectedMonth})`),
       `"Category","Amount (INR)"`,
-      `"Gross Freight Revenue","${totalFreight.toFixed(2)}"`,
-      `"Diesel Expenses","${totalDiesel.toFixed(2)}"`,
-      `"Driver Bata","${totalBata.toFixed(2)}"`,
-      `"Halt Bata","${totalHaltBata.toFixed(2)}"`,
-      `"Enroute Repairs","${totalEnrouteRepairs.toFixed(2)}"`,
-      `"Workshop Spares & Bills","${totalWorkshopBills.toFixed(2)}"`,
-      `"Total Operating Expenses","${totalOperatingExpenses.toFixed(2)}"`,
-      `"Net Profit / Retention","${netProfit.toFixed(2)}"`,
-      `"Net Margin %","${netMarginPct.toFixed(2)}%"`
+      `"Gross Freight Revenue",${sanitize(totalFreight.toFixed(2))}`,
+      `"Diesel Expenses",${sanitize(totalDiesel.toFixed(2))}`,
+      `"Driver Bata",${sanitize(totalBata.toFixed(2))}`,
+      `"Halt Bata",${sanitize(totalHaltBata.toFixed(2))}`,
+      `"Enroute Repairs",${sanitize(totalEnrouteRepairs.toFixed(2))}`,
+      `"Workshop Spares & Bills",${sanitize(totalWorkshopBills.toFixed(2))}`,
+      `"Total Operating Expenses",${sanitize(totalOperatingExpenses.toFixed(2))}`,
+      `"Net Profit / Retention",${sanitize(netProfit.toFixed(2))}`,
+      `"Net Margin %",${sanitize(netMarginPct.toFixed(2) + "%")}`
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
