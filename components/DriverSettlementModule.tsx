@@ -22,6 +22,18 @@ export function DriverSettlementModule() {
     fetchData();
   }, [supabase]);
 
+  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
+    // If it's already containing slashes or doesn't match standard YYYY-MM-DD, return as is
+    if (!dateStr.includes('-')) return dateStr;
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   async function fetchData() {
     // 1. Fetch Route Freight Slabs
     const { data: rateData } = await supabase.from('destinations_freight_master').select('*');
@@ -67,7 +79,7 @@ export function DriverSettlementModule() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ colorScheme: 'light' }}>
       
       {/* SECTION 1: Route Rate Slab Management */}
       <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
@@ -168,12 +180,12 @@ export function DriverSettlementModule() {
               {settlements.map((s) => {
                 const bata = Number(s.driver_bata) || 0;
                 const advance = Number(s.cash_advance_issued) || 0;
-                const netBalance = bata - advance; // positive means payable to driver, negative means recovery needed
+                const netBalance = bata - advance;
 
                 return (
                   <tr key={s.trip_id} className="hover:bg-slate-50 border-b">
                     <td className="p-2.5 font-bold text-slate-900">{s.trip_number}</td>
-                    <td className="p-2.5 text-slate-600">{s.trip_start_date}</td>
+                    <td className="p-2.5 text-slate-600">{formatDate(s.trip_start_date)}</td>
                     <td className="p-2.5 font-medium">{s.drivers?.full_name || 'N/A'}</td>
                     <td className="p-2.5 font-medium">{s.vehicles?.vehicle_number || 'N/A'}</td>
                     <td className="p-2.5 text-emerald-700 font-bold">₹{bata.toLocaleString()}</td>
