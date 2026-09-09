@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { AlertModal } from "@/components/AlertModal"; // Sleek modern alerts
 
 export function DriverPortal() {
   const supabase = createClient();
@@ -9,6 +10,14 @@ export function DriverPortal() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [activeTrips, setActiveTrips] = useState<any[]>([]);
   
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info" as "success" | "error" | "info"
+  });
+
   // Persistent driver memory state
   const [savedDriverCode, setSavedDriverCode] = useState("");
   const [isDriverLocked, setIsDriverLocked] = useState(false);
@@ -24,7 +33,6 @@ export function DriverPortal() {
   const [advanceAmt, setAdvanceAmt] = useState<number | "">("");
   const [remarks, setRemarks] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
     const fetchPortalData = async () => {
@@ -50,7 +58,10 @@ export function DriverPortal() {
 
   const handleLockDriver = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!driverCode) return alert("Please select your Name / Code.");
+    if (!driverCode) {
+      setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Please select your Name / Code to continue.", type: "error" });
+      return;
+    }
     
     localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
     setSavedDriverCode(driverCode.toUpperCase().trim());
@@ -69,10 +80,12 @@ export function DriverPortal() {
     e.preventDefault();
     const activeDriver = isDriverLocked ? savedDriverCode : driverCode;
 
-    if (!selectedTruckId) return alert("Please select the active Truck Number you are driving today.");
+    if (!selectedTruckId) {
+      setAlertConfig({ isOpen: true, title: "Truck Required", message: "Please select the active Truck Number you are driving today.", type: "error" });
+      return;
+    }
 
     setIsSubmitting(true);
-    setSuccessMsg("");
 
     const currentTrip = activeTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
     const timestamp = new Date().toISOString();
@@ -100,9 +113,9 @@ export function DriverPortal() {
       }]);
 
       if (error) {
-        alert("Submission failed: " + error.message);
+        setAlertConfig({ isOpen: true, title: "Submission Failed", message: error.message, type: "error" });
       } else {
-        setSuccessMsg(`✅ ${actionType} for ${truckNumberText} submitted successfully! Sent to Cochin office.`);
+        setAlertConfig({ isOpen: true, title: "Success", message: `${actionType} request for ${truckNumberText} has been sent to the Cochin office.`, type: "success" });
       }
     } else {
       if (currentTrip) {
@@ -119,185 +132,204 @@ export function DriverPortal() {
         await supabase.from('vehicles').update({ current_status: "WORKSHOP_MAINTENANCE", status_remarks: remarks }).eq('vehicle_id', selectedTruckId);
       }
 
-      setSuccessMsg(`✅ Status '${actionType}' for ${truckNumberText} updated instantly!`);
+      setAlertConfig({ isOpen: true, title: "Status Updated", message: `Status '${actionType}' for ${truckNumberText} updated instantly!`, type: "success" });
     }
 
     setOdometer(""); setFuelLitres(""); setFuelCost(""); setAdvanceAmt(""); setRemarks("");
     setIsSubmitting(false);
   };
 
+  // Shared minimal input styling class
+  const inputStyle = "w-full text-sm px-3 py-2.5 rounded-md border border-slate-200 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all";
+  const labelStyle = "block text-sm font-medium text-slate-900 mb-1.5";
+
   return (
-    <div className="max-w-xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-sm p-6 sm:p-8" style={{ colorScheme: 'light' }}>
-      <div className="text-center mb-6 border-b border-slate-100 pb-4">
-        <span className="inline-block px-3 py-1 bg-[#FF5A00]/10 text-[#FF5A00] font-black text-xs rounded-full uppercase tracking-widest mb-2">Driver Road Portal</span>
-        <h2 className="text-xl font-black text-slate-900">KSS Roadways Quick Update</h2>
-        <p className="text-xs text-slate-500 mt-1">Frictionless highway reporting terminal.</p>
-      </div>
+    <div className="w-full max-w-md mx-auto relative animate-in fade-in zoom-in-95 duration-300">
+      
+      {/* Sleek Alert Modal */}
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+      />
 
-      {!isDriverLocked ? (
-        <form onSubmit={handleLockDriver} className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
-          <div className="text-center mb-4">
-            <p className="text-xs font-bold text-slate-700 uppercase">📱 One-Time Driver Setup</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">Select your name. This phone will remember your profile securely.</p>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Select Your Name / Code *</label>
-            <select 
-              value={driverCode} 
-              onChange={e => setDriverCode(e.target.value)} 
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 font-bold bg-white text-slate-900 outline-none" 
-              required
-            >
-              <option value="">-- CHOOSE DRIVER --</option>
-              {drivers.map(d => (
-                <option key={d.driver_id} value={d.driver_code}>{d.full_name} ({d.driver_code})</option>
-              ))}
-            </select>
-          </div>
-          <button type="submit" className="w-full py-3.5 bg-slate-900 text-white font-black text-sm rounded-xl hover:bg-slate-800 transition-all shadow-sm">
-            Save Driver Profile to This Phone 🔒
-          </button>
-        </form>
-      ) : (
-        <div>
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 flex justify-between items-center">
-            <div>
-              <p className="text-[10px] font-bold text-emerald-700 uppercase">Active Driver Profile (Locked)</p>
-              <p className="text-sm font-black text-emerald-900">{savedDriverCode}</p>
-            </div>
-            <button onClick={handleResetDriver} className="text-[10px] font-bold text-rose-600 bg-white px-2.5 py-1 rounded-lg border border-rose-200 hover:bg-rose-50">
-              Switch Driver
-            </button>
-          </div>
-
-          {successMsg && (
-            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold text-center animate-in fade-in">
-              {successMsg}
-            </div>
-          )}
-
-          <form onSubmit={handleDriverSubmit} className="space-y-5">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Select Active Truck For Today *</label>
-              <select 
-                value={selectedTruckId} 
-                onChange={e => setSelectedTruckId(e.target.value)} 
-                className="w-full text-sm p-3.5 rounded-xl border border-slate-300 font-black bg-slate-50 text-slate-900 outline-none focus:ring-2 focus:ring-[#FF5A00]" 
-                required
-              >
-                <option value="">-- SELECT TRUCK YOU ARE DRIVING TODAY --</option>
-                {vehicles.map(v => (
-                  <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} ({v.truck_type})</option>
-                ))}
-              </select>
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 sm:p-8">
+        
+        {!isDriverLocked ? (
+          <form onSubmit={handleLockDriver}>
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-900 mb-1.5">Driver Setup</h2>
+              <p className="text-sm text-slate-500">Enter your details below to link this device to your account.</p>
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">Select Update Type</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {[
-                  { id: "REACHED", label: "📍 Reached", desc: "Instant Update" },
-                  { id: "UNLOADED", label: "📦 Unloaded", desc: "Instant Update" },
-                  { id: "RETURNING", label: "🔄 Returning", desc: "Instant Update" },
-                  { id: "BREAKDOWN", label: "⚠️ Breakdown", desc: "Instant Update" },
-                  { id: "FUEL", label: "⛽ Fuel Fill", desc: "Manager Review" },
-                  { id: "ADVANCE", label: "💵 Cash Advance", desc: "Manager Review" },
-                ].map(item => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    onClick={() => setActionType(item.id)}
-                    className={`p-3 rounded-xl border text-left transition-all ${actionType === item.id ? 'bg-[#FF5A00] text-white border-[#FF5A00] shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}
-                  >
-                    <p className="text-xs font-black">{item.label}</p>
-                    <p className={`text-[9px] mt-0.5 ${actionType === item.id ? 'text-white/80 font-bold' : 'text-slate-400'}`}>{item.desc}</p>
-                  </button>
-                ))}
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className={labelStyle}>Driver Name</label>
+                <select 
+                  value={driverCode} 
+                  onChange={e => setDriverCode(e.target.value)} 
+                  className={inputStyle}
+                  required
+                >
+                  <option value="">Select your profile...</option>
+                  {drivers.map(d => (
+                    <option key={d.driver_id} value={d.driver_code}>{d.full_name} ({d.driver_code})</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            <div className="space-y-4 pt-2 border-t border-slate-100">
-              {(actionType === "FUEL" || actionType === "ADVANCE" || actionType === "BREAKDOWN") && (
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Current Odometer (KM)</label>
-                  <input 
-                    type="number" 
-                    value={odometer} 
-                    onChange={e => setOdometer(Number(e.target.value))} 
-                    placeholder="e.g. 145230" 
-                    className="w-full text-sm p-3 rounded-xl border border-slate-300 font-bold bg-white text-slate-900 outline-none" 
-                  />
-                </div>
-              )}
-
-              {actionType === "FUEL" && (
-                <div className="grid grid-cols-2 gap-4 animate-in fade-in">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Litres Filled</label>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      value={fuelLitres} 
-                      onChange={e => setFuelLitres(Number(e.target.value))} 
-                      placeholder="e.g. 200" 
-                      className="w-full text-sm p-3 rounded-xl border border-slate-300 font-bold bg-white text-slate-900 outline-none" 
-                      required 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Total Cost (INR)</label>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      value={fuelCost} 
-                      onChange={e => setFuelCost(Number(e.target.value))} 
-                      placeholder="e.g. 18500" 
-                      className="w-full text-sm p-3 rounded-xl font-black text-emerald-600 border border-slate-300 bg-white outline-none" 
-                      required 
-                    />
-                  </div>
-                </div>
-              )}
-
-              {actionType === "ADVANCE" && (
-                <div className="animate-in fade-in">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Requested Amount (INR)</label>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    value={advanceAmt} 
-                    onChange={e => setAdvanceAmt(Number(e.target.value))} 
-                    placeholder="e.g. 5000" 
-                    className="w-full text-sm p-3 rounded-xl font-black text-indigo-600 border border-slate-300 bg-white outline-none" 
-                    required 
-                  />
-                </div>
-              )}
-
-              {(actionType === "BREAKDOWN" || actionType === "FUEL") && (
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Remarks / Location Details</label>
-                  <input 
-                    type="text" 
-                    value={remarks} 
-                    onChange={e => setRemarks(e.target.value)} 
-                    placeholder={actionType === "BREAKDOWN" ? "e.g. Tyre burst near Salem bypass" : "e.g. BPC Pump Kochi"} 
-                    className="w-full text-sm p-3 rounded-xl border border-slate-300 font-semibold bg-white text-slate-900 outline-none" 
-                  />
-                </div>
-              )}
+            <button type="submit" className="w-full inline-flex justify-center items-center rounded-md text-sm font-medium transition-colors bg-slate-900 text-white hover:bg-slate-800 h-10 px-4 py-2">
+              Save Profile
+            </button>
+            <div className="mt-4 text-center">
+              <p className="text-xs text-slate-500">Don't have an account? <span className="text-slate-900 font-medium underline cursor-pointer">Contact Dispatch</span></p>
+            </div>
+          </form>
+        ) : (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-900 mb-1.5">Update Status</h2>
+              <p className="text-sm text-slate-500">Submit your transit updates and logs below.</p>
             </div>
 
-            <button 
-              type="submit" 
-              disabled={isSubmitting} 
-              className="w-full py-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-base rounded-xl transition-all shadow-sm active:scale-95 disabled:bg-slate-300"
-            >
-              {isSubmitting ? "Submitting Update..." : `Submit ${actionType}`}
-            </button>
-          </form>
-        </div>
-      )}
+            <div className="flex justify-between items-center mb-6 py-3 px-4 bg-slate-50 border border-slate-200 rounded-md">
+              <span className="text-sm font-medium text-slate-900">{savedDriverCode}</span>
+              <button type="button" onClick={handleResetDriver} className="text-xs font-medium text-slate-500 hover:text-slate-900 underline transition-colors">
+                Switch account
+              </button>
+            </div>
+
+            <form onSubmit={handleDriverSubmit} className="space-y-5">
+              <div>
+                <label className={labelStyle}>Active Truck</label>
+                <select 
+                  value={selectedTruckId} 
+                  onChange={e => setSelectedTruckId(e.target.value)} 
+                  className={inputStyle}
+                  required
+                >
+                  <option value="">Select current vehicle...</option>
+                  {vehicles.map(v => (
+                    <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} ({v.truck_type})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={labelStyle}>Action Type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: "REACHED", label: "📍 Reached" },
+                    { id: "UNLOADED", label: "📦 Unloaded" },
+                    { id: "RETURNING", label: "🔄 Returning" },
+                    { id: "BREAKDOWN", label: "⚠️ Breakdown" },
+                    { id: "FUEL", label: "⛽ Fuel Fill" },
+                    { id: "ADVANCE", label: "💵 Cash Advance" },
+                  ].map(item => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => setActionType(item.id)}
+                      className={`px-3 py-2.5 text-sm font-medium rounded-md border transition-all ${
+                        actionType === item.id 
+                          ? 'bg-slate-900 border-slate-900 text-white shadow-sm' 
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(actionType === "FUEL" || actionType === "ADVANCE" || actionType === "BREAKDOWN") && (
+                <div className="space-y-4 pt-2">
+                  <div>
+                    <label className={labelStyle}>Odometer (KM)</label>
+                    <input 
+                      type="number" 
+                      value={odometer} 
+                      onChange={e => setOdometer(Number(e.target.value))} 
+                      placeholder="e.g. 145230" 
+                      className={inputStyle} 
+                    />
+                  </div>
+
+                  {actionType === "FUEL" && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={labelStyle}>Litres Filled</label>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          value={fuelLitres} 
+                          onChange={e => setFuelLitres(Number(e.target.value))} 
+                          placeholder="0.0" 
+                          className={inputStyle} 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className={labelStyle}>Total Cost (₹)</label>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          value={fuelCost} 
+                          onChange={e => setFuelCost(Number(e.target.value))} 
+                          placeholder="0.00" 
+                          className={inputStyle} 
+                          required 
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {actionType === "ADVANCE" && (
+                    <div>
+                      <label className={labelStyle}>Requested Amount (₹)</label>
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        value={advanceAmt} 
+                        onChange={e => setAdvanceAmt(Number(e.target.value))} 
+                        placeholder="0.00" 
+                        className={inputStyle} 
+                        required 
+                      />
+                    </div>
+                  )}
+
+                  {(actionType === "BREAKDOWN" || actionType === "FUEL") && (
+                    <div>
+                      <label className={labelStyle}>Location / Remarks</label>
+                      <input 
+                        type="text" 
+                        value={remarks} 
+                        onChange={e => setRemarks(e.target.value)} 
+                        placeholder={actionType === "BREAKDOWN" ? "Describe issue & location" : "Pump location name"} 
+                        className={inputStyle} 
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-2">
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  className="w-full inline-flex justify-center items-center rounded-md text-sm font-medium transition-colors bg-slate-900 text-white hover:bg-slate-800 h-10 px-4 py-2 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? "Submitting..." : `Submit Update`}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
