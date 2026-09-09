@@ -2,11 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { AlertModal } from "@/components/AlertModal"; // <-- Imported the sleek modal!
 
 export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info" as "success" | "error" | "info"
+  });
 
   // Active trips & pending list
   const [activeTrips, setActiveTrips] = useState<any[]>([]);
@@ -85,7 +94,12 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
   const handleSettlePod = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentTrip || !podNo.trim()) {
-      alert("Please enter a valid POD Number.");
+      setAlertConfig({
+        isOpen: true,
+        title: "Missing Information",
+        message: "Please enter a valid POD Number to proceed.",
+        type: "error"
+      });
       return;
     }
 
@@ -121,7 +135,12 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
       .eq("trip_id", currentTrip.trip_id);
 
     if (tripUpdateError) {
-      alert("Error updating trip: " + tripUpdateError.message);
+      setAlertConfig({
+        isOpen: true,
+        title: "Closure Failed",
+        message: "Error updating trip: " + tripUpdateError.message,
+        type: "error"
+      });
       setIsSubmitting(false);
       return;
     }
@@ -152,7 +171,14 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
       })
       .eq("vehicle_id", currentTrip.vehicle_id);
 
-    alert(`Trip ${currentTrip.trip_number} successfully closed and settled!`);
+    // Trigger Sleek Success Alert
+    setAlertConfig({
+      isOpen: true,
+      title: "POD Settled!",
+      message: `Trip ${currentTrip.trip_number} successfully closed and settled!`,
+      type: "success"
+    });
+
     setIsSubmitting(false);
 
     // Reset state & refresh active list
@@ -164,8 +190,17 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-300">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-300 relative">
       
+      {/* RENDER THE CUSTOM ALERT MODAL */}
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+      />
+
       {/* LEFT PANEL: Settle POD Form */}
       <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <div className="border-b border-slate-200 pb-4 mb-6">
