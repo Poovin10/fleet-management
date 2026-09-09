@@ -2,11 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { AlertModal } from "@/components/AlertModal"; // <-- Imported the new modal!
 
 export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const supabase = createClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info" as "success" | "error" | "info"
+  });
 
   // Master Data States
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -169,7 +178,12 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTruckId || !selectedDriverId || !lrNo.trim() || !freightRate || !loadedMt) {
-      alert("Please fill all mandatory fields.");
+      setAlertConfig({
+        isOpen: true,
+        title: "Missing Information",
+        message: "Please fill out all mandatory fields before dispatching.",
+        type: "error"
+      });
       return;
     }
 
@@ -209,7 +223,12 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       .single();
 
     if (tripError) {
-      alert("Error dispatching trip: " + tripError.message);
+      setAlertConfig({
+        isOpen: true,
+        title: "Dispatch Failed",
+        message: "Error dispatching trip: " + tripError.message,
+        type: "error"
+      });
       setIsSubmitting(false);
       return;
     }
@@ -238,14 +257,31 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       })
       .eq("vehicle_id", Number(selectedTruckId));
 
-    alert("Trip dispatched successfully!");
+    // Show Custom Success Alert
+    setAlertConfig({
+      isOpen: true,
+      title: "Trip Dispatched!",
+      message: `LR No. ${lrNo.toUpperCase()} has been successfully registered and the truck status is now In Transit.`,
+      type: "success"
+    });
+    
     setIsSubmitting(false);
-    handleClear(); // Automatically clear on success
+    handleClear(); 
     if (onSuccess) onSuccess();
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in fade-in duration-300">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in fade-in duration-300 relative">
+      
+      {/* RENDER THE CUSTOM ALERT MODAL */}
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+      />
+
       <div className="border-b border-slate-200 pb-4 mb-6">
         <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Initiate Trip Dispatch</h3>
         <p className="text-xs text-slate-500 mt-1">Fill out the fields below in sequence to compute freight rules.</p>
