@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,7 +7,7 @@ import { AlertModal } from "@/components/AlertModal";
 
 export function SetupModule() {
   const supabase = createClient();
-  const [activeSetupTab, setActiveSetupTab] = useState<"VEHICLES" | "DRIVERS" | "FREIGHT">("VEHICLES");
+  const [activeTab, setActiveTab] = useState("TRUCKS");
   const [isLoading, setIsLoading] = useState(false);
 
   const [alertConfig, setAlertConfig] = useState({
@@ -16,436 +17,362 @@ export function SetupModule() {
     type: "info" as "success" | "error" | "info"
   });
 
-  // --- MASTER DATA STATES ---
+  // --- DATA STATES ---
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [freightSlabs, setFreightSlabs] = useState<any[]>([]);
+  const [bataSlabs, setBataSlabs] = useState<any[]>([]);
 
-  // --- FORM VISIBILITY & EDIT STATES ---
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-
-  // Vehicle Form State
+  // --- VEHICLE FORM ---
   const [vNumber, setVNumber] = useState("");
-  const [vType, setVType] = useState("BULK CEMENT");
-  const [vCapacity, setVCapacity] = useState<number | "">("");
-  const [fcExpiry, setFcExpiry] = useState("");
-  const [insExpiry, setInsExpiry] = useState("");
-  const [qtaxExpiry, setQtaxExpiry] = useState("");
-  const [pucExpiry, setPucExpiry] = useState("");
-  const [npExpiry, setNpExpiry] = useState("");
-  const [spExpiry, setSpExpiry] = useState("");
-  const [tankExpiry, setTankExpiry] = useState("");
+  const [vVariant, setVVariant] = useState("Bulker (16-Wheel)");
+  const [vCapacity, setVCapacity] = useState("35.0 MT");
+  const [vOdoWorking, setVOdoWorking] = useState(true);
 
-  // Driver Form State
+  // --- DRIVER FORM ---
   const [dCode, setDCode] = useState("");
   const [dName, setDName] = useState("");
   const [dPhone, setDPhone] = useState("");
-  const [dLicenseExpiry, setDLicenseExpiry] = useState("");
   const [dPin, setDPin] = useState("");
 
-  // Freight Slab Form State
-  const [fCargoType, setFCargoType] = useState("BULK");
-  const [fOrigin, setFOrigin] = useState("");
-  const [fDestination, setFDestination] = useState("");
-  const [fCapacity, setFCapacity] = useState<number | "">("");
-  const [fFreightRate, setFFreightRate] = useState<number | "">("");
-  const [fStandardKm, setFStandardKm] = useState<number | "">("");
+  // --- SLAB FORM ---
+  const [sOrigin, setSOrigin] = useState("");
+  const [sDestination, setSDestination] = useState("");
+  const [sCargo, setSCargo] = useState("BULK");
+  const [sRate, setSRate] = useState("");
 
-  // Helper date formatter
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return "-";
-    if (!dateStr.includes("-")) return dateStr;
-    const parts = dateStr.split("T")[0].split("-");
-    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
-  };
+  // --- BATA FORM ---
+  const [bRoute, setBRoute] = useState("");
+  const [bDriverBata, setBDriverBata] = useState("");
+  const [bHaltBata, setBHaltBata] = useState("");
 
-  // --- DATA FETCHING ---
-  const fetchAllMasterData = async () => {
+  const fetchAllData = async () => {
     setIsLoading(true);
-    const [vRes, dRes, fRes] = await Promise.all([
+    const [vRes, dRes, fRes, bRes] = await Promise.all([
       supabase.from("vehicles").select("*").eq("is_active", true).order("vehicle_number"),
       supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
-      supabase.from("destinations_freight_master").select("*").order("destination_name")
+      supabase.from("destinations_freight_master").select("*").order("destination_name"),
+      supabase.from("driver_bata_master").select("*").order("route_name").catch(() => ({ data: [] })) // Fallback if table missing
     ]);
 
     if (vRes.data) setVehicles(vRes.data);
     if (dRes.data) setDrivers(dRes.data);
     if (fRes.data) setFreightSlabs(fRes.data);
+    if (bRes.data) setBataSlabs(bRes.data);
     setIsLoading(false);
   };
 
-  useEffect(() => {
-    fetchAllMasterData();
-  }, []);
+  useEffect(() => { fetchAllData(); }, []);
 
-  const resetForms = () => {
-    setEditingId(null);
-    setIsFormOpen(false);
-    
-    setVNumber(""); setVType("BULK CEMENT"); setVCapacity("");
-    setFcExpiry(""); setInsExpiry(""); setQtaxExpiry(""); setPucExpiry(""); setNpExpiry(""); setSpExpiry(""); setTankExpiry("");
-    
-    setDCode(""); setDName(""); setDPhone(""); setDLicenseExpiry(""); setDPin("");
-    
-    setFCargoType("BULK"); setFOrigin(""); setFDestination(""); setFCapacity(""); setFFreightRate(""); setFStandardKm("");
-  };
-
-  // --- VEHICLE HANDLERS ---
-  const handleEditVehicle = (v: any) => {
-    setEditingId(v.vehicle_id);
-    setVNumber(v.vehicle_number || "");
-    setVType(v.truck_type || "BULK CEMENT");
-    setVCapacity(v.carrying_capacity_tons || "");
-    setFcExpiry(v.fc_expiry_date || "");
-    setInsExpiry(v.insurance_expiry_date || "");
-    setQtaxExpiry(v.qtax_expiry_date || "");
-    setPucExpiry(v.puc_expiry_date || "");
-    setNpExpiry(v.np_expiry_date || "");
-    setSpExpiry(v.state_permit_expiry_date || "");
-    setTankExpiry(v.tank_cert_expiry_date || "");
-    setIsFormOpen(true);
-  };
-
+  // --- HANDLERS ---
   const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
+    const capacityNum = parseFloat(vCapacity.replace(" MT", ""));
     const payload = {
       vehicle_number: vNumber.trim().toUpperCase(),
-      truck_type: vType,
-      carrying_capacity_tons: Number(vCapacity) || 0,
-      fc_expiry_date: fcExpiry || null,
-      insurance_expiry_date: insExpiry || null,
-      qtax_expiry_date: qtaxExpiry || null,
-      puc_expiry_date: pucExpiry || null,
-      np_expiry_date: npExpiry || null,
-      state_permit_expiry_date: spExpiry || null,
-      tank_cert_expiry_date: tankExpiry || null,
+      truck_type: vVariant,
+      carrying_capacity_tons: capacityNum || 0,
       is_active: true
     };
-
-    let res;
-    if (editingId) res = await supabase.from("vehicles").update(payload).eq("vehicle_id", editingId);
-    else res = await supabase.from("vehicles").insert([payload]);
-
-    if (res.error) setAlertConfig({ isOpen: true, title: "Failed", message: res.error.message, type: "error" });
-    else {
-      setAlertConfig({ isOpen: true, title: "Success", message: `Vehicle ${editingId ? "updated" : "added"} successfully!`, type: "success" });
-      resetForms();
-      fetchAllMasterData();
-    }
-  };
-
-  const handleDeleteVehicle = async (id: number) => {
-    if (!confirm("Deactivate this truck?")) return;
-    const { error } = await supabase.from("vehicles").update({ is_active: false }).eq("vehicle_id", id);
+    
+    const { error } = await supabase.from("vehicles").insert([payload]);
     if (error) setAlertConfig({ isOpen: true, title: "Error", message: error.message, type: "error" });
-    else fetchAllMasterData();
-  };
-
-  // --- DRIVER HANDLERS ---
-  const handleEditDriver = (d: any) => {
-    setEditingId(d.driver_id);
-    setDCode(d.driver_code || "");
-    setDName(d.full_name || "");
-    setDPhone(d.phone_number || "");
-    setDLicenseExpiry(d.expiry_date || "");
-    setDPin(d.pin || "");
-    setIsFormOpen(true);
+    else {
+      setAlertConfig({ isOpen: true, title: "Saved", message: "Truck added successfully!", type: "success" });
+      setVNumber(""); setVVariant("Bulker (16-Wheel)"); setVCapacity("35.0 MT");
+      fetchAllData();
+    }
   };
 
   const handleSaveDriver = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: any = {
+    const payload = {
       driver_code: dCode.trim().toUpperCase(),
       full_name: dName.trim(),
       phone_number: dPhone.trim(),
-      expiry_date: dLicenseExpiry || null,
+      pin: dPin.trim() || "1234",
       is_active: true
     };
-    if (dPin) payload.pin = dPin.trim();
-
-    let res;
-    if (editingId) res = await supabase.from("drivers").update(payload).eq("driver_id", editingId);
-    else {
-      payload.pin = dPin.trim() || "1234";
-      res = await supabase.from("drivers").insert([payload]);
-    }
-
-    if (res.error) setAlertConfig({ isOpen: true, title: "Failed", message: res.error.message, type: "error" });
-    else {
-      setAlertConfig({ isOpen: true, title: "Success", message: `Driver ${editingId ? "updated" : "created"} successfully!`, type: "success" });
-      resetForms();
-      fetchAllMasterData();
-    }
-  };
-
-  const handleDeleteDriver = async (id: number) => {
-    if (!confirm("Deactivate this driver record?")) return;
-    const { error } = await supabase.from("drivers").update({ is_active: false }).eq("driver_id", id);
+    
+    const { error } = await supabase.from("drivers").insert([payload]);
     if (error) setAlertConfig({ isOpen: true, title: "Error", message: error.message, type: "error" });
-    else fetchAllMasterData();
+    else {
+      setAlertConfig({ isOpen: true, title: "Saved", message: "Driver added successfully!", type: "success" });
+      setDCode(""); setDName(""); setDPhone(""); setDPin("");
+      fetchAllData();
+    }
   };
 
   const handleResetDriverPin = async (driverId: number, driverName: string) => {
     const newPin = prompt(`Enter new 4-digit PIN for ${driverName}:`, "1234");
-    if (!newPin || newPin.length !== 4) {
-      if (newPin !== null) setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "PIN must be exactly 4 digits.", type: "error" });
-      return;
-    }
-
+    if (!newPin || newPin.length !== 4) return alert("PIN must be exactly 4 digits.");
+    
     const { error } = await supabase.from("drivers").update({ pin: newPin }).eq("driver_id", driverId);
-    if (error) setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
+    if (error) setAlertConfig({ isOpen: true, title: "Error", message: error.message, type: "error" });
     else {
-      setAlertConfig({ isOpen: true, title: "PIN Updated", message: `PIN reset to ${newPin} for ${driverName}!`, type: "success" });
-      fetchAllMasterData();
+      setAlertConfig({ isOpen: true, title: "Updated", message: `PIN reset for ${driverName}`, type: "success" });
+      fetchAllData();
     }
   };
 
-  // --- FREIGHT SLAB HANDLERS ---
-  const handleEditFreight = (f: any) => {
-    setEditingId(f.destination_id);
-    setFCargoType(f.cargo_type || "BULK");
-    setFOrigin(f.orgin || "");
-    setFDestination(f.destination_name || "");
-    setFCapacity(f.capacity_tons || "");
-    setFFreightRate(f.freight_rate_per_ton || "");
-    setFStandardKm(f.standard_km || "");
-    setIsFormOpen(true);
-  };
-
-  const handleSaveFreight = async (e: React.FormEvent) => {
+  const handleSaveSlab = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      cargo_type: fCargoType,
-      orgin: fOrigin.trim().toUpperCase(),
-      destination_name: fDestination.trim().toUpperCase(),
-      capacity_tons: Number(fCapacity) || 0,
-      freight_rate_per_ton: Number(fFreightRate) || 0,
-      standard_km: Number(fStandardKm) || 0
+      orgin: sOrigin.trim().toUpperCase(),
+      destination_name: sDestination.trim().toUpperCase(),
+      cargo_type: sCargo,
+      freight_rate_per_ton: Number(sRate)
     };
-
-    let res;
-    if (editingId) res = await supabase.from("destinations_freight_master").update(payload).eq("destination_id", editingId);
-    else res = await supabase.from("destinations_freight_master").insert([payload]);
-
-    if (res.error) setAlertConfig({ isOpen: true, title: "Failed", message: res.error.message, type: "error" });
+    
+    const { error } = await supabase.from("destinations_freight_master").insert([payload]);
+    if (error) setAlertConfig({ isOpen: true, title: "Error", message: error.message, type: "error" });
     else {
-      setAlertConfig({ isOpen: true, title: "Success", message: "Freight slab saved successfully!", type: "success" });
-      resetForms();
-      fetchAllMasterData();
+      setAlertConfig({ isOpen: true, title: "Saved", message: "Freight slab added successfully!", type: "success" });
+      setSOrigin(""); setSDestination(""); setSRate("");
+      fetchAllData();
     }
   };
 
-  const handleDeleteFreight = async (id: number) => {
-    if (!confirm("Delete this freight rate slab?")) return;
-    const { error } = await supabase.from("destinations_freight_master").delete().eq("destination_id", id);
+  const handleSaveBata = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      route_name: bRoute.trim().toUpperCase(),
+      driver_bata_amount: Number(bDriverBata),
+      halt_bata_amount: Number(bHaltBata)
+    };
+    
+    const { error } = await supabase.from("driver_bata_master").insert([payload]);
     if (error) setAlertConfig({ isOpen: true, title: "Error", message: error.message, type: "error" });
-    else fetchAllMasterData();
+    else {
+      setAlertConfig({ isOpen: true, title: "Saved", message: "Bata details added successfully!", type: "success" });
+      setBRoute(""); setBDriverBata(""); setBHaltBata("");
+      fetchAllData();
+    }
   };
 
-  // PROFESSIONAL UI STYLES
-  const inputStyle = "flex h-11 w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] focus-visible:border-transparent font-semibold text-slate-900";
-  const labelStyle = "block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1";
+  // --- STYLING (Matched exactly to your screenshot) ---
+  const inputStyle = "w-full h-12 bg-white border border-slate-200 rounded-[14px] px-4 text-sm font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm";
+  const labelStyle = "block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1";
+  const buttonStyle = "w-full h-12 bg-[#5145cd] hover:bg-[#4338ca] text-white font-semibold text-sm rounded-[14px] transition-colors mt-2 shadow-sm";
+  const cardStyle = "bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm";
+  const headingStyle = "text-[13px] font-black uppercase text-slate-800 mb-6 tracking-wide";
+
+  const tabs = [
+    { id: "TRUCKS", icon: "🚚", label: "Trucks" },
+    { id: "DRIVERS", icon: "👨‍✈️", label: "Drivers" },
+    { id: "SLABS", icon: "🛣️", label: "Slabs" },
+    { id: "BATA", icon: "💰", label: "Bata" },
+    { id: "AUDIT", icon: "📋", label: "System Audit" }
+  ];
 
   return (
-    <div className="space-y-6" style={{ colorScheme: "light" }}>
+    <div className="max-w-3xl mx-auto space-y-6 pb-20" style={{ colorScheme: "light" }}>
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
-      {/* SUB-NAVIGATION TABS */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 pb-4 gap-3">
-        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-sm">
-          {[
-            { id: "VEHICLES", label: "🚛 Fleet & Documents" },
-            { id: "DRIVERS", label: "👤 Drivers & PINs" },
-            { id: "FREIGHT", label: "🛣️ Freight Rate Master" }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveSetupTab(tab.id as any); resetForms(); }}
-              className={`px-5 py-2.5 text-sm font-black rounded-lg transition-all ${activeSetupTab === tab.id ? "bg-white text-[#FF5A00] shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <button
-          onClick={() => { resetForms(); setIsFormOpen(!isFormOpen); }}
-          className="px-5 py-2.5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl shadow-md transition-all active:scale-95"
-        >
-          {isFormOpen ? "✕ Cancel" : `+ Add New ${activeSetupTab === "VEHICLES" ? "Truck" : activeSetupTab === "DRIVERS" ? "Driver" : "Freight Slab"}`}
-        </button>
+      {/* PILL TABS NAVIGATION */}
+      <div className="flex flex-wrap gap-2.5">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold transition-all border shadow-sm ${
+              activeTab === t.id 
+                ? "bg-slate-900 text-white border-slate-900" 
+                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            <span className="text-base leading-none">{t.icon}</span>
+            <span>{t.label}</span>
+          </button>
+        ))}
       </div>
 
-      {/* 1. TRUCK & COMPLIANCE DOCUMENT MASTER */}
-      {activeSetupTab === "VEHICLES" && (
-         <div className="space-y-6">
-           {/* Form UI kept exactly the same as previously built */}
-           {/* ... [Vehicles UI block from before] ... */}
-           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-             <div className="p-5 border-b bg-slate-50">
-               <span className="text-sm font-black uppercase text-slate-900">Active Trucks ({vehicles.length})</span>
-             </div>
-             <div className="overflow-x-auto max-h-[600px]">
-               <table className="w-full text-left text-sm border-collapse">
-                 <thead className="bg-slate-50 sticky top-0 text-slate-600 uppercase text-[11px] font-bold">
-                   <tr>
-                     <th className="px-5 py-3 border-b">Vehicle No</th>
-                     <th className="px-5 py-3 border-b">Type</th>
-                     <th className="px-5 py-3 border-b">Cap (MT)</th>
-                     <th className="px-5 py-3 border-b">FC Expiry</th>
-                     <th className="px-5 py-3 border-b">Insurance</th>
-                     <th className="px-5 py-3 border-b text-center">Actions</th>
-                   </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-100 font-medium">
-                   {vehicles.map(v => (
-                     <tr key={v.vehicle_id} className="hover:bg-slate-50">
-                       <td className="px-5 py-4 font-black text-slate-900">{v.vehicle_number}</td>
-                       <td className="px-5 py-4 text-slate-600">{v.truck_type}</td>
-                       <td className="px-5 py-4 font-bold">{v.carrying_capacity_tons} MT</td>
-                       <td className="px-5 py-4">{formatDate(v.fc_expiry_date)}</td>
-                       <td className="px-5 py-4">{formatDate(v.insurance_expiry_date)}</td>
-                       <td className="px-5 py-4 text-center space-x-4">
-                         <button onClick={() => handleEditVehicle(v)} className="text-blue-600 hover:text-blue-800 font-bold">Edit</button>
-                         <button onClick={() => handleDeleteVehicle(v.vehicle_id)} className="text-rose-600 hover:text-rose-800 font-bold">Delete</button>
-                       </td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
-             </div>
-           </div>
-         </div>
-      )}
-
-      {/* 2. DRIVER MASTER & PIN SECURITY */}
-      {activeSetupTab === "DRIVERS" && (
-         <div className="space-y-6">
-           {/* Form UI kept exactly the same as previously built */}
-           {/* ... [Drivers UI block from before] ... */}
-           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-             <div className="p-5 border-b bg-slate-50">
-               <span className="text-sm font-black uppercase text-slate-900">Active Drivers ({drivers.length})</span>
-             </div>
-             <div className="overflow-x-auto max-h-[600px]">
-               <table className="w-full text-left text-sm border-collapse">
-                 <thead className="bg-slate-50 sticky top-0 text-slate-600 uppercase text-[11px] font-bold">
-                   <tr>
-                     <th className="px-5 py-3 border-b">Code</th>
-                     <th className="px-5 py-3 border-b">Full Name</th>
-                     <th className="px-5 py-3 border-b">Phone</th>
-                     <th className="px-5 py-3 border-b">License Expiry</th>
-                     <th className="px-5 py-3 border-b">Mobile PIN</th>
-                     <th className="px-5 py-3 border-b text-center">Actions</th>
-                   </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-100 font-medium">
-                   {drivers.map(d => (
-                     <tr key={d.driver_id} className="hover:bg-slate-50">
-                       <td className="px-5 py-4 font-black text-slate-900">{d.driver_code}</td>
-                       <td className="px-5 py-4 font-semibold text-slate-800">{d.full_name}</td>
-                       <td className="px-5 py-4 text-slate-600">{d.phone_number || "-"}</td>
-                       <td className="px-5 py-4">{formatDate(d.expiry_date)}</td>
-                       <td className="px-5 py-4 font-mono font-black text-[#FF5A00]">{d.pin ? d.pin : <span className="text-slate-400 font-normal italic">Not Set</span>}</td>
-                       <td className="px-5 py-4 text-center space-x-3">
-                         <button onClick={() => handleResetDriverPin(d.driver_id, d.full_name)} className="text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 font-bold hover:bg-amber-100">Reset PIN</button>
-                         <button onClick={() => handleEditDriver(d)} className="text-blue-600 hover:text-blue-800 font-bold">Edit</button>
-                         <button onClick={() => handleDeleteDriver(d.driver_id)} className="text-rose-600 hover:text-rose-800 font-bold">Delete</button>
-                       </td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
-             </div>
-           </div>
-         </div>
-      )}
-
-      {/* 3. FREIGHT SLABS MASTER */}
-      {activeSetupTab === "FREIGHT" && (
-        <div className="space-y-6">
-          {isFormOpen && (
-            <form onSubmit={handleSaveFreight} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in">
-              <div className="border-b border-slate-200 pb-3">
-                <h4 className="text-sm font-black uppercase text-slate-900">{editingId ? "Edit Freight Slab" : "Create New Freight Rate Slab"}</h4>
+      {/* 1. TRUCKS */}
+      {activeTab === "TRUCKS" && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className={cardStyle}>
+            <h3 className={headingStyle}>ADD NEW TRUCKS</h3>
+            <form onSubmit={handleSaveVehicle} className="space-y-5">
+              <div>
+                <label className={labelStyle}>Truck No *</label>
+                <input type="text" value={vNumber} onChange={e => setVNumber(e.target.value)} placeholder="E.G. TN 56 F 0452" className={inputStyle} required />
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-2">
-                <div>
-                  <label className={labelStyle}>Cargo Type *</label>
-                  <select value={fCargoType} onChange={e => setFCargoType(e.target.value)} className={inputStyle}>
-                    <option value="BULK">BULK</option>
-                    <option value="BAG">BAG</option>
-                  </select>
-                </div>
-                <div><label className={labelStyle}>Origin (From) *</label><input type="text" value={fOrigin} onChange={e => setFOrigin(e.target.value)} placeholder="e.g. COCHIN" className={inputStyle} required /></div>
-                <div><label className={labelStyle}>Destination Name (To) *</label><input type="text" value={fDestination} onChange={e => setFDestination(e.target.value)} placeholder="e.g. MUVATTUPUZHA" className={inputStyle} required /></div>
+              <div>
+                <label className={labelStyle}>Variant</label>
+                <select value={vVariant} onChange={e => setVVariant(e.target.value)} className={inputStyle}>
+                  <option value="Bulker (16-Wheel)">Bulker (16-Wheel)</option>
+                  <option value="Bulker (14-Wheel)">Bulker (14-Wheel)</option>
+                  <option value="Open Body (10-Wheel)">Open Body (10-Wheel)</option>
+                </select>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Capacity (Tons)</label>
-                  <input type="number" step="0.01" value={fCapacity} onChange={e => setFCapacity(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 35" className={inputStyle} />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-emerald-700 mb-1.5 ml-1">Freight Rate / Ton (₹)</label>
-                  <input type="number" step="0.01" value={fFreightRate} onChange={e => setFFreightRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 450.50" className={inputStyle} />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-amber-700 mb-1.5 ml-1">Standard KM</label>
-                  <input type="number" step="0.1" value={fStandardKm} onChange={e => setFStandardKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 150" className={inputStyle} />
-                </div>
+              <div>
+                <label className={labelStyle}>Capacity (MT)</label>
+                <select value={vCapacity} onChange={e => setVCapacity(e.target.value)} className={inputStyle}>
+                  <option value="35.0 MT">35.0 MT</option>
+                  <option value="30.0 MT">30.0 MT</option>
+                  <option value="25.0 MT">25.0 MT</option>
+                </select>
               </div>
-
-              <div className="flex justify-end pt-4">
-                <button type="submit" className="px-8 py-3 bg-[#FF5A00] text-white font-black text-sm rounded-xl shadow-md hover:bg-[#e04f00]">{editingId ? "Update Slab" : "Save Freight Slab"}</button>
+              <div className="flex items-center gap-2 px-1">
+                <input type="checkbox" checked={vOdoWorking} onChange={e => setVOdoWorking(e.target.checked)} className="w-4 h-4 rounded text-[#5145cd] focus:ring-[#5145cd]" />
+                <label className="text-[13px] font-bold text-slate-700">✅ Odometer Working</label>
               </div>
+              <button type="submit" className={buttonStyle}>Save Truck</button>
             </form>
-          )}
-
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-5 border-b bg-slate-50">
-              <span className="text-sm font-black uppercase text-slate-900">Preconfigured Freight Slabs ({freightSlabs.length})</span>
-            </div>
-            <div className="overflow-x-auto max-h-[600px]">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead className="bg-slate-50 sticky top-0 text-slate-600 uppercase text-[11px] font-bold">
-                  <tr>
-                    <th className="px-5 py-3 border-b">Cargo / Route</th>
-                    <th className="px-5 py-3 border-b">Cap (Tons)</th>
-                    <th className="px-5 py-3 border-b">Std. KM</th>
-                    <th className="px-5 py-3 border-b">Freight / Ton</th>
-                    <th className="px-5 py-3 border-b text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {freightSlabs.map(f => (
-                    <tr key={f.destination_id} className="hover:bg-slate-50">
-                      <td className="px-5 py-4">
-                        <span className="text-[10px] font-black uppercase bg-slate-200 text-slate-600 px-2 py-0.5 rounded mr-2">{f.cargo_type}</span>
-                        <span className="font-black text-slate-900">{f.orgin} ➔ {f.destination_name}</span>
-                      </td>
-                      <td className="px-5 py-4 text-slate-700">{f.capacity_tons || "-"}</td>
-                      <td className="px-5 py-4 text-slate-700">{f.standard_km || "-"}</td>
-                      <td className="px-5 py-4 font-black text-emerald-700">₹{Number(f.freight_rate_per_ton || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                      <td className="px-5 py-4 text-center space-x-4">
-                        <button onClick={() => handleEditFreight(f)} className="text-blue-600 hover:text-blue-800 font-bold">Edit</button>
-                        <button onClick={() => handleDeleteFreight(f.destination_id)} className="text-rose-600 hover:text-rose-800 font-bold">Delete</button>
-                      </td>
-                    </tr>
-                  ))}
-                  {freightSlabs.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="p-10 text-center text-slate-500 font-semibold">
-                        No freight slabs found in the destinations_freight_master table.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
           </div>
+
+          <div className={cardStyle}>
+             <h3 className={headingStyle}>ACTIVE FLEET</h3>
+             <div className="space-y-3">
+               {vehicles.map(v => (
+                 <div key={v.vehicle_id} className="flex justify-between items-center p-3 border border-slate-100 rounded-2xl bg-slate-50">
+                   <div>
+                     <p className="font-bold text-sm text-slate-900">{v.vehicle_number}</p>
+                     <p className="text-[10px] text-slate-500 font-semibold uppercase">{v.truck_type} • {v.carrying_capacity_tons} MT</p>
+                   </div>
+                 </div>
+               ))}
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. DRIVERS */}
+      {activeTab === "DRIVERS" && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className={cardStyle}>
+            <h3 className={headingStyle}>ADD NEW DRIVER</h3>
+            <form onSubmit={handleSaveDriver} className="space-y-5">
+              <div>
+                <label className={labelStyle}>Driver Code *</label>
+                <input type="text" value={dCode} onChange={e => setDCode(e.target.value)} placeholder="E.G. DRV-01" className={inputStyle} required />
+              </div>
+              <div>
+                <label className={labelStyle}>Full Name *</label>
+                <input type="text" value={dName} onChange={e => setDName(e.target.value)} placeholder="Driver Name" className={inputStyle} required />
+              </div>
+              <div>
+                <label className={labelStyle}>Mobile Number</label>
+                <input type="text" value={dPhone} onChange={e => setDPhone(e.target.value)} placeholder="10-digit number" className={inputStyle} />
+              </div>
+              <div>
+                <label className={labelStyle}>App Login PIN (4 Digits)</label>
+                <input type="password" maxLength={4} value={dPin} onChange={e => setDPin(e.target.value)} placeholder="Default: 1234" className={inputStyle} />
+              </div>
+              <button type="submit" className={buttonStyle}>Save Driver</button>
+            </form>
+          </div>
+
+          <div className={cardStyle}>
+             <h3 className={headingStyle}>ACTIVE DRIVERS</h3>
+             <div className="space-y-3">
+               {drivers.map(d => (
+                 <div key={d.driver_id} className="flex justify-between items-center p-4 border border-slate-100 rounded-2xl bg-slate-50">
+                   <div>
+                     <p className="font-bold text-sm text-slate-900">{d.driver_code} - {d.full_name}</p>
+                     <p className="text-[10px] text-slate-500 font-semibold uppercase mt-0.5">PIN: <span className="font-mono text-[#5145cd] tracking-widest">{d.pin || "NOT SET"}</span></p>
+                   </div>
+                   <button onClick={() => handleResetDriverPin(d.driver_id, d.full_name)} className="text-[10px] font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-slate-600 shadow-sm">
+                     Reset PIN
+                   </button>
+                 </div>
+               ))}
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. SLABS (FREIGHT) */}
+      {activeTab === "SLABS" && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className={cardStyle}>
+            <h3 className={headingStyle}>ADD FREIGHT SLAB</h3>
+            <form onSubmit={handleSaveSlab} className="space-y-5">
+              <div>
+                <label className={labelStyle}>Cargo Type</label>
+                <select value={sCargo} onChange={e => setSCargo(e.target.value)} className={inputStyle}>
+                  <option value="BULK">BULK</option>
+                  <option value="BAG">BAG</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelStyle}>Origin (From) *</label>
+                <input type="text" value={sOrigin} onChange={e => setSOrigin(e.target.value)} placeholder="E.G. COCHIN" className={inputStyle} required />
+              </div>
+              <div>
+                <label className={labelStyle}>Destination (To) *</label>
+                <input type="text" value={sDestination} onChange={e => setSDestination(e.target.value)} placeholder="E.G. PALAKKAD" className={inputStyle} required />
+              </div>
+              <div>
+                <label className={labelStyle}>Freight Rate / MT (₹) *</label>
+                <input type="number" step="0.01" value={sRate} onChange={e => setSRate(e.target.value)} placeholder="450.00" className={inputStyle} required />
+              </div>
+              <button type="submit" className={buttonStyle}>Save Freight Slab</button>
+            </form>
+          </div>
+
+          <div className={cardStyle}>
+             <h3 className={headingStyle}>CONFIGURED SLABS</h3>
+             <div className="space-y-3">
+               {freightSlabs.map(f => (
+                 <div key={f.destination_id} className="p-4 border border-slate-100 rounded-2xl bg-slate-50">
+                   <div className="flex justify-between items-start mb-1">
+                     <p className="font-bold text-sm text-slate-900">{f.orgin} ➔ {f.destination_name}</p>
+                     <span className="text-[9px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded uppercase">{f.cargo_type}</span>
+                   </div>
+                   <p className="text-[11px] text-slate-500 font-semibold uppercase">Freight: <span className="text-[#5145cd] font-black">₹{f.freight_rate_per_ton} / MT</span></p>
+                 </div>
+               ))}
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. BATA SLABS */}
+      {activeTab === "BATA" && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className={cardStyle}>
+            <h3 className={headingStyle}>ADD BATA SLAB</h3>
+            <form onSubmit={handleSaveBata} className="space-y-5">
+              <div>
+                <label className={labelStyle}>Route Name *</label>
+                <input type="text" value={bRoute} onChange={e => setBRoute(e.target.value)} placeholder="E.G. COCHIN - PALAKKAD" className={inputStyle} required />
+              </div>
+              <div>
+                <label className={labelStyle}>Driver Bata / Trip (₹) *</label>
+                <input type="number" step="0.01" value={bDriverBata} onChange={e => setBDriverBata(e.target.value)} placeholder="1200.00" className={inputStyle} required />
+              </div>
+              <div>
+                <label className={labelStyle}>Halt Bata / Day (₹)</label>
+                <input type="number" step="0.01" value={bHaltBata} onChange={e => setBHaltBata(e.target.value)} placeholder="300.00" className={inputStyle} />
+              </div>
+              <button type="submit" className={buttonStyle}>Save Bata Details</button>
+            </form>
+          </div>
+
+          <div className={cardStyle}>
+             <h3 className={headingStyle}>CONFIGURED BATA</h3>
+             <div className="space-y-3">
+               {bataSlabs.map((b, idx) => (
+                 <div key={idx} className="p-4 border border-slate-100 rounded-2xl bg-slate-50">
+                   <p className="font-bold text-sm text-slate-900 mb-1">{b.route_name}</p>
+                   <div className="flex gap-4">
+                     <p className="text-[11px] text-slate-500 font-semibold uppercase">Driver: <span className="text-[#5145cd] font-black">₹{b.driver_bata_amount}</span></p>
+                     <p className="text-[11px] text-slate-500 font-semibold uppercase">Halt: <span className="text-slate-700 font-black">₹{b.halt_bata_amount}</span></p>
+                   </div>
+                 </div>
+               ))}
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. SYSTEM AUDIT (Placeholder) */}
+      {activeTab === "AUDIT" && (
+        <div className="animate-in fade-in text-center p-12 bg-white rounded-3xl border border-slate-100 shadow-sm">
+          <p className="text-4xl mb-4">📋</p>
+          <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">System Audit Logs</h3>
+          <p className="text-xs text-slate-500 mt-2">Audit tracking will appear here.</p>
         </div>
       )}
     </div>
