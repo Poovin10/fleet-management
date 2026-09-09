@@ -82,14 +82,9 @@ export function SetupModule() {
     setEditingId(null);
     setIsFormOpen(false);
     
-    // Vehicle reset
     setVNumber(""); setVType("BULK CEMENT"); setVCapacity("");
     setFcExpiry(""); setInsExpiry(""); setQtaxExpiry(""); setPucExpiry(""); setNpExpiry(""); setSpExpiry(""); setTankExpiry("");
-
-    // Driver reset
     setDCode(""); setDName(""); setDPhone(""); setDLicenseExpiry(""); setDPin("");
-
-    // Route reset
     setROrigin(""); setRDestination(""); setRFreightRate(""); setRDriverBata(""); setRHaltBata("");
   };
 
@@ -132,9 +127,8 @@ export function SetupModule() {
       res = await supabase.from("vehicles").insert([payload]);
     }
 
-    if (res.error) {
-      setAlertConfig({ isOpen: true, title: "Failed", message: res.error.message, type: "error" });
-    } else {
+    if (res.error) setAlertConfig({ isOpen: true, title: "Failed", message: res.error.message, type: "error" });
+    else {
       setAlertConfig({ isOpen: true, title: "Success", message: `Vehicle ${editingId ? "updated" : "added"} successfully!`, type: "success" });
       resetForms();
       fetchAllMasterData();
@@ -178,9 +172,8 @@ export function SetupModule() {
       res = await supabase.from("drivers").insert([payload]);
     }
 
-    if (res.error) {
-      setAlertConfig({ isOpen: true, title: "Failed", message: res.error.message, type: "error" });
-    } else {
+    if (res.error) setAlertConfig({ isOpen: true, title: "Failed", message: res.error.message, type: "error" });
+    else {
       setAlertConfig({ isOpen: true, title: "Success", message: `Driver ${editingId ? "updated" : "created"} successfully!`, type: "success" });
       resetForms();
       fetchAllMasterData();
@@ -202,9 +195,8 @@ export function SetupModule() {
     }
 
     const { error } = await supabase.from("drivers").update({ pin: newPin }).eq("driver_id", driverId);
-    if (error) {
-      setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
-    } else {
+    if (error) setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
+    else {
       setAlertConfig({ isOpen: true, title: "PIN Updated", message: `PIN reset to ${newPin} for ${driverName}!`, type: "success" });
       fetchAllMasterData();
     }
@@ -232,15 +224,11 @@ export function SetupModule() {
     };
 
     let res;
-    if (editingId) {
-      res = await supabase.from("routes").update(payload).eq("route_id", editingId);
-    } else {
-      res = await supabase.from("routes").insert([payload]);
-    }
+    if (editingId) res = await supabase.from("routes").update(payload).eq("route_id", editingId);
+    else res = await supabase.from("routes").insert([payload]);
 
-    if (res.error) {
-      setAlertConfig({ isOpen: true, title: "Failed", message: res.error.message, type: "error" });
-    } else {
+    if (res.error) setAlertConfig({ isOpen: true, title: "Failed", message: res.error.message, type: "error" });
+    else {
       setAlertConfig({ isOpen: true, title: "Success", message: "Route & rate slab saved successfully!", type: "success" });
       resetForms();
       fetchAllMasterData();
@@ -254,8 +242,9 @@ export function SetupModule() {
     else fetchAllMasterData();
   };
 
-  const inputStyle = "w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white outline-none focus:ring-1 focus:ring-[#FF5A00] font-semibold text-slate-800";
-  const labelStyle = "block text-[10px] font-bold uppercase text-slate-600 mb-1";
+  // PROFESSIONAL UI STYLES
+  const inputStyle = "flex h-11 w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] focus-visible:border-transparent font-semibold text-slate-900";
+  const labelStyle = "block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1";
 
   return (
     <div className="space-y-6" style={{ colorScheme: "light" }}>
@@ -263,7 +252,7 @@ export function SetupModule() {
 
       {/* SUB-NAVIGATION TABS */}
       <div className="flex flex-wrap items-center justify-between border-b border-slate-200 pb-4 gap-3">
-        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-sm">
           {[
             { id: "VEHICLES", label: "🚛 Fleet & Documents" },
             { id: "DRIVERS", label: "👤 Drivers & PINs" },
@@ -272,7 +261,7 @@ export function SetupModule() {
             <button
               key={tab.id}
               onClick={() => { setActiveSetupTab(tab.id as any); resetForms(); }}
-              className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${activeSetupTab === tab.id ? "bg-white text-[#FF5A00] shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
+              className={`px-5 py-2.5 text-sm font-black rounded-lg transition-all ${activeSetupTab === tab.id ? "bg-white text-[#FF5A00] shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
             >
               {tab.label}
             </button>
@@ -281,9 +270,9 @@ export function SetupModule() {
 
         <button
           onClick={() => { resetForms(); setIsFormOpen(!isFormOpen); }}
-          className="px-4 py-2 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+          className="px-5 py-2.5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl shadow-md transition-all active:scale-95"
         >
-          {isFormOpen ? "✕ Close Form" : `+ Add New ${activeSetupTab === "VEHICLES" ? "Truck" : activeSetupTab === "DRIVERS" ? "Driver" : "Route"}`}
+          {isFormOpen ? "✕ Cancel" : `+ Add New ${activeSetupTab === "VEHICLES" ? "Truck" : activeSetupTab === "DRIVERS" ? "Driver" : "Route"}`}
         </button>
       </div>
 
@@ -293,10 +282,12 @@ export function SetupModule() {
       {activeSetupTab === "VEHICLES" && (
         <div className="space-y-6">
           {isFormOpen && (
-            <form onSubmit={handleSaveVehicle} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in">
-              <h4 className="text-xs font-black uppercase text-slate-900 border-b pb-2">{editingId ? "Edit Vehicle & Documents" : "Register New Truck"}</h4>
+            <form onSubmit={handleSaveVehicle} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in">
+              <div className="border-b border-slate-200 pb-3">
+                <h4 className="text-sm font-black uppercase text-slate-900">{editingId ? "Edit Vehicle Details" : "Register New Truck"}</h4>
+              </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div><label className={labelStyle}>Vehicle Number *</label><input type="text" value={vNumber} onChange={e => setVNumber(e.target.value)} placeholder="e.g. KL-07-CD-1234" className={inputStyle} required /></div>
                 <div>
                   <label className={labelStyle}>Truck Body Type</label>
@@ -309,55 +300,50 @@ export function SetupModule() {
                 <div><label className={labelStyle}>Carrying Capacity (MT) *</label><input type="number" step="0.01" value={vCapacity} onChange={e => setVCapacity(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 35.0" className={inputStyle} required /></div>
               </div>
 
-              <div className="border-t border-slate-200 pt-3">
-                <p className="text-[11px] font-black uppercase text-slate-700 mb-2">Statutory Document Expiry Dates</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="border-t border-slate-200 pt-5">
+                <h4 className="text-sm font-black uppercase text-slate-900 mb-4">Statutory Expiries</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
                   <div><label className={labelStyle}>FC Test Expiry</label><input type="date" value={fcExpiry} onChange={e => setFcExpiry(e.target.value)} className={inputStyle} /></div>
-                  <div><label className={labelStyle}>Insurance Expiry</label><input type="date" value={insExpiry} onChange={e => setInsExpiry(e.target.value)} className={inputStyle} /></div>
+                  <div><label className={labelStyle}>Insurance</label><input type="date" value={insExpiry} onChange={e => setInsExpiry(e.target.value)} className={inputStyle} /></div>
                   <div><label className={labelStyle}>Quarterly Tax</label><input type="date" value={qtaxExpiry} onChange={e => setQtaxExpiry(e.target.value)} className={inputStyle} /></div>
                   <div><label className={labelStyle}>PUC Emission</label><input type="date" value={pucExpiry} onChange={e => setPucExpiry(e.target.value)} className={inputStyle} /></div>
-                  <div><label className={labelStyle}>National Permit (NP)</label><input type="date" value={npExpiry} onChange={e => setNpExpiry(e.target.value)} className={inputStyle} /></div>
+                  <div><label className={labelStyle}>National Permit</label><input type="date" value={npExpiry} onChange={e => setNpExpiry(e.target.value)} className={inputStyle} /></div>
                   <div><label className={labelStyle}>State Permit</label><input type="date" value={spExpiry} onChange={e => setSpExpiry(e.target.value)} className={inputStyle} /></div>
                   <div><label className={labelStyle}>Tank/Pressure Cert</label><input type="date" value={tankExpiry} onChange={e => setTankExpiry(e.target.value)} className={inputStyle} /></div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={resetForms} className="px-4 py-2 bg-white border border-slate-300 text-slate-600 font-bold text-xs rounded-lg">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-[#FF5A00] text-white font-bold text-xs rounded-lg shadow-sm">{editingId ? "Update Truck" : "Save Truck"}</button>
+              <div className="flex justify-end pt-4">
+                <button type="submit" className="px-8 py-3 bg-[#FF5A00] text-white font-black text-sm rounded-xl shadow-md hover:bg-[#e04f00]">{editingId ? "Update Truck" : "Save Truck"}</button>
               </div>
             </form>
           )}
 
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-              <span className="text-xs font-black uppercase text-slate-800">Active Trucks ({vehicles.length})</span>
+            <div className="p-5 border-b bg-slate-50">
+              <span className="text-sm font-black uppercase text-slate-900">Active Trucks ({vehicles.length})</span>
             </div>
-            <div className="overflow-x-auto max-h-[500px]">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 sticky top-0 text-slate-600 uppercase">
+            <div className="overflow-x-auto max-h-[600px]">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="bg-slate-50 sticky top-0 text-slate-600 uppercase text-[11px] font-bold">
                   <tr>
-                    <th className="p-3 border-b">Vehicle No</th>
-                    <th className="p-3 border-b">Type</th>
-                    <th className="p-3 border-b">Cap (MT)</th>
-                    <th className="p-3 border-b">FC Expiry</th>
-                    <th className="p-3 border-b">Insurance</th>
-                    <th className="p-3 border-b">Q-Tax</th>
-                    <th className="p-3 border-b">PUC</th>
-                    <th className="p-3 border-b text-center">Actions</th>
+                    <th className="px-5 py-3 border-b">Vehicle No</th>
+                    <th className="px-5 py-3 border-b">Type</th>
+                    <th className="px-5 py-3 border-b">Cap (MT)</th>
+                    <th className="px-5 py-3 border-b">FC Expiry</th>
+                    <th className="px-5 py-3 border-b">Insurance</th>
+                    <th className="px-5 py-3 border-b text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {vehicles.map(v => (
                     <tr key={v.vehicle_id} className="hover:bg-slate-50">
-                      <td className="p-3 font-black text-slate-900">{v.vehicle_number}</td>
-                      <td className="p-3 text-slate-600">{v.truck_type}</td>
-                      <td className="p-3 font-bold">{v.carrying_capacity_tons} MT</td>
-                      <td className="p-3">{formatDate(v.fc_expiry_date)}</td>
-                      <td className="p-3">{formatDate(v.insurance_expiry_date)}</td>
-                      <td className="p-3">{formatDate(v.qtax_expiry_date)}</td>
-                      <td className="p-3">{formatDate(v.puc_expiry_date)}</td>
-                      <td className="p-3 text-center space-x-2">
+                      <td className="px-5 py-4 font-black text-slate-900">{v.vehicle_number}</td>
+                      <td className="px-5 py-4 text-slate-600">{v.truck_type}</td>
+                      <td className="px-5 py-4 font-bold">{v.carrying_capacity_tons} MT</td>
+                      <td className="px-5 py-4">{formatDate(v.fc_expiry_date)}</td>
+                      <td className="px-5 py-4">{formatDate(v.insurance_expiry_date)}</td>
+                      <td className="px-5 py-4 text-center space-x-4">
                         <button onClick={() => handleEditVehicle(v)} className="text-blue-600 hover:text-blue-800 font-bold">Edit</button>
                         <button onClick={() => handleDeleteVehicle(v.vehicle_id)} className="text-rose-600 hover:text-rose-800 font-bold">Delete</button>
                       </td>
@@ -376,52 +362,53 @@ export function SetupModule() {
       {activeSetupTab === "DRIVERS" && (
         <div className="space-y-6">
           {isFormOpen && (
-            <form onSubmit={handleSaveDriver} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in">
-              <h4 className="text-xs font-black uppercase text-slate-900 border-b pb-2">{editingId ? "Edit Driver Details" : "Register New Driver"}</h4>
+            <form onSubmit={handleSaveDriver} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in">
+              <div className="border-b border-slate-200 pb-3">
+                <h4 className="text-sm font-black uppercase text-slate-900">{editingId ? "Edit Driver Details" : "Register New Driver"}</h4>
+              </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div><label className={labelStyle}>Driver Code *</label><input type="text" value={dCode} onChange={e => setDCode(e.target.value)} placeholder="e.g. DRV012" className={inputStyle} required /></div>
-                <div><label className={labelStyle}>Full Name *</label><input type="text" value={dName} onChange={e => setDName(e.target.value)} placeholder="Full Name" className={inputStyle} required /></div>
+                <div><label className={labelStyle}>Full Name *</label><input type="text" value={dName} onChange={e => setDName(e.target.value)} placeholder="First Last" className={inputStyle} required /></div>
                 <div><label className={labelStyle}>Mobile Phone</label><input type="text" value={dPhone} onChange={e => setDPhone(e.target.value)} placeholder="10-digit number" className={inputStyle} /></div>
                 <div><label className={labelStyle}>License Expiry</label><input type="date" value={dLicenseExpiry} onChange={e => setDLicenseExpiry(e.target.value)} className={inputStyle} /></div>
                 {!editingId && (
-                  <div><label className={labelStyle}>Default Security PIN</label><input type="password" maxLength={4} value={dPin} onChange={e => setDPin(e.target.value)} placeholder="Default: 1234" className={inputStyle} /></div>
+                  <div className="md:col-span-2"><label className={labelStyle}>Default Security PIN (For Mobile Portal)</label><input type="password" maxLength={4} value={dPin} onChange={e => setDPin(e.target.value)} placeholder="Default: 1234" className={inputStyle} /></div>
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={resetForms} className="px-4 py-2 bg-white border border-slate-300 text-slate-600 font-bold text-xs rounded-lg">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-[#FF5A00] text-white font-bold text-xs rounded-lg shadow-sm">{editingId ? "Update Driver" : "Save Driver"}</button>
+              <div className="flex justify-end pt-4">
+                <button type="submit" className="px-8 py-3 bg-[#FF5A00] text-white font-black text-sm rounded-xl shadow-md hover:bg-[#e04f00]">{editingId ? "Update Driver" : "Save Driver"}</button>
               </div>
             </form>
           )}
 
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-              <span className="text-xs font-black uppercase text-slate-800">Drivers ({drivers.length})</span>
+            <div className="p-5 border-b bg-slate-50">
+              <span className="text-sm font-black uppercase text-slate-900">Active Drivers ({drivers.length})</span>
             </div>
-            <div className="overflow-x-auto max-h-[500px]">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 sticky top-0 text-slate-600 uppercase">
+            <div className="overflow-x-auto max-h-[600px]">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="bg-slate-50 sticky top-0 text-slate-600 uppercase text-[11px] font-bold">
                   <tr>
-                    <th className="p-3 border-b">Code</th>
-                    <th className="p-3 border-b">Full Name</th>
-                    <th className="p-3 border-b">Phone</th>
-                    <th className="p-3 border-b">License Expiry</th>
-                    <th className="p-3 border-b">Mobile PIN</th>
-                    <th className="p-3 border-b text-center">Actions</th>
+                    <th className="px-5 py-3 border-b">Code</th>
+                    <th className="px-5 py-3 border-b">Full Name</th>
+                    <th className="px-5 py-3 border-b">Phone</th>
+                    <th className="px-5 py-3 border-b">License Expiry</th>
+                    <th className="px-5 py-3 border-b">Mobile PIN</th>
+                    <th className="px-5 py-3 border-b text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {drivers.map(d => (
                     <tr key={d.driver_id} className="hover:bg-slate-50">
-                      <td className="p-3 font-black text-slate-900">{d.driver_code}</td>
-                      <td className="p-3 font-semibold text-slate-800">{d.full_name}</td>
-                      <td className="p-3 text-slate-600">{d.phone_number || "-"}</td>
-                      <td className="p-3">{formatDate(d.expiry_date)}</td>
-                      <td className="p-3 font-mono font-black text-[#FF5A00]">{d.pin ? d.pin : <span className="text-slate-400 font-normal italic">Not Set</span>}</td>
-                      <td className="p-3 text-center space-x-2">
-                        <button onClick={() => handleResetDriverPin(d.driver_id, d.full_name)} className="text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200 font-bold hover:bg-amber-100">Reset PIN</button>
+                      <td className="px-5 py-4 font-black text-slate-900">{d.driver_code}</td>
+                      <td className="px-5 py-4 font-semibold text-slate-800">{d.full_name}</td>
+                      <td className="px-5 py-4 text-slate-600">{d.phone_number || "-"}</td>
+                      <td className="px-5 py-4">{formatDate(d.expiry_date)}</td>
+                      <td className="px-5 py-4 font-mono font-black text-[#FF5A00]">{d.pin ? d.pin : <span className="text-slate-400 font-normal italic">Not Set</span>}</td>
+                      <td className="px-5 py-4 text-center space-x-3">
+                        <button onClick={() => handleResetDriverPin(d.driver_id, d.full_name)} className="text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 font-bold hover:bg-amber-100">Reset PIN</button>
                         <button onClick={() => handleEditDriver(d)} className="text-blue-600 hover:text-blue-800 font-bold">Edit</button>
                         <button onClick={() => handleDeleteDriver(d.driver_id)} className="text-rose-600 hover:text-rose-800 font-bold">Delete</button>
                       </td>
@@ -440,49 +427,60 @@ export function SetupModule() {
       {activeSetupTab === "ROUTES" && (
         <div className="space-y-6">
           {isFormOpen && (
-            <form onSubmit={handleSaveRoute} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in">
-              <h4 className="text-xs font-black uppercase text-slate-900 border-b pb-2">{editingId ? "Edit Route Slab" : "Create New Route Rate Slab"}</h4>
+            <form onSubmit={handleSaveRoute} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in">
+              <div className="border-b border-slate-200 pb-3">
+                <h4 className="text-sm font-black uppercase text-slate-900">{editingId ? "Edit Route & Rate Slab" : "Create New Route Rate Slab"}</h4>
+              </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-                <div><label className={labelStyle}>Origin *</label><input type="text" value={rOrigin} onChange={e => setROrigin(e.target.value)} placeholder="e.g. COCHIN" className={inputStyle} required /></div>
-                <div><label className={labelStyle}>Destination *</label><input type="text" value={rDestination} onChange={e => setRDestination(e.target.value)} placeholder="e.g. MUVATTUPUZHA" className={inputStyle} required /></div>
-                <div><label className={labelStyle}>Freight / MT (₹)</label><input type="number" step="0.01" value={rFreightRate} onChange={e => setRFreightRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 450" className={inputStyle} /></div>
-                <div><label className={labelStyle}>Driver Bata (₹)</label><input type="number" step="0.01" value={rDriverBata} onChange={e => setRDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 1200" className={inputStyle} /></div>
-                <div><label className={labelStyle}>Halt Bata / Day (₹)</label><input type="number" step="0.01" value={rHaltBata} onChange={e => setRHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 300" className={inputStyle} /></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-2">
+                <div><label className={labelStyle}>Origin (From) *</label><input type="text" value={rOrigin} onChange={e => setROrigin(e.target.value)} placeholder="e.g. COCHIN" className={inputStyle} required /></div>
+                <div><label className={labelStyle}>Destination (To) *</label><input type="text" value={rDestination} onChange={e => setRDestination(e.target.value)} placeholder="e.g. MUVATTUPUZHA" className={inputStyle} required /></div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={resetForms} className="px-4 py-2 bg-white border border-slate-300 text-slate-600 font-bold text-xs rounded-lg">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-[#FF5A00] text-white font-bold text-xs rounded-lg shadow-sm">{editingId ? "Update Slab" : "Save Slab"}</button>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-emerald-700 mb-1.5">Freight Rate / MT (₹)</label>
+                  <input type="number" step="0.01" value={rFreightRate} onChange={e => setRFreightRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 450" className={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-[#FF5A00] mb-1.5">Driver Bata / Trip (₹)</label>
+                  <input type="number" step="0.01" value={rDriverBata} onChange={e => setRDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 1200" className={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-amber-700 mb-1.5">Halt Bata / Day (₹)</label>
+                  <input type="number" step="0.01" value={rHaltBata} onChange={e => setRHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 300" className={inputStyle} />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button type="submit" className="px-8 py-3 bg-[#FF5A00] text-white font-black text-sm rounded-xl shadow-md hover:bg-[#e04f00]">{editingId ? "Update Slab" : "Save Route Slab"}</button>
               </div>
             </form>
           )}
 
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-              <span className="text-xs font-black uppercase text-slate-800">Preconfigured Route Slabs ({routes.length})</span>
+            <div className="p-5 border-b bg-slate-50">
+              <span className="text-sm font-black uppercase text-slate-900">Preconfigured Route Slabs ({routes.length})</span>
             </div>
-            <div className="overflow-x-auto max-h-[500px]">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 sticky top-0 text-slate-600 uppercase">
+            <div className="overflow-x-auto max-h-[600px]">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="bg-slate-50 sticky top-0 text-slate-600 uppercase text-[11px] font-bold">
                   <tr>
-                    <th className="p-3 border-b">Origin</th>
-                    <th className="p-3 border-b">Destination</th>
-                    <th className="p-3 border-b">Freight / MT</th>
-                    <th className="p-3 border-b">Driver Bata</th>
-                    <th className="p-3 border-b">Halt Bata</th>
-                    <th className="p-3 border-b text-center">Actions</th>
+                    <th className="px-5 py-3 border-b">Route path (Origin ➔ Dest)</th>
+                    <th className="px-5 py-3 border-b">Freight / MT</th>
+                    <th className="px-5 py-3 border-b">Driver Bata</th>
+                    <th className="px-5 py-3 border-b">Halt Bata</th>
+                    <th className="px-5 py-3 border-b text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {routes.map(r => (
                     <tr key={r.route_id || r.id} className="hover:bg-slate-50">
-                      <td className="p-3 font-bold text-slate-900">{r.origin}</td>
-                      <td className="p-3 font-bold text-slate-900">{r.destination}</td>
-                      <td className="p-3 font-black text-emerald-700">₹{Number(r.freight_rate_per_mt || 0).toFixed(2)}</td>
-                      <td className="p-3 font-bold text-[#FF5A00]">₹{Number(r.driver_bata || 0).toFixed(2)}</td>
-                      <td className="p-3 text-slate-600">₹{Number(r.halt_bata || 0).toFixed(2)}</td>
-                      <td className="p-3 text-center space-x-2">
+                      <td className="px-5 py-4 font-black text-slate-900">{r.origin} ➔ {r.destination}</td>
+                      <td className="px-5 py-4 font-black text-emerald-700">₹{Number(r.freight_rate_per_mt || 0).toFixed(2)}</td>
+                      <td className="px-5 py-4 font-black text-[#FF5A00]">₹{Number(r.driver_bata || 0).toFixed(2)}</td>
+                      <td className="px-5 py-4 text-slate-600 font-bold">₹{Number(r.halt_bata || 0).toFixed(2)}</td>
+                      <td className="px-5 py-4 text-center space-x-4">
                         <button onClick={() => handleEditRoute(r)} className="text-blue-600 hover:text-blue-800 font-bold">Edit</button>
                         <button onClick={() => handleDeleteRoute(r.route_id || r.id)} className="text-rose-600 hover:text-rose-800 font-bold">Delete</button>
                       </td>
@@ -490,7 +488,9 @@ export function SetupModule() {
                   ))}
                   {routes.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="p-6 text-center text-slate-400">No route slabs defined yet. Click &quot;+ Add New Route&quot; above to create standard slabs.</td>
+                      <td colSpan={5} className="p-10 text-center text-slate-500 font-semibold">
+                        No route slabs defined yet. Click &quot;+ Add New Route&quot; above to populate your trip form dropdowns.
+                      </td>
                     </tr>
                   )}
                 </tbody>
