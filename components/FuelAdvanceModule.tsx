@@ -77,6 +77,17 @@ export function FuelAdvanceModule() {
   const [auditSearchLr, setAuditSearchLr] = useState("");
   const [auditResults, setAuditResults] = useState<any[]>([]);
 
+  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
+    if (!dateStr.includes('-')) return dateStr;
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   const fetchData = async () => {
     setIsLoading(true);
     const [vehRes, drvRes, fuelRes, advRes, dieselRateRes] = await Promise.all([
@@ -243,7 +254,7 @@ export function FuelAdvanceModule() {
       l.filling_odometer_km || 0,
       l.litres_filled || 0,
       l.total_fuel_cost || 0
-    ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(",")); // Escapes quotes and separates columns
+    ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
 
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -364,7 +375,7 @@ export function FuelAdvanceModule() {
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {recentFuelLogs.map((log) => (
                     <tr key={log.fuel_log_id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-slate-600">{log.fuel_date}</td>
+                      <td className="px-4 py-3 text-slate-600">{formatDate(log.fuel_date)}</td>
                       <td className="px-4 py-3 font-bold text-slate-900">{log.vehicles?.vehicle_number}</td>
                       <td className="px-4 py-3 text-slate-600">
                         {log.diesel_category}<br/>
@@ -396,7 +407,7 @@ export function FuelAdvanceModule() {
               <option value="">-- SELECT LOG --</option>
               {allFuelLogs.map(l => (
                 <option key={l.fuel_log_id} value={l.fuel_log_id}>
-                  Log #{l.fuel_log_id} | {l.fuel_date} | {l.vehicles?.vehicle_number} | {l.litres_filled} L
+                  Log #{l.fuel_log_id} | {formatDate(l.fuel_date)} | {l.vehicles?.vehicle_number} | {l.litres_filled} L
                 </option>
               ))}
             </select>
@@ -524,7 +535,7 @@ export function FuelAdvanceModule() {
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {recentAdvances.map((adv) => (
                     <tr key={adv.advance_id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-slate-600">{adv.advance_date}</td>
+                      <td className="px-4 py-3 text-slate-600">{formatDate(adv.advance_date)}</td>
                       <td className="px-4 py-3 font-bold text-slate-900">{adv.drivers?.full_name} <br/><span className="text-[9px] font-normal text-slate-400">{adv.drivers?.driver_code}</span></td>
                       <td className="px-4 py-3 text-slate-600">
                         {adv.advance_type}<br/>
@@ -631,7 +642,7 @@ export function FuelAdvanceModule() {
                 {auditResults.map(l => (
                   <tr key={l.fuel_log_id} className="hover:bg-slate-50">
                     <td className="px-4 py-2 font-bold text-slate-500">#{l.fuel_log_id}</td>
-                    <td className="px-4 py-2 font-semibold">{l.fuel_date}</td>
+                    <td className="px-4 py-2 font-semibold">{formatDate(l.fuel_date)}</td>
                     <td className="px-4 py-2 font-bold text-slate-900">{l.vehicles?.vehicle_number}</td>
                     <td className="px-4 py-2 text-slate-600">{l.diesel_category}</td>
                     <td className="px-4 py-2 text-slate-600">{l.lr_number}</td>
@@ -653,4 +664,3 @@ export function FuelAdvanceModule() {
     </div>
   );
 }
-
