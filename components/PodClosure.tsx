@@ -8,6 +8,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dieselRate, setDieselRate] = useState<number>(95.0);
 
   // Custom Alert State
   const [alertConfig, setAlertConfig] = useState({
@@ -43,31 +44,44 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
     return dateStr;
   };
 
-  // Fetch pending active trips and driver details
+  // Fetch pending active trips and dynamic diesel rate
   const fetchActiveTrips = async () => {
     setIsLoading(true);
-    const { data } = await supabase
-      .from("trips")
-      .select(`
-        trip_id,
-        trip_number,
-        trip_start_date,
-        origin,
-        destination,
-        loaded_weight_mt,
-        start_km,
-        fuel_litres,
-        vehicle_id,
-        primary_driver_id,
-        vehicles ( vehicle_number ),
-        drivers ( full_name, phone_number )
-      `)
-      .neq("trip_status", "COMPLETED")
-      .order("trip_start_date", { ascending: true });
+    const [tripsRes, dieselRes] = await Promise.all([
+      supabase
+        .from("trips")
+        .select(`
+          trip_id,
+          trip_number,
+          trip_start_date,
+          origin,
+          destination,
+          loaded_weight_mt,
+          start_km,
+          fuel_litres,
+          vehicle_id,
+          primary_driver_id,
+          vehicles ( vehicle_number ),
+          drivers ( full_name, phone_number )
+        `)
+        .neq("trip_status", "COMPLETED")
+        .order("trip_start_date", { ascending: true }),
+      supabase
+        .from("diesel_fuel_logs")
+        .select("diesel_rate_per_litre")
+        .order("fuel_date", { ascending: false })
+        .order("fuel_log_id", { ascending: false })
+        .limit(1)
+    ]);
 
-    if (data) {
-      setActiveTrips(data);
+    if (tripsRes.data) {
+      setActiveTrips(tripsRes.data);
     }
+
+    if (dieselRes.data && dieselRes.data.length > 0 && dieselRes.data[0].diesel_rate_per_litre) {
+      setDieselRate(Number(dieselRes.data[0].diesel_rate_per_litre));
+    }
+
     setIsLoading(false);
   };
 
@@ -124,7 +138,6 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
     const totalKmRun = endKm > startKm ? endKm - startKm : 0;
 
     const addDiesel = Number(closingDiesel) || 0;
-    const dieselRate = 95.0; // Standard diesel rate
     const addedDieselCost = Math.round(addDiesel * dieselRate * 100) / 100;
 
     // 1. Update Trip row to COMPLETED
@@ -166,6 +179,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
           lr_number: currentTrip.trip_number,
           diesel_category: "TRIP_DIESEL",
           litres_filled: addDiesel,
+          diesel_rate_per_litre: dieselRate,
           total_fuel_cost: addedDieselCost,
           filling_odometer_km: endKm,
           is_tank_full: isTankFull
@@ -182,7 +196,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
       })
       .eq("vehicle_id", currentTrip.vehicle_id);
 
-    // Trigger Sleek Success Alert
+    // Trigger Success Alert
     setAlertConfig({
       isOpen: true,
       title: "POD Settled!",
@@ -203,7 +217,6 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
       
-      {/* RENDER THE CUSTOM ALERT MODAL */}
       <AlertModal 
         isOpen={alertConfig.isOpen}
         title={alertConfig.title}
@@ -282,7 +295,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                       type="number"
                       step="0.01"
                       value={unloadedMt}
-                      onChange={(e) => setUnloadedMt(parseFloat(e.target.value))}
+                      onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.00"
                       className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
                     />
@@ -296,7 +309,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                     <input
                       type="number"
                       value={closingKm}
-                      onChange={(e) => setClosingKm(parseFloat(e.target.value))}
+                      onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder={`Start: ${currentTrip.start_km || 0}`}
                       className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
                       required
@@ -307,7 +320,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                     <input
                       type="number"
                       value={haltBata}
-                      onChange={(e) => setHaltBata(parseFloat(e.target.value))}
+                      onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.00"
                       className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
                     />
@@ -317,7 +330,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                     <input
                       type="number"
                       value={claims}
-                      onChange={(e) => setClaims(parseFloat(e.target.value))}
+                      onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.00"
                       className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
                     />
@@ -332,10 +345,11 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                       type="number"
                       step="0.1"
                       value={closingDiesel}
-                      onChange={(e) => setClosingDiesel(parseFloat(e.target.value))}
+                      onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.0 Litres"
                       className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
                     />
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">Valued at current office rate: ₹{dieselRate}/L</span>
                   </div>
                   <div className="pt-5">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
