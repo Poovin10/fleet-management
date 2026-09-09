@@ -14,7 +14,8 @@ import { WorkshopModule } from "@/components/WorkshopModule";
 import { SetupModule } from "@/components/SetupModule";
 import { FleetTable } from "@/components/FleetTable";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { ApprovalQueue } from "@/components/ApprovalQueue"; // <-- Approval Queue import
+import { ApprovalQueue } from "@/components/ApprovalQueue";
+import { DriverPortal } from "@/components/DriverPortal"; // <-- Added Driver Portal Import
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -28,6 +29,10 @@ const KssLogo = ({ className }: { className?: string }) => (
 
 export default function SaaS_ERPDashboard() {
   const supabase = createClient();
+
+  // --- DRIVER PORTAL ROUTING STATE ---
+  const [isDriverRoute, setIsDriverRoute] = useState(false);
+  const [isCheckingRoute, setIsCheckingRoute] = useState(true);
 
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -55,7 +60,7 @@ export default function SaaS_ERPDashboard() {
   const [monthDieselCost, setMonthDieselCost] = useState<number>(0);
   const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
   const [activeTripCount, setActiveTripCount] = useState<number>(0); 
-  const [pendingDriverCount, setPendingDriverCount] = useState<number>(0); // <-- Pending Driver queue count
+  const [pendingDriverCount, setPendingDriverCount] = useState<number>(0);
   
   const [expiringDocs, setExpiringDocs] = useState<any[]>([]);
   
@@ -75,6 +80,16 @@ export default function SaaS_ERPDashboard() {
   const formatAmt = (amt: number) => {
     return (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
+
+  // --- CHECK URL FOR DRIVER ROUTE ON LOAD ---
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (window.location.pathname.startsWith('/driver')) {
+        setIsDriverRoute(true);
+      }
+    }
+    setIsCheckingRoute(false);
+  }, []);
 
   useEffect(() => {
     const auth = sessionStorage.getItem("kss_auth");
@@ -135,16 +150,6 @@ export default function SaaS_ERPDashboard() {
 
   const extractStatus = (v: any) => String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
 
-  const findStringProp = (obj: any, hints: string[]) => {
-    if (!obj) return null;
-    const keys = Object.keys(obj);
-    for (const hint of hints) {
-      const foundKey = keys.find(k => k.toLowerCase().includes(hint.toLowerCase()) && k.toLowerCase() !== 'id' && !k.toLowerCase().endsWith('_id'));
-      if (foundKey && obj[foundKey] !== null && obj[foundKey] !== '') return obj[foundKey];
-    }
-    return null;
-  };
-
   const fetchDashboardData = async () => {
     const { data: vehiclesData } = await supabase.from('vehicles').select('*').eq('is_active', true);
     if (vehiclesData && vehiclesData.length > 0) {
@@ -160,7 +165,6 @@ export default function SaaS_ERPDashboard() {
     const { count: activeCount } = await supabase.from('trips').select('*', { count: 'exact', head: true }).neq('trip_status', 'COMPLETED');
     setActiveTripCount(activeCount || 0);
 
-    // Fetch pending driver submissions count for dashboard notification
     const { count: driverPendingCount } = await supabase
       .from('driver_pending_entries')
       .select('*', { count: 'exact', head: true })
@@ -238,19 +242,6 @@ export default function SaaS_ERPDashboard() {
     fetchDashboardData();
   }, [activeTab]);
 
-  const getDrillDownData = (statusLabel: string) => {
-    const statusMap: Record<string, string[]> = {
-      "Plant Loading": ["WAITING_FOR_LOAD", "AVAILABLE_FOR_LOAD"],
-      "In Transit": ["IN_TRANSIT"],
-      "Workshop / Repairs": ["WORKSHOP_MAINTENANCE"],
-      "No Driver / Leave": ["DRIVER_UNAVAILABLE"]
-    };
-    const dbStatuses = statusMap[statusLabel] || [];
-    return liveVehicles.filter(v => dbStatuses.includes(extractStatus(v)));
-  };
-
-  const currentDrillDownData = selectedStatus ? getDrillDownData(selectedStatus) : [];
-
   const handleQuickStatusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!qsTruckId) return alert("Please select a truck.");
@@ -271,9 +262,26 @@ export default function SaaS_ERPDashboard() {
     }
   };
 
-  const dieselPct = monthFreight > 0 ? (monthDieselCost / monthFreight) * 100 : 0;
-  const retentionPct = monthFreight > 0 ? (monthNetRetention / monthFreight) * 100 : 0;
+  // ==========================================
+  // VIEW 1: PUBLIC DRIVER PORTAL (Bypasses Login)
+  // ==========================================
+  if (isCheckingRoute) return <div className="min-h-screen bg-slate-900" />;
+  
+  if (isDriverRoute) {
+    return (
+      <div className="min-h-screen bg-slate-900 py-6 px-4" style={{ colorScheme: 'light' }}>
+        <div className="max-w-md mx-auto mb-6 text-center">
+          <h1 className="text-xl font-black text-white">KSS Roadways</h1>
+          <p className="text-xs text-[#FF5A00] uppercase tracking-widest font-bold">Driver Highway Portal</p>
+        </div>
+        <DriverPortal />
+      </div>
+    );
+  }
 
+  // ==========================================
+  // VIEW 2: LOGIN GATE
+  // ==========================================
   if (isAuthLoading) return null;
 
   if (showLoginScreen && !isAuthenticated) {
@@ -318,6 +326,9 @@ export default function SaaS_ERPDashboard() {
     );
   }
 
+  // ==========================================
+  // VIEW 3: MAIN ERP DASHBOARD
+  // ==========================================
   const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "Setup"];
   const navItems = userRole === "ADMIN" ? allNavItems : ["Dashboard", "Financials", "P&L Statement"];
 
@@ -391,7 +402,6 @@ export default function SaaS_ERPDashboard() {
           {activeTab === "Dashboard" && (
             <div className="space-y-6">
               
-              {/* PENDING DRIVER APPROVALS NOTIFICATION ALERT BANNER */}
               {pendingDriverCount > 0 && (
                 <div className="bg-amber-50 border-l-4 border-amber-500 rounded-2xl shadow-sm p-5 animate-in slide-in-from-top-4 flex justify-between items-center">
                   <div className="flex items-center gap-3">
