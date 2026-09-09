@@ -10,7 +10,7 @@ export function DriverSettlementModule() {
   const [settlements, setSettlements] = useState<any[]>([]);
   const [rates, setRates] = useState<any[]>([]);
   
-  // Fiscal month selector state for ERP view
+  // Fiscal month selector state for ERP view (defaults to current month)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -40,7 +40,7 @@ export function DriverSettlementModule() {
     const { data: rateData } = await supabase.from('destinations_freight_master').select('*');
     if (rateData) setRates(rateData);
 
-    // Fetch drivers and aggregate per-driver fiscal month ledger
+    // Fetch drivers and aggregate current fiscal month earnings & halt bata
     const { data: driversData } = await supabase.from('drivers').select('*').eq('is_active', true);
     const [year, month] = selectedMonth.split('-');
     const firstDay = `${year}-${month}-01`;
@@ -50,52 +50,51 @@ export function DriverSettlementModule() {
     const { data: tripData } = await supabase
       .from('trips')
       .select('trip_id, trip_number, trip_start_date, trip_status, driver_bata, halt_bata, cash_advance_issued, primary_driver_id, drivers(full_name, driver_code)')
+      .gte('trip_start_date', firstDay)
       .lte('trip_start_date', lastDay);
 
     const { data: advData } = await supabase
       .from('driver_direct_advances')
       .select('*')
+      .gte('advance_date', firstDay)
       .lte('advance_date', lastDay);
 
     if (driversData && tripData && advData) {
-      // Calculate running balance up to selected month with rollover
       const driverLedgers = driversData.map(d => {
         const dTrips = tripData.filter(t => t.primary_driver_id === d.driver_id);
         const dAdvs = advData.filter(a => a.driver_id === d.driver_id);
 
-        let cumulativeBalance = 0;
-        let monthEarnedBata = 0;
-        let monthAdvances = 0;
-        let openingBalance = 0;
+        let earnedBata = 0;
+        let haltBataExpense = 0;
+        let tripAdvances = 0;
 
-        // Sort all historical records by date to compute rollover accurately
-        const allEvents = [
-          ...dTrips.map(t => ({ date: t.trip_start_date, type: 'TRIP', bata: (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0), adv: Number(t.cash_advance_issued) || 0 })),
-          ...dAdvs.map(a => ({ date: a.advance_date, type: 'ADV', bata: 0, adv: Number(a.amount_inr) || 0 }))
-        ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        allEvents.forEach(ev => {
-          const evMonth = ev.date ? ev.date.substring(0, 7) : '';
-          const net = ev.bata - ev.adv;
-
-          if (evMonth < selectedMonth) {
-            openingBalance += net;
-          } else if (evMonth === selectedMonth) {
-            monthEarnedBata += ev.bata;
-            monthAdvances += ev.adv;
-          }
+        dTrips.forEach(t => {
+          earnedBata += Number(t.driver_bata) || 0;
+          haltBataExpense += Number(t.halt_bata) || 0;
+          tripAdvances += Number(t.cash_advance_issued) || 0;
         });
 
-        const closingBalance = openingBalance + monthEarnedBata - monthAdvances;
+        let directAdvances = 0;
+        dAdvs.forEach(a => {
+          directAdvances += Number(a.amount_inr) || 0;
+        });
+
+        const totalEarnings = earnedBata + haltBataExpense;
+        const totalDeductions = tripAdvances + directAdvances;
+        const netPayable = totalEarnings - totalDeductions;
 
         return {
           driver_id: d.driver_id,
           driver_code: d.driver_code,
           full_name: d.full_name,
-          openingBalance,
-          monthEarnedBata,
-          monthAdvances,
-          closingBalance
+          earnedBata,
+          haltBataExpense,
+          totalEarnings,
+          tripAdvances,
+          directAdvances,
+          totalDeductions,
+          netPayable,
+          tripCount: dTrips.length
         };
       });
 
@@ -243,10 +242,13 @@ export function DriverSettlementModule() {
         </div>
       </div>
 
-      {/* SECTION 2: Fiscal Month Driver Settlement & Rollover Ledger */}
+      {/* SECTION 2: Fiscal Month Driver Settlement Ledger with Halt Bata & Advances */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-3">
-          <h3 className="text-base font-black uppercase text-slate-900">Driver Fiscal Month Rollover Ledger</h3>
+          <div>
+            <h3 className="text-base font-black uppercase text-slate-900">Driver Current Fiscal Month Ledger</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Includes Earned Bata, Halt Bata expenses, and cash advances for the selected month.</p>
+          </div>
           <div className="flex items-center gap-2">
             <label className="text-xs font-bold text-slate-500 uppercase">Fiscal Month:</label>
             <input 
@@ -263,10 +265,11 @@ export function DriverSettlementModule() {
             <thead className="bg-slate-50 sticky top-0">
               <tr className="text-slate-700 uppercase">
                 <th className="p-2.5 border-b">Driver Name</th>
-                <th className="p-2.5 border-b text-right">Opening Bal (Rollover)</th>
-                <th className="p-2.5 border-b text-right">Earned Bata (This Month)</th>
-                <th className="p-2.5 border-b text-right">Advances (This Month)</th>
-                <th className="p-2.5 border-b text-right">Closing Balance</th>
+                <th className="p-2.5 border-b text-center">Trips</th>
+                <th className="p-2.5 border-b text-right">Earned Bata (₹)</th>
+                <th className="p-2.5 border-b text-right">Halt Bata (Exp) (₹)</th>
+                <th className="p-2.5 border-b text-right">Total Deductions (₹)</th>
+                <th className="p-2.5 border-b text-right">Net Payable / Balance</th>
                 <th className="p-2.5 border-b text-center">Status</th>
               </tr>
             </thead>
@@ -275,21 +278,22 @@ export function DriverSettlementModule() {
                 return (
                   <tr key={s.driver_id} className="hover:bg-slate-50 border-b">
                     <td className="p-2.5 font-bold text-slate-900">{s.full_name} <span className="text-[10px] text-slate-400">({s.driver_code})</span></td>
-                    <td className={`p-2.5 text-right font-bold ${s.openingBalance >= 0 ? 'text-slate-700' : 'text-rose-600'}`}>
-                      ₹{s.openingBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}
-                    </td>
+                    <td className="p-2.5 text-center font-semibold text-slate-700">{s.tripCount}</td>
                     <td className="p-2.5 text-right text-emerald-700 font-bold">
-                      +₹{s.monthEarnedBata.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+                      ₹{s.earnedBata.toLocaleString('en-IN', {minimumFractionDigits: 2})}
                     </td>
                     <td className="p-2.5 text-right text-amber-700 font-bold">
-                      -₹{s.monthAdvances.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+                      ₹{s.haltBataExpense.toLocaleString('en-IN', {minimumFractionDigits: 2})}
                     </td>
-                    <td className={`p-2.5 text-right font-black ${s.closingBalance >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
-                      ₹{s.closingBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})} {s.closingBalance < 0 ? '(Deficit Carry Forward)' : '(Payable)'}
+                    <td className="p-2.5 text-right text-rose-600 font-bold">
+                      -₹{s.totalDeductions.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+                    </td>
+                    <td className={`p-2.5 text-right font-black ${s.netPayable >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
+                      ₹{s.netPayable.toLocaleString('en-IN', {minimumFractionDigits: 2})}
                     </td>
                     <td className="p-2.5 text-center">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${s.closingBalance >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                        {s.closingBalance >= 0 ? 'CLEAR / PAYABLE' : 'DEFICIT ROLLOVER'}
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${s.netPayable >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                        {s.netPayable >= 0 ? 'PAYABLE' : 'RECOVERY DUE'}
                       </span>
                     </td>
                   </tr>
@@ -297,7 +301,7 @@ export function DriverSettlementModule() {
               })}
               {settlements.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-400">No driver settlement records found for this period.</td>
+                  <td colSpan={7} className="p-6 text-center text-slate-400">No driver settlement records found for this month.</td>
                 </tr>
               )}
             </tbody>
