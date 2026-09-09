@@ -48,8 +48,8 @@ export function DriverPortal() {
 
   // History/Reports state
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
-  const [recentTrips, setRecentTrips] = useState<any[]>([]);
-  const [directAdvances, setDirectAdvances] = useState<any[]>([]);
+  const [currentMonthTrips, setCurrentMonthTrips] = useState<any[]>([]);
+  const [currentMonthAdvances, setCurrentMonthAdvances] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
@@ -76,16 +76,21 @@ export function DriverPortal() {
     if (tRes.data) setActiveTrips(tRes.data);
   };
 
-  // Fetch Driver Specific History (Trips & Direct Advances)
-  const fetchDriverReports = async (drvCode: string, drvId: number) => {
+  // Fetch Driver Specific History for Current Fiscal Month
+  const fetchDriverCurrentMonthReports = async (drvCode: string, drvId: number) => {
+    const now = new Date();
+    const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const firstDay = `${currentYearMonth}-01`;
+
     const [reqRes, tripRes, advRes] = await Promise.all([
       supabase.from('driver_pending_entries').select('*').eq('driver_code', drvCode).order('created_at', { ascending: false }).limit(10),
-      supabase.from('trips').select('*').eq('primary_driver_id', drvId).order('trip_start_date', { ascending: true }),
-      supabase.from('driver_direct_advances').select('*').eq('driver_id', drvId).order('advance_date', { ascending: true })
+      supabase.from('trips').select('*').eq('primary_driver_id', drvId).gte('trip_start_date', firstDay).order('trip_start_date', { ascending: false }),
+      supabase.from('driver_direct_advances').select('*').eq('driver_id', drvId).gte('advance_date', firstDay).order('advance_date', { ascending: false })
     ]);
+
     if (reqRes.data) setPendingRequests(reqRes.data);
-    if (tripRes.data) setRecentTrips(tripRes.data);
-    if (advRes.data) setDirectAdvances(advRes.data);
+    if (tripRes.data) setCurrentMonthTrips(tripRes.data);
+    if (advRes.data) setCurrentMonthAdvances(advRes.data);
   };
 
   useEffect(() => {
@@ -106,7 +111,7 @@ export function DriverPortal() {
           const activeTrip = activeTrips.find(t => String(t.primary_driver_id) === String(activeDriverObj.driver_id));
           if (activeTrip) setSelectedTruckId(String(activeTrip.vehicle_id));
         }
-        fetchDriverReports(savedDriverCode, activeDriverObj.driver_id);
+        fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
       }
     }
   }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab]);
@@ -121,59 +126,15 @@ export function DriverPortal() {
   const isAlreadyReached = currentTrip?.trip_status === "REACHED_DESTINATION" && actionType === "REACHED";
   const isAlreadyUnloaded = currentTrip?.trip_status === "UNLOADED" && actionType === "UNLOADED";
 
-  // --- FISCAL MONTH GROUPING & ROLLOVER LEDGER CALCULATION ---
-  const calculateMonthlyLedger = () => {
-    const monthsMap: { [key: string]: { monthKey: string; earnedBata: number; advances: number; trips: any[]; advList: any[] } } = {};
-
-    recentTrips.forEach(t => {
-      const dateStr = t.trip_start_date || new Date().toISOString().split('T')[0];
-      const mKey = dateStr.substring(0, 7); // YYYY-MM
-      if (!monthsMap[mKey]) {
-        monthsMap[mKey] = { monthKey: mKey, earnedBata: 0, advances: 0, trips: [], advList: [] };
-      }
-      monthsMap[mKey].earnedBata += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0);
-      monthsMap[mKey].trips.push(t);
-    });
-
-    directAdvances.forEach(a => {
-      const dateStr = a.advance_date || new Date().toISOString().split('T')[0];
-      const mKey = dateStr.substring(0, 7);
-      if (!monthsMap[mKey]) {
-        monthsMap[mKey] = { monthKey: mKey, earnedBata: 0, advances: 0, trips: [], advList: [] };
-      }
-      monthsMap[mKey].advances += Number(a.amount_inr) || 0;
-      monthsMap[mKey].advList.push(a);
-    });
-
-    const sortedMonths = Object.keys(monthsMap).sort();
-    let rollingRollover = 0;
-    const ledgerResult: any[] = [];
-
-    sortedMonths.forEach(mKey => {
-      const mData = monthsMap[mKey];
-      const openingBalance = rollingRollover; // Negative means deficit carried over
-      const netThisMonth = mData.earnedBata - mData.advances;
-      const closingBalance = openingBalance + netThisMonth;
-
-      ledgerResult.push({
-        monthKey: mKey,
-        openingBalance,
-        earnedBata: mData.earnedBata,
-        advances: mData.advances,
-        closingBalance,
-        trips: mData.trips,
-        advList: mData.advList
-      });
-
-      rollingRollover = closingBalance; // Rolls over to next month
-    });
-
-    return ledgerResult.reverse(); // Show latest month on top
-  };
-
-  const monthlyLedger = calculateMonthlyLedger();
-  const currentMonthLedger = monthlyLedger[0] || { closingBalance: 0 };
-  const bataBalance = currentMonthLedger.closingBalance;
+  // Current Month Calculations
+  const monthEarnedBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
+  const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
+  const monthTripAdvances = currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
+  const monthDirectAdvances = currentMonthAdvances.reduce((sum, a) => sum + (Number(a.amount_inr) || 0), 0);
+  
+  const totalMonthEarnings = monthEarnedBata + monthHaltBata;
+  const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
+  const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
   const handleLockDriver = (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,7 +238,7 @@ export function DriverPortal() {
   const handleCancelRequest = async (id: number) => {
     if (!confirm("Delete this request?")) return;
     await supabase.from('driver_pending_entries').delete().eq('id', id);
-    if (activeDriverObj) fetchDriverReports(savedDriverCode, activeDriverObj.driver_id);
+    if (activeDriverObj) fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
     setAlertConfig({ isOpen: true, title: "Deleted", message: "Request cancelled.", type: "success" });
   };
 
@@ -333,7 +294,7 @@ export function DriverPortal() {
           {/* TABS */}
           <div className="flex border-b border-slate-200">
             <button onClick={() => setActiveTab("UPDATE")} className={`flex-1 py-3 text-sm font-black ${activeTab === "UPDATE" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-slate-400 hover:text-slate-700"}`}>📝 Update Status</button>
-            <button onClick={() => setActiveTab("REPORTS")} className={`flex-1 py-3 text-sm font-black ${activeTab === "REPORTS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-slate-400 hover:text-slate-700"}`}>📊 My Reports</button>
+            <button onClick={() => setActiveTab("REPORTS")} className={`flex-1 py-3 text-sm font-black ${activeTab === "REPORTS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-slate-400 hover:text-slate-700"}`}>📊 Current Month Ledger</button>
           </div>
 
           {/* TAB 1: UPDATE STATUS */}
@@ -423,81 +384,74 @@ export function DriverPortal() {
             </form>
           )}
 
-          {/* TAB 2: MY REPORTS */}
+          {/* TAB 2: CURRENT MONTH LEDGER & TRIPWISE BREAKDOWN */}
           {activeTab === "REPORTS" && (
             <div className="p-6 grid gap-6 bg-slate-50 min-h-[400px] animate-in fade-in">
               
-              {/* CUMULATIVE BATA BALANCE CARD WITH ROLLOVER */}
+              {/* NET BALANCE CARD */}
               <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current Balance Ledger</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current Month Net Balance</p>
                 <div className="flex justify-between items-baseline mt-1">
-                  <span className={`text-2xl font-black ${bataBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    ₹{bataBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  <span className={`text-2xl font-black ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    ₹{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
-                  <span className="text-[10px] text-slate-400">{bataBalance < 0 ? 'Deficit Carried Over' : 'Net Payable'}</span>
+                  <span className="text-[10px] text-slate-400">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 text-[11px] text-slate-300">
+                  <div>Earned Bata: <strong className="text-white">₹{monthEarnedBata}</strong></div>
+                  <div>Halt Bata (Exp): <strong className="text-amber-400">₹{monthHaltBata}</strong></div>
+                  <div className="col-span-2 mt-1">Total Deductions: <strong className="text-rose-400">₹{totalMonthDeductions}</strong></div>
                 </div>
               </div>
 
-              {/* REJECTION NOTIFICATIONS / PENDING REQUESTS */}
-              <div>
-                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Pending & Recent Requests</h4>
-                {pendingRequests.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">No pending requests.</p>
-                ) : (
+              {/* PENDING REQUESTS */}
+              {pendingRequests.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Pending Requests</h4>
                   <div className="space-y-3">
                     {pendingRequests.map(r => (
-                      <div key={r.id} className={`p-3 bg-white border rounded-xl shadow-sm ${r.status === 'REJECTED' ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200'}`}>
+                      <div key={r.id} className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
                         <div className="flex justify-between items-start mb-1">
                           <span className="text-xs font-black text-slate-900">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : `₹${r.amount_inr}`}</span>
-                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : r.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
-                            {r.status}
-                          </span>
+                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
                         </div>
-                        {r.status === 'REJECTED' && (
-                          <p className="text-[11px] text-rose-600 font-bold mt-1">Reason: {r.rejection_reason || "Rejected by office"}</p>
-                        )}
-                        {r.status === 'PENDING' && (
-                          <div className="flex justify-end mt-2">
-                            <button onClick={() => handleCancelRequest(r.id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-white border border-rose-200 rounded-lg">Cancel Request ❌</button>
-                          </div>
-                        )}
+                        <div className="flex justify-end mt-2">
+                          <button onClick={() => handleCancelRequest(r.id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-white border border-rose-200 rounded-lg">Cancel Request ❌</button>
+                        </div>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* FISCAL MONTH ROLLOVER BREAKDOWN */}
+              {/* TRIPWISE BREAKDOWN FOR CURRENT MONTH */}
               <div>
-                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Fiscal Month Rollover Ledger</h4>
-                {monthlyLedger.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">No historical ledger found.</p>
+                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Current Month Tripwise Ledger</h4>
+                {currentMonthTrips.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic">No trips logged this month yet.</p>
                 ) : (
-                  <div className="space-y-4">
-                    {monthlyLedger.map(m => (
-                      <div key={m.monthKey} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-2">
-                        <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                          <span className="text-xs font-black text-slate-900 uppercase">Month: {m.monthKey}</span>
-                          <span className={`text-xs font-black ${m.closingBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            Closing: ₹{m.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-600 space-y-1">
-                          <div className="flex justify-between">
-                            <span>Opening Balance (Rollover):</span>
-                            <span className={m.openingBalance < 0 ? 'text-rose-600 font-bold' : ''}>₹{m.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                  <div className="space-y-3">
+                    {currentMonthTrips.map(t => {
+                      const tripBata = Number(t.driver_bata) || 0;
+                      const halt = Number(t.halt_bata) || 0;
+                      const adv = Number(t.cash_advance_issued) || 0;
+                      return (
+                        <div key={t.trip_id} className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm space-y-2">
+                          <div className="flex justify-between items-start border-b border-slate-100 pb-2">
+                            <div>
+                              <p className="text-sm font-black text-slate-900">{t.trip_number}</p>
+                              <p className="text-[10px] font-bold text-slate-500 truncate max-w-[150px]">{t.origin} ➔ {t.destination}</p>
+                            </div>
+                            <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded">{formatDate(t.trip_start_date)}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span>Earned Bata:</span>
-                            <span className="text-emerald-700 font-bold">+₹{m.earnedBata.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Direct Advances:</span>
-                            <span className="text-rose-600 font-bold">-₹{m.advances.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                          <div className="grid grid-cols-3 text-[11px] text-slate-600">
+                            <div>Bata: <strong className="text-emerald-600">₹{tripBata}</strong></div>
+                            <div>Halt: <strong className="text-amber-600">₹{halt}</strong></div>
+                            <div>Adv: <strong className="text-rose-600">₹{adv}</strong></div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
