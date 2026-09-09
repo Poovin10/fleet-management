@@ -29,16 +29,16 @@ export function DriverPortal() {
 
   const [savedDriverCode, setSavedDriverCode] = useState("");
   const [isDriverLocked, setIsDriverLocked] = useState(false);
-  const [activeTab, setActiveTab] = useState<"UPDATE" | "REPORTS">("UPDATE");
+  const [activeTab, setActiveTab] = useState<"STATUS" | "LEDGER">("STATUS");
 
   const [selectedTruckId, setSelectedTruckId] = useState("");
   const [driverCode, setDriverCode] = useState("");
+  const [driverPin, setDriverPin] = useState("");
   const [actionType, setActionType] = useState("REACHED"); 
   
   // Standard Form fields
   const [odometer, setOdometer] = useState<number | "">("");
   const [fuelLitres, setFuelLitres] = useState<number | "">("");
-  const [advanceAmt, setAdvanceAmt] = useState<number | "">("");
   const [remarks, setRemarks] = useState("");
   
   // UNLOADED fields
@@ -52,14 +52,27 @@ export function DriverPortal() {
   const [currentMonthAdvances, setCurrentMonthAdvances] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
+  // Helper to format dates & timestamps to DD/MM/YYYY HH:MM
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return `${day}/${month}/${year} at ${time}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
     if (!dateStr.includes('-')) return dateStr;
     const parts = dateStr.split('T')[0].split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
     return dateStr;
   };
 
@@ -68,7 +81,7 @@ export function DriverPortal() {
     const [vRes, dRes, tRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true),
       supabase.from('drivers').select('*').eq('is_active', true),
-      supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status').neq('trip_status', 'COMPLETED')
+      supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status, trip_start_date, reached_at, unloaded_at, returning_at').neq('trip_status', 'COMPLETED')
     ]);
 
     if (vRes.data) setVehicles(vRes.data);
@@ -123,10 +136,7 @@ export function DriverPortal() {
   const currentTrip = activeTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
   const isBulk = selectedTruckObj ? String(selectedTruckObj.truck_type).toUpperCase().includes("BULK") : true;
 
-  const isAlreadyReached = currentTrip?.trip_status === "REACHED_DESTINATION" && actionType === "REACHED";
-  const isAlreadyUnloaded = currentTrip?.trip_status === "UNLOADED" && actionType === "UNLOADED";
-
-  // Current Month Calculations
+  // Current Month Calculations (Using Dispatch-issued direct advances and trip advances)
   const monthEarnedBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
   const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
   const monthTripAdvances = currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
@@ -138,10 +148,21 @@ export function DriverPortal() {
 
   const handleLockDriver = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!driverCode) return setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Select your Name.", type: "error" });
+    if (!driverCode) {
+      return setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Please select your driver profile.", type: "error" });
+    }
+
+    const selectedDrv = drivers.find(d => d.driver_code === driverCode);
+    const expectedPin = selectedDrv?.pin || "1234";
+
+    if (driverPin.trim() !== expectedPin.toString().trim()) {
+      return setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "Incorrect security PIN. Please check with dispatch.", type: "error" });
+    }
+
     localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
     setSavedDriverCode(driverCode.toUpperCase().trim());
     setIsDriverLocked(true);
+    setDriverPin("");
   };
 
   const handleResetDriver = () => {
@@ -150,6 +171,7 @@ export function DriverPortal() {
       setIsDriverLocked(false);
       setSavedDriverCode("");
       setSelectedTruckId("");
+      setDriverPin("");
     }
   };
 
@@ -161,32 +183,33 @@ export function DriverPortal() {
     const timestamp = new Date().toISOString();
     const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown";
 
-    if (actionType === "FUEL" || actionType === "ADVANCE") {
+    if (actionType === "FUEL") {
       const { error } = await supabase.from('driver_pending_entries').insert([{
         vehicle_id: Number(selectedTruckId),
         driver_code: savedDriverCode || "DRV-MOBILE",
-        entry_type: actionType,
-        amount_inr: actionType === "ADVANCE" ? Number(advanceAmt) : 0,
-        litres: actionType === "FUEL" ? Number(fuelLitres) : 0,
+        entry_type: "FUEL",
+        litres: Number(fuelLitres),
         odometer_km: Number(odometer) || 0,
         receipt_remarks: `${remarks} [Truck: ${truckNumberText}]`,
         status: 'PENDING'
       }]);
 
       if (error) setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
-      else setAlertConfig({ isOpen: true, title: "Success", message: `${actionType} request sent to dispatch!`, type: "success" });
+      else setAlertConfig({ isOpen: true, title: "Success", message: `Fuel fill request sent to dispatch!`, type: "success" });
     } else {
       if (currentTrip) {
         let updatePayload: any = {};
         let finalRemarks = remarks;
+        let vehicleStatusUpdate = "IN_TRANSIT";
+        let statusRemarksText = "";
 
         if (actionType === "REACHED") { 
           updatePayload.reached_at = timestamp; 
           updatePayload.trip_status = "REACHED_DESTINATION"; 
           updatePayload.end_km = Number(odometer) || 0; 
+          statusRemarksText = `Reached ${currentTrip.destination} at ${formatDateTime(timestamp)}`;
         }
-        
-        if (actionType === "UNLOADED") { 
+        else if (actionType === "UNLOADED") { 
           updatePayload.unloaded_at = timestamp; 
           updatePayload.trip_status = "UNLOADED"; 
           if (isBulk) {
@@ -202,37 +225,41 @@ export function DriverPortal() {
           } else {
             finalRemarks = `[DAMAGED BAGS: ${damagedBags || 0}] ${finalRemarks}`;
           }
+          statusRemarksText = `Unloaded at ${currentTrip.destination}`;
         }
-        
-        if (actionType === "RETURNING") { updatePayload.returning_at = timestamp; updatePayload.trip_status = "RETURNING"; }
-        if (actionType === "BREAKDOWN") { updatePayload.breakdown_remarks = `${finalRemarks} [Odo: ${odometer}]`; updatePayload.trip_status = "BREAKDOWN"; }
-        if (finalRemarks && actionType === "UNLOADED") updatePayload.status_remarks = finalRemarks;
+        else if (actionType === "RETURNING") { 
+          updatePayload.returning_at = timestamp; 
+          updatePayload.trip_status = "RETURNING"; 
+          statusRemarksText = `Returning from ${currentTrip.destination}`;
+        }
+        else if (actionType === "WAITING_FOR_LOAD") {
+          updatePayload.trip_status = "WAITING_FOR_LOAD";
+          vehicleStatusUpdate = "WAITING_FOR_LOAD";
+          statusRemarksText = `Waiting for load at plant (${currentTrip.origin})`;
+        }
+        else if (actionType === "BREAKDOWN") { 
+          updatePayload.breakdown_remarks = `${finalRemarks} [Odo: ${odometer}]`; 
+          updatePayload.trip_status = "BREAKDOWN"; 
+          vehicleStatusUpdate = "WORKSHOP_MAINTENANCE";
+          statusRemarksText = `Enroute Breakdown`;
+        }
+
+        if (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) {
+          updatePayload.status_remarks = finalRemarks;
+        } else {
+          updatePayload.status_remarks = statusRemarksText;
+        }
 
         await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
+        await supabase.from('vehicles').update({ current_status: vehicleStatusUpdate, status_remarks: statusRemarksText }).eq('vehicle_id', selectedTruckId);
       }
-      if (actionType === "BREAKDOWN") await supabase.from('vehicles').update({ current_status: "WORKSHOP_MAINTENANCE", status_remarks: remarks }).eq('vehicle_id', selectedTruckId);
       
-      setAlertConfig({ isOpen: true, title: "Status Updated", message: `'${actionType}' status updated!`, type: "success" });
+      setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
     }
 
-    setOdometer(""); setFuelLitres(""); setAdvanceAmt(""); setRemarks(""); setUnloadedMt(""); setDamagedBags("");
+    setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags("");
     setIsSubmitting(false);
     await fetchPortalData(); 
-  };
-
-  const handleRevertStatus = async (type: string) => {
-    if (!currentTrip || !confirm("Undo this status update?")) return;
-    setIsSubmitting(true);
-    
-    let payload: any = { trip_status: "IN_TRANSIT", reached_at: null, end_km: null };
-    if (type === "UNLOADED") {
-      payload = { trip_status: "REACHED_DESTINATION", unloaded_at: null, unloaded_weight_mt: null, shortage_mt: null, status_remarks: null };
-    }
-
-    await supabase.from('trips').update(payload).eq('trip_id', currentTrip.trip_id);
-    await fetchPortalData(); 
-    setAlertConfig({ isOpen: true, title: "Reverted", message: `Accidental ${type} entry has been reverted.`, type: "success" });
-    setIsSubmitting(false);
   };
 
   const handleCancelRequest = async (id: number) => {
@@ -264,8 +291,8 @@ export function DriverPortal() {
       {!isDriverLocked ? (
         <form onSubmit={handleLockDriver} className="flex flex-col">
           <div className="flex flex-col p-6 space-y-1">
-            <h3 className="font-bold tracking-tight text-xl">Device Setup</h3>
-            <p className="text-sm text-slate-500">Select your profile to link this phone to your driver account.</p>
+            <h3 className="font-bold tracking-tight text-xl">Secure Device Setup</h3>
+            <p className="text-sm text-slate-500">Select your profile and enter your 4-digit security PIN.</p>
           </div>
           <div className="p-6 pt-0 grid gap-5">
             <div className="grid gap-1.5">
@@ -275,8 +302,20 @@ export function DriverPortal() {
                 {drivers.map(d => (<option key={d.driver_id} value={d.driver_code}>{d.full_name} ({d.driver_code})</option>))}
               </select>
             </div>
+            <div className="grid gap-1.5">
+              <label className={labelStyle}>4-Digit Security PIN</label>
+              <input 
+                type="password" 
+                maxLength={4} 
+                value={driverPin} 
+                onChange={e => setDriverPin(e.target.value)} 
+                placeholder="••••" 
+                className={inputStyle} 
+                required 
+              />
+            </div>
             <button type="submit" className="inline-flex items-center justify-center rounded-lg text-sm font-black bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-10 px-4 py-2 w-full mt-2">
-              Save Device Profile
+              Verify & Lock Device
             </button>
           </div>
         </form>
@@ -293,26 +332,47 @@ export function DriverPortal() {
 
           {/* TABS */}
           <div className="flex border-b border-slate-200">
-            <button onClick={() => setActiveTab("UPDATE")} className={`flex-1 py-3 text-sm font-black ${activeTab === "UPDATE" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-slate-400 hover:text-slate-700"}`}>📝 Update Status</button>
-            <button onClick={() => setActiveTab("REPORTS")} className={`flex-1 py-3 text-sm font-black ${activeTab === "REPORTS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-slate-400 hover:text-slate-700"}`}>📊 Current Month Ledger</button>
+            <button onClick={() => setActiveTab("STATUS")} className={`flex-1 py-3 text-sm font-black ${activeTab === "STATUS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-slate-400 hover:text-slate-700"}`}>🚀 Trip Status</button>
+            <button onClick={() => setActiveTab("LEDGER")} className={`flex-1 py-3 text-sm font-black ${activeTab === "LEDGER" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-slate-400 hover:text-slate-700"}`}>📊 Month Ledger</button>
           </div>
 
-          {/* TAB 1: UPDATE STATUS */}
-          {activeTab === "UPDATE" && (
+          {/* TAB 1: TRIP STATUS & LIFECYCLE */}
+          {activeTab === "STATUS" && (
             <form onSubmit={handleDriverSubmit} className="p-6 grid gap-5 animate-in fade-in">
               <div className="grid gap-1.5">
                 <label className={labelStyle}>Active Truck</label>
                 <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className={inputStyle} required>
-                  <option value="">Select current vehicle...</option>
+                  <option value="">Select assigned vehicle...</option>
                   {vehicles.map(v => (<option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} ({v.truck_type})</option>))}
                 </select>
               </div>
 
+              {/* CURRENT ACTIVE LR BANNER & PROFESSIONAL TIMELINE */}
+              {currentTrip && (
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-black text-orange-900">Active LR: {currentTrip.trip_number}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-orange-200 text-orange-900 rounded-full">{currentTrip.trip_status}</span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-700">{currentTrip.origin} ➔ {currentTrip.destination}</p>
+                  <p className="text-[11px] text-slate-500 pt-1 border-t border-orange-200/60">
+                    Started: {formatDateTime(currentTrip.trip_start_date)}
+                  </p>
+                </div>
+              )}
+
               <div className="grid gap-1.5">
-                <label className={labelStyle}>Action Type</label>
+                <label className={labelStyle}>Update Lifecycle Status</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {[ { id: "REACHED", label: "📍 Reached" }, { id: "UNLOADED", label: "📦 Unloaded" }, { id: "RETURNING", label: "🔄 Returning" }, { id: "BREAKDOWN", label: "⚠️ Breakdown" }, { id: "FUEL", label: "⛽ Fuel Fill" }, { id: "ADVANCE", label: "💵 Advance" } ].map(item => (
-                    <button type="button" key={item.id} onClick={() => setActionType(item.id)} className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-9 border ${actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                  {[ 
+                    { id: "REACHED", label: "📍 Reached Destination" }, 
+                    { id: "UNLOADED", label: "📦 Unloaded" }, 
+                    { id: "RETURNING", label: "🔄 Returning" }, 
+                    { id: "WAITING_FOR_LOAD", label: "⏳ Waiting for Load" }, 
+                    { id: "BREAKDOWN", label: "⚠️ Breakdown" }, 
+                    { id: "FUEL", label: "⛽ Fuel Fill Request" } 
+                  ].map(item => (
+                    <button type="button" key={item.id} onClick={() => setActionType(item.id)} className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
                       {item.label}
                     </button>
                   ))}
@@ -320,72 +380,54 @@ export function DriverPortal() {
               </div>
 
               <div className="space-y-4">
-                {(isAlreadyReached || isAlreadyUnloaded) ? (
-                  <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl text-center">
-                    <p className="text-sm font-bold text-orange-900 mb-1">Trip Already Marked as {actionType}</p>
-                    <p className="text-xs text-orange-700 mb-3">Did you make a mistake?</p>
-                    <button type="button" onClick={() => handleRevertStatus(actionType)} className="px-4 py-2 bg-white border border-orange-300 text-orange-700 rounded-lg text-xs font-bold shadow-sm hover:bg-orange-100">
-                      ↩️ Undo & Revert Status
-                    </button>
+                {(actionType === "FUEL" || actionType === "BREAKDOWN" || actionType === "REACHED") && (
+                  <div className="grid gap-1.5">
+                    <label className={labelStyle}>Odometer (KM)</label>
+                    <input type="number" min="0" value={odometer} onChange={e => setOdometer(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 145230" className={inputStyle} required={actionType === "FUEL"}/>
                   </div>
-                ) : (
-                  <>
-                    {(actionType === "FUEL" || actionType === "BREAKDOWN" || actionType === "REACHED") && (
-                      <div className="grid gap-1.5">
-                        <label className={labelStyle}>Odometer (KM)</label>
-                        <input type="number" min="0" value={odometer} onChange={e => setOdometer(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 145230" className={inputStyle} required={actionType === "FUEL"}/>
-                      </div>
-                    )}
-                    {actionType === "FUEL" && (
-                      <div className="grid gap-1.5">
-                        <label className={labelStyle}>Litres Filled</label>
-                        <input type="number" step="0.01" min="0.1" value={fuelLitres} onChange={e => setFuelLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={inputStyle} required />
-                      </div>
-                    )}
-                    {actionType === "ADVANCE" && (
-                      <div className="grid gap-1.5">
-                        <label className={labelStyle}>Requested Amount (₹)</label>
-                        <input type="number" step="0.01" min="1" value={advanceAmt} onChange={e => setAdvanceAmt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={inputStyle} required />
-                      </div>
-                    )}
-                    {actionType === "UNLOADED" && (
-                      <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl space-y-3">
-                        {isBulk ? (
-                          <>
-                            <div className="grid gap-1.5">
-                              <label className="text-xs font-bold text-orange-900 uppercase">Unloaded Weight (MT)</label>
-                              <input type="number" step="0.01" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} />
-                            </div>
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                              <input type="checkbox" checked={noWeighment} onChange={(e) => setNoWeighment(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-orange-300" />
-                              <span className="text-xs font-bold text-orange-800">No weighment facility</span>
-                            </label>
-                          </>
-                        ) : (
-                          <div className="grid gap-1.5">
-                            <label className="text-xs font-bold text-orange-900 uppercase">Damaged Bags Count</label>
-                            <input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {(actionType === "BREAKDOWN" || actionType === "UNLOADED") && (
-                      <div className="grid gap-1.5">
-                        <label className={labelStyle}>{actionType === "BREAKDOWN" ? "Breakdown Details" : "Additional Remarks"}</label>
-                        <input type="text" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder={actionType === "BREAKDOWN" ? "Describe issue & location" : "Any damages or notes?"} className={inputStyle} required={actionType === "BREAKDOWN"} />
-                      </div>
-                    )}
-                    <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-lg text-sm font-black transition-colors bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-12 px-4 py-2 w-full mt-2 disabled:opacity-50">
-                      {isSubmitting ? "Sending..." : `Submit Update`}
-                    </button>
-                  </>
                 )}
+                {actionType === "FUEL" && (
+                  <div className="grid gap-1.5">
+                    <label className={labelStyle}>Litres Filled</label>
+                    <input type="number" step="0.01" min="0.1" value={fuelLitres} onChange={e => setFuelLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={inputStyle} required />
+                  </div>
+                )}
+                {actionType === "UNLOADED" && (
+                  <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl space-y-3">
+                    {isBulk ? (
+                      <>
+                        <div className="grid gap-1.5">
+                          <label className="text-xs font-bold text-orange-900 uppercase">Unloaded Weight (MT)</label>
+                          <input type="number" step="0.01" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} />
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input type="checkbox" checked={noWeighment} onChange={(e) => setNoWeighment(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-orange-300" />
+                          <span className="text-xs font-bold text-orange-800">No weighment facility</span>
+                        </label>
+                      </>
+                    ) : (
+                      <div className="grid gap-1.5">
+                        <label className="text-xs font-bold text-orange-900 uppercase">Damaged Bags Count</label>
+                        <input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {(actionType === "BREAKDOWN" || actionType === "UNLOADED") && (
+                  <div className="grid gap-1.5">
+                    <label className={labelStyle}>{actionType === "BREAKDOWN" ? "Breakdown Details" : "Additional Remarks"}</label>
+                    <input type="text" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder={actionType === "BREAKDOWN" ? "Describe issue & location" : "Any damages or notes?"} className={inputStyle} required={actionType === "BREAKDOWN"} />
+                  </div>
+                )}
+                <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-lg text-sm font-black transition-colors bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-12 px-4 py-2 w-full mt-2 disabled:opacity-50">
+                  {isSubmitting ? "Updating..." : `Confirm Status Update`}
+                </button>
               </div>
             </form>
           )}
 
-          {/* TAB 2: CURRENT MONTH LEDGER & TRIPWISE BREAKDOWN */}
-          {activeTab === "REPORTS" && (
+          {/* TAB 2: CURRENT MONTH LEDGER */}
+          {activeTab === "LEDGER" && (
             <div className="p-6 grid gap-6 bg-slate-50 min-h-[400px] animate-in fade-in">
               
               {/* NET BALANCE CARD */}
@@ -400,11 +442,11 @@ export function DriverPortal() {
                 <div className="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 text-[11px] text-slate-300">
                   <div>Earned Bata: <strong className="text-white">₹{monthEarnedBata}</strong></div>
                   <div>Halt Bata (Exp): <strong className="text-amber-400">₹{monthHaltBata}</strong></div>
-                  <div className="col-span-2 mt-1">Total Deductions: <strong className="text-rose-400">₹{totalMonthDeductions}</strong></div>
+                  <div className="col-span-2 mt-1">Total Deductions (Advances): <strong className="text-rose-400">₹{totalMonthDeductions}</strong></div>
                 </div>
               </div>
 
-              {/* PENDING REQUESTS */}
+              {/* PENDING FUEL REQUESTS */}
               {pendingRequests.length > 0 && (
                 <div>
                   <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Pending Requests</h4>
