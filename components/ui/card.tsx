@@ -1,83 +1,47 @@
-import * as React from "react";
+import { ReactNode } from 'react';
 
-import { cn } from "@/lib/utils";
-
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow",
-      className,
-    )}
-    {...props}
-  />
-));
-Card.displayName = "Card";
-
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-));
-CardHeader.displayName = "CardHeader";
-
-const CardTitle = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("font-semibold leading-none tracking-tight", className)}
-    {...props}
-  />
-));
-CardTitle.displayName = "CardTitle";
-
-const CardDescription = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-));
-CardDescription.displayName = "CardDescription";
-
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-));
-CardContent.displayName = "CardContent";
-
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-));
-CardFooter.displayName = "CardFooter";
-
-export {
-  Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardDescription,
-  CardContent,
+type CardProps = {
+  children: ReactNode;
+  className?: string;
+  raised?: boolean;
 };
+
+export function Card({ children, className = '', raised = false }: CardProps) {
+  return (
+    <div
+      className={[
+        'bg-surface border border-border rounded-lg p-6',
+        raised ? 'shadow-raised' : 'shadow-card',
+        className,
+      ].join(' ')}
+    >
+      {children}
+    </div>
+  );
+}
+
+type StatRowProps = {
+  label: string;
+  sublabel?: string;
+  value: string;
+  tone?: 'default' | 'success' | 'danger' | 'accent';
+};
+
+export function StatRow({ label, sublabel, value, tone = 'default' }: StatRowProps) {
+  const toneClass = {
+    default: 'text-fg',
+    success: 'text-success',
+    danger: 'text-danger',
+    accent: 'text-accent',
+  }[tone];
+
+  return (
+    <div className="flex items-start justify-between py-3 border-b border-border last:border-0">
+      <div>
+        <div className="text-sm font-medium text-fg">{label}</div>
+        {sublabel && <div className="text-xs text-fg-muted mt-0.5">{sublabel}</div>}
+      </div>
+      <div className={`font-nums text-sm font-semibold ${toneClass}`}>{value}</div>
+    </div>
+  );
+}
