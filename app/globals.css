@@ -1,13 +1,37 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @layer base {
-  html, body, [class*="css"] {
-    background-color: #090A0F !important;
+  /* Force global dark background across all elements and containers */
+  html, body, #__next, [data-nextjs-scroll-focus-boundary] {
+    background-color: #050507 !important;
     color: #F8FAFC !important;
     color-scheme: dark !important;
   }
+}
+
+/* Ensure all modular container cards and panels match the deep dark theme */
+.bg-white, div[class*="bg-white"] {
+  background-color: #12141C !important;
+  border-color: #222634 !important;
+  color: #F8FAFC !important;
+}
+
+/* Light background utility overrides */
+.bg-slate-50, .bg-slate-150, .bg-slate-100 {
+  background-color: #161A23 !important;
+  border-color: #222634 !important;
+  color: #F8FAFC !important;
+}
+
+/* Text color contrast fixes for dark backgrounds */
+h1, h2, h3, h4, h5, h6, span, p, label {
+  color: inherit;
+}
+.text-slate-950, .text-slate-900, .text-slate-800, .text-slate-700 {
+  color: #F8FAFC !important;
+}
+.text-slate-600, .text-slate-500 {
+  color: #94A3B8 !important;
 }
 
 /* Custom Sleek Scrollbars */
@@ -16,23 +40,42 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0F1117;
+  background: #050507;
 }
 ::-webkit-scrollbar-thumb {
-  background: #272B36;
+  background: #222634;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #FF5A00;
 }
 
-/* Force Form Elements & Inputs into Dark Theme */
+/* Professional Dark Inputs & Selects with Orange Focus */
 input, select, textarea {
-  background-color: #161922 !important;
-  border-color: #272B36 !important;
-  color: #F8FAFC !important;
+  background-color: #1A1F2C !important;
+  border: 1px solid #2B3142 !important;
+  color: #FFFFFF !important;
 }
 input:focus, select:focus, textarea:focus {
   border-color: #FF5A00 !important;
+  box-shadow: 0 0 0 2px rgba(255, 90, 0, 0.2) !important;
   outline: none !important;
+}
+
+/* Tables and Data Grids Contrast Fix */
+table {
+  background-color: #12141C !important;
+  color: #F8FAFC !important;
+}
+th {
+  background-color: #1A1F2C !important;
+  color: #94A3B8 !important;
+  border-bottom: 1px solid #222634 !important;
+}
+td {
+  border-bottom: 1px solid #1A1F2C !important;
+  color: #E2E8F0 !important;
+}
+tr:hover {
+  background-color: #1A1F2C !important;
 }
