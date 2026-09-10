@@ -11,7 +11,7 @@ export default async function DashboardPage() {
 
   const alerts: any[] = [];
 
-  // Corrected to query license_expiry_date instead of legacy expiry_date
+  // Querying license_expiry_date matching drivers schema
   const { data: drivers } = await supabase
     .from('drivers')
     .select('driver_code, full_name, license_expiry_date')
