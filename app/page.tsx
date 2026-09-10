@@ -293,7 +293,7 @@ export default function SaaS_ERPDashboard() {
         <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#FF5A00]/30 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
 
-        <div className="relative bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md p-6 sm:p-10 border border-white/20">
+        <div className="relative bg-surface/95 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md p-6 sm:p-10 border border-white/20">
           <div className="text-center mb-8 sm:mb-10">
             <div className="mx-auto mb-6 w-20 h-20 sm:w-24 sm:h-24 shadow-md rounded-2xl overflow-hidden border border-slate-200">
                <KssLogo className="w-full h-full" />
@@ -307,11 +307,11 @@ export default function SaaS_ERPDashboard() {
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Username</label>
-              <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-white text-slate-900" required />
+              <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-surface text-slate-900" required />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Password</label>
-              <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-white text-slate-900" required />
+              <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-surface text-slate-900" required />
             </div>
             {loginError && <p className="text-sm font-bold text-rose-500 text-center bg-rose-50 p-3 rounded-xl">{loginError}</p>}
             
@@ -344,7 +344,7 @@ export default function SaaS_ERPDashboard() {
         onCancel={() => setIsLogoutModalOpen(false)}
       />
 
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-sm border border-slate-100 overflow-hidden flex-shrink-0">
@@ -389,7 +389,7 @@ export default function SaaS_ERPDashboard() {
               key={item}
               onClick={() => setActiveTab(item)}
               className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 ease-out whitespace-nowrap ${
-                activeTab === item ? "bg-white text-[#FF5A00] shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
+                activeTab === item ? "bg-surface text-[#FF5A00] shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
               }`}
             >
               {item}
@@ -453,7 +453,7 @@ export default function SaaS_ERPDashboard() {
                   </div>
                 )}
 
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
+                <div className="bg-surface border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">Operations Summary</h3>
                     <span className="px-3 py-1 bg-[#FF5A00]/10 text-[#FF5A00] text-[10px] sm:text-xs font-bold rounded-full border border-[#FF5A00]/20 whitespace-nowrap">
@@ -497,7 +497,7 @@ export default function SaaS_ERPDashboard() {
                 </div>
 
                 {/* LIVE VEHICLE STATUS MONITOR */}
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6 mt-6">
+                <div className="bg-surface border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6 mt-6">
                   <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide mb-6">Live Vehicle Status Monitor</h3>
                   
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -550,7 +550,7 @@ export default function SaaS_ERPDashboard() {
                               <p className="text-[10px] font-bold text-slate-500">{v.truck_type}</p>
                             </div>
                             <div className="text-right">
-                              <span className="text-[9px] font-bold px-2 py-1 bg-white border border-slate-200 rounded text-slate-600 shadow-sm">
+                              <span className="text-[9px] font-bold px-2 py-1 bg-surface border border-slate-200 rounded text-slate-600 shadow-sm">
                                 {v.carrying_capacity_tons} MT
                               </span>
                             </div>
@@ -573,7 +573,7 @@ export default function SaaS_ERPDashboard() {
             </div>
           )}
 
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6" style={{ colorScheme: 'light' }}>
+          <div className="bg-surface border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6" style={{ colorScheme: 'light' }}>
             {activeTab === "Operations" && userRole === "ADMIN" && (
               <div className="p-4 sm:p-6 min-h-[60vh]">
                 <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4 mb-6">
@@ -584,7 +584,7 @@ export default function SaaS_ERPDashboard() {
                       className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                         opSubTab === sub 
                           ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" 
-                          : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                          : "bg-surface text-slate-600 hover:bg-slate-100 border border-slate-200"
                       }`}
                     >
                       {sub}
@@ -606,7 +606,7 @@ export default function SaaS_ERPDashboard() {
                         <select 
                           value={qsTruckId} 
                           onChange={(e) => setQsTruckId(e.target.value)} 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-slate-900"
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-slate-900"
                         >
                           <option value="">Select a vehicle...</option>
                           {liveVehicles.map(v => (
@@ -621,7 +621,7 @@ export default function SaaS_ERPDashboard() {
                         <select 
                           value={qsStatus} 
                           onChange={(e) => setQsStatus(e.target.value)} 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-slate-900"
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-slate-900"
                         >
                           <option value="WAITING_FOR_LOAD">Plant Loading</option>
                           <option value="IN_TRANSIT">In Transit</option>
@@ -636,7 +636,7 @@ export default function SaaS_ERPDashboard() {
                           value={qsRemarks} 
                           onChange={(e) => setQsRemarks(e.target.value)} 
                           placeholder="e.g. Broken Down near Erode Toll" 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-[#FF5A00] outline-none font-semibold text-slate-900" 
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-semibold text-slate-900" 
                         />
                       </div>
                       <button type="submit" className="mt-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black py-3 px-6 rounded-lg transition-colors shadow-sm">

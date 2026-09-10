@@ -265,7 +265,7 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
+    <div className="bg-surface border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
       
       <AlertModal 
         isOpen={alertConfig.isOpen}
@@ -315,7 +315,7 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
           <select 
             value={selectedTripId}
             onChange={(e) => setSelectedTripId(e.target.value)}
-            className="w-full text-sm p-3 rounded-xl border-2 border-orange-100 bg-orange-50/50 focus:bg-white outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold text-slate-900 cursor-pointer"
+            className="w-full text-sm p-3 rounded-xl border-2 border-orange-100 bg-orange-50/50 focus:bg-surface outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold text-slate-900 cursor-pointer"
           >
             <option value="">-- SELECT TRIP TO MODIFY --</option>
             {matchedTrips.map(t => (

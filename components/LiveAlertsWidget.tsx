@@ -164,7 +164,7 @@ export function LiveAlertsWidget() {
   }, []);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[500px]">
+    <div className="bg-surface border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[500px]">
       
       {/* HEADER */}
       <div className="bg-slate-50 border-b border-slate-200 px-5 py-4 flex justify-between items-center shrink-0">
@@ -198,7 +198,7 @@ export function LiveAlertsWidget() {
           notifications.map((item) => (
             <div 
               key={item.id} 
-              className="bg-white border border-slate-200 rounded-2xl p-3.5 flex items-start gap-3 shadow-sm hover:border-[#FF5A00]/40 transition-all animate-in slide-in-from-right-4 duration-300"
+              className="bg-surface border border-slate-200 rounded-2xl p-3.5 flex items-start gap-3 shadow-sm hover:border-[#FF5A00]/40 transition-all animate-in slide-in-from-right-4 duration-300"
             >
               <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-base shrink-0">
                 {item.icon}

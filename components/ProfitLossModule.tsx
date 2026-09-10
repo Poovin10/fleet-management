@@ -126,7 +126,7 @@ export function ProfitLossModule() {
     <div className="space-y-6 animate-in fade-in duration-300" style={{ colorScheme: 'light' }}>
       
       {/* Top Bar: Month Selector & Export */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Monthly P&L Statement</h3>
           <p className="text-xs text-slate-500 mt-0.5">Comprehensive financial performance ledger for the selected month.</p>
@@ -136,7 +136,7 @@ export function ProfitLossModule() {
             type="month" 
             value={selectedMonth} 
             onChange={e => setSelectedMonth(e.target.value)} 
-            className="text-sm p-2.5 rounded-xl border border-slate-300 font-bold bg-white text-slate-900 outline-none focus:ring-2 focus:ring-[#FF5A00]" 
+            className="text-sm p-2.5 rounded-xl border border-slate-300 font-bold bg-surface text-slate-900 outline-none focus:ring-2 focus:ring-[#FF5A00]" 
           />
           <button 
             onClick={exportPLToCSV} 
@@ -148,9 +148,9 @@ export function ProfitLossModule() {
       </div>
 
       {/* P&L Statement Card */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden max-w-4xl mx-auto relative">
+      <div className="bg-surface border border-slate-200 rounded-2xl shadow-sm overflow-hidden max-w-4xl mx-auto relative">
         {isLoading && (
-          <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-10 flex items-center justify-center">
+          <div className="absolute inset-0 bg-surface/70 backdrop-blur-sm z-10 flex items-center justify-center">
             <span className="font-bold text-[#FF5A00] animate-pulse">Calculating P&L...</span>
           </div>
         )}
@@ -185,23 +185,23 @@ export function ProfitLossModule() {
           <div>
             <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3">2. Operating Expenses (OPEX)</h4>
             <div className="space-y-2">
-              <div className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center hover:bg-slate-50">
+              <div className="bg-surface border border-slate-200 rounded-xl p-4 flex justify-between items-center hover:bg-slate-50">
                 <p className="text-sm font-semibold text-slate-700">Diesel Fuel Consumption</p>
                 <p className="text-sm font-bold text-rose-600">₹ {formatAmt(totalDiesel)}</p>
               </div>
-              <div className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center hover:bg-slate-50">
+              <div className="bg-surface border border-slate-200 rounded-xl p-4 flex justify-between items-center hover:bg-slate-50">
                 <p className="text-sm font-semibold text-slate-700">Driver Bata</p>
                 <p className="text-sm font-bold text-rose-600">₹ {formatAmt(totalBata)}</p>
               </div>
-              <div className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center hover:bg-slate-50">
+              <div className="bg-surface border border-slate-200 rounded-xl p-4 flex justify-between items-center hover:bg-slate-50">
                 <p className="text-sm font-semibold text-slate-700">Halt Bata</p>
                 <p className="text-sm font-bold text-rose-600">₹ {formatAmt(totalHaltBata)}</p>
               </div>
-              <div className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center hover:bg-slate-50">
+              <div className="bg-surface border border-slate-200 rounded-xl p-4 flex justify-between items-center hover:bg-slate-50">
                 <p className="text-sm font-semibold text-slate-700">Enroute Repairs & Maintenance</p>
                 <p className="text-sm font-bold text-rose-600">₹ {formatAmt(totalEnrouteRepairs)}</p>
               </div>
-              <div className="bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center hover:bg-slate-50">
+              <div className="bg-surface border border-slate-200 rounded-xl p-4 flex justify-between items-center hover:bg-slate-50">
                 <p className="text-sm font-semibold text-slate-700">Workshop Spares & Service Bills</p>
                 <p className="text-sm font-bold text-rose-600">₹ {formatAmt(totalWorkshopBills)}</p>
               </div>

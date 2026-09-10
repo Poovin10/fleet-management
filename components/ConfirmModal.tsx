@@ -23,7 +23,7 @@ export function ConfirmModal({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Modal Header & Body */}
         <div className="p-6">
@@ -47,7 +47,7 @@ export function ConfirmModal({
           <button 
             onClick={onCancel}
             disabled={isProcessing}
-            className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200 bg-white border border-slate-200 rounded-xl transition-colors disabled:opacity-50"
+            className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200 bg-surface border border-slate-200 rounded-xl transition-colors disabled:opacity-50"
           >
             Cancel
           </button>

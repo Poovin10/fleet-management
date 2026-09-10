@@ -321,12 +321,12 @@ export function DriverPortal() {
   const labelStyle = "text-xs font-bold text-slate-600 uppercase tracking-wide leading-none mb-1";
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: 'light' }}>
+    <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-surface text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: 'light' }}>
       
       {/* Branding */}
       <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm bg-white"><KssLogo className="w-full h-full" /></div>
+          <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm bg-surface"><KssLogo className="w-full h-full" /></div>
           <div>
             <h1 className="text-sm font-black text-white tracking-tight leading-none">KSS Roadways</h1>
             <p className="text-[9px] text-[#FF5A00] font-bold uppercase tracking-widest mt-0.5">Driver Portal</p>
@@ -442,7 +442,7 @@ export function DriverPortal() {
                     { id: "BREAKDOWN", label: "⚠️ Breakdown" }, 
                     { id: "FUEL", label: "⛽ Fuel Fill Request" } 
                   ].map(item => (
-                    <button type="button" key={item.id} onClick={() => setActionType(item.id)} className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                    <button type="button" key={item.id} onClick={() => setActionType(item.id)} className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
                       {item.label}
                     </button>
                   ))}
@@ -520,13 +520,13 @@ export function DriverPortal() {
                   <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Pending Requests</h4>
                   <div className="space-y-3">
                     {pendingRequests.map(r => (
-                      <div key={r.id} className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
+                      <div key={r.id} className="p-3 bg-surface border border-slate-200 rounded-xl shadow-sm">
                         <div className="flex justify-between items-start mb-1">
                           <span className="text-xs font-black text-slate-900">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : `₹${r.amount_inr}`}</span>
                           <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
                         </div>
                         <div className="flex justify-end mt-2">
-                          <button onClick={() => handleCancelRequest(r.id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-white border border-rose-200 rounded-lg">Cancel Request ❌</button>
+                          <button onClick={() => handleCancelRequest(r.id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-surface border border-rose-200 rounded-lg">Cancel Request ❌</button>
                         </div>
                       </div>
                     ))}
@@ -545,7 +545,7 @@ export function DriverPortal() {
                       const halt = Number(t.halt_bata) || 0;
                       const adv = Number(t.cash_advance_issued) || 0;
                       return (
-                        <div key={t.trip_id} className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm space-y-2">
+                        <div key={t.trip_id} className="p-3 bg-surface border border-slate-200 rounded-xl shadow-sm space-y-2">
                           <div className="flex justify-between items-start border-b border-slate-100 pb-2">
                             <div>
                               <p className="text-sm font-black text-slate-900">{t.trip_number}</p>

@@ -2,7 +2,7 @@
    KSS ROADWAYS — GLOBAL THEME TOKENS
    Single source of truth. Every page/component
    pulls colors from here — never hardcode
-   bg-white / text-black / bg-gray-900 anywhere.
+   bg-surface / text-fg / bg-gray-900 anywhere.
    ============================================ */
 
 @tailwind base;

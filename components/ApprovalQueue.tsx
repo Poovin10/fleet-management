@@ -118,7 +118,7 @@ export function ApprovalQueue() {
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
+    <div className="bg-surface border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
       
       <AlertModal 
         isOpen={alertConfig.isOpen}
@@ -131,7 +131,7 @@ export function ApprovalQueue() {
       {/* REJECTION REASON MODAL */}
       {rejectModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
+          <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
             <h3 className="text-lg font-black text-slate-900 mb-2">Reject Driver Request</h3>
             <p className="text-xs text-slate-500 mb-4">Please provide a reason so the driver knows why this was rejected.</p>
             
@@ -165,7 +165,7 @@ export function ApprovalQueue() {
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 w-full relative min-h-[300px]">
         {isLoading && (
-          <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-10 flex items-center justify-center">
+          <div className="absolute inset-0 bg-surface/70 backdrop-blur-sm z-10 flex items-center justify-center">
             <span className="font-bold text-[#FF5A00] animate-pulse">Loading Queue...</span>
           </div>
         )}
@@ -182,7 +182,7 @@ export function ApprovalQueue() {
               <th className="px-4 py-3 text-center">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody className="bg-surface divide-y divide-slate-100">
             {pendingEntries.map(e => (
               <tr key={e.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-semibold text-slate-600">{formatDate(e.created_at)}</td>

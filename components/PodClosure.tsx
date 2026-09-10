@@ -226,7 +226,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
       />
 
       {/* LEFT PANEL: Settle POD Form */}
-      <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <div className="lg:col-span-7 bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
         <div className="border-b border-slate-200 pb-4 mb-6">
           <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Record POD & Settle Trip</h3>
           <p className="text-xs text-slate-500 mt-1">Finalize transit records, calculate shortages, and record closing top-ups.</p>
@@ -245,7 +245,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
               <select
                 value={selectedLr}
                 onChange={(e) => setSelectedLr(e.target.value)}
-                className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-surface font-bold text-slate-900 outline-none focus:ring-2 focus:ring-[#FF5A00]"
                 required
               >
                 <option value="">-- SELECT LR TO CLOSE --</option>

@@ -283,7 +283,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
+    <div className="bg-surface border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
       
       <AlertModal 
         isOpen={alertConfig.isOpen}
@@ -305,28 +305,28 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           {/* 1. Date */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">1. Start Date *</label>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required />
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-slate-900" required />
           </div>
 
           {/* 2. LR Number */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">2. LR Number *</label>
-            <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value)} placeholder="E.G. 40080069852" className="w-full text-sm p-3 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900" required />
+            <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value)} placeholder="E.G. 40080069852" className="w-full text-sm p-3 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-slate-900" required />
           </div>
 
           {/* 3. Cargo Type */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">3. Cargo Type *</label>
             <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <button type="button" onClick={() => { setCargoType("BULK"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BULK" ? "bg-white text-[#FF5A00] shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-900"}`}>BULK</button>
-              <button type="button" onClick={() => { setCargoType("BAG"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BAG" ? "bg-white text-[#FF5A00] shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-900"}`}>BAGS</button>
+              <button type="button" onClick={() => { setCargoType("BULK"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BULK" ? "bg-surface text-[#FF5A00] shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-900"}`}>BULK</button>
+              <button type="button" onClick={() => { setCargoType("BAG"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BAG" ? "bg-surface text-[#FF5A00] shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-900"}`}>BAGS</button>
             </div>
           </div>
 
           {/* 4. Assigned Truck */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">4. Assigned Truck ({cargoType}) *</label>
-            <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-[#FF5A00] bg-white" required disabled={isLoading}>
+            <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-[#FF5A00] bg-surface" required disabled={isLoading}>
               <option value="">-- SELECT TRUCK --</option>
               {availableTrucks.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number} [{v.truck_type}]</option>)}
             </select>
@@ -335,26 +335,26 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           {/* 5. Source */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">5. Source (Origin) *</label>
-            <select value={source} onChange={e => setSource(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900">
+            <select value={source} onChange={e => setSource(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-slate-900">
               {dynamicSources.length === 0 && <option value="COCHIN">COCHIN</option>}
               {dynamicSources.map(s => <option key={s} value={s}>{s}</option>)}
               <option value="CUSTOM">CUSTOM (MANUAL)</option>
             </select>
             {source === "CUSTOM" && (
-              <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required />
+              <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-slate-900" required />
             )}
           </div>
 
           {/* 6. Destination */}
           <div className="bg-slate-50 p-2 -m-2 rounded-xl border border-slate-100">
             <label className="block text-[10px] font-bold text-[#FF5A00] uppercase mb-1">6. Destination *</label>
-            <select value={destinationLabel} onChange={e => setDestinationLabel(e.target.value)} className="w-full text-sm p-3 rounded-xl border-2 border-[#FF5A00]/30 outline-none focus:border-[#FF5A00] font-bold text-slate-900 bg-white" disabled={!selectedTruckId}>
+            <select value={destinationLabel} onChange={e => setDestinationLabel(e.target.value)} className="w-full text-sm p-3 rounded-xl border-2 border-[#FF5A00]/30 outline-none focus:border-[#FF5A00] font-bold text-slate-900 bg-surface" disabled={!selectedTruckId}>
               <option value="-- SELECT DESTINATION --">-- SELECT DESTINATION --</option>
               {validRoutes.map(r => <option key={r.id} value={r.destination_name}>{r.destination_name} (₹{r.freight_rate_per_ton}/MT)</option>)}
               <option value="-- MANUAL / SPOT ROUTE --">-- MANUAL / SPOT ROUTE --</option>
             </select>
             {isManualRoute && (
-              <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" required />
+              <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-slate-900" required />
             )}
           </div>
 
@@ -367,7 +367,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               min="0.01"
               value={freightRate} 
               onChange={e => setFreightRate(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className={`w-full text-sm p-3 rounded-xl border outline-none font-black ${isManualRoute ? 'border-slate-300 focus:ring-2 focus:ring-[#FF5A00] text-[#FF5A00] bg-white' : 'border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed'}`} 
+              className={`w-full text-sm p-3 rounded-xl border outline-none font-black ${isManualRoute ? 'border-slate-300 focus:ring-2 focus:ring-[#FF5A00] text-[#FF5A00] bg-surface' : 'border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed'}`} 
               disabled={!isManualRoute} 
               readOnly={!isManualRoute}
               required 
@@ -383,7 +383,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               min="0.01"
               value={loadedMt} 
               onChange={e => setLoadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-slate-900" 
               required 
             />
           </div>
@@ -391,7 +391,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           {/* 9. Driver Name */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">9. Driver Name *</label>
-            <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-white text-slate-900" required disabled={isLoading || !selectedTruckId}>
+            <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-slate-900" required disabled={isLoading || !selectedTruckId}>
               <option value="">-- SELECT DRIVER --</option>
               {drivers.map(d => <option key={d.driver_id} value={String(d.driver_id)}>{d.driver_code} - {d.full_name}</option>)}
             </select>
@@ -405,7 +405,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               min="0"
               value={driverBata} 
               onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-slate-900" 
               required 
             />
           </div>
@@ -419,7 +419,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               value={advance} 
               onChange={e => setAdvance(e.target.value === "" ? "" : parseFloat(e.target.value))} 
               placeholder="0.00" 
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-white text-slate-900" 
+              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-slate-900" 
             />
           </div>
 
@@ -447,7 +447,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
                   value={dieselL} 
                   onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} 
                   placeholder="0.0" 
-                  className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-[#FF5A00] bg-white text-slate-900" 
+                  className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-[#FF5A00] bg-surface text-slate-900" 
                 />
              </div>
              <div>
@@ -458,7 +458,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
                   value={startKm} 
                   onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} 
                   placeholder="0.0" 
-                  className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-[#FF5A00] bg-white text-slate-900" 
+                  className="w-full text-sm p-2 rounded border border-slate-200 outline-none focus:border-[#FF5A00] bg-surface text-slate-900" 
                 />
              </div>
           </div>
