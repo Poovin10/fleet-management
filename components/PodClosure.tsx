@@ -228,7 +228,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
       {/* LEFT PANEL: Settle POD Form */}
       <div className="lg:col-span-7 bg-surface border border-border rounded-2xl p-6 shadow-sm">
         <div className="border-b border-border pb-4 mb-6">
-          <h3 className="text-base font-black text-fg uppercase tracking-tight">Record POD & Settle Trip</h3>
+          <h3 className="text-base font-bold text-fg uppercase tracking-tight">Record POD & Settle Trip</h3>
           <p className="text-xs text-fg-secondary mt-1">Finalize transit records, calculate shortages, and record closing top-ups.</p>
         </div>
 
@@ -245,7 +245,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
               <select
                 value={selectedLr}
                 onChange={(e) => setSelectedLr(e.target.value)}
-                className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-surface font-bold text-fg outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                className="w-full text-sm p-3 rounded-xl border border-border-strong bg-surface font-bold text-fg outline-none focus:ring-2 focus:ring-[#FF5A00]"
                 required
               >
                 <option value="">-- SELECT LR TO CLOSE --</option>
@@ -275,7 +275,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                       value={podNo}
                       onChange={(e) => setPodNo(e.target.value)}
                       placeholder="e.g. POD-8821"
-                      className="w-full text-sm p-2.5 rounded-lg border border-slate-300 uppercase font-semibold outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong uppercase font-semibold outline-none focus:ring-2 focus:ring-[#FF5A00]"
                       required
                     />
                   </div>
@@ -285,7 +285,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                       type="date"
                       value={closingDate}
                       onChange={(e) => setClosingDate(e.target.value)}
-                      className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
                       required
                     />
                   </div>
@@ -297,7 +297,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                       value={unloadedMt}
                       onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.00"
-                      className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
                     />
                   </div>
                 </div>
@@ -311,7 +311,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                       value={closingKm}
                       onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder={`Start: ${currentTrip.start_km || 0}`}
-                      className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
                       required
                     />
                   </div>
@@ -322,7 +322,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                       value={haltBata}
                       onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.00"
-                      className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
                     />
                   </div>
                   <div>
@@ -332,7 +332,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                       value={claims}
                       onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.00"
-                      className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
                     />
                   </div>
                 </div>
@@ -347,7 +347,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                       value={closingDiesel}
                       onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.0 Litres"
-                      className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
                     />
                     <span className="text-[10px] text-fg-muted mt-0.5 block">Valued at current office rate: ₹{dieselRate}/L</span>
                   </div>
@@ -357,7 +357,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                         type="checkbox"
                         checked={isTankFull}
                         onChange={(e) => setIsTankFull(e.target.checked)}
-                        className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-slate-300"
+                        className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-border-strong"
                       />
                       <span className="text-xs font-bold text-fg">⛽ Mark Tank Full</span>
                     </label>
@@ -383,7 +383,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
       {/* RIGHT PANEL: Pending POD List */}
       <div className="lg:col-span-5 bg-rose-50/50 border border-rose-100 rounded-2xl p-5 shadow-sm">
         <div className="flex justify-between items-center mb-4">
-          <h4 className="text-xs font-black text-rose-800 uppercase tracking-wider">Pending POD List ({activeTrips.length})</h4>
+          <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wider">Pending POD List ({activeTrips.length})</h4>
           <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full">Awaiting Closure</span>
         </div>
 
@@ -409,7 +409,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                     <td className="py-2.5 font-bold text-fg">{t.trip_number}</td>
                     <td className="py-2.5 text-fg-secondary">{formatDate(t.trip_start_date)}</td>
                     <td className="py-2.5 text-fg">{t.vehicles?.vehicle_number || "-"}</td>
-                    <td className="py-2.5 text-right font-black text-rose-600">{days}d</td>
+                    <td className="py-2.5 text-right font-bold text-rose-600">{days}d</td>
                   </tr>
                 );
               })}

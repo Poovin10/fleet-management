@@ -294,7 +294,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       />
 
       <div className="border-b border-border pb-4 mb-6">
-        <h3 className="text-base font-black text-fg uppercase tracking-tight">Initiate Trip Dispatch</h3>
+        <h3 className="text-base font-bold text-fg uppercase tracking-tight">Initiate Trip Dispatch</h3>
         <p className="text-xs text-fg-secondary mt-1">Fill out the fields below in sequence to compute freight rules.</p>
       </div>
 
@@ -305,13 +305,13 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           {/* 1. Date */}
           <div>
             <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">1. Start Date *</label>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required />
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required />
           </div>
 
           {/* 2. LR Number */}
           <div>
             <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">2. LR Number *</label>
-            <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value)} placeholder="E.G. 40080069852" className="w-full text-sm p-3 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required />
+            <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value)} placeholder="E.G. 40080069852" className="w-full text-sm p-3 rounded-xl border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required />
           </div>
 
           {/* 3. Cargo Type */}
@@ -326,7 +326,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           {/* 4. Assigned Truck */}
           <div>
             <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">4. Assigned Truck ({cargoType}) *</label>
-            <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-[#FF5A00] bg-surface" required disabled={isLoading}>
+            <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-[#FF5A00] bg-surface" required disabled={isLoading}>
               <option value="">-- SELECT TRUCK --</option>
               {availableTrucks.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number} [{v.truck_type}]</option>)}
             </select>
@@ -335,13 +335,13 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           {/* 5. Source */}
           <div>
             <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">5. Source (Origin) *</label>
-            <select value={source} onChange={e => setSource(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
+            <select value={source} onChange={e => setSource(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
               {dynamicSources.length === 0 && <option value="COCHIN">COCHIN</option>}
               {dynamicSources.map(s => <option key={s} value={s}>{s}</option>)}
               <option value="CUSTOM">CUSTOM (MANUAL)</option>
             </select>
             {source === "CUSTOM" && (
-              <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required />
+              <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required />
             )}
           </div>
 
@@ -354,7 +354,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               <option value="-- MANUAL / SPOT ROUTE --">-- MANUAL / SPOT ROUTE --</option>
             </select>
             {isManualRoute && (
-              <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 mt-2 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required />
+              <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 mt-2 rounded-xl border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required />
             )}
           </div>
 
@@ -367,7 +367,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               min="0.01"
               value={freightRate} 
               onChange={e => setFreightRate(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className={`w-full text-sm p-3 rounded-xl border outline-none font-black ${isManualRoute ? 'border-slate-300 focus:ring-2 focus:ring-[#FF5A00] text-[#FF5A00] bg-surface' : 'border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed'}`} 
+              className={`w-full text-sm p-3 rounded-xl border outline-none font-bold ${isManualRoute ? 'border-border-strong focus:ring-2 focus:ring-[#FF5A00] text-[#FF5A00] bg-surface' : 'border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed'}`} 
               disabled={!isManualRoute} 
               readOnly={!isManualRoute}
               required 
@@ -383,7 +383,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               min="0.01"
               value={loadedMt} 
               onChange={e => setLoadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" 
+              className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" 
               required 
             />
           </div>
@@ -391,7 +391,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           {/* 9. Driver Name */}
           <div>
             <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">9. Driver Name *</label>
-            <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required disabled={isLoading || !selectedTruckId}>
+            <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required disabled={isLoading || !selectedTruckId}>
               <option value="">-- SELECT DRIVER --</option>
               {drivers.map(d => <option key={d.driver_id} value={String(d.driver_id)}>{d.driver_code} - {d.full_name}</option>)}
             </select>
@@ -405,7 +405,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               min="0"
               value={driverBata} 
               onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" 
+              className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" 
               required 
             />
           </div>
@@ -419,7 +419,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               value={advance} 
               onChange={e => setAdvance(e.target.value === "" ? "" : parseFloat(e.target.value))} 
               placeholder="0.00" 
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" 
+              className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" 
             />
           </div>
 
@@ -432,7 +432,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               min="0"
               value={dieselRate} 
               onChange={e => setDieselRate(e.target.value === "" ? 0 : parseFloat(e.target.value))} 
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-app text-fg font-bold" 
+              className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-app text-fg font-bold" 
             />
           </div>
 
@@ -470,11 +470,11 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           <div className="flex gap-6 w-full md:w-auto justify-between md:justify-start">
             <div>
               <p className="text-[10px] font-bold text-fg-secondary uppercase mb-0">Expected Gross Freight</p>
-              <p className="text-xl md:text-2xl font-black text-[#FF5A00]">₹{(Number(loadedMt || 0) * Number(freightRate || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+              <p className="text-xl md:text-2xl font-bold text-[#FF5A00]">₹{(Number(loadedMt || 0) * Number(freightRate || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
             </div>
             <div>
               <p className="text-[10px] font-bold text-fg-secondary uppercase mb-0">Upfront Trip Expense</p>
-              <p className="text-xl md:text-2xl font-black text-rose-600">₹{((Number(dieselL || 0) * dieselRate) + Number(driverBata || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+              <p className="text-xl md:text-2xl font-bold text-rose-600">₹{((Number(dieselL || 0) * dieselRate) + Number(driverBata || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
             </div>
           </div>
           
@@ -483,14 +483,14 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
             <button 
               type="button" 
               onClick={handleClear}
-              className="flex-1 md:flex-none px-6 py-4 bg-surface-raised hover:bg-surface-raised text-fg border border-slate-300 font-bold text-sm rounded-xl transition-all active:scale-95"
+              className="flex-1 md:flex-none px-6 py-4 bg-surface-raised hover:bg-surface-raised text-fg border border-border-strong font-bold text-sm rounded-xl transition-all active:scale-95"
             >
               Clear Form
             </button>
             <button 
               type="submit" 
               disabled={isSubmitting} 
-              className="flex-2 md:flex-none px-10 py-4 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-300 text-white font-black text-sm rounded-xl transition-all shadow-md active:scale-95"
+              className="flex-2 md:flex-none px-10 py-4 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-md active:scale-95"
             >
               {isSubmitting ? "Dispatching..." : "🚀 Dispatch"}
             </button>

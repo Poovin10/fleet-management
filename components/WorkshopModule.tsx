@@ -158,7 +158,7 @@ export function WorkshopModule() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
           <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
             <div className="flex justify-between items-center mb-5 border-b border-border pb-3">
-              <h3 className="text-lg font-black text-fg">
+              <h3 className="text-lg font-bold text-fg">
                 {actionModal.mode === "UNMOUNT" && "Unmount Tyre"}
                 {actionModal.mode === "MOUNT" && "Mount to Truck"}
                 {actionModal.mode === "RECEIVE_RETREAD" && "Receive from Retread"}
@@ -169,17 +169,17 @@ export function WorkshopModule() {
             
             <div className="bg-app p-3 rounded-lg border border-border mb-5">
               <p className="text-xs font-bold text-fg-secondary uppercase">Selected Tyre</p>
-              <p className="text-sm font-black text-[#FF5A00]">{actionModal.tyre?.serial_number} <span className="text-fg-secondary font-semibold ml-2">({actionModal.tyre?.brand_model})</span></p>
+              <p className="text-sm font-bold text-[#FF5A00]">{actionModal.tyre?.serial_number} <span className="text-fg-secondary font-semibold ml-2">({actionModal.tyre?.brand_model})</span></p>
             </div>
 
             <div className="space-y-4">
               {actionModal.mode === "UNMOUNT" && (
                 <>
-                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Truck Odo at Unmount (KM) *</label><input type="number" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FF5A00] font-black outline-none bg-surface text-fg" placeholder={`Was mounted at ${actionModal.tyre?.last_mount_odo || 0} KM`} /></div>
-                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Current NSD (mm)</label><input type="number" step="0.1" value={actionNsd} onChange={e=>setActionNsd(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FF5A00] font-semibold outline-none bg-surface text-fg" placeholder={`${actionModal.tyre?.nsd_depth_mm || 0} mm`} /></div>
+                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Truck Odo at Unmount (KM) *</label><input type="number" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg" placeholder={`Was mounted at ${actionModal.tyre?.last_mount_odo || 0} KM`} /></div>
+                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Current NSD (mm)</label><input type="number" step="0.1" value={actionNsd} onChange={e=>setActionNsd(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-semibold outline-none bg-surface text-fg" placeholder={`${actionModal.tyre?.nsd_depth_mm || 0} mm`} /></div>
                   <div>
                     <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Next Destination</label>
-                    <select value={nextState} onChange={e=>setNextState(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg">
+                    <select value={nextState} onChange={e=>setNextState(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg">
                       <option value="IN_STORE">Store / Inventory</option><option value="RETREADING">Send to Retreading</option><option value="SCRAPPED">Scrap Yard</option><option value="REJECTED">Rejected / Burst</option>
                     </select>
                   </div>
@@ -188,26 +188,26 @@ export function WorkshopModule() {
 
               {actionModal.mode === "MOUNT" && (
                 <>
-                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Assign to Truck *</label><select value={actionTruckId} onChange={e=>setActionTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}</select></div>
-                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Position *</label><select value={actionPos} onChange={e=>setActionPos(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FF5A00] font-semibold outline-none bg-surface text-fg"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></select></div>
-                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Truck Odo at Mount (KM) *</label><input type="number" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FF5A00] font-black outline-none bg-surface text-fg" placeholder="0" /></div>
+                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Assign to Truck *</label><select value={actionTruckId} onChange={e=>setActionTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}</select></div>
+                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Position *</label><select value={actionPos} onChange={e=>setActionPos(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-semibold outline-none bg-surface text-fg"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></select></div>
+                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Truck Odo at Mount (KM) *</label><input type="number" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg" placeholder="0" /></div>
                 </>
               )}
 
               {actionModal.mode === "RECEIVE_RETREAD" && (
-                <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">New Retreaded NSD (mm)</label><input type="number" step="0.1" value={actionNsd} onChange={e=>setActionNsd(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FF5A00] font-black outline-none bg-surface text-fg" placeholder="e.g. 14.0" /></div>
+                <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">New Retreaded NSD (mm)</label><input type="number" step="0.1" value={actionNsd} onChange={e=>setActionNsd(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg" placeholder="e.g. 14.0" /></div>
               )}
 
               {actionModal.mode === "SCRAP_FROM_STORE" && (
                 <div>
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Reason for Disposal</label>
-                  <select value={nextState} onChange={e=>setNextState(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg">
+                  <select value={nextState} onChange={e=>setNextState(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg">
                     <option value="SCRAPPED">Scrapped (End of Life)</option><option value="REJECTED">Rejected / Failed</option>
                   </select>
                 </div>
               )}
 
-              <button onClick={executeLifecycleAction} disabled={isProcessing} className="w-full py-3.5 mt-2 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl transition-all shadow-sm active:scale-95 disabled:bg-slate-300">
+              <button onClick={executeLifecycleAction} disabled={isProcessing} className="w-full py-3.5 mt-2 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95 disabled:bg-slate-300">
                 {isProcessing ? "Processing..." : "Confirm Action"}
               </button>
             </div>
@@ -225,51 +225,51 @@ export function WorkshopModule() {
         <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm animate-in slide-in-from-bottom-4">
           
           <div className="border border-border bg-app rounded-2xl p-5 mb-8">
-            <h3 className="text-sm font-black text-fg uppercase border-b border-border pb-3 mb-4 flex items-center gap-2"><span>➕</span> Add New Tyre to Database</h3>
+            <h3 className="text-sm font-bold text-fg uppercase border-b border-border pb-3 mb-4 flex items-center gap-2"><span>➕</span> Add New Tyre to Database</h3>
             <form onSubmit={handleRegisterTyre} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Destination *</label>
-                  <select value={regMode} onChange={e => setRegMode(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
+                  <select value={regMode} onChange={e => setRegMode(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
                     <option value="IN_STORE">Add to Store / Inventory</option>
                     <option value="MOUNTED">Mount Directly to Truck</option>
                   </select>
                 </div>
-                <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Serial Number *</label><input type="text" value={serialNo} onChange={e => setSerialNo(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required /></div>
-                <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Brand / Model</label><input type="text" value={brand} onChange={e => setBrand(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" /></div>
-                <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Initial NSD (MM)</label><input type="number" step="0.1" value={nsdMm} onChange={e => setNsdMm(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" /></div>
+                <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Serial Number *</label><input type="text" value={serialNo} onChange={e => setSerialNo(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required /></div>
+                <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Brand / Model</label><input type="text" value={brand} onChange={e => setBrand(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" /></div>
+                <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Initial NSD (MM)</label><input type="number" step="0.1" value={nsdMm} onChange={e => setNsdMm(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" /></div>
               </div>
 
               {regMode === "MOUNTED" && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in p-4 bg-surface border border-[#FF5A00]/20 rounded-xl">
                   <div>
                     <label className="block text-[10px] font-bold text-[#FF5A00] uppercase mb-1">Select Truck *</label>
-                    <select value={truckId} onChange={e => setTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
+                    <select value={truckId} onChange={e => setTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
                       <option value="">-- SELECT TRUCK --</option>
                       {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-[#FF5A00] uppercase mb-1">Position</label>
-                    <select value={position} onChange={e => setPosition(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></select>
+                    <select value={position} onChange={e => setPosition(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></select>
                   </div>
-                  <div><label className="block text-[10px] font-bold text-[#FF5A00] uppercase mb-1">Mounting ODO (KM) *</label><input type="number" value={mountOdo} onChange={e => setMountOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-black bg-surface text-fg" /></div>
+                  <div><label className="block text-[10px] font-bold text-[#FF5A00] uppercase mb-1">Mounting ODO (KM) *</label><input type="number" value={mountOdo} onChange={e => setMountOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" /></div>
                 </div>
               )}
-              <div className="flex justify-end pt-2"><button type="submit" disabled={isProcessing} className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white font-black text-sm rounded-xl transition-all shadow-sm active:scale-95">Save Tyre Data</button></div>
+              <div className="flex justify-end pt-2"><button type="submit" disabled={isProcessing} className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">Save Tyre Data</button></div>
             </form>
           </div>
 
           {/* ACTIVE MOUNTED TYRES */}
           <div className="mb-8">
-            <h4 className="text-xs font-black text-fg uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Currently Mounted on Fleet</h4>
+            <h4 className="text-xs font-bold text-fg uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Currently Mounted on Fleet</h4>
             <div className="overflow-x-auto rounded-xl border border-border w-full max-h-[400px]">
               <table className="min-w-full divide-y divide-slate-200 text-xs text-left whitespace-nowrap">
                 <thead className="bg-app sticky top-0"><tr className="font-bold text-fg-secondary uppercase"><th className="px-4 py-3">Truck</th><th className="px-4 py-3">Serial & Brand</th><th className="px-4 py-3">Position</th><th className="px-4 py-3">Mounted Date</th><th className="px-4 py-3">Current KM Run</th><th className="px-4 py-3 text-center">Action</th></tr></thead>
                 <tbody className="divide-y divide-slate-100 bg-surface">
                   {mountedTyres.map(t => (
                     <tr key={t.tyre_id} className="hover:bg-app">
-                      <td className="px-4 py-2 font-black text-fg">{t.vehicles?.vehicle_number}</td>
+                      <td className="px-4 py-2 font-bold text-fg">{t.vehicles?.vehicle_number}</td>
                       <td className="px-4 py-2 font-mono font-bold text-fg">{t.serial_number} <br/><span className="font-sans font-normal text-[10px] text-fg-muted">{t.brand_model}</span></td>
                       <td className="px-4 py-2 text-fg-secondary font-semibold">{t.placement_position}</td>
                       <td className="px-4 py-2 text-fg-secondary">{formatDate(t.mounted_date)}</td>
@@ -287,7 +287,7 @@ export function WorkshopModule() {
 
           {/* STORE & RETREADING */}
           <div className="mb-8">
-            <h4 className="text-xs font-black text-fg uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-500"></span> In Store / Retreading</h4>
+            <h4 className="text-xs font-bold text-fg uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-500"></span> In Store / Retreading</h4>
             <div className="overflow-x-auto rounded-xl border border-border w-full max-h-[400px]">
               <table className="min-w-full divide-y divide-slate-200 text-xs text-left whitespace-nowrap">
                 <thead className="bg-app sticky top-0"><tr className="font-bold text-fg-secondary uppercase"><th className="px-4 py-3">Status</th><th className="px-4 py-3">Serial & Brand</th><th className="px-4 py-3">Condition</th><th className="px-4 py-3">Total Run (KM)</th><th className="px-4 py-3 text-center">Action</th></tr></thead>
@@ -318,7 +318,7 @@ export function WorkshopModule() {
 
           {/* SCRAP YARD */}
           <div>
-            <h4 className="text-xs font-black text-fg uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Disposed / Scrap Yard</h4>
+            <h4 className="text-xs font-bold text-fg uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Disposed / Scrap Yard</h4>
             <div className="overflow-x-auto rounded-xl border border-border w-full max-h-[300px]">
               <table className="min-w-full divide-y divide-slate-200 text-xs text-left whitespace-nowrap">
                 <thead className="bg-app sticky top-0"><tr className="font-bold text-fg-secondary uppercase"><th className="px-4 py-3">Serial & Brand</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Total Lifetime Run (KM)</th></tr></thead>
@@ -327,7 +327,7 @@ export function WorkshopModule() {
                     <tr key={t.tyre_id} className="hover:bg-app">
                       <td className="px-4 py-2 font-mono font-bold text-fg">{t.serial_number} <br/><span className="font-sans font-normal text-[10px] text-fg-muted">{t.brand_model}</span></td>
                       <td className="px-4 py-2"><span className="px-2 py-1 rounded text-[10px] font-bold bg-rose-100 text-rose-700">{t.tyre_status}</span></td>
-                      <td className="px-4 py-2 font-black text-fg">{t.total_km_run || 0} km</td>
+                      <td className="px-4 py-2 font-bold text-fg">{t.total_km_run || 0} km</td>
                     </tr>
                   ))}
                   {scrapTyres.length === 0 && <tr><td colSpan={3} className="p-6 text-center text-fg-muted">No scrapped tyres.</td></tr>}
@@ -341,35 +341,35 @@ export function WorkshopModule() {
 
       {wTab === "Spares & Service Bills" && (
         <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in slide-in-from-bottom-4">
-          <h3 className="text-sm font-black text-fg uppercase border-b border-border pb-3 mb-6">Log Service Bill</h3>
+          <h3 className="text-sm font-bold text-fg uppercase border-b border-border pb-3 mb-6">Log Service Bill</h3>
           <form onSubmit={handleSaveBill} className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Bill Date *</label><input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required /></div>
+              <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Bill Date *</label><input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required /></div>
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Select Truck *</label>
-                <select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required>
+                <select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required>
                   <option value="">-- SELECT TRUCK --</option>
                   {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
                 </select>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Vendor / Workshop Name *</label><input type="text" value={vendor} onChange={e => setVendor(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" required /></div>
-              <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Total Bill Amount (₹) *</label><input type="number" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-rose-600 bg-surface" required /></div>
+              <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Vendor / Workshop Name *</label><input type="text" value={vendor} onChange={e => setVendor(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" required /></div>
+              <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Total Bill Amount (₹) *</label><input type="number" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-rose-600 bg-surface" required /></div>
             </div>
-            <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Parts & Service Description</label><input type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Engine oil change, 2 brake pads" className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" /></div>
-            <button type="submit" disabled={isProcessing} className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-sm rounded-xl transition-all shadow-sm active:scale-95">Save Service Record</button>
+            <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Parts & Service Description</label><input type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Engine oil change, 2 brake pads" className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" /></div>
+            <button type="submit" disabled={isProcessing} className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">Save Service Record</button>
           </form>
 
           <div className="mt-8 pt-6 border-t border-border w-full">
-            <h4 className="text-xs font-black text-fg uppercase mb-3">Recent Workshop Bills</h4>
+            <h4 className="text-xs font-bold text-fg uppercase mb-3">Recent Workshop Bills</h4>
             <div className="overflow-x-auto rounded-xl border border-border w-full max-h-[400px]">
               <table className="min-w-full divide-y divide-slate-200 text-xs text-left whitespace-nowrap">
                 <thead className="bg-app sticky top-0"><tr className="font-bold text-fg-secondary uppercase"><th className="px-4 py-2">Date</th><th className="px-4 py-2">Truck</th><th className="px-4 py-2">Vendor & Details</th><th className="px-4 py-2 text-right">Amount (₹)</th></tr></thead>
                 <tbody className="divide-y divide-slate-100 bg-surface">
                   {activeBills.map(b => (
                     <tr key={b.bill_id} className="hover:bg-app">
-                      <td className="px-4 py-2 font-semibold text-fg">{formatDate(b.bill_date)}</td><td className="px-4 py-2 font-bold text-fg">{b.vehicles?.vehicle_number}</td><td className="px-4 py-2 text-fg-secondary">{b.vendor_name} <br/><span className="text-[10px] text-fg-muted">{b.service_description}</span></td><td className="px-4 py-2 text-right font-black text-rose-600">₹{(b.bill_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                      <td className="px-4 py-2 font-semibold text-fg">{formatDate(b.bill_date)}</td><td className="px-4 py-2 font-bold text-fg">{b.vehicles?.vehicle_number}</td><td className="px-4 py-2 text-fg-secondary">{b.vendor_name} <br/><span className="text-[10px] text-fg-muted">{b.service_description}</span></td><td className="px-4 py-2 text-right font-bold text-rose-600">₹{(b.bill_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                     </tr>
                   ))}
                   {activeBills.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-fg-muted">No service bills recorded.</td></tr>}

@@ -128,7 +128,7 @@ export function ProfitLossModule() {
       {/* Top Bar: Month Selector & Export */}
       <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h3 className="text-base font-black text-fg uppercase tracking-tight">Monthly P&L Statement</h3>
+          <h3 className="text-base font-bold text-fg uppercase tracking-tight">Monthly P&L Statement</h3>
           <p className="text-xs text-fg-secondary mt-0.5">Comprehensive financial performance ledger for the selected month.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -136,7 +136,7 @@ export function ProfitLossModule() {
             type="month" 
             value={selectedMonth} 
             onChange={e => setSelectedMonth(e.target.value)} 
-            className="text-sm p-2.5 rounded-xl border border-slate-300 font-bold bg-surface text-fg outline-none focus:ring-2 focus:ring-[#FF5A00]" 
+            className="text-sm p-2.5 rounded-xl border border-border-strong font-bold bg-surface text-fg outline-none focus:ring-2 focus:ring-[#FF5A00]" 
           />
           <button 
             onClick={exportPLToCSV} 
@@ -158,12 +158,12 @@ export function ProfitLossModule() {
         <div className="p-6 sm:p-8 bg-slate-900 text-white flex justify-between items-center">
           <div>
             <p className="text-[10px] font-bold text-[#FF5A00] uppercase tracking-widest">KSS Roadways Pvt Ltd</p>
-            <h2 className="text-xl sm:text-2xl font-black mt-1">Profit & Loss Statement</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mt-1">Profit & Loss Statement</h2>
             <p className="text-xs text-fg-muted mt-0.5">Period: {selectedMonth} ({tripCount} Trips Logged)</p>
           </div>
           <div className="text-right">
             <p className="text-[10px] font-bold text-fg-muted uppercase tracking-wider">Net Margin</p>
-            <p className="text-2xl sm:text-3xl font-black text-emerald-400">{netMarginPct.toFixed(2)}%</p>
+            <p className="text-2xl sm:text-3xl font-bold text-emerald-400">{netMarginPct.toFixed(2)}%</p>
           </div>
         </div>
 
@@ -171,19 +171,19 @@ export function ProfitLossModule() {
           
           {/* REVENUE SECTION */}
           <div>
-            <h4 className="text-xs font-black text-fg-muted uppercase tracking-wider mb-3">1. Revenue</h4>
+            <h4 className="text-xs font-bold text-fg-muted uppercase tracking-wider mb-3">1. Revenue</h4>
             <div className="bg-app border border-border rounded-xl p-4 flex justify-between items-center">
               <div>
                 <p className="text-sm font-bold text-fg">Gross Freight Revenue</p>
                 <p className="text-[11px] text-fg-secondary">Total billable earnings from completed/active trips</p>
               </div>
-              <p className="text-base sm:text-lg font-black text-emerald-600">₹ {formatAmt(totalFreight)}</p>
+              <p className="text-base sm:text-lg font-bold text-emerald-600">₹ {formatAmt(totalFreight)}</p>
             </div>
           </div>
 
           {/* OPERATING EXPENSES SECTION */}
           <div>
-            <h4 className="text-xs font-black text-fg-muted uppercase tracking-wider mb-3">2. Operating Expenses (OPEX)</h4>
+            <h4 className="text-xs font-bold text-fg-muted uppercase tracking-wider mb-3">2. Operating Expenses (OPEX)</h4>
             <div className="space-y-2">
               <div className="bg-surface border border-border rounded-xl p-4 flex justify-between items-center hover:bg-app">
                 <p className="text-sm font-semibold text-fg">Diesel Fuel Consumption</p>
@@ -208,8 +208,8 @@ export function ProfitLossModule() {
             </div>
 
             <div className="mt-3 bg-rose-50 border border-rose-200 rounded-xl p-4 flex justify-between items-center">
-              <p className="text-xs font-black text-rose-900 uppercase">Total Operating Expenses</p>
-              <p className="text-base sm:text-lg font-black text-rose-700">₹ {formatAmt(totalOperatingExpenses)}</p>
+              <p className="text-xs font-bold text-rose-900 uppercase">Total Operating Expenses</p>
+              <p className="text-base sm:text-lg font-bold text-rose-700">₹ {formatAmt(totalOperatingExpenses)}</p>
             </div>
           </div>
 
@@ -218,7 +218,7 @@ export function ProfitLossModule() {
             <div className={`p-6 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${netProfit >= 0 ? 'bg-emerald-900 text-white border-emerald-800 shadow-lg' : 'bg-rose-900 text-white border-rose-800 shadow-lg'}`}>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Net Profit / Retention</p>
-                <h3 className="text-2xl sm:text-3xl font-black mt-1">₹ {formatAmt(netProfit)}</h3>
+                <h3 className="text-2xl sm:text-3xl font-bold mt-1">₹ {formatAmt(netProfit)}</h3>
               </div>
               <div className="text-left sm:text-right">
                 <p className="text-xs opacity-80 font-bold">Operating Margin Status</p>

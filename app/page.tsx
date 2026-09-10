@@ -606,7 +606,7 @@ export default function SaaS_ERPDashboard() {
                         <select 
                           value={qsTruckId} 
                           onChange={(e) => setQsTruckId(e.target.value)} 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-fg"
+                          className="w-full text-sm p-3 rounded-lg border border-border-strong bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-fg"
                         >
                           <option value="">Select a vehicle...</option>
                           {liveVehicles.map(v => (
@@ -621,7 +621,7 @@ export default function SaaS_ERPDashboard() {
                         <select 
                           value={qsStatus} 
                           onChange={(e) => setQsStatus(e.target.value)} 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-fg"
+                          className="w-full text-sm p-3 rounded-lg border border-border-strong bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-fg"
                         >
                           <option value="WAITING_FOR_LOAD">Plant Loading</option>
                           <option value="IN_TRANSIT">In Transit</option>
@@ -636,7 +636,7 @@ export default function SaaS_ERPDashboard() {
                           value={qsRemarks} 
                           onChange={(e) => setQsRemarks(e.target.value)} 
                           placeholder="e.g. Broken Down near Erode Toll" 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-semibold text-fg" 
+                          className="w-full text-sm p-3 rounded-lg border border-border-strong bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-semibold text-fg" 
                         />
                       </div>
                       <button type="submit" className="mt-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black py-3 px-6 rounded-lg transition-colors shadow-sm">

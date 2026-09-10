@@ -132,14 +132,14 @@ export function ApprovalQueue() {
       {rejectModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
           <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
-            <h3 className="text-lg font-black text-fg mb-2">Reject Driver Request</h3>
+            <h3 className="text-lg font-bold text-fg mb-2">Reject Driver Request</h3>
             <p className="text-xs text-fg-secondary mb-4">Please provide a reason so the driver knows why this was rejected.</p>
             
             <textarea 
               value={rejectionReason} 
               onChange={e => setRejectionReason(e.target.value)} 
               placeholder="e.g. Invalid receipt bill photo / Odometer mismatch" 
-              className="w-full h-28 text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-app font-medium mb-4"
+              className="w-full h-28 text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-app font-medium mb-4"
               required 
             />
 
@@ -155,10 +155,10 @@ export function ApprovalQueue() {
 
       <div className="flex justify-between items-center border-b border-border pb-4 mb-6">
         <div>
-          <h3 className="text-base font-black text-fg uppercase tracking-tight">Driver Submissions Approval Queue</h3>
+          <h3 className="text-base font-bold text-fg uppercase tracking-tight">Driver Submissions Approval Queue</h3>
           <p className="text-xs text-fg-secondary mt-0.5">Review and approve on-road fuel bills or cash advance requests submitted from driver mobile portals.</p>
         </div>
-        <span className="px-3 py-1 bg-amber-100 text-amber-800 font-black text-xs rounded-full">
+        <span className="px-3 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-full">
           {pendingEntries.length} Pending
         </span>
       </div>
@@ -189,11 +189,11 @@ export function ApprovalQueue() {
                 <td className="px-4 py-3 font-bold text-fg">{e.driver_code}</td>
                 <td className="px-4 py-3 font-bold text-[#FF5A00]">{e.vehicles?.vehicle_number || "N/A"}</td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded text-[10px] font-black ${e.entry_type === 'FUEL' ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                  <span className={`px-2 py-1 rounded text-[10px] font-bold ${e.entry_type === 'FUEL' ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800'}`}>
                     {e.entry_type}
                   </span>
                 </td>
-                <td className="px-4 py-3 font-black text-fg">
+                <td className="px-4 py-3 font-bold text-fg">
                   {e.entry_type === 'FUEL' ? `${e.litres} Litres (Odo: ${e.odometer_km || 0} KM)` : `₹${Number(e.amount_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`}
                 </td>
                 <td className="px-4 py-3 text-fg-secondary max-w-[200px] truncate">{e.receipt_remarks || "-"}</td>

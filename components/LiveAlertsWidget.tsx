@@ -170,9 +170,9 @@ export function LiveAlertsWidget() {
       <div className="bg-app border-b border-border px-5 py-4 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2.5">
           <span className="text-base">🔔</span>
-          <h3 className="text-fg font-black uppercase text-xs tracking-wider">Notifications</h3>
+          <h3 className="text-fg font-bold uppercase text-xs tracking-wider">Notifications</h3>
           {notifications.length > 0 && (
-            <span className="bg-[#FF5A00] text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+            <span className="bg-[#FF5A00] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
               {notifications.length}
             </span>
           )}
@@ -205,7 +205,7 @@ export function LiveAlertsWidget() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[11px] font-black uppercase text-fg tracking-tight truncate">
+                  <span className="text-[11px] font-bold uppercase text-fg tracking-tight truncate">
                     {item.title}
                   </span>
                   <span className="text-[9px] font-bold text-fg-muted uppercase tracking-wide whitespace-nowrap ml-2">

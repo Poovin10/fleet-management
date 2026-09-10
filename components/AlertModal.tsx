@@ -37,14 +37,14 @@ export function AlertModal({ isOpen, title, message, type = 'info', onClose }: A
             )}
           </div>
           
-          <h3 className="text-xl font-black text-fg mb-2 tracking-tight">{title}</h3>
+          <h3 className="text-xl font-bold text-fg mb-2 tracking-tight">{title}</h3>
           <p className="text-sm font-semibold text-fg-secondary leading-relaxed">{message}</p>
         </div>
         
         <div className="p-4 bg-app border-t border-border">
           <button
             onClick={onClose}
-            className={`w-full py-4 text-white font-black text-sm rounded-2xl transition-all shadow-md active:scale-95 ${
+            className={`w-full py-4 text-white font-bold text-sm rounded-2xl transition-all shadow-md active:scale-95 ${
               isSuccess ? 'bg-emerald-600 hover:bg-emerald-700' : 
               isError ? 'bg-rose-600 hover:bg-rose-700' : 
               'bg-[#FF5A00] hover:bg-[#e04f00]'

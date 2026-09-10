@@ -297,7 +297,7 @@ export function FinancialsModule() {
               <select 
                 value={selectedDriverId} 
                 onChange={(e) => { setSelectedDriverId(e.target.value); setHasSearched(false); }}
-                className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg"
+                className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg"
                 disabled={isLoading}
               >
                 <option value="">-- SELECT DRIVER --</option>
@@ -306,13 +306,13 @@ export function FinancialsModule() {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">From Date *</label>
-              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" />
+              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" />
             </div>
             <div className="flex items-end">
               <div className="w-full">
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">To Date *</label>
                 <div className="flex gap-2">
-                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" />
+                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" />
                   <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold rounded-xl transition-all shadow-sm disabled:bg-slate-300">
                     Load
                   </button>
@@ -326,24 +326,24 @@ export function FinancialsModule() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl border border-border bg-app">
                   <p className="text-[10px] font-bold text-fg-secondary uppercase mb-1">Total Diesel Issued</p>
-                  <p className="text-sm sm:text-xl font-black text-fg truncate">{formatDec(grandTotalDiesel)} L</p>
+                  <p className="text-sm sm:text-xl font-bold text-fg truncate">{formatDec(grandTotalDiesel)} L</p>
                 </div>
                 <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50">
                   <p className="text-[10px] font-bold text-emerald-700 uppercase mb-1">Total Bata Earned</p>
-                  <p className="text-sm sm:text-xl font-black text-emerald-700 truncate">₹{formatAmt(grandTotalBata)}</p>
+                  <p className="text-sm sm:text-xl font-bold text-emerald-700 truncate">₹{formatAmt(grandTotalBata)}</p>
                 </div>
                 <div className="p-4 rounded-xl border border-rose-200 bg-rose-50">
                   <p className="text-[10px] font-bold text-rose-700 uppercase mb-1">Total Adv Deducted</p>
-                  <p className="text-sm sm:text-xl font-black text-rose-700 truncate">₹{formatAmt(grandTotalAdv)}</p>
+                  <p className="text-sm sm:text-xl font-bold text-rose-700 truncate">₹{formatAmt(grandTotalAdv)}</p>
                 </div>
                 <div className="p-4 rounded-xl border border-[#FF5A00]/20 bg-[#FF5A00] text-white shadow-sm">
                   <p className="text-[10px] font-bold text-[#fff0e6] uppercase mb-1">Balance Payable</p>
-                  <p className="text-sm sm:text-2xl font-black truncate">₹{formatAmt(finalBalancePayable)}</p>
+                  <p className="text-sm sm:text-2xl font-bold truncate">₹{formatAmt(finalBalancePayable)}</p>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-sm font-black text-fg uppercase border-b border-border pb-2 mb-4">Trip Details</h4>
+                <h4 className="text-sm font-bold text-fg uppercase border-b border-border pb-2 mb-4">Trip Details</h4>
                 <div className="overflow-x-auto rounded-xl border border-border w-full">
                   <table className="min-w-full divide-y divide-slate-200 text-xs whitespace-nowrap">
                     <thead className="bg-app">
@@ -364,7 +364,7 @@ export function FinancialsModule() {
                             <td className="px-4 py-3 text-right font-bold text-fg">{formatDec(t.fuel_litres)}</td>
                             <td className="px-4 py-3 text-right font-bold text-emerald-600">{formatAmt(tripBata)}</td>
                             <td className="px-4 py-3 text-right font-bold text-rose-500">{formatAmt(tripAdv)}</td>
-                            <td className="px-4 py-3 text-right font-black text-[#FF5A00]">{formatAmt(tripBal)}</td>
+                            <td className="px-4 py-3 text-right font-bold text-[#FF5A00]">{formatAmt(tripBal)}</td>
                             <td className="px-4 py-3 text-center">
                               {isSettled ? <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[9px] font-bold">SETTLED</span> : <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[9px] font-bold">PENDING</span>}
                             </td>
@@ -378,7 +378,7 @@ export function FinancialsModule() {
               </div>
 
               <div>
-                <h4 className="text-sm font-black text-fg uppercase border-b border-border pb-2 mb-4">Direct Advances</h4>
+                <h4 className="text-sm font-bold text-fg uppercase border-b border-border pb-2 mb-4">Direct Advances</h4>
                 <div className="overflow-x-auto rounded-xl border border-border w-full">
                   <table className="min-w-full divide-y divide-slate-200 text-xs whitespace-nowrap">
                     <thead className="bg-app">
@@ -411,7 +411,7 @@ export function FinancialsModule() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="md:col-span-2">
               <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Analysis Window</label>
-              <select value={analysisWindow} onChange={e => setAnalysisWindow(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
+              <select value={analysisWindow} onChange={e => setAnalysisWindow(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
                 <option value="Current Fiscal Month">Current Fiscal Month</option>
                 <option value="Lifetime Fleet">Lifetime Fleet</option>
                 <option value="Custom Dates">Custom Dates</option>
@@ -421,11 +421,11 @@ export function FinancialsModule() {
               <>
                 <div>
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">From Date</label>
-                  <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" />
+                  <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">To Date</label>
-                  <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" />
+                  <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" />
                 </div>
               </>
             )}
@@ -434,7 +434,7 @@ export function FinancialsModule() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-border pb-6 mb-6">
             <div>
               <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Sort By Metric</label>
-              <select value={sortMetric} onChange={e => setSortMetric(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg">
+              <select value={sortMetric} onChange={e => setSortMetric(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg">
                 <option value="Total Net Retention (₹)">Total Net Retention (₹)</option>
                 <option value="Total Freight Revenue (₹)">Total Freight Revenue (₹)</option>
                 <option value="Total Trips">Total Trips</option>
@@ -449,7 +449,7 @@ export function FinancialsModule() {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Sort Order</label>
-              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg">
+              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg">
                 <option value="Top Performers (Descending)">Top Performers (Descending)</option>
                 <option value="Underperformers (Ascending)">Underperformers (Ascending)</option>
               </select>
@@ -470,7 +470,7 @@ export function FinancialsModule() {
                 </button>
               ))}
               {analyticsSubTab === "⚖️ Variant Benchmarks" && (
-                <select value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)} className="ml-auto text-xs p-1.5 rounded border border-slate-300 font-bold text-fg bg-surface outline-none">
+                <select value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)} className="ml-auto text-xs p-1.5 rounded border border-border-strong font-bold text-fg bg-surface outline-none">
                   <option value="All Variants">All Variants</option>
                   {variantTypes.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
@@ -486,19 +486,19 @@ export function FinancialsModule() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
               <div className="p-3 sm:p-4 rounded-xl border border-border overflow-hidden">
                 <p className="text-[9px] sm:text-[10px] font-bold text-fg-secondary uppercase mb-1 truncate">Fleet Revenue</p>
-                <p className="text-sm sm:text-lg md:text-xl font-black text-fg truncate">₹{formatAmt(aggFreight)}</p>
+                <p className="text-sm sm:text-lg md:text-xl font-bold text-fg truncate">₹{formatAmt(aggFreight)}</p>
               </div>
               <div className="p-3 sm:p-4 rounded-xl border border-rose-200 bg-rose-50/30 overflow-hidden">
                 <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase mb-1 truncate">Diesel Cost</p>
-                <p className="text-sm sm:text-lg md:text-xl font-black text-rose-700 truncate">₹{formatAmt(aggDiesel)}</p>
+                <p className="text-sm sm:text-lg md:text-xl font-bold text-rose-700 truncate">₹{formatAmt(aggDiesel)}</p>
               </div>
               <div className="p-3 sm:p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 overflow-hidden">
                 <p className="text-[9px] sm:text-[10px] font-bold text-emerald-700 uppercase mb-1 truncate">Net Margin</p>
-                <p className="text-sm sm:text-lg md:text-xl font-black text-emerald-700 truncate">₹{formatAmt(aggRetention)}</p>
+                <p className="text-sm sm:text-lg md:text-xl font-bold text-emerald-700 truncate">₹{formatAmt(aggRetention)}</p>
               </div>
               <div className="p-3 sm:p-4 rounded-xl border border-[#FF5A00]/20 bg-[#FF5A00]/10 text-[#FF5A00] overflow-hidden">
                 <p className="text-[9px] sm:text-[10px] font-bold uppercase mb-1 truncate">Retention %</p>
-                <p className="text-lg sm:text-xl md:text-2xl font-black truncate">{formatDec(aggRetentionPct)}%</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold truncate">{formatDec(aggRetentionPct)}%</p>
               </div>
             </div>
           )}
@@ -539,7 +539,7 @@ export function FinancialsModule() {
                       <td className="px-4 py-2 font-bold text-fg">{formatAmt(row.total_freight)}</td>
                       <td className="px-4 py-2 text-fg-secondary">{formatDec(row.total_diesel_litres)}</td>
                       <td className="px-4 py-2 text-rose-600">{formatAmt(row.total_diesel_cost)}</td>
-                      <td className="px-4 py-2 font-black text-[#FF5A00]">{formatAmt(row.net_retention)}</td>
+                      <td className="px-4 py-2 font-bold text-[#FF5A00]">{formatAmt(row.net_retention)}</td>
                       <td className="px-4 py-2 font-bold text-emerald-600">{formatDec(row.retention_pct)}%</td>
                       <td className="px-4 py-2 text-fg-secondary">{formatDec(row.diesel_pct)}%</td>
                       <td className="px-4 py-2 font-bold text-amber-600">{formatDec(row.kmpl)}</td>
@@ -572,7 +572,7 @@ export function FinancialsModule() {
                       <td className="px-6 py-3 font-bold text-[#FF5A00]">{row.trips}</td>
                       <td className="px-6 py-3 text-fg-secondary">{formatDec(row.total_km)}</td>
                       <td className="px-6 py-3 font-bold text-amber-600">{formatDec(row.kmpl)}</td>
-                      <td className="px-6 py-3 font-black text-emerald-600">₹{formatAmt(row.revenue)}</td>
+                      <td className="px-6 py-3 font-bold text-emerald-600">₹{formatAmt(row.revenue)}</td>
                     </tr>
                   ))}
                   {driverScorecard.length === 0 && !isAnalyticsLoading && (

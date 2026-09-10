@@ -165,7 +165,7 @@ export function DriverSettlementModule() {
 
       {/* SECTION 1: Route Rate Slab Management */}
       <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-4">
-        <h3 className="text-base font-black uppercase text-fg border-b pb-2">Route Rate Slabs Master</h3>
+        <h3 className="text-base font-bold uppercase text-fg border-b pb-2">Route Rate Slabs Master</h3>
         
         <form onSubmit={handleAddRateSlab} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           <div>
@@ -174,7 +174,7 @@ export function DriverSettlementModule() {
               type="text" 
               value={source} 
               onChange={(e) => setSource(e.target.value)} 
-              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase bg-surface text-fg"
+              className="w-full border border-border-strong rounded-lg p-2.5 text-sm uppercase bg-surface text-fg"
               required 
             />
           </div>
@@ -185,7 +185,7 @@ export function DriverSettlementModule() {
               placeholder="e.g. NAMAKKAL"
               value={destination} 
               onChange={(e) => setDestination(e.target.value)} 
-              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase bg-surface text-fg"
+              className="w-full border border-border-strong rounded-lg p-2.5 text-sm uppercase bg-surface text-fg"
               required 
             />
           </div>
@@ -194,7 +194,7 @@ export function DriverSettlementModule() {
             <select 
               value={cargoType} 
               onChange={(e) => setCargoType(e.target.value)} 
-              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-surface text-fg font-bold"
+              className="w-full border border-border-strong rounded-lg p-2.5 text-sm bg-surface text-fg font-bold"
             >
               <option value="BULK">BULK</option>
               <option value="BAG">BAG</option>
@@ -209,7 +209,7 @@ export function DriverSettlementModule() {
               placeholder="0.00"
               value={ratePerMt} 
               onChange={(e) => setRatePerMt(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-surface text-fg font-bold"
+              className="w-full border border-border-strong rounded-lg p-2.5 text-sm bg-surface text-fg font-bold"
               required 
             />
           </div>
@@ -246,7 +246,7 @@ export function DriverSettlementModule() {
       <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-3">
           <div>
-            <h3 className="text-base font-black uppercase text-fg">Driver Current Fiscal Month Ledger</h3>
+            <h3 className="text-base font-bold uppercase text-fg">Driver Current Fiscal Month Ledger</h3>
             <p className="text-xs text-fg-secondary mt-0.5">Includes Earned Bata, Halt Bata expenses, and cash advances for the selected month.</p>
           </div>
           <div className="flex items-center gap-2">
@@ -255,7 +255,7 @@ export function DriverSettlementModule() {
               type="month" 
               value={selectedMonth} 
               onChange={e => setSelectedMonth(e.target.value)} 
-              className="text-sm p-2 rounded-lg border border-slate-300 font-bold bg-surface text-fg outline-none focus:ring-2 focus:ring-[#FF5A00]" 
+              className="text-sm p-2 rounded-lg border border-border-strong font-bold bg-surface text-fg outline-none focus:ring-2 focus:ring-[#FF5A00]" 
             />
           </div>
         </div>
@@ -288,7 +288,7 @@ export function DriverSettlementModule() {
                     <td className="p-2.5 text-right text-rose-600 font-bold">
                       -₹{s.totalDeductions.toLocaleString('en-IN', {minimumFractionDigits: 2})}
                     </td>
-                    <td className={`p-2.5 text-right font-black ${s.netPayable >= 0 ? 'text-fg' : 'text-rose-600'}`}>
+                    <td className={`p-2.5 text-right font-bold ${s.netPayable >= 0 ? 'text-fg' : 'text-rose-600'}`}>
                       ₹{s.netPayable.toLocaleString('en-IN', {minimumFractionDigits: 2})}
                     </td>
                     <td className="p-2.5 text-center">

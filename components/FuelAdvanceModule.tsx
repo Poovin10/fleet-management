@@ -300,43 +300,43 @@ export function FuelAdvanceModule() {
       {faNav === "⛽ Issue Diesel" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
           <div className="lg:col-span-5 bg-surface border border-border rounded-2xl p-6 shadow-sm">
-            <h3 className="text-sm font-black text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Record Fuel Bill</h3>
+            <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Record Fuel Bill</h3>
             <form onSubmit={handleIssueDiesel} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Fuel Date *</label>
-                <input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
+                <input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Select Truck *</label>
-                <select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required disabled={isLoading}>
+                <select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required disabled={isLoading}>
                   <option value="">-- SELECT TRUCK --</option>
                   {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Category *</label>
-                <select value={fCategory} onChange={e => setFCategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]">
+                <select value={fCategory} onChange={e => setFCategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]">
                   <option value="TRIP_DIESEL">TRIP_DIESEL</option>
                   <option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option>
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Trip LR No (Optional)</label>
-                <input type="text" value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                <input type="text" value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="w-full text-sm p-2.5 rounded-lg border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" />
               </div>
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Filling KM</label>
-                  <input type="number" min="0" value={fFillingKm} onChange={e => setFFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                  <input type="number" min="0" value={fFillingKm} onChange={e => setFFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Litres *</label>
-                  <input type="number" step="0.1" min="0.1" value={fLitres} onChange={e => setFLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-orange-600" required />
+                  <input type="number" step="0.1" min="0.1" value={fLitres} onChange={e => setFLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-orange-600" required />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Rate (₹/L) *</label>
-                  <input type="number" step="0.1" min="0.1" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required />
+                  <input type="number" step="0.1" min="0.1" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required />
                 </div>
               </div>
               
@@ -347,7 +347,7 @@ export function FuelAdvanceModule() {
                 </label>
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-fg-secondary uppercase mr-3">Total Cost:</span>
-                  <span className="text-lg font-black text-rose-600">₹{((Number(fLitres) || 0) * (Number(fDieselRate) || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  <span className="text-lg font-bold text-rose-600">₹{((Number(fLitres) || 0) * (Number(fDieselRate) || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                 </div>
               </div>
 
@@ -360,7 +360,7 @@ export function FuelAdvanceModule() {
           </div>
           
           <div className="lg:col-span-7 bg-surface border border-border rounded-2xl p-6 shadow-sm overflow-hidden flex flex-col">
-            <h3 className="text-sm font-black text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Recent Fuel Entries</h3>
+            <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Recent Fuel Entries</h3>
             <div className="overflow-x-auto flex-1 max-h-[500px] overflow-y-auto w-full">
               <table className="min-w-full divide-y divide-slate-200 whitespace-nowrap">
                 <thead className="bg-app sticky top-0">
@@ -395,14 +395,14 @@ export function FuelAdvanceModule() {
 
       {faNav === "📝 Edit Diesel Log" && (
         <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm max-w-4xl mx-auto animate-in slide-in-from-bottom-4">
-          <h3 className="text-sm font-black text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Edit Diesel Log</h3>
+          <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Edit Diesel Log</h3>
           
           <div className="mb-6">
             <label className="block text-xs font-bold text-fg uppercase mb-2">Select Record to Edit</label>
             <select 
               value={selectedEditLogId} 
               onChange={(e) => setSelectedEditLogId(e.target.value)}
-              className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-app font-bold outline-none focus:ring-2 focus:ring-[#FF5A00]"
+              className="w-full text-sm p-3 rounded-xl border border-border-strong bg-app font-bold outline-none focus:ring-2 focus:ring-[#FF5A00]"
             >
               <option value="">-- SELECT LOG --</option>
               {allFuelLogs.map(l => (
@@ -418,17 +418,17 @@ export function FuelAdvanceModule() {
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Fuel Date *</label>
-                  <input type="date" value={eFuelDate} onChange={e => setEFuelDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
+                  <input type="date" value={eFuelDate} onChange={e => setEFuelDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Vehicle *</label>
-                  <select value={eVehicleId} onChange={e => setEVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required>
+                  <select value={eVehicleId} onChange={e => setEVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required>
                     {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
                   </select>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Category *</label>
-                  <select value={eCategory} onChange={e => setECategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]">
+                  <select value={eCategory} onChange={e => setECategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]">
                     <option value="TRIP_DIESEL">TRIP_DIESEL</option>
                     <option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option>
                   </select>
@@ -438,19 +438,19 @@ export function FuelAdvanceModule() {
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Trip LR No</label>
-                  <input type="text" value={eLrNo} onChange={e => setELrNo(e.target.value.toUpperCase())} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                  <input type="text" value={eLrNo} onChange={e => setELrNo(e.target.value.toUpperCase())} className="w-full text-sm p-2.5 rounded-lg border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" />
                 </div>
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Filling KM *</label>
-                  <input type="number" min="0" value={eFillingKm} onChange={e => setEFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
+                  <input type="number" min="0" value={eFillingKm} onChange={e => setEFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
                 </div>
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Litres *</label>
-                  <input type="number" step="0.1" min="0.1" value={eLitres} onChange={e => setELitres(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required />
+                  <input type="number" step="0.1" min="0.1" value={eLitres} onChange={e => setELitres(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required />
                 </div>
                 <div className="md:col-span-1">
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Rate (₹/L) *</label>
-                  <input type="number" step="0.1" min="0.1" value={eRate} onChange={e => setERate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
+                  <input type="number" step="0.1" min="0.1" value={eRate} onChange={e => setERate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
                 </div>
               </div>
 
@@ -461,7 +461,7 @@ export function FuelAdvanceModule() {
                 </label>
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-fg-secondary uppercase mr-3">Recalculated Cost:</span>
-                  <span className="text-lg font-black text-rose-600">₹{((Number(eLitres) * Number(eRate)) || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                  <span className="text-lg font-bold text-rose-600">₹{((Number(eLitres) * Number(eRate)) || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
                 </div>
               </div>
 
@@ -481,26 +481,26 @@ export function FuelAdvanceModule() {
       {faNav === "💵 Driver Advances" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
           <div className="lg:col-span-4 bg-surface border border-border rounded-2xl p-6 shadow-sm">
-            <h3 className="text-sm font-black text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Direct Cash Advance</h3>
+            <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Direct Cash Advance</h3>
             <form onSubmit={handleIssueAdvance} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Advance Date *</label>
-                <input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
+                <input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Driver Account *</label>
-                <select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required disabled={isLoading}>
+                <select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required disabled={isLoading}>
                   <option value="">-- SELECT DRIVER --</option>
                   {drivers.map(d => <option key={d.driver_id} value={String(d.driver_id)}>{d.driver_code} - {d.full_name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Advance Amount (₹) *</label>
-                <input type="number" min="1" value={advAmount} onChange={e => setAdvAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-emerald-700" required />
+                <input type="number" min="1" value={advAmount} onChange={e => setAdvAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-emerald-700" required />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Category</label>
-                <select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]">
+                <select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]">
                   <option value="GENERAL_ADVANCE">GENERAL_ADVANCE</option>
                   <option value="BATA_ADVANCE">BATA_ADVANCE</option>
                   <option value="EMERGENCY_MEDICAL">EMERGENCY_MEDICAL</option>
@@ -509,7 +509,7 @@ export function FuelAdvanceModule() {
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Reference Note</label>
-                <input type="text" value={advRef} onChange={e => setAdvRef(e.target.value)} placeholder="e.g. For enroute expenses" className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                <input type="text" value={advRef} onChange={e => setAdvRef(e.target.value)} placeholder="e.g. For enroute expenses" className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" />
               </div>
               <div className="pt-4 border-t border-border">
                 <button type="submit" disabled={!advDriverId || Number(advAmount) <= 0} className="w-full py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
@@ -520,7 +520,7 @@ export function FuelAdvanceModule() {
           </div>
           
           <div className="lg:col-span-8 bg-surface border border-border rounded-2xl p-6 shadow-sm overflow-hidden flex flex-col">
-            <h3 className="text-sm font-black text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Advance History</h3>
+            <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Advance History</h3>
             <div className="overflow-x-auto flex-1 max-h-[500px] overflow-y-auto w-full">
               <table className="min-w-full divide-y divide-slate-200 whitespace-nowrap">
                 <thead className="bg-app sticky top-0">
@@ -541,7 +541,7 @@ export function FuelAdvanceModule() {
                         {adv.advance_type}<br/>
                         <span className="text-[9px] text-fg-muted">{adv.reference_remarks || "-"}</span>
                       </td>
-                      <td className="px-4 py-3 text-right font-black text-emerald-600">₹{(adv.amount_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-600">₹{(adv.amount_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                       <td className="px-4 py-3 text-center">
                         <button onClick={() => handleDeleteAdvance(adv.advance_id)} className="text-rose-500 hover:text-rose-700 bg-rose-50 p-1.5 rounded">🗑️</button>
                       </td>
@@ -557,12 +557,12 @@ export function FuelAdvanceModule() {
 
       {faNav === "📊 Fuel Audit" && (
         <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm animate-in slide-in-from-bottom-4">
-          <h3 className="text-sm font-black text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Fuel Audit & Search</h3>
+          <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Fuel Audit & Search</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div>
               <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Date Mode</label>
-              <select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]">
+              <select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]">
                 <option value="All Time">All Time</option>
                 <option value="Specific Date">Specific Date</option>
                 <option value="Date Range">Date Range</option>
@@ -572,7 +572,7 @@ export function FuelAdvanceModule() {
             {auditDateMode === "Specific Date" && (
               <div>
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Date</label>
-                <input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                <input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" />
               </div>
             )}
             
@@ -580,11 +580,11 @@ export function FuelAdvanceModule() {
               <>
                 <div>
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">From</label>
-                  <input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                  <input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">To</label>
-                  <input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                  <input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" />
                 </div>
               </>
             )}
@@ -592,14 +592,14 @@ export function FuelAdvanceModule() {
 
             <div>
               <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Truck No</label>
-              <select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold">
+              <select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold">
                 <option value="All Trucks">All Trucks</option>
                 {vehicles.map(v => <option key={v.vehicle_id} value={v.vehicle_number}>{v.vehicle_number}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Category</label>
-              <select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]">
+              <select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]">
                 <option value="All Categories">All Categories</option>
                 <option value="TRIP_DIESEL">TRIP_DIESEL</option>
                 <option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option>
@@ -610,7 +610,7 @@ export function FuelAdvanceModule() {
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Search LR No</label>
-              <input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="w-full text-sm p-2 rounded-lg border border-slate-300 uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+              <input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="w-full text-sm p-2 rounded-lg border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" />
             </div>
             <div className="flex items-end gap-3">
               <button onClick={handleRunAudit} className="px-8 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-lg transition-all shadow-sm">
@@ -648,7 +648,7 @@ export function FuelAdvanceModule() {
                     <td className="px-4 py-2 text-fg-secondary">{l.lr_number}</td>
                     <td className="px-4 py-2 text-right">{l.filling_odometer_km}</td>
                     <td className="px-4 py-2 text-right font-bold text-[#FF5A00]">{l.litres_filled} L</td>
-                    <td className="px-4 py-2 text-right font-black text-rose-600">₹{(l.total_fuel_cost || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                    <td className="px-4 py-2 text-right font-bold text-rose-600">₹{(l.total_fuel_cost || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                     <td className="px-4 py-2 text-center">
                       <button onClick={() => handleDeleteFuel(l.fuel_log_id)} className="text-rose-500 hover:text-rose-700 bg-rose-50 p-1.5 rounded" title="Delete Log">🗑️</button>
                     </td>
