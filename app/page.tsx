@@ -21,7 +21,7 @@ import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
     <rect width="200" height="200" fill="#FF5A00" />
-    <rect x="15" y="15" width="170" height="170" fill="#FFFFFF" />
+    <rect x="15" y="15" width="170" height="170" fill="#050507" />
     <path d="M 50 35 L 50 165" stroke="#FF5A00" strokeWidth="24" strokeLinecap="square" />
     <path d="M 50 110 L 140 35" stroke="#FF5A00" strokeWidth="24" strokeLinecap="square" />
     <path d="M 85 85 C 130 95, 145 130, 145 165" stroke="#FF5A00" strokeWidth="24" fill="none" />
@@ -271,11 +271,11 @@ export default function SaaS_ERPDashboard() {
     }
   };
 
-  if (isCheckingRoute) return <div className="min-h-screen bg-slate-900" />;
+  if (isCheckingRoute) return <div className="min-h-screen bg-[#050507]" />;
   
   if (isDriverRoute) {
     return (
-      <div className="min-h-screen bg-slate-900 py-6 px-4" style={{ colorScheme: 'light' }}>
+      <div className="min-h-screen bg-[#050507] py-6 px-4" style={{ colorScheme: 'dark' }}>
         <div className="max-w-md mx-auto mb-6 text-center">
           <h1 className="text-xl font-black text-white">KSS Roadways</h1>
           <p className="text-xs text-[#FF5A00] uppercase tracking-widest font-bold">Driver Highway Portal</p>
@@ -289,37 +289,37 @@ export default function SaaS_ERPDashboard() {
 
   if (showLoginScreen && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#FF5A00]/30 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+      <div className="min-h-screen bg-[#050507] flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#FF5A00]/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-[#FF5A00]/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
 
-        <div className="relative bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md p-6 sm:p-10 border border-white/20">
+        <div className="relative bg-[#12141C]/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md p-6 sm:p-10 border border-[#222634]">
           <div className="text-center mb-8 sm:mb-10">
-            <div className="mx-auto mb-6 w-20 h-20 sm:w-24 sm:h-24 shadow-md rounded-2xl overflow-hidden border border-slate-200">
-               <KssLogo className="w-full h-full" />
+            <div className="mx-auto mb-6 w-20 h-20 sm:w-24 sm:h-24 shadow-md rounded-2xl overflow-hidden border border-[#222634] bg-[#050507] flex items-center justify-center">
+               <KssLogo className="w-16 h-16 sm:w-20 sm:h-20" />
             </div>
-            <div className="inline-block bg-slate-900 px-4 py-2 rounded-xl shadow-sm mb-3">
+            <div className="inline-block bg-[#050507] px-4 py-2 rounded-xl shadow-sm mb-3 border border-[#222634]">
               <h1 className="text-2xl sm:text-3xl font-black text-[#FF5A00] tracking-tight leading-none">KSS Roadways</h1>
             </div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Database Secure Login</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Database Secure Login</p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Username</label>
-              <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-white text-slate-900" required />
+              <label className="block text-[11px] font-bold text-slate-400 uppercase mb-2 ml-1">Username</label>
+              <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-[#2B3142] outline-none focus:border-[#FF5A00] font-semibold bg-[#1A1F2C] text-white" required />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Password</label>
-              <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-white text-slate-900" required />
+              <label className="block text-[11px] font-bold text-slate-400 uppercase mb-2 ml-1">Password</label>
+              <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-[#2B3142] outline-none focus:border-[#FF5A00] font-semibold bg-[#1A1F2C] text-white" required />
             </div>
-            {loginError && <p className="text-sm font-bold text-rose-500 text-center bg-rose-50 p-3 rounded-xl">{loginError}</p>}
+            {loginError && <p className="text-sm font-bold text-rose-500 text-center bg-rose-950/40 border border-rose-900 p-3 rounded-xl">{loginError}</p>}
             
             <div className="pt-2">
-              <button type="submit" disabled={isLoggingIn} className="w-full py-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-lg rounded-2xl transition-all shadow-[0_8px_30px_rgba(255,90,0,0.3)] active:scale-95 disabled:bg-slate-300">
+              <button type="submit" disabled={isLoggingIn} className="w-full py-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-lg rounded-2xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:opacity-50">
                 {isLoggingIn ? "Verifying..." : "Log In"}
               </button>
-              <button type="button" onClick={() => setShowLoginScreen(false)} className="w-full py-4 text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors mt-2">
+              <button type="button" onClick={() => setShowLoginScreen(false)} className="w-full py-4 text-slate-400 hover:text-white font-bold text-sm transition-colors mt-2">
                 &larr; Back to Public Dashboard
               </button>
             </div>
@@ -333,7 +333,7 @@ export default function SaaS_ERPDashboard() {
   const navItems = userRole === "ADMIN" ? allNavItems : ["Dashboard", "Financials", "P&L Statement"];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#050507] text-white font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
       <ConfirmModal 
         isOpen={isLogoutModalOpen}
         title="Secure Sign Out"
@@ -344,29 +344,29 @@ export default function SaaS_ERPDashboard() {
         onCancel={() => setIsLogoutModalOpen(false)}
       />
 
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <header className="sticky top-0 z-40 bg-[#050507]/90 backdrop-blur-md border-b border-[#222634] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-sm border border-slate-100 overflow-hidden flex-shrink-0">
-               <KssLogo className="w-full h-full" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-sm border border-[#222634] overflow-hidden flex-shrink-0 bg-[#0F1117] flex items-center justify-center">
+               <KssLogo className="w-8 h-8 sm:w-10 sm:h-10" />
             </div>
-            <div className="bg-slate-900 px-3 py-1.5 rounded-lg shadow-sm truncate">
+            <div className="bg-[#12141C] px-3 py-1.5 rounded-lg border border-[#222634] truncate">
               <h1 className="text-lg sm:text-xl font-black tracking-tight text-[#FF5A00] hidden sm:block leading-none">KSS Roadways Pvt Ltd</h1>
               <h1 className="text-sm sm:text-base font-black tracking-tight text-[#FF5A00] sm:hidden leading-none truncate">KSS Roadways</h1>
             </div>
-            <span className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-widest whitespace-nowrap">
+            <span className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-black bg-[#161A23] text-slate-400 border border-[#222634] uppercase tracking-widest whitespace-nowrap">
               Cochin
             </span>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <span className="text-xs sm:text-sm font-bold text-slate-500 hidden md:block">Fleet: <span className="text-slate-900">{liveVehicles.length}</span></span>
-            <div className="h-5 w-px bg-slate-200 hidden md:block"></div>
+            <span className="text-xs sm:text-sm font-bold text-slate-500 hidden md:block">Fleet: <span className="text-white">{liveVehicles.length}</span></span>
+            <div className="h-5 w-px bg-[#222634] hidden md:block"></div>
             
             {isAuthenticated ? (
               <button 
                 onClick={() => setIsLogoutModalOpen(true)}
-                className="flex items-center gap-2 text-xs sm:text-sm font-black text-slate-600 hover:text-rose-700 hover:bg-rose-50 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all border border-slate-200 hover:border-rose-200 shadow-sm"
+                className="flex items-center gap-2 text-xs sm:text-sm font-black text-slate-300 hover:text-rose-400 hover:bg-rose-950/50 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all border border-[#222634] hover:border-rose-900 shadow-sm"
               >
                 <span>Sign out</span>
               </button>
@@ -383,13 +383,13 @@ export default function SaaS_ERPDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-        <nav className="flex flex-wrap gap-1.5 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 shadow-sm">
+        <nav className="flex flex-wrap gap-1.5 bg-[#12141C] p-1.5 rounded-2xl border border-[#222634] shadow-sm">
           {navItems.map((item) => (
             <button
               key={item}
               onClick={() => setActiveTab(item)}
               className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 ease-out whitespace-nowrap ${
-                activeTab === item ? "bg-white text-[#FF5A00] shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
+                activeTab === item ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" : "text-slate-400 hover:text-white hover:bg-[#1A1F2C]"
               }`}
             >
               {item}
@@ -398,20 +398,16 @@ export default function SaaS_ERPDashboard() {
         </nav>
 
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out">
-          
           {activeTab === "Dashboard" && (
             <div className="flex flex-col lg:flex-row gap-6">
-              
-              {/* --- LEFT / MAIN DASHBOARD COLUMN --- */}
               <div className="flex-1 space-y-6 min-w-0">
-                
                 {pendingDriverCount > 0 && (
-                  <div className="bg-amber-50 border-l-4 border-amber-500 rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-in slide-in-from-top-4">
+                  <div className="bg-amber-950/30 border-l-4 border-amber-500 rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3">
                       <span className="text-xl">📥</span>
                       <div>
-                        <h3 className="text-xs sm:text-sm font-black text-amber-900 uppercase tracking-wide">Pending Driver Approvals</h3>
-                        <p className="text-xs text-amber-700 mt-0.5">There are <span className="font-black">{pendingDriverCount}</span> fuel bills waiting for manager review in Operations.</p>
+                        <h3 className="text-xs sm:text-sm font-black text-amber-400 uppercase tracking-wide">Pending Driver Approvals</h3>
+                        <p className="text-xs text-amber-200 mt-0.5">There are <span className="font-black">{pendingDriverCount}</span> fuel bills waiting for manager review in Operations.</p>
                       </div>
                     </div>
                     <button 
@@ -424,24 +420,24 @@ export default function SaaS_ERPDashboard() {
                 )}
 
                 {expiringDocs.length > 0 && (
-                  <div className="bg-rose-50 border-l-4 border-rose-500 rounded-2xl shadow-sm p-4 sm:p-5 animate-in slide-in-from-top-4">
+                  <div className="bg-rose-950/30 border-l-4 border-rose-500 rounded-2xl shadow-sm p-4 sm:p-5 animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3 mb-3">
                       <span className="text-xl">🚨</span>
-                      <h3 className="text-xs sm:text-sm font-black text-rose-900 uppercase tracking-wide">Action Required: Compliance Alerts</h3>
+                      <h3 className="text-xs sm:text-sm font-black text-rose-400 uppercase tracking-wide">Action Required: Compliance Alerts</h3>
                     </div>
                     <div className="overflow-x-auto w-full">
                       <table className="min-w-full text-xs text-left whitespace-nowrap">
-                        <thead className="text-rose-700 uppercase font-bold">
+                        <thead className="text-rose-300 uppercase font-bold">
                           <tr><th className="pb-2 pr-4">Asset / Entity</th><th className="pb-2 pr-4">Document / Permit</th><th className="pb-2">Expiry Date</th></tr>
                         </thead>
-                        <tbody className="divide-y divide-rose-200/50">
+                        <tbody className="divide-y divide-rose-900/50">
                           {expiringDocs.map((d, idx) => {
                             const isExpired = new Date(d.date) < new Date();
                             return (
                               <tr key={idx}>
-                                <td className="py-2 pr-4 font-bold text-slate-900">{d.name}</td>
-                                <td className="py-2 pr-4 font-semibold text-slate-700">{d.doc}</td>
-                                <td className={`py-2 font-black ${isExpired ? 'text-rose-600' : 'text-amber-600'}`}>
+                                <td className="py-2 pr-4 font-bold text-white">{d.name}</td>
+                                <td className="py-2 pr-4 font-semibold text-slate-300">{d.doc}</td>
+                                <td className={`py-2 font-black ${isExpired ? 'text-rose-500' : 'text-amber-500'}`}>
                                   {d.date} {isExpired ? '(EXPIRED)' : '(Expiring Soon)'}
                                 </td>
                               </tr>
@@ -453,39 +449,39 @@ export default function SaaS_ERPDashboard() {
                   </div>
                 )}
 
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
+                <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">Operations Summary</h3>
-                    <span className="px-3 py-1 bg-[#FF5A00]/10 text-[#FF5A00] text-[10px] sm:text-xs font-bold rounded-full border border-[#FF5A00]/20 whitespace-nowrap">
+                    <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">Operations Summary</h3>
+                    <span className="px-3 py-1 bg-[#FF5A00]/20 text-[#FF5A00] text-[10px] sm:text-xs font-bold rounded-full border border-[#FF5A00]/30 whitespace-nowrap">
                       {currentMonthText.toUpperCase()}
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                    <div className="p-3 sm:p-4 rounded-xl bg-[#1A1F2C] border border-[#2B3142] flex flex-col justify-between">
                       <div>
-                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Trips</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 mt-1 sm:mt-2">{monthTripsCount}</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Trips</p>
+                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-white mt-1 sm:mt-2">{monthTripsCount}</p>
                       </div>
                     </div>
                     
-                    <div className="p-3 sm:p-4 rounded-xl bg-rose-50 border border-rose-200 flex flex-col justify-between">
+                    <div className="p-3 sm:p-4 rounded-xl bg-rose-950/20 border border-rose-900/50 flex flex-col justify-between">
                       <div>
-                        <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase tracking-wider">PODs Pending</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-rose-900 mt-1 sm:mt-2">{activeTripCount}</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-rose-400 uppercase tracking-wider">PODs Pending</p>
+                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-rose-300 mt-1 sm:mt-2">{activeTripCount}</p>
                       </div>
                     </div>
                     
-                    <div className="p-3 sm:p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between">
+                    <div className="p-3 sm:p-4 rounded-xl bg-emerald-950/20 border border-emerald-900/50 flex flex-col justify-between">
                       <div>
-                        <p className="text-[9px] sm:text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Freight Gen.</p>
-                        <p className="text-sm sm:text-xl lg:text-2xl font-black text-emerald-700 mt-1 sm:mt-2 tracking-tight truncate">
+                        <p className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Freight Gen.</p>
+                        <p className="text-sm sm:text-xl lg:text-2xl font-black text-emerald-300 mt-1 sm:mt-2 tracking-tight truncate">
                           ₹{formatAmt(monthFreight)}
                         </p>
                       </div>
                     </div>
                     
-                    <div className="p-3 sm:p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between">
+                    <div className="p-3 sm:p-4 rounded-xl bg-[#0F1117] border border-[#222634] text-white shadow-md flex flex-col justify-between">
                       <div>
                         <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Retention</p>
                         <p className="text-sm sm:text-xl lg:text-2xl font-black text-[#FF5A00] mt-1 sm:mt-2 tracking-tight truncate">
@@ -496,61 +492,60 @@ export default function SaaS_ERPDashboard() {
                   </div>
                 </div>
 
-                {/* LIVE VEHICLE STATUS MONITOR */}
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6 mt-6">
-                  <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide mb-6">Live Vehicle Status Monitor</h3>
+                <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6 mt-6">
+                  <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide mb-6">Live Vehicle Status Monitor</h3>
                   
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Plant Loading' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Plant Loading' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'Plant Loading' ? null : 'Plant Loading')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-slate-900">{statusCounts["Plant Loading"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Plant Loading</p>
+                      <p className="text-2xl sm:text-4xl font-black text-white">{statusCounts["Plant Loading"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Plant Loading</p>
                     </div>
                     
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'In Transit' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'In Transit' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'In Transit' ? null : 'In Transit')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-slate-900">{statusCounts["In Transit"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">In Transit</p>
+                      <p className="text-2xl sm:text-4xl font-black text-white">{statusCounts["In Transit"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">In Transit</p>
                     </div>
                     
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Workshop / Repairs' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Workshop / Repairs' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'Workshop / Repairs' ? null : 'Workshop / Repairs')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-slate-900">{statusCounts["Workshop / Repairs"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Workshop</p>
+                      <p className="text-2xl sm:text-4xl font-black text-white">{statusCounts["Workshop / Repairs"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Workshop</p>
                     </div>
                     
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'No Driver / Leave' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'No Driver / Leave' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'No Driver / Leave' ? null : 'No Driver / Leave')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-slate-900">{statusCounts["No Driver / Leave"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">No Driver</p>
+                      <p className="text-2xl sm:text-4xl font-black text-white">{statusCounts["No Driver / Leave"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">No Driver</p>
                     </div>
                   </div>
 
                   {selectedStatus && (
-                    <div className="mt-6 border-t border-slate-200 pt-6 animate-in slide-in-from-top-2">
+                    <div className="mt-6 border-t border-[#222634] pt-6 animate-in slide-in-from-top-2">
                       <div className="flex justify-between items-center mb-4">
                         <h4 className="text-xs font-black text-[#FF5A00] uppercase tracking-wider">
                           {selectedStatus} Details
                         </h4>
-                        <button onClick={() => setSelectedStatus(null)} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">CLOSE</button>
+                        <button onClick={() => setSelectedStatus(null)} className="text-[10px] font-bold text-slate-400 hover:text-white bg-[#222634] px-3 py-1.5 rounded-lg transition-colors">CLOSE</button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {currentDrillDownData.map(v => (
-                          <div key={v.vehicle_id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 flex justify-between items-center">
+                          <div key={v.vehicle_id} className="p-3 border border-[#2B3142] rounded-lg bg-[#161922] flex justify-between items-center">
                             <div>
-                              <p className="text-sm font-black text-slate-900">{v.vehicle_number}</p>
+                              <p className="text-sm font-black text-white">{v.vehicle_number}</p>
                               <p className="text-[10px] font-bold text-slate-500">{v.truck_type}</p>
                             </div>
                             <div className="text-right">
-                              <span className="text-[9px] font-bold px-2 py-1 bg-white border border-slate-200 rounded text-slate-600 shadow-sm">
+                              <span className="text-[9px] font-bold px-2 py-1 bg-[#1A1F2C] border border-[#2B3142] rounded text-slate-300 shadow-sm">
                                 {v.carrying_capacity_tons} MT
                               </span>
                             </div>
@@ -565,7 +560,6 @@ export default function SaaS_ERPDashboard() {
                 </div>
               </div>
 
-              {/* --- RIGHT COLUMN: LIVE NOTIFICATIONS RADAR --- */}
               <div className="w-full lg:w-[380px] shrink-0">
                 <LiveAlertsWidget />
               </div>
@@ -573,87 +567,85 @@ export default function SaaS_ERPDashboard() {
             </div>
           )}
 
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6" style={{ colorScheme: 'light' }}>
-            {activeTab === "Operations" && userRole === "ADMIN" && (
-              <div className="p-4 sm:p-6 min-h-[60vh]">
-                <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4 mb-6">
-                  {opTabs.map((sub) => (
-                    <button
-                      key={sub}
-                      onClick={() => setOpSubTab(sub)}
-                      className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
-                        opSubTab === sub 
-                          ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" 
-                          : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                      }`}
-                    >
-                      {sub}
-                    </button>
-                  ))}
-                </div>
-                
-                {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
-                {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
-                {opSubTab === "Modify Trips" && <ModifyTrips onSuccess={() => fetchDashboardData()} />}
-                {opSubTab === "Driver Approvals" && <ApprovalQueue />}
-                
-                {opSubTab === "Quick Status" && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-6 shadow-sm max-w-2xl animate-in fade-in duration-300">
-                    <h3 className="text-xs sm:text-sm font-black text-slate-900 mb-6 uppercase tracking-wider border-b border-slate-200 pb-2">Manual Status Override</h3>
-                    <form onSubmit={handleQuickStatusSubmit} className="space-y-5">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1">Select Truck</label>
-                        <select 
-                          value={qsTruckId} 
-                          onChange={(e) => setQsTruckId(e.target.value)} 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-slate-900"
-                        >
-                          <option value="">Select a vehicle...</option>
-                          {liveVehicles.map(v => (
-                            <option key={v.vehicle_id} value={v.vehicle_id}>
-                              {v.vehicle_number} ({v.carrying_capacity_tons}MT {v.truck_type})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1">New Operational Status</label>
-                        <select 
-                          value={qsStatus} 
-                          onChange={(e) => setQsStatus(e.target.value)} 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-slate-900"
-                        >
-                          <option value="WAITING_FOR_LOAD">Plant Loading</option>
-                          <option value="IN_TRANSIT">In Transit</option>
-                          <option value="WORKSHOP_MAINTENANCE">Workshop / Repairs</option>
-                          <option value="DRIVER_UNAVAILABLE">No Driver / Leave</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1">Location / Breakdown Details</label>
-                        <input 
-                          type="text" 
-                          value={qsRemarks} 
-                          onChange={(e) => setQsRemarks(e.target.value)} 
-                          placeholder="e.g. Broken Down near Erode Toll" 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-[#FF5A00] outline-none font-semibold text-slate-900" 
-                        />
-                      </div>
-                      <button type="submit" className="mt-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black py-3 px-6 rounded-lg transition-colors shadow-sm">
-                        Update Status
-                      </button>
-                    </form>
-                  </div>
-                )}
+          {activeTab === "Operations" && userRole === "ADMIN" && (
+            <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6 min-h-[60vh] mt-6">
+              <div className="flex flex-wrap gap-2 border-b border-[#222634] pb-4 mb-6">
+                {opTabs.map((sub) => (
+                  <button
+                    key={sub}
+                    onClick={() => setOpSubTab(sub)}
+                    className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                      opSubTab === sub 
+                        ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" 
+                        : "bg-[#161922] text-slate-400 hover:text-white hover:bg-[#1A1F2C] border border-[#222634]"
+                    }`}
+                  >
+                    {sub}
+                  </button>
+                ))}
               </div>
-            )}
-            
-            {activeTab === "Fuel & Adv" && userRole === "ADMIN" && <div className="p-4 sm:p-6"><FuelAdvanceModule /></div>}
-            {activeTab === "Workshop & Tyres" && userRole === "ADMIN" && <div className="p-6"><WorkshopModule /></div>}
-            {activeTab === "Financials" && <div className="p-6"><FinancialsModule /></div>}
-            {activeTab === "P&L Statement" && <div className="p-6"><ProfitLossModule /></div>}
-            {activeTab === "Setup" && userRole === "ADMIN" && <div className="p-6"><SetupModule /></div>}
-          </div>
+              
+              {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
+              {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
+              {opSubTab === "Modify Trips" && <ModifyTrips onSuccess={() => fetchDashboardData()} />}
+              {opSubTab === "Driver Approvals" && <ApprovalQueue />}
+              
+              {opSubTab === "Quick Status" && (
+                <div className="bg-[#161922] border border-[#222634] rounded-xl p-4 sm:p-6 shadow-sm max-w-2xl animate-in fade-in duration-300">
+                  <h3 className="text-xs sm:text-sm font-black text-white mb-6 uppercase tracking-wider border-b border-[#222634] pb-2">Manual Status Override</h3>
+                  <form onSubmit={handleQuickStatusSubmit} className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Select Truck</label>
+                      <select 
+                        value={qsTruckId} 
+                        onChange={(e) => setQsTruckId(e.target.value)} 
+                        className="w-full text-sm p-3 rounded-lg border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white"
+                      >
+                        <option value="">Select a vehicle...</option>
+                        {liveVehicles.map(v => (
+                          <option key={v.vehicle_id} value={v.vehicle_id}>
+                            {v.vehicle_number} ({v.carrying_capacity_tons}MT {v.truck_type})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">New Operational Status</label>
+                      <select 
+                        value={qsStatus} 
+                        onChange={(e) => setQsStatus(e.target.value)} 
+                        className="w-full text-sm p-3 rounded-lg border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white"
+                      >
+                        <option value="WAITING_FOR_LOAD">Plant Loading</option>
+                        <option value="IN_TRANSIT">In Transit</option>
+                        <option value="WORKSHOP_MAINTENANCE">Workshop / Repairs</option>
+                        <option value="DRIVER_UNAVAILABLE">No Driver / Leave</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Location / Breakdown Details</label>
+                      <input 
+                        type="text" 
+                        value={qsRemarks} 
+                        onChange={(e) => setQsRemarks(e.target.value)} 
+                        placeholder="e.g. Broken Down near Erode Toll" 
+                        className="w-full text-sm p-3 rounded-lg border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-semibold text-white" 
+                      />
+                    </div>
+                    <button type="submit" className="mt-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black py-3 px-6 rounded-lg transition-colors shadow-sm">
+                      Update Status
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {activeTab === "Fuel & Adv" && userRole === "ADMIN" && <div className="p-4 sm:p-6 mt-6"><FuelAdvanceModule /></div>}
+          {activeTab === "Workshop & Tyres" && userRole === "ADMIN" && <div className="p-6 mt-6"><WorkshopModule /></div>}
+          {activeTab === "Financials" && <div className="p-6 mt-6"><FinancialsModule /></div>}
+          {activeTab === "P&L Statement" && <div className="p-6 mt-6"><ProfitLossModule /></div>}
+          {activeTab === "Setup" && userRole === "ADMIN" && <div className="p-6 mt-6"><SetupModule /></div>}
         </div>
       </main>
     </div>
