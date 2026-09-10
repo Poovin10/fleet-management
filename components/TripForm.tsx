@@ -121,11 +121,24 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const activeTruckCap = activeTruck ? Number(activeTruck.carrying_capacity_tons) : 0;
   const finalSource = source === "CUSTOM" ? customSource : source;
 
+  // SMART ROUTE MATCHER: Checks if the DB "25/30" text matches the 30MT or 25MT truck
   const validRoutes = freightMaster.filter((r) => {
+    let isCapMatch = false;
+    if (activeTruckCap === 0) {
+      isCapMatch = true; 
+    } else {
+      const dbCap = String(r.capacity_tons || "");
+      if (dbCap.includes("/")) {
+        isCapMatch = dbCap.includes(String(activeTruckCap));
+      } else {
+        isCapMatch = Number(dbCap) === activeTruckCap;
+      }
+    }
+
     return (
       r.origin?.trim().toUpperCase() === finalSource.trim().toUpperCase() &&
       r.cargo_type?.toUpperCase() === cargoType.toUpperCase() &&
-      (activeTruckCap === 0 || Number(r.capacity_tons) === activeTruckCap)
+      isCapMatch
     );
   });
 
@@ -179,12 +192,20 @@ export function TripForm({ onSuccess }: TripFormProps) {
   useEffect(() => {
     const finalDest = isManualRoute ? customDest : destinationLabel;
     if (finalSource && finalDest && finalDest !== "-- SELECT DESTINATION --") {
-      const match = bataMaster.find(b => 
-        b.origin?.trim().toUpperCase() === finalSource.trim().toUpperCase() &&
-        b.destination_name?.trim().toUpperCase() === finalDest.trim().toUpperCase() &&
-        b.cargo_type === cargoType &&
-        Number(b.capacity_tons) === activeTruckCap
-      );
+      const match = bataMaster.find(b => {
+        let isCapMatch = false;
+        const dbCap = String(b.capacity_tons || "");
+        if (dbCap.includes("/")) {
+          isCapMatch = dbCap.includes(String(activeTruckCap));
+        } else {
+          isCapMatch = Number(dbCap) === activeTruckCap;
+        }
+
+        return b.origin?.trim().toUpperCase() === finalSource.trim().toUpperCase() &&
+               b.destination_name?.trim().toUpperCase() === finalDest.trim().toUpperCase() &&
+               b.cargo_type === cargoType &&
+               isCapMatch;
+      });
       if (match) setDriverBata(Number(match.standard_bata_inr));
       else setDriverBata("");
     }
