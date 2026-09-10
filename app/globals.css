@@ -1,31 +1,11 @@
 @import "tailwindcss";
 
-:root {
-  color-scheme: dark;
-}
-
-/* Force global full-black background across the entire web page */
-html, body, #__next, div[data-nextjs-scroll-focus-boundary] {
-  background-color: #050507 !important;
-  color: #F8FAFC !important;
-}
-
-/* Ensure all cards, containers, and modules adopt the deep dark command-center theme */
-.bg-white, div[class*="bg-white"], .bg-slate-50, .bg-slate-100 {
-  background-color: #12141C !important;
-  border-color: #222634 !important;
-  color: #F8FAFC !important;
-}
-
-/* High contrast text overrides */
-h1, h2, h3, h4, h5, h6, span, p, label {
-  color: inherit;
-}
-.text-slate-950, .text-slate-900, .text-slate-800, .text-slate-700 {
-  color: #F8FAFC !important;
-}
-.text-slate-600, .text-slate-500 {
-  color: #94A3B8 !important;
+@layer base {
+  /* Force global full-black background across the entire web page */
+  html, body, #__next {
+    background-color: #050507 !important;
+    color: #F8FAFC !important;
+  }
 }
 
 /* Custom Sleek Scrollbars with Orange Hover */
@@ -54,22 +34,4 @@ input:focus, select:focus, textarea:focus {
   border-color: #FF5A00 !important;
   box-shadow: 0 0 0 2px rgba(255, 90, 0, 0.25) !important;
   outline: none !important;
-}
-
-/* Data Tables Contrast */
-table {
-  background-color: #12141C !important;
-  color: #F8FAFC !important;
-}
-th {
-  background-color: #1A1F2C !important;
-  color: #94A3B8 !important;
-  border-bottom: 1px solid #222634 !important;
-}
-td {
-  border-bottom: 1px solid #1A1F2C !important;
-  color: #E2E8F0 !important;
-}
-tr:hover {
-  background-color: #1A1F2C !important;
 }
