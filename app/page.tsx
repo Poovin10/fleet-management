@@ -479,7 +479,7 @@ export default function SaaS_ERPDashboard() {
                     <div className="p-3 sm:p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between">
                       <div>
                         <p className="text-[9px] sm:text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Freight Gen.</p>
-                        <p className="text-sm sm:text-xl lg:text-2xl font-black text-emerald-700 mt-1 sm:mt-2 tracking-tight truncate">
+                        <p className="text-sm sm:text-xl lg:text-2xl font-black text-emerald-700 mt-1 sm:mt-2 tracking-tight font-nums">
                           ₹{formatAmt(monthFreight)}
                         </p>
                       </div>
@@ -488,7 +488,7 @@ export default function SaaS_ERPDashboard() {
                     <div className="p-3 sm:p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between">
                       <div>
                         <p className="text-[9px] sm:text-[10px] font-bold text-fg-muted uppercase tracking-wider">Net Retention</p>
-                        <p className="text-sm sm:text-xl lg:text-2xl font-black text-[#FF5A00] mt-1 sm:mt-2 tracking-tight truncate">
+                        <p className="text-sm sm:text-xl lg:text-2xl font-black text-[#FF5A00] mt-1 sm:mt-2 tracking-tight font-nums">
                           ₹{formatAmt(monthNetRetention)}
                         </p>
                       </div>

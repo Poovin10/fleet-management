@@ -326,19 +326,19 @@ export function FinancialsModule() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl border border-border bg-app">
                   <p className="text-[10px] font-bold text-fg-secondary uppercase mb-1">Total Diesel Issued</p>
-                  <p className="text-sm sm:text-xl font-bold text-fg truncate">{formatDec(grandTotalDiesel)} L</p>
+                  <p className="text-sm sm:text-xl font-bold text-fg font-nums">{formatDec(grandTotalDiesel)} L</p>
                 </div>
                 <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50">
                   <p className="text-[10px] font-bold text-emerald-700 uppercase mb-1">Total Bata Earned</p>
-                  <p className="text-sm sm:text-xl font-bold text-emerald-700 truncate">₹{formatAmt(grandTotalBata)}</p>
+                  <p className="text-sm sm:text-xl font-bold text-emerald-700 font-nums">₹{formatAmt(grandTotalBata)}</p>
                 </div>
                 <div className="p-4 rounded-xl border border-rose-200 bg-rose-50">
                   <p className="text-[10px] font-bold text-rose-700 uppercase mb-1">Total Adv Deducted</p>
-                  <p className="text-sm sm:text-xl font-bold text-rose-700 truncate">₹{formatAmt(grandTotalAdv)}</p>
+                  <p className="text-sm sm:text-xl font-bold text-rose-700 font-nums">₹{formatAmt(grandTotalAdv)}</p>
                 </div>
                 <div className="p-4 rounded-xl border border-[#FF5A00]/20 bg-[#FF5A00] text-white shadow-sm">
                   <p className="text-[10px] font-bold text-[#fff0e6] uppercase mb-1">Balance Payable</p>
-                  <p className="text-sm sm:text-2xl font-bold truncate">₹{formatAmt(finalBalancePayable)}</p>
+                  <p className="text-sm sm:text-2xl font-bold font-nums">₹{formatAmt(finalBalancePayable)}</p>
                 </div>
               </div>
 
@@ -486,19 +486,19 @@ export function FinancialsModule() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
               <div className="p-3 sm:p-4 rounded-xl border border-border overflow-hidden">
                 <p className="text-[9px] sm:text-[10px] font-bold text-fg-secondary uppercase mb-1 truncate">Fleet Revenue</p>
-                <p className="text-sm sm:text-lg md:text-xl font-bold text-fg truncate">₹{formatAmt(aggFreight)}</p>
+                <p className="text-sm sm:text-lg md:text-xl font-bold text-fg font-nums">₹{formatAmt(aggFreight)}</p>
               </div>
               <div className="p-3 sm:p-4 rounded-xl border border-rose-200 bg-rose-50/30 overflow-hidden">
                 <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase mb-1 truncate">Diesel Cost</p>
-                <p className="text-sm sm:text-lg md:text-xl font-bold text-rose-700 truncate">₹{formatAmt(aggDiesel)}</p>
+                <p className="text-sm sm:text-lg md:text-xl font-bold text-rose-700 font-nums">₹{formatAmt(aggDiesel)}</p>
               </div>
               <div className="p-3 sm:p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 overflow-hidden">
                 <p className="text-[9px] sm:text-[10px] font-bold text-emerald-700 uppercase mb-1 truncate">Net Margin</p>
-                <p className="text-sm sm:text-lg md:text-xl font-bold text-emerald-700 truncate">₹{formatAmt(aggRetention)}</p>
+                <p className="text-sm sm:text-lg md:text-xl font-bold text-emerald-700 font-nums">₹{formatAmt(aggRetention)}</p>
               </div>
               <div className="p-3 sm:p-4 rounded-xl border border-[#FF5A00]/20 bg-[#FF5A00]/10 text-[#FF5A00] overflow-hidden">
                 <p className="text-[9px] sm:text-[10px] font-bold uppercase mb-1 truncate">Retention %</p>
-                <p className="text-lg sm:text-xl md:text-2xl font-bold truncate">{formatDec(aggRetentionPct)}%</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold font-nums">{formatDec(aggRetentionPct)}%</p>
               </div>
             </div>
           )}
