@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 
-export function TripForm({ onSuccess }: { onSuccess?: () => void | Promise<void> }) {
+interface TripFormProps {
+  onSuccess?: () => void | Promise<void>;
+}
+
+export function TripForm({ onSuccess }: TripFormProps) {
   const supabase = createClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
