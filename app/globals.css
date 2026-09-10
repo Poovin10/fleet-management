@@ -1,29 +1,23 @@
 @import "tailwindcss";
 
-@layer base {
-  /* Force global dark background across all elements and containers */
-  html, body, #__next, [data-nextjs-scroll-focus-boundary] {
-    background-color: #050507 !important;
-    color: #F8FAFC !important;
-    color-scheme: dark !important;
-  }
+:root {
+  color-scheme: dark;
 }
 
-/* Ensure all modular container cards and panels match the deep dark theme */
-.bg-white, div[class*="bg-white"] {
+/* Force global full-black background across the entire web page */
+html, body, #__next, div[data-nextjs-scroll-focus-boundary] {
+  background-color: #050507 !important;
+  color: #F8FAFC !important;
+}
+
+/* Ensure all cards, containers, and modules adopt the deep dark command-center theme */
+.bg-white, div[class*="bg-white"], .bg-slate-50, .bg-slate-100 {
   background-color: #12141C !important;
   border-color: #222634 !important;
   color: #F8FAFC !important;
 }
 
-/* Light background utility overrides */
-.bg-slate-50, .bg-slate-150, .bg-slate-100 {
-  background-color: #161A23 !important;
-  border-color: #222634 !important;
-  color: #F8FAFC !important;
-}
-
-/* Text color contrast fixes for dark backgrounds */
+/* High contrast text overrides */
 h1, h2, h3, h4, h5, h6, span, p, label {
   color: inherit;
 }
@@ -34,7 +28,7 @@ h1, h2, h3, h4, h5, h6, span, p, label {
   color: #94A3B8 !important;
 }
 
-/* Custom Sleek Scrollbars */
+/* Custom Sleek Scrollbars with Orange Hover */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -50,7 +44,7 @@ h1, h2, h3, h4, h5, h6, span, p, label {
   background: #FF5A00;
 }
 
-/* Professional Dark Inputs & Selects with Orange Focus */
+/* Professional Dark Form Inputs with Orange Accent Focus */
 input, select, textarea {
   background-color: #1A1F2C !important;
   border: 1px solid #2B3142 !important;
@@ -58,11 +52,11 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus {
   border-color: #FF5A00 !important;
-  box-shadow: 0 0 0 2px rgba(255, 90, 0, 0.2) !important;
+  box-shadow: 0 0 0 2px rgba(255, 90, 0, 0.25) !important;
   outline: none !important;
 }
 
-/* Tables and Data Grids Contrast Fix */
+/* Data Tables Contrast */
 table {
   background-color: #12141C !important;
   color: #F8FAFC !important;
