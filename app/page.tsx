@@ -1,9 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@/lib/supabase/server";
 import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
 import { SetupModule } from "@/components/SetupModule";
 
 export default async function DashboardPage() {
-  // FIX: Await the server client creation so we can call .from() on it
+  // Await the server client creation so we can call .from() on it
   const supabase = await createClient();
 
   const now = new Date();
@@ -19,7 +21,7 @@ export default async function DashboardPage() {
     .eq('is_active', true);
 
   if (drivers) {
-    // FIX: Explicitly set 'd' as 'any' to satisfy strict TypeScript rules
+    // Explicitly set 'd' as 'any' to satisfy strict TypeScript rules
     drivers.forEach((d: any) => {
       if (d.license_expiry_date && new Date(d.license_expiry_date) <= thirtyDaysFromNow) {
         alerts.push({ 
