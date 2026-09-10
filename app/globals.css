@@ -77,3 +77,75 @@ html, body {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* =========================================
+   KSS ROADWAYS: FULL BLACK & ORANGE OVERRIDES
+   Forces dark mode across all hardcoded light utility classes
+   ========================================= */
+
+@layer base {
+  html, body, #__next, div[data-nextjs-scroll-focus-boundary] {
+    background-color: #050507 !important;
+    color: #F8FAFC !important;
+  }
+}
+
+/* Force all modular cards/containers to dark theme */
+.bg-white, div[class*="bg-white"], .bg-slate-50, .bg-slate-100 {
+  background-color: #12141C !important;
+  border-color: #222634 !important;
+  color: #F8FAFC !important;
+}
+
+/* Text contrast overrides for dark mode */
+h1, h2, h3, h4, h5, h6, span, p, label {
+  color: inherit;
+}
+.text-slate-950, .text-slate-900, .text-slate-800, .text-slate-700 {
+  color: #F8FAFC !important;
+}
+.text-slate-600, .text-slate-500 {
+  color: #94A3B8 !important;
+}
+
+/* -----------------------------------------
+   INPUTS & PLACEHOLDERS FIX
+   ----------------------------------------- */
+input, select, textarea {
+  background-color: #1A1F2C !important;
+  border: 1px solid #2B3142 !important;
+  color: #FFFFFF !important; /* Forces typed text to be white */
+}
+
+input::placeholder, textarea::placeholder {
+  color: #94A3B8 !important; /* Forces placeholders to be highly visible slate gray */
+  opacity: 1 !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #FF5A00 !important;
+  box-shadow: 0 0 0 2px rgba(255, 90, 0, 0.25) !important;
+  outline: none !important;
+}
+
+/* Fix Browser Autofill wiping out the dark background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #1A1F2C inset !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* -----------------------------------------
+   SCROLLBARS & TABLES
+   ----------------------------------------- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #050507; }
+::-webkit-scrollbar-thumb { background: #222634; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #FF5A00; }
+
+table { background-color: #12141C !important; color: #F8FAFC !important; }
+th { background-color: #1A1F2C !important; color: #94A3B8 !important; border-bottom: 1px solid #222634 !important; }
+td { border-bottom: 1px solid #1A1F2C !important; color: #E2E8F0 !important; }
+tr:hover { background-color: #1A1F2C !important; }
