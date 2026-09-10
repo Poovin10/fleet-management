@@ -54,7 +54,8 @@ export function SetupModule() {
   
   // Freight / Bata Form States
   const [cType, setCType] = useState("BULK");
-  const [cap, setCap] = useState("35"); // Default for bulk
+  const [cap, setCap] = useState("35"); // For Freight Form
+  const [bataCap, setBataCap] = useState("35"); // For Bata Form
   const [fRate, setFRate] = useState<number | "">("");
   const [avgKms, setAvgKms] = useState<number | "">(""); 
   const [bataAmt, setBataAmt] = useState<number | "">("");
@@ -292,7 +293,7 @@ export function SetupModule() {
         origin: finalSrc.toUpperCase().trim(), 
         destination_name: finalDest.toUpperCase().trim(), 
         cargo_type: cType, 
-        capacity_tons: cap, 
+        capacity_tons: bataCap, 
         standard_bata_inr: Number(bataAmt) 
       }]);
 
@@ -433,7 +434,10 @@ export function SetupModule() {
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label>
                 <select value={cType} onChange={e => {
                   setCType(e.target.value);
-                  if (e.target.value === "BAG") setCap("25/30");
+                  if (e.target.value === "BAG") {
+                    setCap("25/30");
+                    if (bataCap === "35") setBataCap("30");
+                  }
                   if (e.target.value === "BULK" && cap !== "35") setCap("25/30");
                 }} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
                   <option value="BULK">BULK</option>
@@ -529,7 +533,10 @@ export function SetupModule() {
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label>
                 <select value={cType} onChange={e => {
                   setCType(e.target.value);
-                  if (e.target.value === "BAG") setCap("25/30");
+                  if (e.target.value === "BAG") {
+                    setCap("25/30");
+                    if (bataCap === "35") setBataCap("30");
+                  }
                   if (e.target.value === "BULK" && cap !== "35") setCap("25/30");
                 }} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
                   <option value="BULK">BULK</option>
@@ -539,12 +546,16 @@ export function SetupModule() {
               
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label>
-                <select value={cap} onChange={e=>setCap(e.target.value)} disabled={cType === "BAG"} className={`w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] ${cType === "BAG" ? "text-slate-500 cursor-not-allowed" : "text-white"}`}>
+                <select value={bataCap} onChange={e=>setBataCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
                   {cType === "BAG" ? (
-                    <option value="25/30">25/30 MT</option>
+                    <>
+                      <option value="25">25 MT</option>
+                      <option value="30">30 MT</option>
+                    </>
                   ) : (
                     <>
-                      <option value="25/30">25/30 MT</option>
+                      <option value="25">25 MT</option>
+                      <option value="30">30 MT</option>
                       <option value="35">35 MT</option>
                     </>
                   )}
