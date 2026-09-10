@@ -10,19 +10,16 @@ export function DriverSettlementModule() {
   const [settlements, setSettlements] = useState<any[]>([]);
   const [rates, setRates] = useState<any[]>([]);
   
-  // Fiscal month selector state for ERP view (defaults to current month)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
-  // Form states for new rate slab
   const [source, setSource] = useState("COCHIN");
   const [destination, setDestination] = useState("");
   const [cargoType, setCargoType] = useState("BULK");
   const [ratePerMt, setRatePerMt] = useState<number | "">("");
 
-  // Sleek Alert State
   const [alertConfig, setAlertConfig] = useState({
     isOpen: false,
     title: "",
@@ -34,13 +31,12 @@ export function DriverSettlementModule() {
 
   useEffect(() => {
     fetchData();
-  }, [supabase, selectedMonth]);
+  }, [selectedMonth]);
 
   async function fetchData() {
     const { data: rateData } = await supabase.from('destinations_freight_master').select('*');
     if (rateData) setRates(rateData);
 
-    // Fetch drivers and aggregate current fiscal month earnings & halt bata
     const { data: driversData } = await supabase.from('drivers').select('*').eq('is_active', true);
     const [year, month] = selectedMonth.split('-');
     const firstDay = `${year}-${month}-01`;
@@ -121,12 +117,11 @@ export function DriverSettlementModule() {
     const { error } = await supabase.from('destinations_freight_master').insert([
       {
         origin: source.toUpperCase(),
-        destination: destFormatted,
         destination_name: destFormatted,
-        cargo_category: cargoType,
         cargo_type: cargoType,
-        freight_rate_per_mt: rateVal,
+        cargo_category: cargoType,
         freight_rate_per_ton: rateVal,
+        capacity_tons: 35,
         is_active: true
       }
     ]);
@@ -153,8 +148,7 @@ export function DriverSettlementModule() {
   };
 
   return (
-    <div className="space-y-6 relative" style={{ colorScheme: 'light' }}>
-      
+    <div className="space-y-6 relative" style={{ colorScheme: 'dark' }}>
       <AlertModal 
         isOpen={alertConfig.isOpen}
         title={alertConfig.title}
@@ -163,45 +157,44 @@ export function DriverSettlementModule() {
         onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
       />
 
-      {/* SECTION 1: Route Rate Slab Management */}
-      <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-4">
-        <h3 className="text-base font-bold uppercase text-fg border-b pb-2">Route Rate Slabs Master</h3>
+      <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-sm space-y-4">
+        <h3 className="text-base font-black uppercase text-white border-b border-[#222634] pb-2">Route Rate Slabs Master</h3>
         
         <form onSubmit={handleAddRateSlab} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           <div>
-            <label className="block text-xs font-semibold text-fg-secondary uppercase mb-1">Origin</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Origin</label>
             <input 
               type="text" 
               value={source} 
               onChange={(e) => setSource(e.target.value)} 
-              className="w-full border border-border-strong rounded-lg p-2.5 text-sm uppercase bg-surface text-fg"
+              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm uppercase bg-[#1A1F2C] text-white"
               required 
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-fg-secondary uppercase mb-1">Destination</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Destination</label>
             <input 
               type="text" 
               placeholder="e.g. NAMAKKAL"
               value={destination} 
               onChange={(e) => setDestination(e.target.value)} 
-              className="w-full border border-border-strong rounded-lg p-2.5 text-sm uppercase bg-surface text-fg"
+              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm uppercase bg-[#1A1F2C] text-white"
               required 
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-fg-secondary uppercase mb-1">Cargo</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Cargo</label>
             <select 
               value={cargoType} 
               onChange={(e) => setCargoType(e.target.value)} 
-              className="w-full border border-border-strong rounded-lg p-2.5 text-sm bg-surface text-fg font-bold"
+              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm bg-[#1A1F2C] text-white font-bold"
             >
               <option value="BULK">BULK</option>
               <option value="BAG">BAG</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-fg-secondary uppercase mb-1">Rate / MT (₹)</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Rate / MT (₹)</label>
             <input 
               type="number" 
               step="0.01"
@@ -209,7 +202,7 @@ export function DriverSettlementModule() {
               placeholder="0.00"
               value={ratePerMt} 
               onChange={(e) => setRatePerMt(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className="w-full border border-border-strong rounded-lg p-2.5 text-sm bg-surface text-fg font-bold"
+              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm bg-[#1A1F2C] text-white font-bold"
               required 
             />
           </div>
@@ -220,95 +213,27 @@ export function DriverSettlementModule() {
 
         <div className="overflow-x-auto pt-2 max-h-[300px] overflow-y-auto">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="bg-app sticky top-0">
-              <tr className="text-fg uppercase">
-                <th className="p-2.5 border-b">Route Origin</th>
-                <th className="p-2.5 border-b">Destination</th>
-                <th className="p-2.5 border-b">Cargo Type</th>
-                <th className="p-2.5 border-b">Rate / MT</th>
+            <thead className="bg-[#161922] sticky top-0">
+              <tr className="text-slate-400 uppercase">
+                <th className="p-2.5 border-b border-[#222634]">Route Origin</th>
+                <th className="p-2.5 border-b border-[#222634]">Destination</th>
+                <th className="p-2.5 border-b border-[#222634]">Cargo Type</th>
+                <th className="p-2.5 border-b border-[#222634]">Rate / MT</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#222634]">
               {rates.map((r, idx) => (
-                <tr key={idx} className="hover:bg-app border-b">
-                  <td className="p-2.5 font-medium">{r.origin}</td>
-                  <td className="p-2.5 font-medium">{r.destination_name || r.destination}</td>
-                  <td className="p-2.5">{r.cargo_type || r.cargo_category || 'BULK'}</td>
-                  <td className="p-2.5 font-bold text-[#FF5A00]">₹{Number(r.freight_rate_per_ton || r.freight_rate_per_mt || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <tr key={idx} className="hover:bg-[#1A1F2C]">
+                  <td className="p-2.5 font-medium text-white">{r.origin}</td>
+                  <td className="p-2.5 font-medium text-white">{r.destination_name}</td>
+                  <td className="p-2.5 text-slate-300">{r.cargo_type || r.cargo_category || 'BULK'}</td>
+                  <td className="p-2.5 font-bold text-[#FF5A00]">₹{Number(r.freight_rate_per_ton || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-
-      {/* SECTION 2: Fiscal Month Driver Settlement Ledger with Halt Bata & Advances */}
-      <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-3">
-          <div>
-            <h3 className="text-base font-bold uppercase text-fg">Driver Current Fiscal Month Ledger</h3>
-            <p className="text-xs text-fg-secondary mt-0.5">Includes Earned Bata, Halt Bata expenses, and cash advances for the selected month.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-fg-secondary uppercase">Fiscal Month:</label>
-            <input 
-              type="month" 
-              value={selectedMonth} 
-              onChange={e => setSelectedMonth(e.target.value)} 
-              className="text-sm p-2 rounded-lg border border-border-strong font-bold bg-surface text-fg outline-none focus:ring-2 focus:ring-[#FF5A00]" 
-            />
-          </div>
-        </div>
-        
-        <div className="overflow-x-auto max-h-[450px] overflow-y-auto">
-          <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
-            <thead className="bg-app sticky top-0">
-              <tr className="text-fg uppercase">
-                <th className="p-2.5 border-b">Driver Name</th>
-                <th className="p-2.5 border-b text-center">Trips</th>
-                <th className="p-2.5 border-b text-right">Earned Bata (₹)</th>
-                <th className="p-2.5 border-b text-right">Halt Bata (Exp) (₹)</th>
-                <th className="p-2.5 border-b text-right">Total Deductions (₹)</th>
-                <th className="p-2.5 border-b text-right">Net Payable / Balance</th>
-                <th className="p-2.5 border-b text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {settlements.map((s) => {
-                return (
-                  <tr key={s.driver_id} className="hover:bg-app border-b">
-                    <td className="p-2.5 font-bold text-fg">{s.full_name} <span className="text-[10px] text-fg-muted">({s.driver_code})</span></td>
-                    <td className="p-2.5 text-center font-semibold text-fg">{s.tripCount}</td>
-                    <td className="p-2.5 text-right text-emerald-700 font-bold">
-                      ₹{s.earnedBata.toLocaleString('en-IN', {minimumFractionDigits: 2})}
-                    </td>
-                    <td className="p-2.5 text-right text-amber-700 font-bold">
-                      ₹{s.haltBataExpense.toLocaleString('en-IN', {minimumFractionDigits: 2})}
-                    </td>
-                    <td className="p-2.5 text-right text-rose-600 font-bold">
-                      -₹{s.totalDeductions.toLocaleString('en-IN', {minimumFractionDigits: 2})}
-                    </td>
-                    <td className={`p-2.5 text-right font-bold ${s.netPayable >= 0 ? 'text-fg' : 'text-rose-600'}`}>
-                      ₹{s.netPayable.toLocaleString('en-IN', {minimumFractionDigits: 2})}
-                    </td>
-                    <td className="p-2.5 text-center">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${s.netPayable >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                        {s.netPayable >= 0 ? 'PAYABLE' : 'RECOVERY DUE'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {settlements.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="p-6 text-center text-fg-muted">No driver settlement records found for this month.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
     </div>
   );
 }
