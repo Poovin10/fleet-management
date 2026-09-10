@@ -36,6 +36,13 @@ export function SetupModule() {
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("VIEWER");
 
+  // Edit states
+  const [editTruckId, setEditTruckId] = useState<number | null>(null);
+  const [editDriverId, setEditDriverId] = useState<number | null>(null);
+  const [editSlabId, setEditSlabId] = useState<number | null>(null);
+  const [editBataId, setEditBataId] = useState<number | null>(null);
+
+  // Form States
   const [truckNo, setTruckNo] = useState("");
   const [variant, setVariant] = useState("Bulker (16-Wheel)");
   const [capacity, setCapacity] = useState("35.0 MT");
@@ -44,6 +51,7 @@ export function SetupModule() {
   const [mobileNo, setMobileNo] = useState("");
   const [licenseNo, setLicenseNo] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  const [isActiveDriver, setIsActiveDriver] = useState(true);
   
   const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN"];
   
@@ -52,7 +60,6 @@ export function SetupModule() {
   const [dest, setDest] = useState("");
   const [customDest, setCustomDest] = useState("");
   
-  // Freight / Bata Form States
   const [cType, setCType] = useState("BULK");
   const [cap, setCap] = useState("35"); // For Freight Form
   const [bataCap, setBataCap] = useState("35"); // For Bata Form
@@ -82,6 +89,52 @@ export function SetupModule() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // Clear Handlers
+  const clearTruckForm = () => { setEditTruckId(null); setTruckNo(""); setVariant("Bulker (16-Wheel)"); setCapacity("35.0 MT"); };
+  const clearDriverForm = () => { setEditDriverId(null); setDriverName(""); setMobileNo(""); setLicenseNo(""); setExpiryDate(""); setIsActiveDriver(true); };
+  const clearSlabForm = () => { setEditSlabId(null); setSrc("COCHIN"); setCustomSrc(""); setDest(""); setCustomDest(""); setCType("BULK"); setCap("35"); setFRate(""); setAvgKms(""); };
+  const clearBataForm = () => { setEditBataId(null); setSrc("COCHIN"); setCustomSrc(""); setDest(""); setCustomDest(""); setCType("BULK"); setBataCap("35"); setBataAmt(""); };
+
+  // Click-to-Edit Handlers
+  const handleEditDriver = (d: any) => {
+    setEditDriverId(d.driver_id);
+    setDriverName(d.full_name);
+    setMobileNo(d.phone_number || "");
+    setLicenseNo(d.license_number || "");
+    setExpiryDate(d.license_expiry_date || "");
+    setIsActiveDriver(d.is_active);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleEditTruck = (t: any) => {
+    setEditTruckId(t.vehicle_id);
+    setTruckNo(t.vehicle_number);
+    setVariant(t.truck_type || "Bulker (16-Wheel)");
+    setCapacity(`${t.carrying_capacity_tons}.0 MT`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleEditSlab = (s: any) => {
+    setEditSlabId(s.id);
+    if (originOptions.includes(s.origin)) { setSrc(s.origin); setCustomSrc(""); } else { setSrc("CUSTOM"); setCustomSrc(s.origin); }
+    if (destOptions.includes(s.destination_name)) { setDest(s.destination_name); setCustomDest(""); } else { setDest("CUSTOM"); setCustomDest(s.destination_name); }
+    setCType(s.cargo_type);
+    setCap(s.capacity_tons);
+    setFRate(s.freight_rate_per_ton);
+    setAvgKms(s.standard_km || "");
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleEditBata = (b: any) => {
+    setEditBataId(b.id);
+    if (originOptions.includes(b.origin)) { setSrc(b.origin); setCustomSrc(""); } else { setSrc("CUSTOM"); setCustomSrc(b.origin); }
+    if (destOptions.includes(b.destination_name)) { setDest(b.destination_name); setCustomDest(""); } else { setDest("CUSTOM"); setCustomDest(b.destination_name); }
+    setCType(b.cargo_type);
+    setBataCap(b.capacity_tons);
+    setBataAmt(b.standard_bata_inr);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     if (selectedTruckForCompliance) {
@@ -185,83 +238,80 @@ export function SetupModule() {
     ...bataList.map(b => b.destination_name)
   ])).filter(Boolean).sort();
 
+  // Save Operations
   const handleSaveTruck = (e: React.FormEvent) => {
     e.preventDefault();
     if (!truckNo.trim()) return;
-    triggerModal("Add Truck", `Register ${truckNo.toUpperCase()} to the fleet?`, false, "Save Truck", async () => {
+    const isUpdate = editTruckId !== null;
+    triggerModal(isUpdate ? "Update Truck" : "Add Truck", isUpdate ? `Update details for ${truckNo.toUpperCase()}?` : `Register ${truckNo.toUpperCase()} to the fleet?`, false, "Save Truck", async () => {
       setIsProcessing(true);
-      await supabase.from('vehicles').insert([{ vehicle_number: truckNo.toUpperCase().trim(), truck_type: variant, carrying_capacity_tons: parseFloat(capacity), current_status: "WAITING_FOR_LOAD", is_active: true }]);
-      setTruckNo(""); fetchData(); setIsProcessing(false); closeModal();
+      const payload = { vehicle_number: truckNo.toUpperCase().trim(), truck_type: variant, carrying_capacity_tons: parseFloat(capacity), is_active: true };
+      
+      if (isUpdate) {
+        await supabase.from('vehicles').update(payload).eq('vehicle_id', editTruckId);
+      } else {
+        await supabase.from('vehicles').insert([{ ...payload, current_status: "WAITING_FOR_LOAD" }]);
+      }
+      clearTruckForm(); fetchData(); setIsProcessing(false); closeModal();
     });
   };
 
   const handleSaveDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!driverName.trim()) return;
-
-    setIsProcessing(true);
+    const isUpdate = editDriverId !== null;
 
     try {
-      const { data: existingDrivers } = await supabase
-        .from('drivers')
-        .select('driver_code');
-
-      let nextNumber = 1;
-      if (existingDrivers && existingDrivers.length > 0) {
-        const numbers = existingDrivers
-          .map(d => {
+      let autoGenCode = "";
+      if (!isUpdate) {
+        const { data: existingDrivers } = await supabase.from('drivers').select('driver_code');
+        let nextNumber = 1;
+        if (existingDrivers && existingDrivers.length > 0) {
+          const numbers = existingDrivers.map(d => {
             const match = String(d.driver_code || "").match(/(\d+)$/);
             return match ? parseInt(match[1], 10) : 0;
-          })
-          .filter(n => !isNaN(n));
-
-        if (numbers.length > 0) {
-          nextNumber = Math.max(...numbers) + 1;
+          }).filter(n => !isNaN(n));
+          if (numbers.length > 0) nextNumber = Math.max(...numbers) + 1;
         }
+        autoGenCode = `DRV-${String(nextNumber).padStart(3, '0')}`;
       }
 
-      const autoGenCode = `DRV-${String(nextNumber).padStart(3, '0')}`;
-
-      triggerModal("Add Driver", `Register ${driverName.toUpperCase()} to the master list as ${autoGenCode}?`, false, "Save Driver", async () => {
+      triggerModal(isUpdate ? "Update Driver" : "Add Driver", isUpdate ? `Update profile for ${driverName.toUpperCase()}?` : `Register ${driverName.toUpperCase()} as ${autoGenCode}?`, false, "Save Driver", async () => {
         setIsProcessing(true);
-        const { error } = await supabase.from('drivers').insert([{ 
-          driver_code: autoGenCode, 
+        const payload = { 
           full_name: driverName.toUpperCase().trim(), 
           phone_number: mobileNo.trim() || null,
           license_number: licenseNo.toUpperCase().trim() || null, 
           license_expiry_date: expiryDate || null, 
-          pin: "1234", 
-          is_active: true 
-        }]);
+          is_active: isActiveDriver 
+        };
 
-        if (error) {
-          alert("Error adding driver: " + error.message);
+        if (isUpdate) {
+          const { error } = await supabase.from('drivers').update(payload).eq('driver_id', editDriverId);
+          if (error) alert("Error updating driver: " + error.message);
         } else {
-          setDriverName(""); 
-          setMobileNo(""); 
-          setLicenseNo(""); 
-          setExpiryDate(""); 
-          fetchData();
+          const { error } = await supabase.from('drivers').insert([{ ...payload, driver_code: autoGenCode, pin: "1234" }]);
+          if (error) alert("Error adding driver: " + error.message);
         }
-        setIsProcessing(false); 
-        closeModal();
+        
+        clearDriverForm(); fetchData(); setIsProcessing(false); closeModal();
       });
     } catch (err: any) {
-      alert("Error generating driver code: " + err.message);
+      alert("Error handling driver code: " + err.message);
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
   };
 
   const handleSaveSlab = (e: React.FormEvent) => {
     e.preventDefault();
     const finalSrc = src === "CUSTOM" ? customSrc : src;
     const finalDest = dest === "CUSTOM" ? customDest : dest;
-
     if (!finalDest.trim() || !fRate || !avgKms) return;
+    const isUpdate = editSlabId !== null;
     
-    triggerModal("Add Freight Slab", `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Slab", async () => {
+    triggerModal(isUpdate ? "Update Freight Slab" : "Add Freight Slab", isUpdate ? `Update rate for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?` : `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Slab", async () => {
       setIsProcessing(true);
-      const { error } = await supabase.from('destinations_freight_master').insert([{ 
+      const payload = { 
         origin: finalSrc.toUpperCase().trim(), 
         destination_name: finalDest.toUpperCase().trim(), 
         cargo_type: cType, 
@@ -269,13 +319,19 @@ export function SetupModule() {
         standard_km: Number(avgKms), 
         freight_rate_per_ton: Number(fRate), 
         is_active: true 
-      }]);
+      };
 
-      if (error) {
-        alert("DATABASE REJECTION ERROR:\n\n" + error.message + "\n\nMake sure your capacity_tons column in Supabase is set to 'Text' (not Numeric) so it can accept '25/30', and ensure the standard_km column exists!");
+      let error;
+      if (isUpdate) {
+        const res = await supabase.from('destinations_freight_master').update(payload).eq('id', editSlabId);
+        error = res.error;
       } else {
-        setDest(""); setCustomDest(""); setFRate(""); setAvgKms(""); fetchData(); 
+        const res = await supabase.from('destinations_freight_master').insert([payload]);
+        error = res.error;
       }
+
+      if (error) alert("DATABASE REJECTION ERROR:\n\n" + error.message);
+      else { clearSlabForm(); fetchData(); }
       setIsProcessing(false); closeModal();
     });
   };
@@ -284,24 +340,30 @@ export function SetupModule() {
     e.preventDefault();
     const finalSrc = src === "CUSTOM" ? customSrc : src;
     const finalDest = dest === "CUSTOM" ? customDest : dest;
-
     if (!finalDest.trim() || !bataAmt) return;
+    const isUpdate = editBataId !== null;
     
-    triggerModal("Add Bata Master", `Set ₹${bataAmt} default Bata for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Bata", async () => {
+    triggerModal(isUpdate ? "Update Bata Master" : "Add Bata Master", isUpdate ? `Update Bata for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?` : `Set ₹${bataAmt} default Bata for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Bata", async () => {
       setIsProcessing(true);
-      const { error } = await supabase.from('driver_bata_master').insert([{ 
+      const payload = { 
         origin: finalSrc.toUpperCase().trim(), 
         destination_name: finalDest.toUpperCase().trim(), 
         cargo_type: cType, 
         capacity_tons: bataCap, 
         standard_bata_inr: Number(bataAmt) 
-      }]);
+      };
 
-      if (error) {
-        alert("DATABASE REJECTION ERROR:\n\n" + error.message + "\n\nMake sure your capacity_tons column in the driver_bata_master table is set to 'Text' (not Numeric)!");
+      let error;
+      if (isUpdate) {
+        const res = await supabase.from('driver_bata_master').update(payload).eq('id', editBataId);
+        error = res.error;
       } else {
-        setDest(""); setCustomDest(""); setBataAmt(""); fetchData(); 
+        const res = await supabase.from('driver_bata_master').insert([payload]);
+        error = res.error;
       }
+
+      if (error) alert("DATABASE REJECTION ERROR:\n\n" + error.message);
+      else { clearBataForm(); fetchData(); }
       setIsProcessing(false); closeModal();
     });
   };
@@ -331,69 +393,95 @@ export function SetupModule() {
 
       <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl max-w-5xl mx-auto">
         
+        {/* TRUCKS */}
         {sTab === "Trucks" && (
           <>
-            <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Add New Truck</h3>
-            <form onSubmit={handleSaveTruck} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-6">
+              <h3 className="text-sm font-black text-white uppercase tracking-wide">
+                {editTruckId ? "Edit Existing Truck" : "Add New Truck"}
+              </h3>
+              {editTruckId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg uppercase tracking-widest animate-pulse">Editing Mode</span>}
+            </div>
+            
+            <form onSubmit={handleSaveTruck} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Truck No *</label><input type="text" value={truckNo} onChange={e=>setTruckNo(e.target.value)} placeholder="E.G. TN 56 F 0452" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#0F1117] text-white focus:border-[#FF5A00]" required /></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Variant</label><select value={variant} onChange={e=>setVariant(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white"><option>Bulker (16-Wheel)</option><option>Bulker (14-Wheel)</option><option>Open Body (10-Wheel)</option><option>Trailer</option></select></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Capacity</label><select value={capacity} onChange={e=>setCapacity(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white"><option>35.0 MT</option><option>30.0 MT</option><option>25.0 MT</option></select></div>
-              <button type="submit" disabled={isProcessing} className="md:col-span-1 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Truck</button>
+              
+              <div className="md:col-span-2 flex gap-2 w-full">
+                {editTruckId && <button type="button" onClick={clearTruckForm} className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl hover:bg-[#272B36] transition-colors border border-[#272B36]">Cancel</button>}
+                <button type="submit" disabled={isProcessing} className="flex-[2] py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">{editTruckId ? "Update Truck" : "Save Truck"}</button>
+              </div>
             </form>
+            
             <div className="mt-8 border-t border-[#272B36] pt-6">
-              <h4 className="text-xs font-black text-slate-300 uppercase mb-3">Registered Fleet</h4>
-              <div className="flex flex-wrap gap-2">{trucksList.map(t => <span key={t.vehicle_id} className="px-3 py-1.5 bg-[#0F1117] text-slate-200 text-xs font-bold rounded-lg border border-[#272B36]">{t.vehicle_number}</span>)}</div>
+              <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Registered Fleet (Click to Edit)</h4>
+              <div className="flex flex-wrap gap-2">
+                {trucksList.map(t => (
+                  <button key={t.vehicle_id} onClick={() => handleEditTruck(t)} className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${editTruckId === t.vehicle_id ? 'bg-[#FF5A00] text-white border-[#FF5A00]' : 'bg-[#0F1117] text-slate-300 border-[#272B36] hover:border-[#FF5A00]/50 hover:text-white'}`}>
+                    {t.vehicle_number}
+                  </button>
+                ))}
+              </div>
             </div>
           </>
         )}
 
+        {/* DRIVERS */}
         {sTab === "Drivers" && (
           <>
-            <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Add New Driver</h3>
+            <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-6">
+              <h3 className="text-sm font-black text-white uppercase tracking-wide">
+                {editDriverId ? "Edit Existing Driver Profile" : "Add New Driver"}
+              </h3>
+              {editDriverId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg uppercase tracking-widest animate-pulse">Editing Mode</span>}
+            </div>
+
             <form onSubmit={handleSaveDriver} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Driver Code</label>
-                  <input 
-                    type="text" 
-                    value={`DRV-[Auto-Generated]`} 
-                    disabled 
-                    className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black uppercase bg-[#0F1117] text-[#FF5A00] cursor-not-allowed" 
-                  />
-                  <p className="text-[9px] text-slate-500 mt-1 font-bold italic">System Auto-Generated sequentially on save.</p>
+                  <input type="text" value={editDriverId ? "LOCKED IN EDIT MODE" : `DRV-[Auto-Generated]`} disabled className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black uppercase bg-[#0F1117] text-[#FF5A00] cursor-not-allowed" />
                 </div>
                 <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="e.g. ANEESH CR" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#1A1F2C] text-white focus:border-[#FF5A00]" required /></div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
                 <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mobile Number</label><input type="tel" value={mobileNo} onChange={e=>setMobileNo(e.target.value)} placeholder="e.g. 9876543210" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#1A1F2C] text-white focus:border-[#FF5A00]" /></div>
                 <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">License Number</label><input type="text" value={licenseNo} onChange={e=>setLicenseNo(e.target.value)} placeholder="e.g. KL123456789" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold uppercase bg-[#1A1F2C] text-white focus:border-[#FF5A00]" /></div>
                 <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">License Expiry Date</label><input type="date" value={expiryDate} onChange={e=>setExpiryDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#1A1F2C] text-white focus:border-[#FF5A00]" /></div>
+                
+                <div className="flex flex-col justify-end h-full pt-4">
+                  <label className="flex items-center gap-3 cursor-pointer select-none bg-[#0F1117] p-3 rounded-xl border border-[#272B36] w-full">
+                    <input type="checkbox" checked={isActiveDriver} onChange={(e) => setIsActiveDriver(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] bg-[#1A1F2C] border-[#272B36]" />
+                    <span className={`text-xs font-black uppercase ${isActiveDriver ? 'text-emerald-400' : 'text-rose-400'}`}>{isActiveDriver ? "✅ Active Driver" : "🛑 Suspended"}</span>
+                  </label>
+                </div>
               </div>
-              <div className="pt-2">
-                <button type="submit" disabled={isProcessing} className="w-full md:w-auto px-8 py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Driver</button>
+
+              <div className="pt-2 flex gap-3 w-full md:w-auto">
+                {editDriverId && <button type="button" onClick={clearDriverForm} className="flex-1 md:flex-none px-6 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel Edit</button>}
+                <button type="submit" disabled={isProcessing} className="flex-[2] md:flex-none px-8 py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">{editDriverId ? "Update Driver" : "Save Driver"}</button>
               </div>
             </form>
             
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
-              <h4 className="text-xs font-black text-slate-300 uppercase mb-3">Registered Drivers</h4>
+              <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Registered Drivers (Click to Edit)</h4>
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
                   <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0">
-                    <tr><th className="p-3">Code</th><th className="p-3">Full Name</th><th className="p-3">Phone</th><th className="p-3">License Info</th></tr>
+                    <tr><th className="p-3">Code</th><th className="p-3">Full Name</th><th className="p-3">Phone</th><th className="p-3">License Info</th><th className="p-3">Status</th></tr>
                   </thead>
                   <tbody className="divide-y divide-[#272B36] bg-[#161922]">
                     {driversList.map(d => (
-                      <tr key={d.driver_id} className="hover:bg-[#1E222D]">
+                      <tr key={d.driver_id} onClick={() => handleEditDriver(d)} className={`cursor-pointer transition-colors ${editDriverId === d.driver_id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
                         <td className="p-3 font-bold text-[#FF5A00]">{d.driver_code}</td>
                         <td className="p-3 font-bold text-white">{d.full_name}</td>
                         <td className="p-3 text-slate-300 font-semibold">{d.phone_number || '-'}</td>
-                        <td className="p-3 text-slate-300">
-                          <span className="font-semibold">{d.license_number || '-'}</span>
-                          {d.license_expiry_date && <span className="ml-2 text-[10px] text-slate-400">Exp: {d.license_expiry_date}</span>}
-                        </td>
+                        <td className="p-3 text-slate-300"><span className="font-semibold">{d.license_number || '-'}</span>{d.license_expiry_date && <span className="ml-2 text-[10px] text-slate-400">Exp: {d.license_expiry_date}</span>}</td>
+                        <td className="p-3"><span className={`px-2 py-1 rounded text-[9px] font-bold uppercase ${d.is_active ? 'bg-emerald-900/30 text-emerald-400' : 'bg-rose-900/30 text-rose-400'}`}>{d.is_active ? 'Active' : 'Suspended'}</span></td>
                       </tr>
                     ))}
-                    {driversList.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">No drivers active.</td></tr>}
+                    {driversList.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-slate-400">No drivers active.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -404,18 +492,21 @@ export function SetupModule() {
         {/* FREIGHT SLABS */}
         {sTab === "Freight Slabs" && (
           <>
-            <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Add Freight Slab</h3>
+            <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-6">
+              <h3 className="text-sm font-black text-white uppercase tracking-wide">
+                {editSlabId ? "Edit Existing Freight Slab" : "Add New Freight Slab"}
+              </h3>
+              {editSlabId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg uppercase tracking-widest animate-pulse">Editing Mode</span>}
+            </div>
+
             <form onSubmit={handleSaveSlab} className="grid grid-cols-1 md:grid-cols-7 gap-4 items-start">
-              
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label>
                 <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white">
                   {originOptions.map(s=><option key={s} value={s}>{s}</option>)}
                   <option value="CUSTOM">-- TYPE NEW --</option>
                 </select>
-                {src === "CUSTOM" && (
-                  <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
-                )}
+                {src === "CUSTOM" && <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />}
               </div>
               
               <div className="md:col-span-2">
@@ -425,21 +516,12 @@ export function SetupModule() {
                   {destOptions.map(d=><option key={d} value={d}>{d}</option>)}
                   <option value="CUSTOM">-- TYPE NEW --</option>
                 </select>
-                {dest === "CUSTOM" && (
-                  <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
-                )}
+                {dest === "CUSTOM" && <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />}
               </div>
               
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label>
-                <select value={cType} onChange={e => {
-                  setCType(e.target.value);
-                  if (e.target.value === "BAG") {
-                    setCap("25/30");
-                    if (bataCap === "35") setBataCap("30");
-                  }
-                  if (e.target.value === "BULK" && cap !== "35") setCap("25/30");
-                }} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
+                <select value={cType} onChange={e => { setCType(e.target.value); if (e.target.value === "BAG") { setCap("25/30"); } if (e.target.value === "BULK" && cap !== "35") setCap("25/30"); }} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
                   <option value="BULK">BULK</option>
                   <option value="BAG">BAG</option>
                 </select>
@@ -448,14 +530,7 @@ export function SetupModule() {
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label>
                 <select value={cap} onChange={e=>setCap(e.target.value)} disabled={cType === "BAG"} className={`w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] ${cType === "BAG" ? "text-slate-500 cursor-not-allowed" : "text-white"}`}>
-                  {cType === "BAG" ? (
-                    <option value="25/30">25/30 MT</option>
-                  ) : (
-                    <>
-                      <option value="25/30">25/30 MT</option>
-                      <option value="35">35 MT</option>
-                    </>
-                  )}
+                  {cType === "BAG" ? <option value="25/30">25/30 MT</option> : <><option value="25/30">25/30 MT</option><option value="35">35 MT</option></>}
                 </select>
               </div>
 
@@ -469,23 +544,22 @@ export function SetupModule() {
                 <input type="number" value={avgKms} onChange={e=>setAvgKms(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-sky-400 bg-[#0F1117]" required />
               </div>
               
-              <button type="submit" disabled={isProcessing} className="md:col-span-7 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95 mt-2">Save Freight Rule</button>
+              <div className="md:col-span-7 flex gap-3 mt-2">
+                {editSlabId && <button type="button" onClick={clearSlabForm} className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button>}
+                <button type="submit" disabled={isProcessing} className="flex-[4] py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">{editSlabId ? "Update Slab" : "Save Freight Rule"}</button>
+              </div>
             </form>
             
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
+              <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Freight Slabs List (Click to Edit)</h4>
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
                   <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0">
-                    <tr>
-                      <th className="p-3">Route</th>
-                      <th className="p-3">Type</th>
-                      <th className="p-3 text-center">Avg KMs</th>
-                      <th className="p-3 text-right">Rate/MT</th>
-                    </tr>
+                    <tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-center">Avg KMs</th><th className="p-3 text-right">Rate/MT</th></tr>
                   </thead>
                   <tbody className="divide-y divide-[#272B36] bg-[#161922]">
                     {slabsList.map(s => (
-                      <tr key={s.id} className="hover:bg-[#1E222D]">
+                      <tr key={s.id} onClick={() => handleEditSlab(s)} className={`cursor-pointer transition-colors ${editSlabId === s.id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
                         <td className="p-3 font-bold text-white">{s.origin} ➔ {s.destination_name}</td>
                         <td className="p-3 text-slate-300">{s.capacity_tons}MT {s.cargo_type}</td>
                         <td className="p-3 text-slate-300 text-center">{s.standard_km ? `${s.standard_km} KM` : '-'}</td>
@@ -503,7 +577,13 @@ export function SetupModule() {
         {/* BATA */}
         {sTab === "Bata" && (
           <>
-            <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Add Bata Rule</h3>
+            <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-6">
+              <h3 className="text-sm font-black text-white uppercase tracking-wide">
+                {editBataId ? "Edit Existing Bata Rule" : "Add Bata Rule"}
+              </h3>
+              {editBataId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg uppercase tracking-widest animate-pulse">Editing Mode</span>}
+            </div>
+
             <form onSubmit={handleSaveBata} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
               
               <div className="md:col-span-1">
@@ -512,9 +592,7 @@ export function SetupModule() {
                   {originOptions.map(s=><option key={s} value={s}>{s}</option>)}
                   <option value="CUSTOM">-- TYPE NEW --</option>
                 </select>
-                {src === "CUSTOM" && (
-                  <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
-                )}
+                {src === "CUSTOM" && <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />}
               </div>
               
               <div className="md:col-span-2">
@@ -524,21 +602,12 @@ export function SetupModule() {
                   {destOptions.map(d=><option key={d} value={d}>{d}</option>)}
                   <option value="CUSTOM">-- TYPE NEW --</option>
                 </select>
-                {dest === "CUSTOM" && (
-                  <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
-                )}
+                {dest === "CUSTOM" && <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />}
               </div>
 
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label>
-                <select value={cType} onChange={e => {
-                  setCType(e.target.value);
-                  if (e.target.value === "BAG") {
-                    setCap("25/30");
-                    if (bataCap === "35") setBataCap("30");
-                  }
-                  if (e.target.value === "BULK" && cap !== "35") setCap("25/30");
-                }} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
+                <select value={cType} onChange={e => { setCType(e.target.value); if (e.target.value === "BAG" && bataCap === "35") setBataCap("30"); }} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
                   <option value="BULK">BULK</option>
                   <option value="BAG">BAG</option>
                 </select>
@@ -547,18 +616,7 @@ export function SetupModule() {
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label>
                 <select value={bataCap} onChange={e=>setBataCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
-                  {cType === "BAG" ? (
-                    <>
-                      <option value="25">25 MT</option>
-                      <option value="30">30 MT</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="25">25 MT</option>
-                      <option value="30">30 MT</option>
-                      <option value="35">35 MT</option>
-                    </>
-                  )}
+                  {cType === "BAG" ? <><option value="25">25 MT</option><option value="30">30 MT</option></> : <><option value="25">25 MT</option><option value="30">30 MT</option><option value="35">35 MT</option></>}
                 </select>
               </div>
 
@@ -567,15 +625,25 @@ export function SetupModule() {
                 <input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-[#FF5A00] bg-[#0F1117]" required />
               </div>
               
-              <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors mt-2 shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Bata Rule</button>
+              <div className="md:col-span-6 flex gap-3 mt-2">
+                {editBataId && <button type="button" onClick={clearBataForm} className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button>}
+                <button type="submit" disabled={isProcessing} className="flex-[4] py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">{editBataId ? "Update Bata Rule" : "Save Bata Rule"}</button>
+              </div>
             </form>
             
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
+              <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Bata Master List (Click to Edit)</h4>
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
                   <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Bata Amt</th></tr></thead>
                   <tbody className="divide-y divide-[#272B36] bg-[#161922]">
-                    {bataList.map(b => <tr key={b.id} className="hover:bg-[#1E222D]"><td className="p-3 font-bold text-white">{b.origin} ➔ {b.destination_name}</td><td className="p-3 text-slate-300">{b.capacity_tons}MT {b.cargo_type}</td><td className="p-3 font-black text-[#FF5A00] text-right">₹{b.standard_bata_inr}</td></tr>)}
+                    {bataList.map(b => (
+                      <tr key={b.id} onClick={() => handleEditBata(b)} className={`cursor-pointer transition-colors ${editBataId === b.id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
+                        <td className="p-3 font-bold text-white">{b.origin} ➔ {b.destination_name}</td>
+                        <td className="p-3 text-slate-300">{b.capacity_tons}MT {b.cargo_type}</td>
+                        <td className="p-3 font-black text-[#FF5A00] text-right">₹{b.standard_bata_inr}</td>
+                      </tr>
+                    ))}
                     {bataList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-slate-400">No bata rules active.</td></tr>}
                   </tbody>
                 </table>
