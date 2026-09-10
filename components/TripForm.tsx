@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 
-export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
+export function TripForm({ onSuccess }: { onSuccess?: () => void | Promise<void> }) {
   const supabase = createClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -189,7 +189,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Explicit Validation Guards for Zero or Negative numbers (Issue #7)
     if (!selectedTruckId || !selectedDriverId || !lrNo.trim() || freightRate === "" || Number(freightRate) <= 0 || loadedMt === "" || Number(loadedMt) <= 0) {
       setAlertConfig({
         isOpen: true,
@@ -283,8 +282,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm max-w-4xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
-      
+    <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 sm:p-8 shadow-xl max-w-4xl mx-auto animate-in fade-in duration-300 relative">
       <AlertModal 
         isOpen={alertConfig.isOpen}
         title={alertConfig.title}
@@ -293,153 +291,139 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
         onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
       />
 
-      <div className="border-b border-border pb-4 mb-6">
-        <h3 className="text-base font-bold text-fg uppercase tracking-tight">Initiate Trip Dispatch</h3>
-        <p className="text-xs text-fg-secondary mt-1">Fill out the fields below in sequence to compute freight rules.</p>
+      <div className="border-b border-[#222634] pb-4 mb-6">
+        <h3 className="text-base font-black text-white uppercase tracking-tight">Initiate Trip Dispatch</h3>
+        <p className="text-xs text-slate-400 mt-1">Fill out the fields below in sequence to compute freight rules.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
-          {/* 1. Date */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">1. Start Date *</label>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required />
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">1. Start Date *</label>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white" required />
           </div>
 
-          {/* 2. LR Number */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">2. LR Number *</label>
-            <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value)} placeholder="E.G. 40080069852" className="w-full text-sm p-3 rounded-xl border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required />
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">2. LR Number *</label>
+            <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value)} placeholder="E.G. 40080069852" className="w-full text-sm p-3 rounded-xl border border-[#2B3142] uppercase outline-none focus:border-[#FF5A00] font-bold bg-[#1A1F2C] text-white" required />
           </div>
 
-          {/* 3. Cargo Type */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">3. Cargo Type *</label>
-            <div className="flex bg-surface-raised p-1 rounded-xl border border-border">
-              <button type="button" onClick={() => { setCargoType("BULK"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BULK" ? "bg-surface text-[#FF5A00] shadow-sm border border-border" : "text-fg-secondary hover:text-fg"}`}>BULK</button>
-              <button type="button" onClick={() => { setCargoType("BAG"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BAG" ? "bg-surface text-[#FF5A00] shadow-sm border border-border" : "text-fg-secondary hover:text-fg"}`}>BAGS</button>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">3. Cargo Type *</label>
+            <div className="flex bg-[#0F1117] p-1 rounded-xl border border-[#2B3142]">
+              <button type="button" onClick={() => { setCargoType("BULK"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BULK" ? "bg-[#FF5A00] text-white shadow-sm" : "text-slate-400 hover:text-white"}`}>BULK</button>
+              <button type="button" onClick={() => { setCargoType("BAG"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BAG" ? "bg-[#FF5A00] text-white shadow-sm" : "text-slate-400 hover:text-white"}`}>BAGS</button>
             </div>
           </div>
 
-          {/* 4. Assigned Truck */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">4. Assigned Truck ({cargoType}) *</label>
-            <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-[#FF5A00] bg-surface" required disabled={isLoading}>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">4. Assigned Truck ({cargoType}) *</label>
+            <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] font-bold text-[#FF5A00] bg-[#1A1F2C]" required disabled={isLoading}>
               <option value="">-- SELECT TRUCK --</option>
               {availableTrucks.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number} [{v.truck_type}]</option>)}
             </select>
           </div>
 
-          {/* 5. Source */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">5. Source (Origin) *</label>
-            <select value={source} onChange={e => setSource(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">5. Source (Origin) *</label>
+            <select value={source} onChange={e => setSource(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] font-bold bg-[#1A1F2C] text-white">
               {dynamicSources.length === 0 && <option value="COCHIN">COCHIN</option>}
               {dynamicSources.map(s => <option key={s} value={s}>{s}</option>)}
               <option value="CUSTOM">CUSTOM (MANUAL)</option>
             </select>
             {source === "CUSTOM" && (
-              <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required />
+              <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-[#2B3142] uppercase outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white" required />
             )}
           </div>
 
-          {/* 6. Destination */}
-          <div className="bg-app p-2 -m-2 rounded-xl border border-border">
+          <div className="bg-[#161922] p-2 -m-2 rounded-xl border border-[#2B3142]">
             <label className="block text-[10px] font-bold text-[#FF5A00] uppercase mb-1">6. Destination *</label>
-            <select value={destinationLabel} onChange={e => setDestinationLabel(e.target.value)} className="w-full text-sm p-3 rounded-xl border-2 border-[#FF5A00]/30 outline-none focus:border-[#FF5A00] font-bold text-fg bg-surface" disabled={!selectedTruckId}>
+            <select value={destinationLabel} onChange={e => setDestinationLabel(e.target.value)} className="w-full text-sm p-3 rounded-xl border-2 border-[#FF5A00]/40 outline-none focus:border-[#FF5A00] font-bold text-white bg-[#1A1F2C]" disabled={!selectedTruckId}>
               <option value="-- SELECT DESTINATION --">-- SELECT DESTINATION --</option>
               {validRoutes.map(r => <option key={r.id} value={r.destination_name}>{r.destination_name} (₹{r.freight_rate_per_ton}/MT)</option>)}
               <option value="-- MANUAL / SPOT ROUTE --">-- MANUAL / SPOT ROUTE --</option>
             </select>
             {isManualRoute && (
-              <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 mt-2 rounded-xl border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" required />
+              <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 mt-2 rounded-xl border border-[#2B3142] uppercase outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white" required />
             )}
           </div>
 
-          {/* 7. Freight Rate */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">7. Freight Rate / MT (₹) *</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">7. Freight Rate / MT (₹) *</label>
             <input 
               type="number" 
               step="0.01" 
               min="0.01"
               value={freightRate} 
               onChange={e => setFreightRate(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className={`w-full text-sm p-3 rounded-xl border outline-none font-bold ${isManualRoute ? 'border-border-strong focus:ring-2 focus:ring-[#FF5A00] text-[#FF5A00] bg-surface' : 'border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed'}`} 
+              className={`w-full text-sm p-3 rounded-xl border outline-none font-black ${isManualRoute ? 'border-[#2B3142] focus:border-[#FF5A00] text-[#FF5A00] bg-[#1A1F2C]' : 'border-emerald-900 bg-emerald-950/40 text-emerald-400 cursor-not-allowed'}`} 
               disabled={!isManualRoute} 
               readOnly={!isManualRoute}
               required 
             />
           </div>
 
-          {/* 8. Loaded MT */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">8. Loaded MT *</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">8. Loaded MT *</label>
             <input 
               type="number" 
               step="0.01" 
               min="0.01"
               value={loadedMt} 
               onChange={e => setLoadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" 
+              className="w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] font-bold bg-[#1A1F2C] text-white" 
               required 
             />
           </div>
 
-          {/* 9. Driver Name */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">9. Driver Name *</label>
-            <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required disabled={isLoading || !selectedTruckId}>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">9. Driver Name *</label>
+            <select value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] font-bold bg-[#1A1F2C] text-white" required disabled={isLoading || !selectedTruckId}>
               <option value="">-- SELECT DRIVER --</option>
               {drivers.map(d => <option key={d.driver_id} value={String(d.driver_id)}>{d.driver_code} - {d.full_name}</option>)}
             </select>
           </div>
 
-          {/* 10. Driver Bata */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">10. Driver Bata (₹) *</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">10. Driver Bata (₹) *</label>
             <input 
               type="number" 
               min="0"
               value={driverBata} 
               onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" 
+              className="w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white" 
               required 
             />
           </div>
 
-          {/* 11. Advance */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">11. Direct Advance (₹)</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">11. Direct Advance (₹)</label>
             <input 
               type="number" 
               min="0"
               value={advance} 
               onChange={e => setAdvance(e.target.value === "" ? "" : parseFloat(e.target.value))} 
               placeholder="0.00" 
-              className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" 
+              className="w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white" 
             />
           </div>
 
-          {/* 12. Diesel Rate */}
           <div>
-            <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">12. Diesel Rate (₹/L)</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">12. Diesel Rate (₹/L)</label>
             <input 
               type="number" 
               step="0.1" 
               min="0"
               value={dieselRate} 
               onChange={e => setDieselRate(e.target.value === "" ? 0 : parseFloat(e.target.value))} 
-              className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-app text-fg font-bold" 
+              className="w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#0F1117] text-white font-bold" 
             />
           </div>
 
-          {/* 13. Diesel Issued & Odo (Grouped) */}
-          <div className="grid grid-cols-2 gap-3 border border-border p-2 rounded-xl bg-app">
+          <div className="grid grid-cols-2 gap-3 border border-[#2B3142] p-2 rounded-xl bg-[#0F1117]">
              <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">13. Diesel Issued (L)</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">13. Diesel Issued (L)</label>
                 <input 
                   type="number" 
                   step="0.1" 
@@ -447,50 +431,48 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
                   value={dieselL} 
                   onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} 
                   placeholder="0.0" 
-                  className="w-full text-sm p-2 rounded border border-border outline-none focus:border-[#FF5A00] bg-surface text-fg" 
+                  className="w-full text-sm p-2 rounded border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white" 
                 />
              </div>
              <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Start Odo KM</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Start Odo KM</label>
                 <input 
                   type="number" 
                   min="0"
                   value={startKm} 
                   onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} 
                   placeholder="0.0" 
-                  className="w-full text-sm p-2 rounded border border-border outline-none focus:border-[#FF5A00] bg-surface text-fg" 
+                  className="w-full text-sm p-2 rounded border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white" 
                 />
              </div>
           </div>
 
         </div>
 
-        {/* Calculations Section */}
-        <div className="pt-6 border-t border-border flex flex-col md:flex-row gap-6 items-center justify-between">
+        <div className="pt-6 border-t border-[#222634] flex flex-col md:flex-row gap-6 items-center justify-between">
           <div className="flex gap-6 w-full md:w-auto justify-between md:justify-start">
             <div>
-              <p className="text-[10px] font-bold text-fg-secondary uppercase mb-0">Expected Gross Freight</p>
-              <p className="text-xl md:text-2xl font-bold text-[#FF5A00]">₹{(Number(loadedMt || 0) * Number(freightRate || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-0">Expected Gross Freight</p>
+              <p className="text-xl md:text-2xl font-black text-[#FF5A00]">₹{(Number(loadedMt || 0) * Number(freightRate || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-fg-secondary uppercase mb-0">Upfront Trip Expense</p>
-              <p className="text-xl md:text-2xl font-bold text-rose-600">₹{((Number(dieselL || 0) * dieselRate) + Number(driverBata || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-0">Upfront Trip Expense</p>
+              <p className="text-xl md:text-2xl font-black text-rose-500">₹{((Number(dieselL || 0) * dieselRate) + Number(driverBata || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
             </div>
           </div>
           
-          {/* Action Buttons */}
           <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0">
             <button 
               type="button" 
               onClick={handleClear}
-              className="flex-1 md:flex-none px-6 py-4 bg-surface-raised hover:bg-surface-raised text-fg border border-border-strong font-bold text-sm rounded-xl transition-all active:scale-95"
+              className="flex-1 md:flex-none px-6 py-4 bg-[#1A1F2C] hover:bg-[#222634] text-slate-300 border border-[#2B3142] font-bold text-sm rounded-xl transition-all active:scale-95"
             >
               Clear Form
             </button>
             <button 
               type="submit" 
               disabled={isSubmitting} 
-              className="flex-2 md:flex-none px-10 py-4 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-md active:scale-95"
+              className="flex-2 md:flex-none px-10 py-4 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95"
             >
               {isSubmitting ? "Dispatching..." : "🚀 Dispatch"}
             </button>
