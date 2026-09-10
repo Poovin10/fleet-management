@@ -1,25 +1,38 @@
-import { ReactNode } from 'react';
+import { ReactNode, HTMLAttributes } from 'react';
 
-type CardProps = {
-  children: ReactNode;
-  className?: string;
-  raised?: boolean;
-};
-
-export function Card({ children, className = '', raised = false }: CardProps) {
+/* Base Card — themed to dark/orange tokens */
+export function Card({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={[
-        'bg-surface border border-border rounded-lg p-6',
-        raised ? 'shadow-raised' : 'shadow-card',
-        className,
-      ].join(' ')}
-    >
-      {children}
-    </div>
+      className={`bg-surface border border-border rounded-lg shadow-card ${className}`}
+      {...props}
+    />
   );
 }
 
+/* Sub-components your auth pages (login, sign-up, forgot-password,
+   update-password, error) already import — kept so nothing breaks */
+export function CardHeader({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={`p-6 pb-0 ${className}`} {...props} />;
+}
+
+export function CardTitle({ className = '', ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return <h3 className={`text-lg font-semibold text-fg ${className}`} {...props} />;
+}
+
+export function CardDescription({ className = '', ...props }: HTMLAttributes<HTMLParagraphElement>) {
+  return <p className={`text-sm text-fg-secondary mt-1 ${className}`} {...props} />;
+}
+
+export function CardContent({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={`p-6 ${className}`} {...props} />;
+}
+
+export function CardFooter({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={`p-6 pt-0 flex items-center ${className}`} {...props} />;
+}
+
+/* New addition for P&L / financial line items */
 type StatRowProps = {
   label: string;
   sublabel?: string;
