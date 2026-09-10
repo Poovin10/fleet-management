@@ -215,7 +215,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-300 relative">
       
       <AlertModal 
         isOpen={alertConfig.isOpen}
@@ -226,32 +226,32 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
       />
 
       {/* LEFT PANEL: Settle POD Form */}
-      <div className="lg:col-span-7 bg-surface border border-border rounded-2xl p-6 shadow-sm">
-        <div className="border-b border-border pb-4 mb-6">
-          <h3 className="text-base font-bold text-fg uppercase tracking-tight">Record POD & Settle Trip</h3>
-          <p className="text-xs text-fg-secondary mt-1">Finalize transit records, calculate shortages, and record closing top-ups.</p>
+      <div className="lg:col-span-7 bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-sm">
+        <div className="border-b border-[#222634] pb-4 mb-6">
+          <h3 className="text-base font-black text-white uppercase tracking-tight">Record POD & Settle Trip</h3>
+          <p className="text-xs text-slate-400 mt-1">Finalize transit records, calculate shortages, and record closing top-ups.</p>
         </div>
 
         {activeTrips.length === 0 && !isLoading ? (
-          <div className="p-8 text-center bg-emerald-50 border border-emerald-100 rounded-xl">
-            <p className="text-sm font-bold text-emerald-800">All PODs are settled! No active trips pending closure.</p>
+          <div className="p-8 text-center bg-emerald-950/20 border border-emerald-900/50 rounded-xl">
+            <p className="text-sm font-bold text-emerald-400">All PODs are settled! No active trips pending closure.</p>
           </div>
         ) : (
           <form onSubmit={handleSettlePod} className="space-y-5">
             
             {/* LR Selection */}
             <div>
-              <label className="block text-xs font-bold text-fg uppercase mb-1">Search & Select Active LR *</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Search & Select Active LR *</label>
               <select
                 value={selectedLr}
                 onChange={(e) => setSelectedLr(e.target.value)}
-                className="w-full text-sm p-3 rounded-xl border border-border-strong bg-surface font-bold text-fg outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] font-bold text-white outline-none focus:border-[#FF5A00]"
                 required
               >
                 <option value="">-- SELECT LR TO CLOSE --</option>
                 {activeTrips.map((t) => (
                   <option key={t.trip_id} value={t.trip_number}>
-                    LR: {t.trip_number} | Date: {formatDate(t.trip_start_date)} | Truck: {t.vehicles?.vehicle_number || "Unknown"} | {t.destination}
+                    LR: {t.trip_number} | Date: {formatDate(t.trip_start_date)} | Truck: {t.vehicles?.vehicle_number || "Unknown"}
                   </option>
                 ))}
               </select>
@@ -260,44 +260,44 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
             {currentTrip && (
               <>
                 {/* Trip Quick Insight Banner */}
-                <div className="p-3 bg-app border border-border rounded-xl flex justify-between text-xs text-fg-secondary">
-                  <span><strong>Driver:</strong> {currentTrip.drivers?.full_name || "Unassigned"}</span>
-                  <span><strong>Route:</strong> {currentTrip.origin} ➔ {currentTrip.destination}</span>
-                  <span><strong>Dispatched:</strong> {currentTrip.loaded_weight_mt} MT</span>
+                <div className="p-4 bg-[#0F1117] border border-[#222634] rounded-xl flex flex-wrap gap-4 justify-between text-xs text-slate-300">
+                  <span><strong className="text-slate-500">DRIVER:</strong> <br/><span className="font-bold text-white">{currentTrip.drivers?.full_name || "Unassigned"}</span></span>
+                  <span><strong className="text-slate-500">ROUTE:</strong> <br/><span className="font-bold text-white">{currentTrip.origin} ➔ {currentTrip.destination}</span></span>
+                  <span><strong className="text-slate-500">DISPATCHED:</strong> <br/><span className="font-black text-[#FF5A00]">{currentTrip.loaded_weight_mt} MT</span></span>
                 </div>
 
                 {/* ROW 1: POD No, Closing Date, Unloaded MT */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-fg uppercase mb-1">POD No *</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">POD No *</label>
                     <input
                       type="text"
                       value={podNo}
                       onChange={(e) => setPodNo(e.target.value)}
                       placeholder="e.g. POD-8821"
-                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong uppercase font-semibold outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white uppercase font-bold outline-none focus:border-[#FF5A00]"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-fg uppercase mb-1">Closing Date *</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Closing Date *</label>
                     <input
                       type="date"
                       value={closingDate}
                       onChange={(e) => setClosingDate(e.target.value)}
-                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-semibold outline-none focus:border-[#FF5A00]"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-fg uppercase mb-1">Unloaded MT</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Unloaded MT</label>
                     <input
                       type="number"
                       step="0.01"
                       value={unloadedMt}
                       onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.00"
-                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-semibold outline-none focus:border-[#FF5A00]"
                     />
                   </div>
                 </div>
@@ -305,71 +305,71 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                 {/* ROW 2: Closing KM, Halt Bata, Claims */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-fg uppercase mb-1">Closing KM *</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Closing KM *</label>
                     <input
                       type="number"
                       value={closingKm}
                       onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder={`Start: ${currentTrip.start_km || 0}`}
-                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-semibold outline-none focus:border-[#FF5A00]"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-fg uppercase mb-1">Halt Bata (₹)</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Halt Bata (₹)</label>
                     <input
                       type="number"
                       value={haltBata}
                       onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.00"
-                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-semibold outline-none focus:border-[#FF5A00]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-fg uppercase mb-1">Claims / Enroute (₹)</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Claims / Repairs (₹)</label>
                     <input
                       type="number"
                       value={claims}
                       onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.00"
-                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-semibold outline-none focus:border-[#FF5A00]"
                     />
                   </div>
                 </div>
 
                 {/* ROW 3: Closing Diesel & Tank Full */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-border pt-4 items-center">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-[#222634] pt-5 items-center">
                   <div>
-                    <label className="block text-xs font-bold text-fg uppercase mb-1">Closing Diesel Top-up (L)</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Closing Diesel Top-up (L)</label>
                     <input
                       type="number"
                       step="0.1"
                       value={closingDiesel}
                       onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       placeholder="0.0 Litres"
-                      className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                      className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-semibold outline-none focus:border-[#FF5A00]"
                     />
-                    <span className="text-[10px] text-fg-muted mt-0.5 block">Valued at current office rate: ₹{dieselRate}/L</span>
+                    <span className="text-[10px] text-slate-500 font-bold mt-1 block">Valued at current rate: ₹{dieselRate}/L</span>
                   </div>
-                  <div className="pt-5">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <div className="pt-2">
+                    <label className="flex items-center gap-3 cursor-pointer select-none bg-[#0F1117] p-3 rounded-xl border border-[#222634] w-fit">
                       <input
                         type="checkbox"
                         checked={isTankFull}
                         onChange={(e) => setIsTankFull(e.target.checked)}
-                        className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-border-strong"
+                        className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] bg-[#1A1F2C] border-[#2B3142]"
                       />
-                      <span className="text-xs font-bold text-fg">⛽ Mark Tank Full</span>
+                      <span className="text-xs font-black text-white uppercase">⛽ Mark Tank Full</span>
                     </label>
                   </div>
                 </div>
 
                 {/* Submit Action */}
-                <div className="pt-4 border-t border-border flex justify-end">
+                <div className="pt-6 border-t border-[#222634] flex justify-end">
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95 disabled:bg-slate-300"
+                    className="w-full md:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:bg-slate-700 disabled:shadow-none"
                   >
                     {isSubmitting ? "Settling..." : "✅ Settle & Close POD"}
                   </button>
@@ -380,42 +380,60 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
         )}
       </div>
 
-      {/* RIGHT PANEL: Pending POD List */}
-      <div className="lg:col-span-5 bg-rose-50/50 border border-rose-100 rounded-2xl p-5 shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wider">Pending POD List ({activeTrips.length})</h4>
-          <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full">Awaiting Closure</span>
+      {/* RIGHT PANEL: Sleek Edge-to-Edge Pending POD List */}
+      <div className="lg:col-span-5 bg-[#12141C] border border-[#222634] rounded-2xl overflow-hidden flex flex-col shadow-sm h-fit">
+        
+        {/* Header (Edge to Edge) */}
+        <div className="bg-[#161922] px-5 py-4 flex justify-between items-center border-b border-[#222634]">
+          <h4 className="text-xs font-black text-white uppercase tracking-wider">Pending POD List ({activeTrips.length})</h4>
+          <span className="text-[9px] font-bold px-2.5 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg uppercase tracking-widest">
+            Awaiting
+          </span>
         </div>
 
-        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-          <table className="min-w-full divide-y divide-rose-100 text-left">
-            <thead>
-              <tr className="text-[10px] font-bold text-rose-900 uppercase">
-                <th className="py-2">LR No</th>
-                <th className="py-2">Date</th>
-                <th className="py-2">Truck</th>
-                <th className="py-2 text-right">Aging</th>
+        {/* Table Container (Edge to Edge, No extra padding) */}
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px] w-full">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead className="bg-[#0F1117] sticky top-0 z-10">
+              <tr>
+                <th className="py-3 px-5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#222634]">LR No</th>
+                <th className="py-3 px-5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#222634]">Date</th>
+                <th className="py-3 px-5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#222634]">Truck</th>
+                <th className="py-3 px-5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#222634] text-right">Aging</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-rose-100 text-xs">
+            <tbody className="divide-y divide-[#222634] bg-[#12141C]">
               {activeTrips.map((t) => {
                 const days = getDaysPending(t.trip_start_date);
+                const isUrgent = days >= 2;
+                const isSelected = selectedLr === t.trip_number;
+
                 return (
                   <tr
                     key={t.trip_id}
                     onClick={() => setSelectedLr(t.trip_number)}
-                    className="cursor-pointer hover:bg-rose-100/60 transition-colors"
+                    className={`cursor-pointer transition-all ${
+                      isSelected ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'border-l-2 border-l-transparent hover:bg-[#1A1F2C]'
+                    }`}
                   >
-                    <td className="py-2.5 font-bold text-fg">{t.trip_number}</td>
-                    <td className="py-2.5 text-fg-secondary">{formatDate(t.trip_start_date)}</td>
-                    <td className="py-2.5 text-fg">{t.vehicles?.vehicle_number || "-"}</td>
-                    <td className="py-2.5 text-right font-bold text-rose-600">{days}d</td>
+                    <td className={`py-3.5 px-5 text-xs font-black ${isSelected ? 'text-[#FF5A00]' : 'text-white'}`}>
+                      {t.trip_number}
+                    </td>
+                    <td className="py-3.5 px-5 text-xs font-semibold text-slate-400">
+                      {formatDate(t.trip_start_date)}
+                    </td>
+                    <td className="py-3.5 px-5 text-xs font-bold text-slate-300">
+                      {t.vehicles?.vehicle_number || "-"}
+                    </td>
+                    <td className={`py-3.5 px-5 text-xs font-black text-right ${isUrgent ? 'text-rose-400' : 'text-amber-500'}`}>
+                      {days}d
+                    </td>
                   </tr>
                 );
               })}
               {activeTrips.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-fg-muted text-xs">
+                  <td colSpan={4} className="py-8 text-center text-slate-500 text-xs font-medium">
                     No pending PODs found.
                   </td>
                 </tr>
