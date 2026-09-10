@@ -21,6 +21,7 @@ export function SetupModule() {
   const [auditList, setAuditList] = useState<any[]>([]);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
 
+  // Selected truck for Compliance Editing
   const [selectedTruckForCompliance, setSelectedTruckForCompliance] = useState<any>(null);
   const [fcExp, setFcExp] = useState("");
   const [insExp, setInsExp] = useState("");
@@ -30,6 +31,7 @@ export function SetupModule() {
   const [spExp, setSpExp] = useState("");
   const [tankExp, setTankExp] = useState("");
 
+  // New User Form States
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("VIEWER");
@@ -44,10 +46,12 @@ export function SetupModule() {
   const [expiryDate, setExpiryDate] = useState("");
   
   const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN"];
+  
   const [src, setSrc] = useState("COCHIN");
   const [customSrc, setCustomSrc] = useState("");
   const [dest, setDest] = useState("");
   const [customDest, setCustomDest] = useState("");
+  
   const [cType, setCType] = useState("BULK");
   const [cap, setCap] = useState("35");
   const [fRate, setFRate] = useState<number | "">("");
@@ -188,27 +192,61 @@ export function SetupModule() {
     });
   };
 
-  const handleSaveDriver = (e: React.FormEvent) => {
+  const handleSaveDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!driverName.trim()) return;
-    
-    const autoGenCode = `DRV-${String(driversList.length + 1).padStart(3, '0')}`;
-    
-    triggerModal("Add Driver", `Register ${driverName.toUpperCase()} to the master list as ${autoGenCode}?`, false, "Save Driver", async () => {
-      setIsProcessing(true);
-      const { error } = await supabase.from('drivers').insert([{ 
-        driver_code: autoGenCode, 
-        full_name: driverName.toUpperCase().trim(), 
-        phone_number: mobileNo.trim() || null,
-        license_number: licenseNo.toUpperCase().trim() || null, 
-        license_expiry_date: expiryDate || null, 
-        pin: "1234", 
-        is_active: true 
-      }]);
-      if (error) alert("Error adding driver: " + error.message);
-      else { setDriverName(""); setMobileNo(""); setLicenseNo(""); setExpiryDate(""); fetchData(); }
-      setIsProcessing(false); closeModal();
-    });
+
+    setIsProcessing(true);
+
+    try {
+      const { data: existingDrivers } = await supabase
+        .from('drivers')
+        .select('driver_code');
+
+      let nextNumber = 1;
+      if (existingDrivers && existingDrivers.length > 0) {
+        const numbers = existingDrivers
+          .map(d => {
+            const match = String(d.driver_code || "").match(/(\d+)$/);
+            return match ? parseInt(match[1], 10) : 0;
+          })
+          .filter(n => !isNaN(n));
+
+        if (numbers.length > 0) {
+          nextNumber = Math.max(...numbers) + 1;
+        }
+      }
+
+      const autoGenCode = `DRV-${String(nextNumber).padStart(3, '0')}`;
+
+      triggerModal("Add Driver", `Register ${driverName.toUpperCase()} to the master list as ${autoGenCode}?`, false, "Save Driver", async () => {
+        setIsProcessing(true);
+        const { error } = await supabase.from('drivers').insert([{ 
+          driver_code: autoGenCode, 
+          full_name: driverName.toUpperCase().trim(), 
+          phone_number: mobileNo.trim() || null,
+          license_number: licenseNo.toUpperCase().trim() || null, 
+          license_expiry_date: expiryDate || null, 
+          pin: "1234", 
+          is_active: true 
+        }]);
+
+        if (error) {
+          alert("Error adding driver: " + error.message);
+        } else {
+          setDriverName(""); 
+          setMobileNo(""); 
+          setLicenseNo(""); 
+          setExpiryDate(""); 
+          fetchData();
+        }
+        setIsProcessing(false); 
+        closeModal();
+      });
+    } catch (err: any) {
+      alert("Error generating driver code: " + err.message);
+    }
+    setIsProcessing(false);
   };
 
   const handleSaveSlab = (e: React.FormEvent) => {
