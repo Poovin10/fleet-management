@@ -21,7 +21,6 @@ export function SetupModule() {
   const [auditList, setAuditList] = useState<any[]>([]);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
 
-  // Selected truck for Compliance Editing
   const [selectedTruckForCompliance, setSelectedTruckForCompliance] = useState<any>(null);
   const [fcExp, setFcExp] = useState("");
   const [insExp, setInsExp] = useState("");
@@ -31,7 +30,6 @@ export function SetupModule() {
   const [spExp, setSpExp] = useState("");
   const [tankExp, setTankExp] = useState("");
 
-  // New User Form States
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("VIEWER");
@@ -256,7 +254,6 @@ export function SetupModule() {
 
     if (!finalDest.trim() || !fRate) return;
     
-    // Automatically apply same rate to both 25 and 30 MT tiers if either is selected
     const capacitiesToSave = (cap === "25" || cap === "30") ? ["25", "30"] : [cap];
 
     triggerModal("Add Freight Slab", `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()} (${capacitiesToSave.join('/')} MT)?`, false, "Save Slab", async () => {
