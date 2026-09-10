@@ -8,7 +8,6 @@ export function SetupModule() {
   const supabase = createClient();
   const [sTab, setSTab] = useState("Trucks");
   const [isProcessing, setIsProcessing] = useState(false);
-
   const [currentUsername, setCurrentUsername] = useState("");
 
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: "", message: "", isDanger: false, confirmText: "Confirm", action: async () => {} });
@@ -22,7 +21,6 @@ export function SetupModule() {
   const [auditList, setAuditList] = useState<any[]>([]);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
 
-  // Selected truck for Compliance Editing
   const [selectedTruckForCompliance, setSelectedTruckForCompliance] = useState<any>(null);
   const [fcExp, setFcExp] = useState("");
   const [insExp, setInsExp] = useState("");
@@ -32,7 +30,6 @@ export function SetupModule() {
   const [spExp, setSpExp] = useState("");
   const [tankExp, setTankExp] = useState("");
 
-  // New User Form States
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("VIEWER");
@@ -42,18 +39,15 @@ export function SetupModule() {
   const [capacity, setCapacity] = useState("35.0 MT");
   
   const [driverName, setDriverName] = useState("");
-  const [driverCode, setDriverCode] = useState("");
   const [mobileNo, setMobileNo] = useState("");
   const [licenseNo, setLicenseNo] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   
   const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN"];
-  
   const [src, setSrc] = useState("COCHIN");
   const [customSrc, setCustomSrc] = useState("");
   const [dest, setDest] = useState("");
   const [customDest, setCustomDest] = useState("");
-  
   const [cType, setCType] = useState("BULK");
   const [cap, setCap] = useState("35");
   const [fRate, setFRate] = useState<number | "">("");
@@ -156,7 +150,7 @@ export function SetupModule() {
 
   const handleResetDriverPin = async (driverId: number, driverName: string) => {
     const newPin = prompt(`Enter a new 4-digit PIN for ${driverName}'s App Login:`, "1234");
-    if (!newPin) return; // User cancelled
+    if (!newPin) return; 
     if (newPin.length !== 4 || isNaN(Number(newPin))) {
       alert("Invalid PIN. It must be exactly 4 digits.");
       return;
@@ -196,11 +190,14 @@ export function SetupModule() {
 
   const handleSaveDriver = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!driverName.trim() || !driverCode.trim()) return;
-    triggerModal("Add Driver", `Register ${driverName.toUpperCase()} to the master list as ${driverCode}?`, false, "Save Driver", async () => {
+    if (!driverName.trim()) return;
+    
+    const autoGenCode = `DRV-${String(driversList.length + 1).padStart(3, '0')}`;
+    
+    triggerModal("Add Driver", `Register ${driverName.toUpperCase()} to the master list as ${autoGenCode}?`, false, "Save Driver", async () => {
       setIsProcessing(true);
       const { error } = await supabase.from('drivers').insert([{ 
-        driver_code: driverCode.toUpperCase().trim(), 
+        driver_code: autoGenCode, 
         full_name: driverName.toUpperCase().trim(), 
         phone_number: mobileNo.trim() || null,
         license_number: licenseNo.toUpperCase().trim() || null, 
@@ -289,15 +286,21 @@ export function SetupModule() {
             <form onSubmit={handleSaveDriver} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Driver Code *</label>
-                  <input type="text" value={driverCode} onChange={e=>setDriverCode(e.target.value)} placeholder="e.g. DRV-001" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#0F1117] text-white focus:border-[#FF5A00]" required />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Driver Code</label>
+                  <input 
+                    type="text" 
+                    value={`DRV-${String(driversList.length + 1).padStart(3, '0')}`} 
+                    disabled 
+                    className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black uppercase bg-[#0F1117] text-[#FF5A00] cursor-not-allowed" 
+                  />
+                  <p className="text-[9px] text-slate-500 mt-1 font-bold italic">System Auto-Generated</p>
                 </div>
-                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="e.g. ANEESH CR" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#0F1117] text-white focus:border-[#FF5A00]" required /></div>
+                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="e.g. ANEESH CR" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#1A1F2C] text-white focus:border-[#FF5A00]" required /></div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mobile Number</label><input type="tel" value={mobileNo} onChange={e=>setMobileNo(e.target.value)} placeholder="e.g. 9876543210" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white" /></div>
-                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">License Number</label><input type="text" value={licenseNo} onChange={e=>setLicenseNo(e.target.value)} placeholder="e.g. KL123456789" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold uppercase bg-[#0F1117] text-white" /></div>
-                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">License Expiry Date</label><input type="date" value={expiryDate} onChange={e=>setExpiryDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white" /></div>
+                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mobile Number</label><input type="tel" value={mobileNo} onChange={e=>setMobileNo(e.target.value)} placeholder="e.g. 9876543210" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#1A1F2C] text-white focus:border-[#FF5A00]" /></div>
+                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">License Number</label><input type="text" value={licenseNo} onChange={e=>setLicenseNo(e.target.value)} placeholder="e.g. KL123456789" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold uppercase bg-[#1A1F2C] text-white focus:border-[#FF5A00]" /></div>
+                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">License Expiry Date</label><input type="date" value={expiryDate} onChange={e=>setExpiryDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#1A1F2C] text-white focus:border-[#FF5A00]" /></div>
               </div>
               <div className="pt-2">
                 <button type="submit" disabled={isProcessing} className="w-full md:w-auto px-8 py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Driver</button>
@@ -336,7 +339,6 @@ export function SetupModule() {
           <>
             <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Add Freight Slab</h3>
             <form onSubmit={handleSaveSlab} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
-              
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label>
                 <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white">
@@ -347,7 +349,6 @@ export function SetupModule() {
                   <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
                 )}
               </div>
-              
               <div className="md:col-span-2">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destination *</label>
                 <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white uppercase" required>
@@ -359,14 +360,11 @@ export function SetupModule() {
                   <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
                 )}
               </div>
-              
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>BULK</option><option>BAG</option></select></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>35</option><option>30</option><option>25</option></select></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rate(₹)</label><input type="number" value={fRate} onChange={e=>setFRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-emerald-400 bg-[#0F1117]" required /></div>
-              
               <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95 mt-2">Save Freight Rule</button>
             </form>
-            
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
@@ -386,7 +384,6 @@ export function SetupModule() {
           <>
             <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Add Bata Rule</h3>
             <form onSubmit={handleSaveBata} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
-              
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label>
                 <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white">
@@ -397,7 +394,6 @@ export function SetupModule() {
                   <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
                 )}
               </div>
-              
               <div className="md:col-span-2">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destination *</label>
                 <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required>
@@ -409,14 +405,11 @@ export function SetupModule() {
                   <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
                 )}
               </div>
-
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>BULK</option><option>BAG</option></select></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>35</option><option>30</option><option>25</option></select></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bata(₹)</label><input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-[#FF5A00] bg-[#0F1117]" required /></div>
-              
               <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors mt-2 shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Bata Rule</button>
             </form>
-            
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
