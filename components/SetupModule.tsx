@@ -56,7 +56,7 @@ export function SetupModule() {
   const [cType, setCType] = useState("BULK");
   const [cap, setCap] = useState("35"); // Default for bulk
   const [fRate, setFRate] = useState<number | "">("");
-  const [avgKms, setAvgKms] = useState<number | "">(""); // NEW: Avg KMs State
+  const [avgKms, setAvgKms] = useState<number | "">(""); 
   const [bataAmt, setBataAmt] = useState<number | "">("");
 
   const fetchData = async () => {
@@ -260,16 +260,22 @@ export function SetupModule() {
     
     triggerModal("Add Freight Slab", `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Slab", async () => {
       setIsProcessing(true);
-      await supabase.from('destinations_freight_master').insert([{ 
+      const { error } = await supabase.from('destinations_freight_master').insert([{ 
         origin: finalSrc.toUpperCase().trim(), 
         destination_name: finalDest.toUpperCase().trim(), 
         cargo_type: cType, 
-        capacity_tons: cap, // Passed as string to support "25/30"
+        capacity_tons: cap, 
         average_kms: Number(avgKms), 
         freight_rate_per_ton: Number(fRate), 
         is_active: true 
       }]);
-      setDest(""); setCustomDest(""); setFRate(""); setAvgKms(""); fetchData(); setIsProcessing(false); closeModal();
+
+      if (error) {
+        alert("DATABASE REJECTION ERROR:\n\n" + error.message + "\n\nMake sure your capacity_tons column in Supabase is set to 'Text' (not Numeric) so it can accept '25/30', and ensure the average_kms column exists!");
+      } else {
+        setDest(""); setCustomDest(""); setFRate(""); setAvgKms(""); fetchData(); 
+      }
+      setIsProcessing(false); closeModal();
     });
   };
 
@@ -282,14 +288,20 @@ export function SetupModule() {
     
     triggerModal("Add Bata Master", `Set ₹${bataAmt} default Bata for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Bata", async () => {
       setIsProcessing(true);
-      await supabase.from('driver_bata_master').insert([{ 
+      const { error } = await supabase.from('driver_bata_master').insert([{ 
         origin: finalSrc.toUpperCase().trim(), 
         destination_name: finalDest.toUpperCase().trim(), 
         cargo_type: cType, 
-        capacity_tons: cap, // Passed as string to support "25/30"
+        capacity_tons: cap, 
         standard_bata_inr: Number(bataAmt) 
       }]);
-      setDest(""); setCustomDest(""); setBataAmt(""); fetchData(); setIsProcessing(false); closeModal();
+
+      if (error) {
+        alert("DATABASE REJECTION ERROR:\n\n" + error.message + "\n\nMake sure your capacity_tons column in the driver_bata_master table is set to 'Text' (not Numeric)!");
+      } else {
+        setDest(""); setCustomDest(""); setBataAmt(""); fetchData(); 
+      }
+      setIsProcessing(false); closeModal();
     });
   };
 
