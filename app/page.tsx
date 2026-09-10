@@ -3,7 +3,8 @@ import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
 import { SetupModule } from "@/components/SetupModule";
 
 export default async function DashboardPage() {
-  const supabase = createClient();
+  // FIX: Await the server client creation so we can call .from() on it
+  const supabase = await createClient();
 
   const now = new Date();
   const thirtyDaysFromNow = new Date();
@@ -11,14 +12,15 @@ export default async function DashboardPage() {
 
   const alerts: any[] = [];
 
-  // Querying license_expiry_date matching drivers schema
+  // Querying license_expiry_date matching the verified drivers schema
   const { data: drivers } = await supabase
     .from('drivers')
     .select('driver_code, full_name, license_expiry_date')
     .eq('is_active', true);
 
   if (drivers) {
-    drivers.forEach(d => {
+    // FIX: Explicitly set 'd' as 'any' to satisfy strict TypeScript rules
+    drivers.forEach((d: any) => {
       if (d.license_expiry_date && new Date(d.license_expiry_date) <= thirtyDaysFromNow) {
         alerts.push({ 
           name: `${d.driver_code} - ${d.full_name}`, 
