@@ -256,9 +256,23 @@ export function SetupModule() {
 
     if (!finalDest.trim() || !fRate) return;
     
-    triggerModal("Add Freight Slab", `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Slab", async () => {
+    // Automatically apply same rate to both 25 and 30 MT tiers if either is selected
+    const capacitiesToSave = (cap === "25" || cap === "30") ? ["25", "30"] : [cap];
+
+    triggerModal("Add Freight Slab", `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()} (${capacitiesToSave.join('/')} MT)?`, false, "Save Slab", async () => {
       setIsProcessing(true);
-      await supabase.from('destinations_freight_master').insert([{ origin: finalSrc.toUpperCase().trim(), destination_name: finalDest.toUpperCase().trim(), cargo_type: cType, capacity_tons: Number(cap), freight_rate_per_ton: Number(fRate), is_active: true }]);
+      
+      const insertRows = capacitiesToSave.map(c => ({
+        origin: finalSrc.toUpperCase().trim(),
+        destination_name: finalDest.toUpperCase().trim(),
+        cargo_type: cType,
+        capacity_tons: Number(c),
+        freight_rate_per_ton: Number(fRate),
+        is_active: true
+      }));
+
+      await supabase.from('destinations_freight_master').insert(insertRows);
+      
       setDest(""); setCustomDest(""); setFRate(""); fetchData(); setIsProcessing(false); closeModal();
     });
   };
@@ -399,7 +413,14 @@ export function SetupModule() {
                 )}
               </div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>BULK</option><option>BAG</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>35</option><option>30</option><option>25</option></select></div>
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label>
+                <select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
+                  <option value="35">35 MT (Unique)</option>
+                  <option value="30">30 MT (Shared w/ 25)</option>
+                  <option value="25">25 MT (Shared w/ 30)</option>
+                </select>
+              </div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rate(₹)</label><input type="number" value={fRate} onChange={e=>setFRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-emerald-400 bg-[#0F1117]" required /></div>
               <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95 mt-2">Save Freight Rule</button>
             </form>
