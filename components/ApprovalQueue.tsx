@@ -118,7 +118,7 @@ export function ApprovalQueue() {
   };
 
   return (
-    <div className="bg-surface border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
+    <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
       
       <AlertModal 
         isOpen={alertConfig.isOpen}
@@ -132,19 +132,19 @@ export function ApprovalQueue() {
       {rejectModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
           <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
-            <h3 className="text-lg font-black text-slate-900 mb-2">Reject Driver Request</h3>
-            <p className="text-xs text-slate-500 mb-4">Please provide a reason so the driver knows why this was rejected.</p>
+            <h3 className="text-lg font-black text-fg mb-2">Reject Driver Request</h3>
+            <p className="text-xs text-fg-secondary mb-4">Please provide a reason so the driver knows why this was rejected.</p>
             
             <textarea 
               value={rejectionReason} 
               onChange={e => setRejectionReason(e.target.value)} 
               placeholder="e.g. Invalid receipt bill photo / Odometer mismatch" 
-              className="w-full h-28 text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-slate-50 font-medium mb-4"
+              className="w-full h-28 text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-app font-medium mb-4"
               required 
             />
 
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setRejectModalOpen(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl">Cancel</button>
+              <button onClick={() => setRejectModalOpen(false)} className="px-4 py-2 bg-surface-raised hover:bg-surface-raised text-fg font-bold text-xs rounded-xl">Cancel</button>
               <button onClick={handleConfirmReject} disabled={isProcessing} className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl">
                 {isProcessing ? "Rejecting..." : "Confirm Rejection"}
               </button>
@@ -153,17 +153,17 @@ export function ApprovalQueue() {
         </div>
       )}
 
-      <div className="flex justify-between items-center border-b border-slate-200 pb-4 mb-6">
+      <div className="flex justify-between items-center border-b border-border pb-4 mb-6">
         <div>
-          <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Driver Submissions Approval Queue</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Review and approve on-road fuel bills or cash advance requests submitted from driver mobile portals.</p>
+          <h3 className="text-base font-black text-fg uppercase tracking-tight">Driver Submissions Approval Queue</h3>
+          <p className="text-xs text-fg-secondary mt-0.5">Review and approve on-road fuel bills or cash advance requests submitted from driver mobile portals.</p>
         </div>
         <span className="px-3 py-1 bg-amber-100 text-amber-800 font-black text-xs rounded-full">
           {pendingEntries.length} Pending
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 w-full relative min-h-[300px]">
+      <div className="overflow-x-auto rounded-xl border border-border w-full relative min-h-[300px]">
         {isLoading && (
           <div className="absolute inset-0 bg-surface/70 backdrop-blur-sm z-10 flex items-center justify-center">
             <span className="font-bold text-[#FF5A00] animate-pulse">Loading Queue...</span>
@@ -171,8 +171,8 @@ export function ApprovalQueue() {
         )}
 
         <table className="min-w-full divide-y divide-slate-200 text-xs text-left whitespace-nowrap">
-          <thead className="bg-slate-50 sticky top-0">
-            <tr className="font-bold text-slate-500 uppercase">
+          <thead className="bg-app sticky top-0">
+            <tr className="font-bold text-fg-secondary uppercase">
               <th className="px-4 py-3">Submitted At</th>
               <th className="px-4 py-3">Driver Code</th>
               <th className="px-4 py-3">Truck No</th>
@@ -184,19 +184,19 @@ export function ApprovalQueue() {
           </thead>
           <tbody className="bg-surface divide-y divide-slate-100">
             {pendingEntries.map(e => (
-              <tr key={e.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-semibold text-slate-600">{formatDate(e.created_at)}</td>
-                <td className="px-4 py-3 font-bold text-slate-900">{e.driver_code}</td>
+              <tr key={e.id} className="hover:bg-app">
+                <td className="px-4 py-3 font-semibold text-fg-secondary">{formatDate(e.created_at)}</td>
+                <td className="px-4 py-3 font-bold text-fg">{e.driver_code}</td>
                 <td className="px-4 py-3 font-bold text-[#FF5A00]">{e.vehicles?.vehicle_number || "N/A"}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-1 rounded text-[10px] font-black ${e.entry_type === 'FUEL' ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800'}`}>
                     {e.entry_type}
                   </span>
                 </td>
-                <td className="px-4 py-3 font-black text-slate-800">
+                <td className="px-4 py-3 font-black text-fg">
                   {e.entry_type === 'FUEL' ? `${e.litres} Litres (Odo: ${e.odometer_km || 0} KM)` : `₹${Number(e.amount_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`}
                 </td>
-                <td className="px-4 py-3 text-slate-500 max-w-[200px] truncate">{e.receipt_remarks || "-"}</td>
+                <td className="px-4 py-3 text-fg-secondary max-w-[200px] truncate">{e.receipt_remarks || "-"}</td>
                 <td className="px-4 py-3 text-center space-x-2">
                   <button 
                     onClick={() => handleApprove(e)} 
@@ -217,7 +217,7 @@ export function ApprovalQueue() {
             ))}
             {pendingEntries.length === 0 && !isLoading && (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium">
+                <td colSpan={7} className="px-4 py-12 text-center text-fg-muted font-medium">
                   🎉 All driver requests have been processed! The queue is currently empty.
                 </td>
               </tr>

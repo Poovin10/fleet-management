@@ -164,13 +164,13 @@ export function LiveAlertsWidget() {
   }, []);
 
   return (
-    <div className="bg-surface border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[500px]">
+    <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col h-[500px]">
       
       {/* HEADER */}
-      <div className="bg-slate-50 border-b border-slate-200 px-5 py-4 flex justify-between items-center shrink-0">
+      <div className="bg-app border-b border-border px-5 py-4 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2.5">
           <span className="text-base">🔔</span>
-          <h3 className="text-slate-900 font-black uppercase text-xs tracking-wider">Notifications</h3>
+          <h3 className="text-fg font-black uppercase text-xs tracking-wider">Notifications</h3>
           {notifications.length > 0 && (
             <span className="bg-[#FF5A00] text-white text-[10px] font-black px-2 py-0.5 rounded-full">
               {notifications.length}
@@ -180,7 +180,7 @@ export function LiveAlertsWidget() {
         
         <button 
           onClick={() => setIsMuted(!isMuted)} 
-          className="text-slate-400 hover:text-slate-700 transition-colors text-sm"
+          className="text-fg-muted hover:text-fg transition-colors text-sm"
           title={isMuted ? "Unmute Alerts" : "Mute Alerts"}
         >
           {isMuted ? "🔇" : "🔊"}
@@ -188,9 +188,9 @@ export function LiveAlertsWidget() {
       </div>
 
       {/* NOTIFICATIONS LIST (PILL STYLE) */}
-      <div className="overflow-y-auto p-4 space-y-2.5 flex-1 bg-slate-50/40">
+      <div className="overflow-y-auto p-4 space-y-2.5 flex-1 bg-app/40">
         {notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400">
+          <div className="flex flex-col items-center justify-center h-full text-fg-muted">
             <span className="text-2xl mb-2">✨</span>
             <p className="text-[11px] font-bold uppercase tracking-wider">No new notifications</p>
           </div>
@@ -198,21 +198,21 @@ export function LiveAlertsWidget() {
           notifications.map((item) => (
             <div 
               key={item.id} 
-              className="bg-surface border border-slate-200 rounded-2xl p-3.5 flex items-start gap-3 shadow-sm hover:border-[#FF5A00]/40 transition-all animate-in slide-in-from-right-4 duration-300"
+              className="bg-surface border border-border rounded-2xl p-3.5 flex items-start gap-3 shadow-sm hover:border-[#FF5A00]/40 transition-all animate-in slide-in-from-right-4 duration-300"
             >
-              <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-base shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-surface-raised border border-border flex items-center justify-center text-base shrink-0">
                 {item.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[11px] font-black uppercase text-slate-900 tracking-tight truncate">
+                  <span className="text-[11px] font-black uppercase text-fg tracking-tight truncate">
                     {item.title}
                   </span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap ml-2">
+                  <span className="text-[9px] font-bold text-fg-muted uppercase tracking-wide whitespace-nowrap ml-2">
                     {timeAgo(item.timestamp)}
                   </span>
                 </div>
-                <p className="text-xs font-semibold text-slate-600 leading-snug break-words">
+                <p className="text-xs font-semibold text-fg-secondary leading-snug break-words">
                   {item.message}
                 </p>
               </div>

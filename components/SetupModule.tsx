@@ -254,7 +254,7 @@ export function SetupModule() {
         ].map((tab) => (
           <button 
             key={tab.label} onClick={() => setSTab(tab.label)} 
-            className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${sTab === tab.label ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" : "bg-[#161922] text-slate-400 hover:text-white hover:bg-[#1E222D] border border-[#272B36]"}`}
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${sTab === tab.label ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" : "bg-[#161922] text-fg-muted hover:text-white hover:bg-[#1E222D] border border-[#272B36]"}`}
           >
             <span>{tab.icon}</span> {tab.label}
           </button>
@@ -267,9 +267,9 @@ export function SetupModule() {
           <>
             <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Add New Truck</h3>
             <form onSubmit={handleSaveTruck} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Truck No *</label><input type="text" value={truckNo} onChange={e=>setTruckNo(e.target.value)} placeholder="E.G. TN 56 F 0452" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#0F1117] text-white focus:border-[#FF5A00]" required /></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Variant</label><select value={variant} onChange={e=>setVariant(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white"><option>Bulker (16-Wheel)</option><option>Bulker (14-Wheel)</option><option>Open Body (10-Wheel)</option><option>Trailer</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Capacity</label><select value={capacity} onChange={e=>setCapacity(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white"><option>35.0 MT</option><option>30.0 MT</option><option>25.0 MT</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Truck No *</label><input type="text" value={truckNo} onChange={e=>setTruckNo(e.target.value)} placeholder="E.G. TN 56 F 0452" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#0F1117] text-white focus:border-[#FF5A00]" required /></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Variant</label><select value={variant} onChange={e=>setVariant(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white"><option>Bulker (16-Wheel)</option><option>Bulker (14-Wheel)</option><option>Open Body (10-Wheel)</option><option>Trailer</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Capacity</label><select value={capacity} onChange={e=>setCapacity(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white"><option>35.0 MT</option><option>30.0 MT</option><option>25.0 MT</option></select></div>
               <button type="submit" disabled={isProcessing} className="md:col-span-1 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Truck</button>
             </form>
             <div className="mt-8 border-t border-[#272B36] pt-6">
@@ -284,12 +284,12 @@ export function SetupModule() {
             <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Add New Driver</h3>
             <form onSubmit={handleSaveDriver} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="e.g. ANEESH CR" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#0F1117] text-white focus:border-[#FF5A00]" required /></div>
+                <div><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="e.g. ANEESH CR" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#0F1117] text-white focus:border-[#FF5A00]" required /></div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mobile Number</label><input type="tel" value={mobileNo} onChange={e=>setMobileNo(e.target.value)} placeholder="e.g. 9876543210" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white" /></div>
-                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">License Number</label><input type="text" value={licenseNo} onChange={e=>setLicenseNo(e.target.value)} placeholder="e.g. KL123456789" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold uppercase bg-[#0F1117] text-white" /></div>
-                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">License Expiry Date</label><input type="date" value={expiryDate} onChange={e=>setExpiryDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white" /></div>
+                <div><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Mobile Number</label><input type="tel" value={mobileNo} onChange={e=>setMobileNo(e.target.value)} placeholder="e.g. 9876543210" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white" /></div>
+                <div><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">License Number</label><input type="text" value={licenseNo} onChange={e=>setLicenseNo(e.target.value)} placeholder="e.g. KL123456789" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold uppercase bg-[#0F1117] text-white" /></div>
+                <div><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">License Expiry Date</label><input type="date" value={expiryDate} onChange={e=>setExpiryDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white" /></div>
               </div>
               <div className="pt-2">
                 <button type="submit" disabled={isProcessing} className="w-full md:w-auto px-8 py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Driver</button>
@@ -300,7 +300,7 @@ export function SetupModule() {
               <h4 className="text-xs font-black text-slate-300 uppercase mb-3">Registered Drivers</h4>
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
-                  <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0">
+                  <thead className="bg-[#0F1117] text-fg-muted uppercase font-bold sticky top-0">
                     <tr><th className="p-3">Code</th><th className="p-3">Full Name</th><th className="p-3">Phone</th><th className="p-3">License Info</th></tr>
                   </thead>
                   <tbody className="divide-y divide-[#272B36] bg-[#161922]">
@@ -311,11 +311,11 @@ export function SetupModule() {
                         <td className="p-3 text-slate-300 font-semibold">{d.phone_number || '-'}</td>
                         <td className="p-3 text-slate-300">
                           <span className="font-semibold">{d.license_no || '-'}</span>
-                          {d.expiry_date && <span className="ml-2 text-[10px] text-slate-400">Exp: {d.expiry_date}</span>}
+                          {d.expiry_date && <span className="ml-2 text-[10px] text-fg-muted">Exp: {d.expiry_date}</span>}
                         </td>
                       </tr>
                     ))}
-                    {driversList.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">No drivers active.</td></tr>}
+                    {driversList.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-fg-muted">No drivers active.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -330,7 +330,7 @@ export function SetupModule() {
             <form onSubmit={handleSaveSlab} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
               
               <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label>
+                <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Source</label>
                 <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white">
                   {originOptions.map(s=><option key={s} value={s}>{s}</option>)}
                   <option value="CUSTOM">-- TYPE NEW --</option>
@@ -341,7 +341,7 @@ export function SetupModule() {
               </div>
               
               <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destination *</label>
+                <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Destination *</label>
                 <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white uppercase" required>
                   <option value="">-- SELECT DEST --</option>
                   {destOptions.map(d=><option key={d} value={d}>{d}</option>)}
@@ -352,9 +352,9 @@ export function SetupModule() {
                 )}
               </div>
               
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>BULK</option><option>BAG</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>35</option><option>30</option><option>25</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rate(₹)</label><input type="number" value={fRate} onChange={e=>setFRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-emerald-400 bg-[#0F1117]" required /></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>BULK</option><option>BAG</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>35</option><option>30</option><option>25</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Rate(₹)</label><input type="number" value={fRate} onChange={e=>setFRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-emerald-400 bg-[#0F1117]" required /></div>
               
               <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95 mt-2">Save Freight Rule</button>
             </form>
@@ -362,10 +362,10 @@ export function SetupModule() {
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
-                  <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Rate/MT</th></tr></thead>
+                  <thead className="bg-[#0F1117] text-fg-muted uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Rate/MT</th></tr></thead>
                   <tbody className="divide-y divide-[#272B36] bg-[#161922]">
                     {slabsList.map(s => <tr key={s.id} className="hover:bg-[#1E222D]"><td className="p-3 font-bold text-white">{s.origin} ➔ {s.destination_name}</td><td className="p-3 text-slate-300">{s.capacity_tons}MT {s.cargo_type}</td><td className="p-3 font-black text-emerald-400 text-right">₹{s.freight_rate_per_ton}</td></tr>)}
-                    {slabsList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-slate-400">No slabs active.</td></tr>}
+                    {slabsList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-fg-muted">No slabs active.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -380,7 +380,7 @@ export function SetupModule() {
             <form onSubmit={handleSaveBata} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
               
               <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label>
+                <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Source</label>
                 <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white">
                   {originOptions.map(s=><option key={s} value={s}>{s}</option>)}
                   <option value="CUSTOM">-- TYPE NEW --</option>
@@ -391,7 +391,7 @@ export function SetupModule() {
               </div>
               
               <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destination *</label>
+                <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Destination *</label>
                 <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required>
                   <option value="">-- SELECT DEST --</option>
                   {destOptions.map(d=><option key={d} value={d}>{d}</option>)}
@@ -402,9 +402,9 @@ export function SetupModule() {
                 )}
               </div>
 
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>BULK</option><option>BAG</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>35</option><option>30</option><option>25</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bata(₹)</label><input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-[#FF5A00] bg-[#0F1117]" required /></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>BULK</option><option>BAG</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>35</option><option>30</option><option>25</option></select></div>
+              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Bata(₹)</label><input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-[#FF5A00] bg-[#0F1117]" required /></div>
               
               <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors mt-2 shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Bata Rule</button>
             </form>
@@ -412,10 +412,10 @@ export function SetupModule() {
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
-                  <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Bata Amt</th></tr></thead>
+                  <thead className="bg-[#0F1117] text-fg-muted uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Bata Amt</th></tr></thead>
                   <tbody className="divide-y divide-[#272B36] bg-[#161922]">
                     {bataList.map(b => <tr key={b.id} className="hover:bg-[#1E222D]"><td className="p-3 font-bold text-white">{b.origin} ➔ {b.destination_name}</td><td className="p-3 text-slate-300">{b.capacity_tons}MT {b.cargo_type}</td><td className="p-3 font-black text-[#FF5A00] text-right">₹{b.standard_bata_inr}</td></tr>)}
-                    {bataList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-slate-400">No bata rules active.</td></tr>}
+                    {bataList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-fg-muted">No bata rules active.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -429,7 +429,7 @@ export function SetupModule() {
             <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Recent Trip Activity Log</h3>
             <div className="overflow-x-auto rounded-xl border border-[#272B36] w-full max-h-[500px]">
               <table className="min-w-full text-xs text-left whitespace-nowrap">
-                <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0">
+                <thead className="bg-[#0F1117] text-fg-muted uppercase font-bold sticky top-0">
                   <tr><th className="p-3">Date</th><th className="p-3">Trip LR</th><th className="p-3">Truck & Driver</th><th className="p-3">Route</th><th className="p-3 text-center">Status</th></tr>
                 </thead>
                 <tbody className="divide-y divide-[#272B36] bg-[#161922]">
@@ -437,7 +437,7 @@ export function SetupModule() {
                     <tr key={a.trip_id} className="hover:bg-[#1E222D]">
                       <td className="p-3 font-semibold text-slate-300">{a.trip_start_date}</td>
                       <td className="p-3 font-bold text-white">{a.trip_number}</td>
-                      <td className="p-3 text-slate-300"><span className="font-bold text-white">{a.vehicles?.vehicle_number}</span><br/><span className="text-[10px] text-slate-400">{a.drivers?.full_name}</span></td>
+                      <td className="p-3 text-slate-300"><span className="font-bold text-white">{a.vehicles?.vehicle_number}</span><br/><span className="text-[10px] text-fg-muted">{a.drivers?.full_name}</span></td>
                       <td className="p-3 text-slate-300">{a.origin} ➔ {a.destination}</td>
                       <td className="p-3 text-center">
                         <span className={`px-2 py-1 rounded text-[10px] font-bold ${a.trip_status === 'COMPLETED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}`}>
@@ -446,7 +446,7 @@ export function SetupModule() {
                       </td>
                     </tr>
                   ))}
-                  {auditList.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-slate-400">No recent system activity.</td></tr>}
+                  {auditList.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-fg-muted">No recent system activity.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -481,38 +481,38 @@ export function SetupModule() {
               <form onSubmit={handleSaveTruckCompliance} className="space-y-6 animate-in slide-in-from-bottom-4">
                 <div className="bg-[#0F1117] p-4 rounded-xl border border-[#272B36] flex justify-between items-center">
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase">Selected Vehicle</p>
+                    <p className="text-xs font-bold text-fg-muted uppercase">Selected Vehicle</p>
                     <p className="text-base font-black text-[#FF5A00]">{selectedTruckForCompliance.vehicle_number}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase">Variant</p>
+                    <p className="text-xs font-bold text-fg-muted uppercase">Variant</p>
                     <p className="text-sm font-bold text-white">{selectedTruckForCompliance.truck_type}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">FC Test Expiry</label>
+                    <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">FC Test Expiry</label>
                     <input type="date" value={fcExp} onChange={e => setFcExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] font-semibold bg-[#0F1117] text-white outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Insurance Expiry</label>
+                    <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Insurance Expiry</label>
                     <input type="date" value={insExp} onChange={e => setInsExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] font-semibold bg-[#0F1117] text-white outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Quarterly Tax (Q-Tax) Expiry</label>
+                    <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Quarterly Tax (Q-Tax) Expiry</label>
                     <input type="date" value={qtaxExp} onChange={e => setQtaxExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] font-semibold bg-[#0F1117] text-white outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">PUC Expiry</label>
+                    <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">PUC Expiry</label>
                     <input type="date" value={pucExp} onChange={e => setPucExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] font-semibold bg-[#0F1117] text-white outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">National Permit (NP) Expiry</label>
+                    <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">National Permit (NP) Expiry</label>
                     <input type="date" value={npExp} onChange={e => setNpExp(e.target.value)} placeholder="Leave blank if N/A" className="w-full text-sm p-3 rounded-xl border border-[#272B36] font-semibold bg-[#0F1117] text-white outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">State Permit Expiry</label>
+                    <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">State Permit Expiry</label>
                     <input type="date" value={spExp} onChange={e => setSpExp(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] font-semibold bg-[#0F1117] text-white outline-none" />
                   </div>
 
@@ -547,15 +547,15 @@ export function SetupModule() {
                 <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Create New System User</h3>
                 <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-8">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Username *</label>
+                    <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Username *</label>
                     <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} placeholder="e.g. manager2" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white font-bold focus:border-[#FF5A00]" required />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Password *</label>
+                    <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Password *</label>
                     <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white font-bold focus:border-[#FF5A00]" required />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Role *</label>
+                    <label className="block text-[10px] font-bold text-fg-muted uppercase mb-1">Role *</label>
                     <select value={newRole} onChange={e => setNewRole(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white font-bold">
                       <option value="VIEWER">VIEWER</option>
                       <option value="ADMIN">ADMIN</option>
@@ -567,7 +567,7 @@ export function SetupModule() {
                 <h4 className="text-xs font-black text-slate-300 uppercase mb-3">Active System Accounts</h4>
                 <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80 mb-8">
                   <table className="min-w-full text-xs text-left whitespace-nowrap">
-                    <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0">
+                    <thead className="bg-[#0F1117] text-fg-muted uppercase font-bold sticky top-0">
                       <tr><th className="p-3">Username</th><th className="p-3">Role</th><th className="p-3 text-center">Action</th></tr>
                     </thead>
                     <tbody className="divide-y divide-[#272B36] bg-[#161922]">
@@ -579,7 +579,7 @@ export function SetupModule() {
                             {u.username !== 'superadmin' ? (
                               <button onClick={() => handleDeleteUser(u.username)} className="px-3 py-1 bg-rose-950 text-rose-400 font-bold rounded-lg hover:bg-rose-900 transition-colors border border-rose-800">Revoke</button>
                             ) : (
-                              <span className="text-[10px] text-slate-500 italic">Protected</span>
+                              <span className="text-[10px] text-fg-secondary italic">Protected</span>
                             )}
                           </td>
                         </tr>
@@ -591,7 +591,7 @@ export function SetupModule() {
                 <h4 className="text-xs font-black text-slate-300 uppercase mb-3 border-t border-[#272B36] pt-8">Driver App Access (PIN Management)</h4>
                 <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                   <table className="min-w-full text-xs text-left whitespace-nowrap">
-                    <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0">
+                    <thead className="bg-[#0F1117] text-fg-muted uppercase font-bold sticky top-0">
                       <tr><th className="p-3">Driver Code</th><th className="p-3">Full Name</th><th className="p-3 text-center">App Access</th></tr>
                     </thead>
                     <tbody className="divide-y divide-[#272B36] bg-[#161922]">
@@ -610,7 +610,7 @@ export function SetupModule() {
                         </tr>
                       ))}
                       {driversList.length === 0 && (
-                        <tr><td colSpan={3} className="p-4 text-center text-slate-400">No drivers available.</td></tr>
+                        <tr><td colSpan={3} className="p-4 text-center text-fg-muted">No drivers available.</td></tr>
                       )}
                     </tbody>
                   </table>

@@ -273,7 +273,7 @@ export function FinancialsModule() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300" style={{ colorScheme: 'light' }}>
       
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
+      <div className="flex flex-wrap gap-2 border-b border-border pb-4">
         {["💵 Driver Settlement", "📈 Analytics & Margins"].map((tab) => (
           <button
             key={tab}
@@ -281,7 +281,7 @@ export function FinancialsModule() {
             className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               finNav === tab 
                 ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" 
-                : "bg-surface text-slate-600 hover:bg-slate-100 border border-slate-200"
+                : "bg-surface text-fg-secondary hover:bg-surface-raised border border-border"
             }`}
           >
             {tab}
@@ -290,14 +290,14 @@ export function FinancialsModule() {
       </div>
 
       {finNav === "💵 Driver Settlement" && (
-        <div className="bg-surface border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="md:col-span-2">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Select Driver *</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Select Driver *</label>
               <select 
                 value={selectedDriverId} 
                 onChange={(e) => { setSelectedDriverId(e.target.value); setHasSearched(false); }}
-                className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-slate-900"
+                className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg"
                 disabled={isLoading}
               >
                 <option value="">-- SELECT DRIVER --</option>
@@ -305,14 +305,14 @@ export function FinancialsModule() {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Date *</label>
-              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-slate-900" />
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">From Date *</label>
+              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" />
             </div>
             <div className="flex items-end">
               <div className="w-full">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Date *</label>
+                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">To Date *</label>
                 <div className="flex gap-2">
-                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-slate-900" />
+                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" />
                   <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold rounded-xl transition-all shadow-sm disabled:bg-slate-300">
                     Load
                   </button>
@@ -324,9 +324,9 @@ export function FinancialsModule() {
           {hasSearched && (
             <div className="space-y-8 animate-in slide-in-from-bottom-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Total Diesel Issued</p>
-                  <p className="text-sm sm:text-xl font-black text-slate-900 truncate">{formatDec(grandTotalDiesel)} L</p>
+                <div className="p-4 rounded-xl border border-border bg-app">
+                  <p className="text-[10px] font-bold text-fg-secondary uppercase mb-1">Total Diesel Issued</p>
+                  <p className="text-sm sm:text-xl font-black text-fg truncate">{formatDec(grandTotalDiesel)} L</p>
                 </div>
                 <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50">
                   <p className="text-[10px] font-bold text-emerald-700 uppercase mb-1">Total Bata Earned</p>
@@ -343,11 +343,11 @@ export function FinancialsModule() {
               </div>
 
               <div>
-                <h4 className="text-sm font-black text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Trip Details</h4>
-                <div className="overflow-x-auto rounded-xl border border-slate-200 w-full">
+                <h4 className="text-sm font-black text-fg uppercase border-b border-border pb-2 mb-4">Trip Details</h4>
+                <div className="overflow-x-auto rounded-xl border border-border w-full">
                   <table className="min-w-full divide-y divide-slate-200 text-xs whitespace-nowrap">
-                    <thead className="bg-slate-50">
-                      <tr className="text-left font-bold text-slate-500 uppercase">
+                    <thead className="bg-app">
+                      <tr className="text-left font-bold text-fg-secondary uppercase">
                         <th className="px-4 py-3">Date / LR No</th><th className="px-4 py-3">Truck & Route</th><th className="px-4 py-3 text-right">Diesel (L)</th><th className="px-4 py-3 text-right">Bata (₹)</th><th className="px-4 py-3 text-right">Adv (₹)</th><th className="px-4 py-3 text-right">Trip Bal (₹)</th><th className="px-4 py-3 text-center">Status</th>
                       </tr>
                     </thead>
@@ -358,10 +358,10 @@ export function FinancialsModule() {
                         const tripBal = tripBata - tripAdv;
                         const isSettled = t.settlement_status === "SETTLED";
                         return (
-                          <tr key={t.trip_id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 font-semibold text-slate-900">{formatDate(t.trip_start_date)}<br/><span className="text-slate-500 font-normal">{t.trip_number}</span></td>
-                            <td className="px-4 py-3 text-slate-700 font-bold">{t.vehicles?.vehicle_number}<br/><span className="text-[10px] font-normal text-slate-500">{t.origin} ➔ {t.destination}</span></td>
-                            <td className="px-4 py-3 text-right font-bold text-slate-700">{formatDec(t.fuel_litres)}</td>
+                          <tr key={t.trip_id} className="hover:bg-app">
+                            <td className="px-4 py-3 font-semibold text-fg">{formatDate(t.trip_start_date)}<br/><span className="text-fg-secondary font-normal">{t.trip_number}</span></td>
+                            <td className="px-4 py-3 text-fg font-bold">{t.vehicles?.vehicle_number}<br/><span className="text-[10px] font-normal text-fg-secondary">{t.origin} ➔ {t.destination}</span></td>
+                            <td className="px-4 py-3 text-right font-bold text-fg">{formatDec(t.fuel_litres)}</td>
                             <td className="px-4 py-3 text-right font-bold text-emerald-600">{formatAmt(tripBata)}</td>
                             <td className="px-4 py-3 text-right font-bold text-rose-500">{formatAmt(tripAdv)}</td>
                             <td className="px-4 py-3 text-right font-black text-[#FF5A00]">{formatAmt(tripBal)}</td>
@@ -371,32 +371,32 @@ export function FinancialsModule() {
                           </tr>
                         );
                       })}
-                      {driverTrips.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-400">No trips logged in this period.</td></tr>}
+                      {driverTrips.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center text-fg-muted">No trips logged in this period.</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-sm font-black text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Direct Advances</h4>
-                <div className="overflow-x-auto rounded-xl border border-slate-200 w-full">
+                <h4 className="text-sm font-black text-fg uppercase border-b border-border pb-2 mb-4">Direct Advances</h4>
+                <div className="overflow-x-auto rounded-xl border border-border w-full">
                   <table className="min-w-full divide-y divide-slate-200 text-xs whitespace-nowrap">
-                    <thead className="bg-slate-50">
-                      <tr className="text-left font-bold text-slate-500 uppercase"><th className="px-4 py-3">Date</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Remarks</th><th className="px-4 py-3 text-right">Amount (₹)</th></tr>
+                    <thead className="bg-app">
+                      <tr className="text-left font-bold text-fg-secondary uppercase"><th className="px-4 py-3">Date</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Remarks</th><th className="px-4 py-3 text-right">Amount (₹)</th></tr>
                     </thead>
                     <tbody className="bg-surface divide-y divide-slate-100">
                       {driverAdvances.map(a => (
-                        <tr key={a.advance_id} className="hover:bg-slate-50">
-                          <td className="px-4 py-3 font-semibold text-slate-900">{formatDate(a.advance_date)}</td><td className="px-4 py-3 text-slate-700">{a.advance_type}</td><td className="px-4 py-3 text-slate-500">{a.reference_remarks || "-"}</td><td className="px-4 py-3 text-right font-bold text-rose-500">{formatAmt(a.amount_inr)}</td>
+                        <tr key={a.advance_id} className="hover:bg-app">
+                          <td className="px-4 py-3 font-semibold text-fg">{formatDate(a.advance_date)}</td><td className="px-4 py-3 text-fg">{a.advance_type}</td><td className="px-4 py-3 text-fg-secondary">{a.reference_remarks || "-"}</td><td className="px-4 py-3 text-right font-bold text-rose-500">{formatAmt(a.amount_inr)}</td>
                         </tr>
                       ))}
-                      {driverAdvances.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">No direct advances in this period.</td></tr>}
+                      {driverAdvances.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center text-fg-muted">No direct advances in this period.</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-200 flex justify-end gap-4">
+              <div className="pt-4 border-t border-border flex justify-end gap-4">
                 <button onClick={handleMarkSettled} disabled={isProcessing} className="px-8 py-2.5 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
                   {isProcessing ? "Processing..." : "✅ Mark All as Settled"}
                 </button>
@@ -407,11 +407,11 @@ export function FinancialsModule() {
       )}
 
       {finNav === "📈 Analytics & Margins" && (
-        <div className="bg-surface border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="md:col-span-2">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Analysis Window</label>
-              <select value={analysisWindow} onChange={e => setAnalysisWindow(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-slate-900">
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Analysis Window</label>
+              <select value={analysisWindow} onChange={e => setAnalysisWindow(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
                 <option value="Current Fiscal Month">Current Fiscal Month</option>
                 <option value="Lifetime Fleet">Lifetime Fleet</option>
                 <option value="Custom Dates">Custom Dates</option>
@@ -420,21 +420,21 @@ export function FinancialsModule() {
             {analysisWindow === "Custom Dates" && (
               <>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Date</label>
-                  <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-slate-900" />
+                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">From Date</label>
+                  <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Date</label>
-                  <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-slate-900" />
+                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">To Date</label>
+                  <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" />
                 </div>
               </>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-200 pb-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-border pb-6 mb-6">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Sort By Metric</label>
-              <select value={sortMetric} onChange={e => setSortMetric(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-slate-900">
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Sort By Metric</label>
+              <select value={sortMetric} onChange={e => setSortMetric(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg">
                 <option value="Total Net Retention (₹)">Total Net Retention (₹)</option>
                 <option value="Total Freight Revenue (₹)">Total Freight Revenue (₹)</option>
                 <option value="Total Trips">Total Trips</option>
@@ -448,8 +448,8 @@ export function FinancialsModule() {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Sort Order</label>
-              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-slate-900">
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Sort Order</label>
+              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg">
                 <option value="Top Performers (Descending)">Top Performers (Descending)</option>
                 <option value="Underperformers (Ascending)">Underperformers (Ascending)</option>
               </select>
@@ -463,14 +463,14 @@ export function FinancialsModule() {
                   key={tab}
                   onClick={() => setAnalyticsSubTab(tab)}
                   className={`pb-2 text-sm font-bold transition-all duration-200 border-b-2 ${
-                    analyticsSubTab === tab ? "border-[#FF5A00] text-[#FF5A00]" : "border-transparent text-slate-500 hover:text-slate-900"
+                    analyticsSubTab === tab ? "border-[#FF5A00] text-[#FF5A00]" : "border-transparent text-fg-secondary hover:text-fg"
                   }`}
                 >
                   {tab}
                 </button>
               ))}
               {analyticsSubTab === "⚖️ Variant Benchmarks" && (
-                <select value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)} className="ml-auto text-xs p-1.5 rounded border border-slate-300 font-bold text-slate-700 bg-surface outline-none">
+                <select value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)} className="ml-auto text-xs p-1.5 rounded border border-slate-300 font-bold text-fg bg-surface outline-none">
                   <option value="All Variants">All Variants</option>
                   {variantTypes.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
@@ -484,9 +484,9 @@ export function FinancialsModule() {
 
           {analyticsSubTab !== "👨‍✈️ Driver Scorecard" && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
-              <div className="p-3 sm:p-4 rounded-xl border border-slate-200 overflow-hidden">
-                <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase mb-1 truncate">Fleet Revenue</p>
-                <p className="text-sm sm:text-lg md:text-xl font-black text-slate-900 truncate">₹{formatAmt(aggFreight)}</p>
+              <div className="p-3 sm:p-4 rounded-xl border border-border overflow-hidden">
+                <p className="text-[9px] sm:text-[10px] font-bold text-fg-secondary uppercase mb-1 truncate">Fleet Revenue</p>
+                <p className="text-sm sm:text-lg md:text-xl font-black text-fg truncate">₹{formatAmt(aggFreight)}</p>
               </div>
               <div className="p-3 sm:p-4 rounded-xl border border-rose-200 bg-rose-50/30 overflow-hidden">
                 <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase mb-1 truncate">Diesel Cost</p>
@@ -503,7 +503,7 @@ export function FinancialsModule() {
             </div>
           )}
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200 relative min-h-[300px] w-full">
+          <div className="overflow-x-auto rounded-xl border border-border relative min-h-[300px] w-full">
             {isAnalyticsLoading && (
               <div className="absolute inset-0 bg-surface/60 backdrop-blur-sm z-10 flex items-center justify-center">
                 <span className="font-bold text-[#FF5A00] animate-pulse">Aggregating Metrics...</span>
@@ -512,8 +512,8 @@ export function FinancialsModule() {
             
             {(analyticsSubTab === "📊 Fleet Retention" || analyticsSubTab === "⚖️ Variant Benchmarks") && (
               <table className="min-w-full divide-y divide-slate-200 text-xs text-right whitespace-nowrap">
-                <thead className="bg-slate-50 sticky top-0">
-                  <tr className="font-bold text-slate-500 uppercase">
+                <thead className="bg-app sticky top-0">
+                  <tr className="font-bold text-fg-secondary uppercase">
                     <th className="px-4 py-3 text-left">Truck No</th>
                     <th className="px-4 py-3 text-left">Type</th>
                     <th className="px-4 py-3">Trips</th>
@@ -530,23 +530,23 @@ export function FinancialsModule() {
                 </thead>
                 <tbody className="bg-surface divide-y divide-slate-100">
                   {sortedFleetData.map((row: any) => (
-                    <tr key={row.vehicle_number} className="hover:bg-slate-50">
-                      <td className="px-4 py-2 text-left font-bold text-slate-900">{row.vehicle_number}</td>
-                      <td className="px-4 py-2 text-left text-slate-500">{row.truck_type}</td>
-                      <td className="px-4 py-2 font-semibold text-slate-700">{row.total_trips}</td>
-                      <td className="px-4 py-2 text-slate-600">{formatDec(row.total_tons)}</td>
+                    <tr key={row.vehicle_number} className="hover:bg-app">
+                      <td className="px-4 py-2 text-left font-bold text-fg">{row.vehicle_number}</td>
+                      <td className="px-4 py-2 text-left text-fg-secondary">{row.truck_type}</td>
+                      <td className="px-4 py-2 font-semibold text-fg">{row.total_trips}</td>
+                      <td className="px-4 py-2 text-fg-secondary">{formatDec(row.total_tons)}</td>
                       <td className="px-4 py-2 text-rose-500 font-bold">{row.incomplete_trips}</td>
-                      <td className="px-4 py-2 font-bold text-slate-800">{formatAmt(row.total_freight)}</td>
-                      <td className="px-4 py-2 text-slate-600">{formatDec(row.total_diesel_litres)}</td>
+                      <td className="px-4 py-2 font-bold text-fg">{formatAmt(row.total_freight)}</td>
+                      <td className="px-4 py-2 text-fg-secondary">{formatDec(row.total_diesel_litres)}</td>
                       <td className="px-4 py-2 text-rose-600">{formatAmt(row.total_diesel_cost)}</td>
                       <td className="px-4 py-2 font-black text-[#FF5A00]">{formatAmt(row.net_retention)}</td>
                       <td className="px-4 py-2 font-bold text-emerald-600">{formatDec(row.retention_pct)}%</td>
-                      <td className="px-4 py-2 text-slate-600">{formatDec(row.diesel_pct)}%</td>
+                      <td className="px-4 py-2 text-fg-secondary">{formatDec(row.diesel_pct)}%</td>
                       <td className="px-4 py-2 font-bold text-amber-600">{formatDec(row.kmpl)}</td>
                     </tr>
                   ))}
                   {sortedFleetData.length === 0 && !isAnalyticsLoading && (
-                    <tr><td colSpan={12} className="px-4 py-8 text-center text-slate-400">No fleet data found for this period.</td></tr>
+                    <tr><td colSpan={12} className="px-4 py-8 text-center text-fg-muted">No fleet data found for this period.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -554,8 +554,8 @@ export function FinancialsModule() {
 
             {analyticsSubTab === "👨‍✈️ Driver Scorecard" && (
               <table className="min-w-full divide-y divide-slate-200 text-xs text-right whitespace-nowrap">
-                <thead className="bg-slate-50 sticky top-0">
-                  <tr className="font-bold text-slate-500 uppercase">
+                <thead className="bg-app sticky top-0">
+                  <tr className="font-bold text-fg-secondary uppercase">
                     <th className="px-6 py-3 text-left">Driver Code</th>
                     <th className="px-6 py-3 text-left">Full Name</th>
                     <th className="px-6 py-3">Total Trips</th>
@@ -566,17 +566,17 @@ export function FinancialsModule() {
                 </thead>
                 <tbody className="bg-surface divide-y divide-slate-100">
                   {driverScorecard.map((row: any) => (
-                    <tr key={row.driver_code} className="hover:bg-slate-50">
-                      <td className="px-6 py-3 text-left font-bold text-slate-900">{row.driver_code}</td>
-                      <td className="px-6 py-3 text-left text-slate-700 font-semibold">{row.full_name}</td>
+                    <tr key={row.driver_code} className="hover:bg-app">
+                      <td className="px-6 py-3 text-left font-bold text-fg">{row.driver_code}</td>
+                      <td className="px-6 py-3 text-left text-fg font-semibold">{row.full_name}</td>
                       <td className="px-6 py-3 font-bold text-[#FF5A00]">{row.trips}</td>
-                      <td className="px-6 py-3 text-slate-600">{formatDec(row.total_km)}</td>
+                      <td className="px-6 py-3 text-fg-secondary">{formatDec(row.total_km)}</td>
                       <td className="px-6 py-3 font-bold text-amber-600">{formatDec(row.kmpl)}</td>
                       <td className="px-6 py-3 font-black text-emerald-600">₹{formatAmt(row.revenue)}</td>
                     </tr>
                   ))}
                   {driverScorecard.length === 0 && !isAnalyticsLoading && (
-                    <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">No driver activity logged in this period.</td></tr>
+                    <tr><td colSpan={6} className="px-6 py-8 text-center text-fg-muted">No driver activity logged in this period.</td></tr>
                   )}
                 </tbody>
               </table>

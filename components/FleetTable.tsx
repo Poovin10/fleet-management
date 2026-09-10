@@ -23,14 +23,14 @@ export function FleetTable() {
     fetchVehicles();
   }, [supabase]);
 
-  if (loading) return <div className="p-4 text-sm text-slate-500">Loading fleet assets...</div>;
+  if (loading) return <div className="p-4 text-sm text-fg-secondary">Loading fleet assets...</div>;
 
   return (
-    <div className="bg-surface border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-      <h3 className="text-lg font-bold text-slate-900 border-b pb-2">Active Fleet Assets</h3>
+    <div className="bg-surface border border-border rounded-xl p-6 shadow-sm space-y-4">
+      <h3 className="text-lg font-bold text-fg border-b pb-2">Active Fleet Assets</h3>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead className="bg-slate-100 text-xs uppercase text-slate-700 font-bold">
+        <table className="w-full text-left text-sm text-fg-secondary">
+          <thead className="bg-surface-raised text-xs uppercase text-fg font-bold">
             <tr>
               <th className="p-3">Vehicle No</th>
               <th className="p-3">Variant / Type</th>
@@ -41,8 +41,8 @@ export function FleetTable() {
           </thead>
           <tbody>
             {vehicles.map((v) => (
-              <tr key={v.vehicle_id || v.vehicle_number} className="border-b hover:bg-slate-50">
-                <td className="p-3 font-bold text-slate-900">{v.vehicle_number}</td>
+              <tr key={v.vehicle_id || v.vehicle_number} className="border-b hover:bg-app">
+                <td className="p-3 font-bold text-fg">{v.vehicle_number}</td>
                 <td className="p-3">{v.truck_type}</td>
                 <td className="p-3">{v.carrying_capacity_tons} MT</td>
                 <td className="p-3">
@@ -50,7 +50,7 @@ export function FleetTable() {
                     {v.current_status || "AVAILABLE_FOR_LOAD"}
                   </span>
                 </td>
-                <td className="p-3 text-slate-500">{v.status_remarks || "-"}</td>
+                <td className="p-3 text-fg-secondary">{v.status_remarks || "-"}</td>
               </tr>
             ))}
           </tbody>

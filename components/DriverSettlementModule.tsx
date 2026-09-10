@@ -164,44 +164,44 @@ export function DriverSettlementModule() {
       />
 
       {/* SECTION 1: Route Rate Slab Management */}
-      <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-        <h3 className="text-base font-black uppercase text-slate-900 border-b pb-2">Route Rate Slabs Master</h3>
+      <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-4">
+        <h3 className="text-base font-black uppercase text-fg border-b pb-2">Route Rate Slabs Master</h3>
         
         <form onSubmit={handleAddRateSlab} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Origin</label>
+            <label className="block text-xs font-semibold text-fg-secondary uppercase mb-1">Origin</label>
             <input 
               type="text" 
               value={source} 
               onChange={(e) => setSource(e.target.value)} 
-              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase bg-surface text-slate-900"
+              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase bg-surface text-fg"
               required 
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Destination</label>
+            <label className="block text-xs font-semibold text-fg-secondary uppercase mb-1">Destination</label>
             <input 
               type="text" 
               placeholder="e.g. NAMAKKAL"
               value={destination} 
               onChange={(e) => setDestination(e.target.value)} 
-              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase bg-surface text-slate-900"
+              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase bg-surface text-fg"
               required 
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Cargo</label>
+            <label className="block text-xs font-semibold text-fg-secondary uppercase mb-1">Cargo</label>
             <select 
               value={cargoType} 
               onChange={(e) => setCargoType(e.target.value)} 
-              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-surface text-slate-900 font-bold"
+              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-surface text-fg font-bold"
             >
               <option value="BULK">BULK</option>
               <option value="BAG">BAG</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Rate / MT (₹)</label>
+            <label className="block text-xs font-semibold text-fg-secondary uppercase mb-1">Rate / MT (₹)</label>
             <input 
               type="number" 
               step="0.01"
@@ -209,7 +209,7 @@ export function DriverSettlementModule() {
               placeholder="0.00"
               value={ratePerMt} 
               onChange={(e) => setRatePerMt(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-surface text-slate-900 font-bold"
+              className="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-surface text-fg font-bold"
               required 
             />
           </div>
@@ -220,8 +220,8 @@ export function DriverSettlementModule() {
 
         <div className="overflow-x-auto pt-2 max-h-[300px] overflow-y-auto">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="bg-slate-50 sticky top-0">
-              <tr className="text-slate-700 uppercase">
+            <thead className="bg-app sticky top-0">
+              <tr className="text-fg uppercase">
                 <th className="p-2.5 border-b">Route Origin</th>
                 <th className="p-2.5 border-b">Destination</th>
                 <th className="p-2.5 border-b">Cargo Type</th>
@@ -230,7 +230,7 @@ export function DriverSettlementModule() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rates.map((r, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 border-b">
+                <tr key={idx} className="hover:bg-app border-b">
                   <td className="p-2.5 font-medium">{r.origin}</td>
                   <td className="p-2.5 font-medium">{r.destination_name || r.destination}</td>
                   <td className="p-2.5">{r.cargo_type || r.cargo_category || 'BULK'}</td>
@@ -243,27 +243,27 @@ export function DriverSettlementModule() {
       </div>
 
       {/* SECTION 2: Fiscal Month Driver Settlement Ledger with Halt Bata & Advances */}
-      <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+      <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-3">
           <div>
-            <h3 className="text-base font-black uppercase text-slate-900">Driver Current Fiscal Month Ledger</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Includes Earned Bata, Halt Bata expenses, and cash advances for the selected month.</p>
+            <h3 className="text-base font-black uppercase text-fg">Driver Current Fiscal Month Ledger</h3>
+            <p className="text-xs text-fg-secondary mt-0.5">Includes Earned Bata, Halt Bata expenses, and cash advances for the selected month.</p>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-500 uppercase">Fiscal Month:</label>
+            <label className="text-xs font-bold text-fg-secondary uppercase">Fiscal Month:</label>
             <input 
               type="month" 
               value={selectedMonth} 
               onChange={e => setSelectedMonth(e.target.value)} 
-              className="text-sm p-2 rounded-lg border border-slate-300 font-bold bg-surface text-slate-900 outline-none focus:ring-2 focus:ring-[#FF5A00]" 
+              className="text-sm p-2 rounded-lg border border-slate-300 font-bold bg-surface text-fg outline-none focus:ring-2 focus:ring-[#FF5A00]" 
             />
           </div>
         </div>
         
         <div className="overflow-x-auto max-h-[450px] overflow-y-auto">
           <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
-            <thead className="bg-slate-50 sticky top-0">
-              <tr className="text-slate-700 uppercase">
+            <thead className="bg-app sticky top-0">
+              <tr className="text-fg uppercase">
                 <th className="p-2.5 border-b">Driver Name</th>
                 <th className="p-2.5 border-b text-center">Trips</th>
                 <th className="p-2.5 border-b text-right">Earned Bata (₹)</th>
@@ -276,9 +276,9 @@ export function DriverSettlementModule() {
             <tbody className="divide-y divide-slate-100">
               {settlements.map((s) => {
                 return (
-                  <tr key={s.driver_id} className="hover:bg-slate-50 border-b">
-                    <td className="p-2.5 font-bold text-slate-900">{s.full_name} <span className="text-[10px] text-slate-400">({s.driver_code})</span></td>
-                    <td className="p-2.5 text-center font-semibold text-slate-700">{s.tripCount}</td>
+                  <tr key={s.driver_id} className="hover:bg-app border-b">
+                    <td className="p-2.5 font-bold text-fg">{s.full_name} <span className="text-[10px] text-fg-muted">({s.driver_code})</span></td>
+                    <td className="p-2.5 text-center font-semibold text-fg">{s.tripCount}</td>
                     <td className="p-2.5 text-right text-emerald-700 font-bold">
                       ₹{s.earnedBata.toLocaleString('en-IN', {minimumFractionDigits: 2})}
                     </td>
@@ -288,7 +288,7 @@ export function DriverSettlementModule() {
                     <td className="p-2.5 text-right text-rose-600 font-bold">
                       -₹{s.totalDeductions.toLocaleString('en-IN', {minimumFractionDigits: 2})}
                     </td>
-                    <td className={`p-2.5 text-right font-black ${s.netPayable >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
+                    <td className={`p-2.5 text-right font-black ${s.netPayable >= 0 ? 'text-fg' : 'text-rose-600'}`}>
                       ₹{s.netPayable.toLocaleString('en-IN', {minimumFractionDigits: 2})}
                     </td>
                     <td className="p-2.5 text-center">
@@ -301,7 +301,7 @@ export function DriverSettlementModule() {
               })}
               {settlements.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-slate-400">No driver settlement records found for this month.</td>
+                  <td colSpan={7} className="p-6 text-center text-fg-muted">No driver settlement records found for this month.</td>
                 </tr>
               )}
             </tbody>

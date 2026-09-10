@@ -265,7 +265,7 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <div className="bg-surface border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
+    <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
       
       <AlertModal 
         isOpen={alertConfig.isOpen}
@@ -276,10 +276,10 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
       />
 
       {/* Header & Search */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-border pb-6">
         <div>
-          <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Modify / Correct Trips</h3>
-          <p className="text-xs text-slate-500 mt-1">Search active or completed trips to override parameters.</p>
+          <h3 className="text-base font-black text-fg uppercase tracking-tight">Modify / Correct Trips</h3>
+          <p className="text-xs text-fg-secondary mt-1">Search active or completed trips to override parameters.</p>
         </div>
         <div className="flex w-full md:w-auto gap-3">
           <input 
@@ -292,7 +292,7 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
           <select 
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-36 text-sm p-2.5 rounded-lg border border-slate-300 bg-slate-50 outline-none focus:ring-2 focus:ring-[#FF5A00]"
+            className="w-36 text-sm p-2.5 rounded-lg border border-slate-300 bg-app outline-none focus:ring-2 focus:ring-[#FF5A00]"
           >
             <option value="All Statuses">All Statuses</option>
             <option value="IN_TRANSIT">In Transit</option>
@@ -311,11 +311,11 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
       {/* Target Trip Selector */}
       {matchedTrips.length > 0 && (
         <div className="mb-8">
-          <label className="block text-xs font-bold text-slate-700 uppercase mb-2 text-[#FF5A00]">Target Trip ({matchedTrips.length} found)</label>
+          <label className="block text-xs font-bold text-fg uppercase mb-2 text-[#FF5A00]">Target Trip ({matchedTrips.length} found)</label>
           <select 
             value={selectedTripId}
             onChange={(e) => setSelectedTripId(e.target.value)}
-            className="w-full text-sm p-3 rounded-xl border-2 border-orange-100 bg-orange-50/50 focus:bg-surface outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold text-slate-900 cursor-pointer"
+            className="w-full text-sm p-3 rounded-xl border-2 border-orange-100 bg-orange-50/50 focus:bg-surface outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold text-fg cursor-pointer"
           >
             <option value="">-- SELECT TRIP TO MODIFY --</option>
             {matchedTrips.map(t => (
@@ -332,29 +332,29 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
           
           <div className="flex gap-2 items-center mb-4">
-            <span className="px-3 py-1 bg-slate-100 text-slate-600 font-bold text-[10px] uppercase rounded-md border border-slate-200">
+            <span className="px-3 py-1 bg-surface-raised text-fg-secondary font-bold text-[10px] uppercase rounded-md border border-border">
               Driver: {activeTrip.drivers?.full_name}
             </span>
-            <span className="px-3 py-1 bg-slate-100 text-slate-600 font-bold text-[10px] uppercase rounded-md border border-slate-200">
+            <span className="px-3 py-1 bg-surface-raised text-fg-secondary font-bold text-[10px] uppercase rounded-md border border-border">
               Truck: {activeTrip.vehicles?.vehicle_number}
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start Date</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Start Date</label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Closing Date</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Closing Date</label>
               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">LR No</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">LR No</label>
               <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-[#FF5A00] font-bold" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Route Slab</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Route Slab</label>
               <select value={routeSlab} onChange={e => setRouteSlab(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]">
                 <option value="-- MANUAL / SPOT ROUTE --">-- MANUAL / SPOT ROUTE --</option>
                 <option value={`${origin} ➔ ${destination}`}>{origin} ➔ {destination} (Current)</option>
@@ -364,82 +364,82 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Origin</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Origin</label>
               <input type="text" value={origin} onChange={e => setOrigin(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Destination</label>
               <input type="text" value={destination} onChange={e => setDestination(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Spot Rate/MT (₹)</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Spot Rate/MT (₹)</label>
               <input type="number" step="0.01" min="0" value={spotRate} onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Standard KM</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Standard KM</label>
               <input type="number" min="0" value={stdKm} onChange={e => setStdKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
           </div>
 
-          <hr className="border-slate-100" />
+          <hr className="border-border" />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start KM</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Start KM</label>
               <input type="number" min="0" value={startKm} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">End KM</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">End KM</label>
               <input type="number" min="0" value={endKm} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Total Dist (KM)</label>
-              <input type="text" value={calcTotalKm().toFixed(2)} disabled className="w-full text-sm p-2 rounded border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed" />
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Total Dist (KM)</label>
+              <input type="text" value={calcTotalKm().toFixed(2)} disabled className="w-full text-sm p-2 rounded border border-border bg-app text-fg-secondary cursor-not-allowed" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Loaded MT</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Loaded MT</label>
               <input type="number" step="0.01" min="0.01" value={loadedMt} onChange={e => setLoadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00] font-bold" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Freight (₹)</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Freight (₹)</label>
               <input type="number" step="0.01" min="0" value={freight} onChange={e => setFreight(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00] text-[#FF5A00] font-bold" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bata (₹)</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Bata (₹)</label>
               <input type="number" min="0" value={bata} onChange={e => setBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Advance (₹)</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Advance (₹)</label>
               <input type="number" min="0" value={advance} onChange={e => setAdvance(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Diesel (L)</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Diesel (L)</label>
               <input type="number" step="0.1" min="0" value={diesel} onChange={e => setDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">POD No</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">POD No</label>
               <input type="text" value={podNo} onChange={e => setPodNo(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-slate-300 uppercase outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Unloaded MT</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Unloaded MT</label>
               <input type="number" step="0.01" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Halt Bata (₹)</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Halt Bata (₹)</label>
               <input type="number" min="0" value={haltBata} onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Claims (₹)</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Claims (₹)</label>
               <input type="number" min="0" value={claims} onChange={e => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00]" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Trip Status</label>
+              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Trip Status</label>
               <select value={tripStatus} onChange={e => setTripStatus(e.target.value)} className="w-full text-sm p-2 rounded border border-slate-300 outline-none focus:border-[#FF5A00] font-bold text-[#FF5A00]">
                 <option value="IN_TRANSIT">IN TRANSIT</option>
                 <option value="COMPLETED">COMPLETED</option>
@@ -447,7 +447,7 @@ export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-slate-200 flex flex-wrap justify-between items-center gap-4">
+          <div className="pt-6 border-t border-border flex flex-wrap justify-between items-center gap-4">
             <div className="flex gap-3">
               {activeTrip.trip_status === 'COMPLETED' && (
                 <button type="button" onClick={handleReopenTrip} disabled={isProcessing} className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs rounded-lg transition-colors border border-amber-200">

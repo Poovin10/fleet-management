@@ -35,19 +35,19 @@ export function ConfirmModal({
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
               )}
             </div>
-            <h3 className="text-xl font-black text-slate-900">{title}</h3>
+            <h3 className="text-xl font-black text-fg">{title}</h3>
           </div>
-          <p className="text-sm text-slate-500 font-medium leading-relaxed">
+          <p className="text-sm text-fg-secondary font-medium leading-relaxed">
             {message}
           </p>
         </div>
 
         {/* Modal Footer (Actions) */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+        <div className="p-4 bg-app border-t border-border flex justify-end gap-3">
           <button 
             onClick={onCancel}
             disabled={isProcessing}
-            className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200 bg-surface border border-slate-200 rounded-xl transition-colors disabled:opacity-50"
+            className="px-5 py-2.5 text-sm font-bold text-fg-secondary hover:text-fg hover:bg-surface-raised bg-surface border border-border rounded-xl transition-colors disabled:opacity-50"
           >
             Cancel
           </button>

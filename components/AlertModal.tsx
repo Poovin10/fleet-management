@@ -17,7 +17,7 @@ export function AlertModal({ isOpen, title, message, type = 'info', onClose }: A
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
+      <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-border">
         
         <div className="p-6 sm:p-8 text-center">
           {/* Dynamic Icon */}
@@ -37,11 +37,11 @@ export function AlertModal({ isOpen, title, message, type = 'info', onClose }: A
             )}
           </div>
           
-          <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">{title}</h3>
-          <p className="text-sm font-semibold text-slate-500 leading-relaxed">{message}</p>
+          <h3 className="text-xl font-black text-fg mb-2 tracking-tight">{title}</h3>
+          <p className="text-sm font-semibold text-fg-secondary leading-relaxed">{message}</p>
         </div>
         
-        <div className="p-4 bg-slate-50 border-t border-slate-100">
+        <div className="p-4 bg-app border-t border-border">
           <button
             onClick={onClose}
             className={`w-full py-4 text-white font-black text-sm rounded-2xl transition-all shadow-md active:scale-95 ${

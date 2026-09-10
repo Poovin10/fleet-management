@@ -226,10 +226,10 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
       />
 
       {/* LEFT PANEL: Settle POD Form */}
-      <div className="lg:col-span-7 bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <div className="border-b border-slate-200 pb-4 mb-6">
-          <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Record POD & Settle Trip</h3>
-          <p className="text-xs text-slate-500 mt-1">Finalize transit records, calculate shortages, and record closing top-ups.</p>
+      <div className="lg:col-span-7 bg-surface border border-border rounded-2xl p-6 shadow-sm">
+        <div className="border-b border-border pb-4 mb-6">
+          <h3 className="text-base font-black text-fg uppercase tracking-tight">Record POD & Settle Trip</h3>
+          <p className="text-xs text-fg-secondary mt-1">Finalize transit records, calculate shortages, and record closing top-ups.</p>
         </div>
 
         {activeTrips.length === 0 && !isLoading ? (
@@ -241,11 +241,11 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
             
             {/* LR Selection */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Search & Select Active LR *</label>
+              <label className="block text-xs font-bold text-fg uppercase mb-1">Search & Select Active LR *</label>
               <select
                 value={selectedLr}
                 onChange={(e) => setSelectedLr(e.target.value)}
-                className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-surface font-bold text-slate-900 outline-none focus:ring-2 focus:ring-[#FF5A00]"
+                className="w-full text-sm p-3 rounded-xl border border-slate-300 bg-surface font-bold text-fg outline-none focus:ring-2 focus:ring-[#FF5A00]"
                 required
               >
                 <option value="">-- SELECT LR TO CLOSE --</option>
@@ -260,7 +260,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
             {currentTrip && (
               <>
                 {/* Trip Quick Insight Banner */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between text-xs text-slate-600">
+                <div className="p-3 bg-app border border-border rounded-xl flex justify-between text-xs text-fg-secondary">
                   <span><strong>Driver:</strong> {currentTrip.drivers?.full_name || "Unassigned"}</span>
                   <span><strong>Route:</strong> {currentTrip.origin} ➔ {currentTrip.destination}</span>
                   <span><strong>Dispatched:</strong> {currentTrip.loaded_weight_mt} MT</span>
@@ -269,7 +269,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                 {/* ROW 1: POD No, Closing Date, Unloaded MT */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">POD No *</label>
+                    <label className="block text-xs font-bold text-fg uppercase mb-1">POD No *</label>
                     <input
                       type="text"
                       value={podNo}
@@ -280,7 +280,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Closing Date *</label>
+                    <label className="block text-xs font-bold text-fg uppercase mb-1">Closing Date *</label>
                     <input
                       type="date"
                       value={closingDate}
@@ -290,7 +290,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Unloaded MT</label>
+                    <label className="block text-xs font-bold text-fg uppercase mb-1">Unloaded MT</label>
                     <input
                       type="number"
                       step="0.01"
@@ -305,7 +305,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                 {/* ROW 2: Closing KM, Halt Bata, Claims */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Closing KM *</label>
+                    <label className="block text-xs font-bold text-fg uppercase mb-1">Closing KM *</label>
                     <input
                       type="number"
                       value={closingKm}
@@ -316,7 +316,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Halt Bata (₹)</label>
+                    <label className="block text-xs font-bold text-fg uppercase mb-1">Halt Bata (₹)</label>
                     <input
                       type="number"
                       value={haltBata}
@@ -326,7 +326,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Claims / Enroute (₹)</label>
+                    <label className="block text-xs font-bold text-fg uppercase mb-1">Claims / Enroute (₹)</label>
                     <input
                       type="number"
                       value={claims}
@@ -338,9 +338,9 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                 </div>
 
                 {/* ROW 3: Closing Diesel & Tank Full */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4 items-center">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-border pt-4 items-center">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Closing Diesel Top-up (L)</label>
+                    <label className="block text-xs font-bold text-fg uppercase mb-1">Closing Diesel Top-up (L)</label>
                     <input
                       type="number"
                       step="0.1"
@@ -349,7 +349,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                       placeholder="0.0 Litres"
                       className="w-full text-sm p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-[#FF5A00]"
                     />
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">Valued at current office rate: ₹{dieselRate}/L</span>
+                    <span className="text-[10px] text-fg-muted mt-0.5 block">Valued at current office rate: ₹{dieselRate}/L</span>
                   </div>
                   <div className="pt-5">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -359,13 +359,13 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                         onChange={(e) => setIsTankFull(e.target.checked)}
                         className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-slate-300"
                       />
-                      <span className="text-xs font-bold text-slate-700">⛽ Mark Tank Full</span>
+                      <span className="text-xs font-bold text-fg">⛽ Mark Tank Full</span>
                     </label>
                   </div>
                 </div>
 
                 {/* Submit Action */}
-                <div className="pt-4 border-t border-slate-200 flex justify-end">
+                <div className="pt-4 border-t border-border flex justify-end">
                   <button
                     type="submit"
                     disabled={isSubmitting}
@@ -406,16 +406,16 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                     onClick={() => setSelectedLr(t.trip_number)}
                     className="cursor-pointer hover:bg-rose-100/60 transition-colors"
                   >
-                    <td className="py-2.5 font-bold text-slate-900">{t.trip_number}</td>
-                    <td className="py-2.5 text-slate-600">{formatDate(t.trip_start_date)}</td>
-                    <td className="py-2.5 text-slate-700">{t.vehicles?.vehicle_number || "-"}</td>
+                    <td className="py-2.5 font-bold text-fg">{t.trip_number}</td>
+                    <td className="py-2.5 text-fg-secondary">{formatDate(t.trip_start_date)}</td>
+                    <td className="py-2.5 text-fg">{t.vehicles?.vehicle_number || "-"}</td>
                     <td className="py-2.5 text-right font-black text-rose-600">{days}d</td>
                   </tr>
                 );
               })}
               {activeTrips.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-slate-400 text-xs">
+                  <td colSpan={4} className="py-6 text-center text-fg-muted text-xs">
                     No pending PODs found.
                   </td>
                 </tr>

@@ -295,23 +295,23 @@ export default function SaaS_ERPDashboard() {
 
         <div className="relative bg-surface/95 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md p-6 sm:p-10 border border-white/20">
           <div className="text-center mb-8 sm:mb-10">
-            <div className="mx-auto mb-6 w-20 h-20 sm:w-24 sm:h-24 shadow-md rounded-2xl overflow-hidden border border-slate-200">
+            <div className="mx-auto mb-6 w-20 h-20 sm:w-24 sm:h-24 shadow-md rounded-2xl overflow-hidden border border-border">
                <KssLogo className="w-full h-full" />
             </div>
             <div className="inline-block bg-slate-900 px-4 py-2 rounded-xl shadow-sm mb-3">
               <h1 className="text-2xl sm:text-3xl font-black text-[#FF5A00] tracking-tight leading-none">KSS Roadways</h1>
             </div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Database Secure Login</p>
+            <p className="text-xs font-bold text-fg-secondary uppercase tracking-widest mt-1">Database Secure Login</p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Username</label>
-              <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-surface text-slate-900" required />
+              <label className="block text-[11px] font-bold text-fg-secondary uppercase mb-2 ml-1">Username</label>
+              <input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-border outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-app transition-all hover:bg-surface text-fg" required />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-2 ml-1">Password</label>
-              <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-slate-200 outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-slate-50 transition-all hover:bg-surface text-slate-900" required />
+              <label className="block text-[11px] font-bold text-fg-secondary uppercase mb-2 ml-1">Password</label>
+              <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-border outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-app transition-all hover:bg-surface text-fg" required />
             </div>
             {loginError && <p className="text-sm font-bold text-rose-500 text-center bg-rose-50 p-3 rounded-xl">{loginError}</p>}
             
@@ -319,7 +319,7 @@ export default function SaaS_ERPDashboard() {
               <button type="submit" disabled={isLoggingIn} className="w-full py-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-lg rounded-2xl transition-all shadow-[0_8px_30px_rgba(255,90,0,0.3)] active:scale-95 disabled:bg-slate-300">
                 {isLoggingIn ? "Verifying..." : "Log In"}
               </button>
-              <button type="button" onClick={() => setShowLoginScreen(false)} className="w-full py-4 text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors mt-2">
+              <button type="button" onClick={() => setShowLoginScreen(false)} className="w-full py-4 text-fg-secondary hover:text-fg font-bold text-sm transition-colors mt-2">
                 &larr; Back to Public Dashboard
               </button>
             </div>
@@ -333,7 +333,7 @@ export default function SaaS_ERPDashboard() {
   const navItems = userRole === "ADMIN" ? allNavItems : ["Dashboard", "Financials", "P&L Statement"];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] text-fg font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
       <ConfirmModal 
         isOpen={isLogoutModalOpen}
         title="Secure Sign Out"
@@ -344,29 +344,29 @@ export default function SaaS_ERPDashboard() {
         onCancel={() => setIsLogoutModalOpen(false)}
       />
 
-      <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-sm border border-slate-100 overflow-hidden flex-shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-sm border border-border overflow-hidden flex-shrink-0">
                <KssLogo className="w-full h-full" />
             </div>
             <div className="bg-slate-900 px-3 py-1.5 rounded-lg shadow-sm truncate">
               <h1 className="text-lg sm:text-xl font-black tracking-tight text-[#FF5A00] hidden sm:block leading-none">KSS Roadways Pvt Ltd</h1>
               <h1 className="text-sm sm:text-base font-black tracking-tight text-[#FF5A00] sm:hidden leading-none truncate">KSS Roadways</h1>
             </div>
-            <span className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-widest whitespace-nowrap">
+            <span className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-black bg-surface-raised text-fg-secondary border border-border uppercase tracking-widest whitespace-nowrap">
               Cochin
             </span>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <span className="text-xs sm:text-sm font-bold text-slate-500 hidden md:block">Fleet: <span className="text-slate-900">{liveVehicles.length}</span></span>
-            <div className="h-5 w-px bg-slate-200 hidden md:block"></div>
+            <span className="text-xs sm:text-sm font-bold text-fg-secondary hidden md:block">Fleet: <span className="text-fg">{liveVehicles.length}</span></span>
+            <div className="h-5 w-px bg-surface-raised hidden md:block"></div>
             
             {isAuthenticated ? (
               <button 
                 onClick={() => setIsLogoutModalOpen(true)}
-                className="flex items-center gap-2 text-xs sm:text-sm font-black text-slate-600 hover:text-rose-700 hover:bg-rose-50 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all border border-slate-200 hover:border-rose-200 shadow-sm"
+                className="flex items-center gap-2 text-xs sm:text-sm font-black text-fg-secondary hover:text-rose-700 hover:bg-rose-50 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all border border-border hover:border-rose-200 shadow-sm"
               >
                 <span>Sign out</span>
               </button>
@@ -383,13 +383,13 @@ export default function SaaS_ERPDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-        <nav className="flex flex-wrap gap-1.5 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 shadow-sm">
+        <nav className="flex flex-wrap gap-1.5 bg-surface-raised/90 p-1.5 rounded-2xl border border-border/80 shadow-sm">
           {navItems.map((item) => (
             <button
               key={item}
               onClick={() => setActiveTab(item)}
               className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 ease-out whitespace-nowrap ${
-                activeTab === item ? "bg-surface text-[#FF5A00] shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
+                activeTab === item ? "bg-surface text-[#FF5A00] shadow-sm ring-1 ring-slate-900/5" : "text-fg-secondary hover:text-fg hover:bg-surface-raised/50"
               }`}
             >
               {item}
@@ -439,8 +439,8 @@ export default function SaaS_ERPDashboard() {
                             const isExpired = new Date(d.date) < new Date();
                             return (
                               <tr key={idx}>
-                                <td className="py-2 pr-4 font-bold text-slate-900">{d.name}</td>
-                                <td className="py-2 pr-4 font-semibold text-slate-700">{d.doc}</td>
+                                <td className="py-2 pr-4 font-bold text-fg">{d.name}</td>
+                                <td className="py-2 pr-4 font-semibold text-fg">{d.doc}</td>
                                 <td className={`py-2 font-black ${isExpired ? 'text-rose-600' : 'text-amber-600'}`}>
                                   {d.date} {isExpired ? '(EXPIRED)' : '(Expiring Soon)'}
                                 </td>
@@ -453,19 +453,19 @@ export default function SaaS_ERPDashboard() {
                   </div>
                 )}
 
-                <div className="bg-surface border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
+                <div className="bg-surface border border-border rounded-2xl shadow-sm p-4 sm:p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">Operations Summary</h3>
+                    <h3 className="text-xs sm:text-sm font-black text-fg uppercase tracking-wide">Operations Summary</h3>
                     <span className="px-3 py-1 bg-[#FF5A00]/10 text-[#FF5A00] text-[10px] sm:text-xs font-bold rounded-full border border-[#FF5A00]/20 whitespace-nowrap">
                       {currentMonthText.toUpperCase()}
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                    <div className="p-3 sm:p-4 rounded-xl bg-app border border-border flex flex-col justify-between">
                       <div>
-                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Trips</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 mt-1 sm:mt-2">{monthTripsCount}</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-fg-secondary uppercase tracking-wider">Total Trips</p>
+                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-fg mt-1 sm:mt-2">{monthTripsCount}</p>
                       </div>
                     </div>
                     
@@ -487,7 +487,7 @@ export default function SaaS_ERPDashboard() {
                     
                     <div className="p-3 sm:p-4 rounded-xl bg-slate-900 text-white shadow-md flex flex-col justify-between">
                       <div>
-                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Retention</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-fg-muted uppercase tracking-wider">Net Retention</p>
                         <p className="text-sm sm:text-xl lg:text-2xl font-black text-[#FF5A00] mt-1 sm:mt-2 tracking-tight truncate">
                           ₹{formatAmt(monthNetRetention)}
                         </p>
@@ -497,67 +497,67 @@ export default function SaaS_ERPDashboard() {
                 </div>
 
                 {/* LIVE VEHICLE STATUS MONITOR */}
-                <div className="bg-surface border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6 mt-6">
-                  <h3 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide mb-6">Live Vehicle Status Monitor</h3>
+                <div className="bg-surface border border-border rounded-2xl shadow-sm p-4 sm:p-6 mt-6">
+                  <h3 className="text-xs sm:text-sm font-black text-fg uppercase tracking-wide mb-6">Live Vehicle Status Monitor</h3>
                   
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Plant Loading' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Plant Loading' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-border hover:border-[#FF5A00]/50'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'Plant Loading' ? null : 'Plant Loading')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-slate-900">{statusCounts["Plant Loading"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Plant Loading</p>
+                      <p className="text-2xl sm:text-4xl font-black text-fg">{statusCounts["Plant Loading"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-fg-secondary uppercase tracking-wider mt-1">Plant Loading</p>
                     </div>
                     
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'In Transit' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'In Transit' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-border hover:border-[#FF5A00]/50'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'In Transit' ? null : 'In Transit')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-slate-900">{statusCounts["In Transit"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">In Transit</p>
+                      <p className="text-2xl sm:text-4xl font-black text-fg">{statusCounts["In Transit"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-fg-secondary uppercase tracking-wider mt-1">In Transit</p>
                     </div>
                     
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Workshop / Repairs' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Workshop / Repairs' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-border hover:border-[#FF5A00]/50'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'Workshop / Repairs' ? null : 'Workshop / Repairs')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-slate-900">{statusCounts["Workshop / Repairs"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Workshop</p>
+                      <p className="text-2xl sm:text-4xl font-black text-fg">{statusCounts["Workshop / Repairs"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-fg-secondary uppercase tracking-wider mt-1">Workshop</p>
                     </div>
                     
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'No Driver / Leave' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-slate-200 hover:border-[#FF5A00]/50'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'No Driver / Leave' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/20 bg-[#FF5A00]/5' : 'border-border hover:border-[#FF5A00]/50'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'No Driver / Leave' ? null : 'No Driver / Leave')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-slate-900">{statusCounts["No Driver / Leave"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">No Driver</p>
+                      <p className="text-2xl sm:text-4xl font-black text-fg">{statusCounts["No Driver / Leave"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-fg-secondary uppercase tracking-wider mt-1">No Driver</p>
                     </div>
                   </div>
 
                   {selectedStatus && (
-                    <div className="mt-6 border-t border-slate-200 pt-6 animate-in slide-in-from-top-2">
+                    <div className="mt-6 border-t border-border pt-6 animate-in slide-in-from-top-2">
                       <div className="flex justify-between items-center mb-4">
                         <h4 className="text-xs font-black text-[#FF5A00] uppercase tracking-wider">
                           {selectedStatus} Details
                         </h4>
-                        <button onClick={() => setSelectedStatus(null)} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">CLOSE</button>
+                        <button onClick={() => setSelectedStatus(null)} className="text-[10px] font-bold text-fg-muted hover:text-fg-secondary bg-surface-raised px-3 py-1.5 rounded-lg transition-colors">CLOSE</button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {currentDrillDownData.map(v => (
-                          <div key={v.vehicle_id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 flex justify-between items-center">
+                          <div key={v.vehicle_id} className="p-3 border border-border rounded-lg bg-app flex justify-between items-center">
                             <div>
-                              <p className="text-sm font-black text-slate-900">{v.vehicle_number}</p>
-                              <p className="text-[10px] font-bold text-slate-500">{v.truck_type}</p>
+                              <p className="text-sm font-black text-fg">{v.vehicle_number}</p>
+                              <p className="text-[10px] font-bold text-fg-secondary">{v.truck_type}</p>
                             </div>
                             <div className="text-right">
-                              <span className="text-[9px] font-bold px-2 py-1 bg-surface border border-slate-200 rounded text-slate-600 shadow-sm">
+                              <span className="text-[9px] font-bold px-2 py-1 bg-surface border border-border rounded text-fg-secondary shadow-sm">
                                 {v.carrying_capacity_tons} MT
                               </span>
                             </div>
                           </div>
                         ))}
                         {currentDrillDownData.length === 0 && (
-                          <p className="text-sm text-slate-500 font-medium col-span-full">No vehicles currently in this status.</p>
+                          <p className="text-sm text-fg-secondary font-medium col-span-full">No vehicles currently in this status.</p>
                         )}
                       </div>
                     </div>
@@ -573,10 +573,10 @@ export default function SaaS_ERPDashboard() {
             </div>
           )}
 
-          <div className="bg-surface border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-6" style={{ colorScheme: 'light' }}>
+          <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden mt-6" style={{ colorScheme: 'light' }}>
             {activeTab === "Operations" && userRole === "ADMIN" && (
               <div className="p-4 sm:p-6 min-h-[60vh]">
-                <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-4 mb-6">
+                <div className="flex flex-wrap gap-2 border-b border-border pb-4 mb-6">
                   {opTabs.map((sub) => (
                     <button
                       key={sub}
@@ -584,7 +584,7 @@ export default function SaaS_ERPDashboard() {
                       className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                         opSubTab === sub 
                           ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" 
-                          : "bg-surface text-slate-600 hover:bg-slate-100 border border-slate-200"
+                          : "bg-surface text-fg-secondary hover:bg-surface-raised border border-border"
                       }`}
                     >
                       {sub}
@@ -598,15 +598,15 @@ export default function SaaS_ERPDashboard() {
                 {opSubTab === "Driver Approvals" && <ApprovalQueue />}
                 
                 {opSubTab === "Quick Status" && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-6 shadow-sm max-w-2xl animate-in fade-in duration-300">
-                    <h3 className="text-xs sm:text-sm font-black text-slate-900 mb-6 uppercase tracking-wider border-b border-slate-200 pb-2">Manual Status Override</h3>
+                  <div className="bg-app border border-border rounded-xl p-4 sm:p-6 shadow-sm max-w-2xl animate-in fade-in duration-300">
+                    <h3 className="text-xs sm:text-sm font-black text-fg mb-6 uppercase tracking-wider border-b border-border pb-2">Manual Status Override</h3>
                     <form onSubmit={handleQuickStatusSubmit} className="space-y-5">
                       <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1">Select Truck</label>
+                        <label className="block text-xs font-bold text-fg-secondary mb-1">Select Truck</label>
                         <select 
                           value={qsTruckId} 
                           onChange={(e) => setQsTruckId(e.target.value)} 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-slate-900"
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-fg"
                         >
                           <option value="">Select a vehicle...</option>
                           {liveVehicles.map(v => (
@@ -617,11 +617,11 @@ export default function SaaS_ERPDashboard() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1">New Operational Status</label>
+                        <label className="block text-xs font-bold text-fg-secondary mb-1">New Operational Status</label>
                         <select 
                           value={qsStatus} 
                           onChange={(e) => setQsStatus(e.target.value)} 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-slate-900"
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-bold text-fg"
                         >
                           <option value="WAITING_FOR_LOAD">Plant Loading</option>
                           <option value="IN_TRANSIT">In Transit</option>
@@ -630,13 +630,13 @@ export default function SaaS_ERPDashboard() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1">Location / Breakdown Details</label>
+                        <label className="block text-xs font-bold text-fg-secondary mb-1">Location / Breakdown Details</label>
                         <input 
                           type="text" 
                           value={qsRemarks} 
                           onChange={(e) => setQsRemarks(e.target.value)} 
                           placeholder="e.g. Broken Down near Erode Toll" 
-                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-semibold text-slate-900" 
+                          className="w-full text-sm p-3 rounded-lg border border-slate-300 bg-surface focus:ring-2 focus:ring-[#FF5A00] outline-none font-semibold text-fg" 
                         />
                       </div>
                       <button type="submit" className="mt-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black py-3 px-6 rounded-lg transition-colors shadow-sm">

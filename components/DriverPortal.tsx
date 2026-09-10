@@ -317,11 +317,11 @@ export function DriverPortal() {
     setAlertConfig({ isOpen: true, title: "Deleted", message: "Request cancelled.", type: "success" });
   };
 
-  const inputStyle = "flex h-10 w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5A00] focus-visible:border-[#FF5A00]";
-  const labelStyle = "text-xs font-bold text-slate-600 uppercase tracking-wide leading-none mb-1";
+  const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5A00] focus-visible:border-[#FF5A00]";
+  const labelStyle = "text-xs font-bold text-fg-secondary uppercase tracking-wide leading-none mb-1";
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-surface text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: 'light' }}>
+    <div className="w-full max-w-sm rounded-2xl border border-border bg-surface text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: 'light' }}>
       
       {/* Branding */}
       <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
@@ -340,7 +340,7 @@ export function DriverPortal() {
         <form onSubmit={handleLockDriver} className="flex flex-col">
           <div className="flex flex-col p-6 space-y-1">
             <h3 className="font-bold tracking-tight text-xl">{isFirstTimeSetup ? "First-Time PIN Setup" : "Secure Login"}</h3>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-fg-secondary">
               {isFirstTimeSetup ? "Create a 4-digit security PIN for your account. Keep it safe!" : "Select your profile and enter your 4-digit PIN."}
             </p>
           </div>
@@ -382,7 +382,7 @@ export function DriverPortal() {
             )}
 
             {!isFirstTimeSetup && driverCode && (
-              <p className="text-[11px] text-slate-400 italic">Forgot your PIN? Contact office Admin or Superadmin to reset it.</p>
+              <p className="text-[11px] text-fg-muted italic">Forgot your PIN? Contact office Admin or Superadmin to reset it.</p>
             )}
 
             <button type="submit" className="inline-flex items-center justify-center rounded-lg text-sm font-black bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-10 px-4 py-2 w-full mt-2">
@@ -393,18 +393,18 @@ export function DriverPortal() {
       ) : (
         <div className="flex flex-col pb-4">
           
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-app">
             <div>
-              <p className="text-[10px] text-slate-500 font-bold uppercase">Active Driver</p>
-              <span className="text-sm font-black text-slate-900">{displayDriverName}</span>
+              <p className="text-[10px] text-fg-secondary font-bold uppercase">Active Driver</p>
+              <span className="text-sm font-black text-fg">{displayDriverName}</span>
             </div>
             <button type="button" onClick={handleResetDriver} className="text-xs font-bold text-[#FF5A00] hover:text-[#e04f00] underline transition-colors">Switch</button>
           </div>
 
           {/* TABS */}
-          <div className="flex border-b border-slate-200">
-            <button onClick={() => setActiveTab("STATUS")} className={`flex-1 py-3 text-sm font-black ${activeTab === "STATUS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-slate-400 hover:text-slate-700"}`}>🚀 Trip Status</button>
-            <button onClick={() => setActiveTab("LEDGER")} className={`flex-1 py-3 text-sm font-black ${activeTab === "LEDGER" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-slate-400 hover:text-slate-700"}`}>📊 Month Ledger</button>
+          <div className="flex border-b border-border">
+            <button onClick={() => setActiveTab("STATUS")} className={`flex-1 py-3 text-sm font-black ${activeTab === "STATUS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>🚀 Trip Status</button>
+            <button onClick={() => setActiveTab("LEDGER")} className={`flex-1 py-3 text-sm font-black ${activeTab === "LEDGER" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>📊 Month Ledger</button>
           </div>
 
           {/* TAB 1: TRIP STATUS & LIFECYCLE */}
@@ -424,8 +424,8 @@ export function DriverPortal() {
                     <span className="text-xs font-black text-orange-900">Active LR: {currentTrip.trip_number}</span>
                     <span className="text-[10px] font-bold px-2 py-0.5 bg-orange-200 text-orange-900 rounded-full">{currentTrip.trip_status}</span>
                   </div>
-                  <p className="text-xs font-bold text-slate-700">{currentTrip.origin} ➔ {currentTrip.destination}</p>
-                  <p className="text-[11px] text-slate-500 pt-1 border-t border-orange-200/60">
+                  <p className="text-xs font-bold text-fg">{currentTrip.origin} ➔ {currentTrip.destination}</p>
+                  <p className="text-[11px] text-fg-secondary pt-1 border-t border-orange-200/60">
                     Started: {formatDateTime(currentTrip.trip_start_date)}
                   </p>
                 </div>
@@ -442,7 +442,7 @@ export function DriverPortal() {
                     { id: "BREAKDOWN", label: "⚠️ Breakdown" }, 
                     { id: "FUEL", label: "⛽ Fuel Fill Request" } 
                   ].map(item => (
-                    <button type="button" key={item.id} onClick={() => setActionType(item.id)} className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                    <button type="button" key={item.id} onClick={() => setActionType(item.id)} className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-fg border-border hover:bg-app'}`}>
                       {item.label}
                     </button>
                   ))}
@@ -498,15 +498,15 @@ export function DriverPortal() {
 
           {/* TAB 2: CURRENT MONTH LEDGER */}
           {activeTab === "LEDGER" && (
-            <div className="p-6 grid gap-6 bg-slate-50 min-h-[400px] animate-in fade-in">
+            <div className="p-6 grid gap-6 bg-app min-h-[400px] animate-in fade-in">
               
               <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current Month Net Balance</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-fg-muted">Current Month Net Balance</p>
                 <div className="flex justify-between items-baseline mt-1">
                   <span className={`text-2xl font-black ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     ₹{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
-                  <span className="text-[10px] text-slate-400">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span>
+                  <span className="text-[10px] text-fg-muted">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span>
                 </div>
                 <div className="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 text-[11px] text-slate-300">
                   <div>Earned Bata: <strong className="text-white">₹{monthEarnedBata}</strong></div>
@@ -517,12 +517,12 @@ export function DriverPortal() {
 
               {pendingRequests.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Pending Requests</h4>
+                  <h4 className="text-xs font-black text-fg uppercase mb-3">Pending Requests</h4>
                   <div className="space-y-3">
                     {pendingRequests.map(r => (
-                      <div key={r.id} className="p-3 bg-surface border border-slate-200 rounded-xl shadow-sm">
+                      <div key={r.id} className="p-3 bg-surface border border-border rounded-xl shadow-sm">
                         <div className="flex justify-between items-start mb-1">
-                          <span className="text-xs font-black text-slate-900">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : `₹${r.amount_inr}`}</span>
+                          <span className="text-xs font-black text-fg">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : `₹${r.amount_inr}`}</span>
                           <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
                         </div>
                         <div className="flex justify-end mt-2">
@@ -535,9 +535,9 @@ export function DriverPortal() {
               )}
 
               <div>
-                <h4 className="text-xs font-black text-slate-900 uppercase mb-3">Current Month Tripwise Ledger</h4>
+                <h4 className="text-xs font-black text-fg uppercase mb-3">Current Month Tripwise Ledger</h4>
                 {currentMonthTrips.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">No trips logged this month yet.</p>
+                  <p className="text-xs text-fg-secondary italic">No trips logged this month yet.</p>
                 ) : (
                   <div className="space-y-3">
                     {currentMonthTrips.map(t => {
@@ -545,15 +545,15 @@ export function DriverPortal() {
                       const halt = Number(t.halt_bata) || 0;
                       const adv = Number(t.cash_advance_issued) || 0;
                       return (
-                        <div key={t.trip_id} className="p-3 bg-surface border border-slate-200 rounded-xl shadow-sm space-y-2">
-                          <div className="flex justify-between items-start border-b border-slate-100 pb-2">
+                        <div key={t.trip_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm space-y-2">
+                          <div className="flex justify-between items-start border-b border-border pb-2">
                             <div>
-                              <p className="text-sm font-black text-slate-900">{t.trip_number}</p>
-                              <p className="text-[10px] font-bold text-slate-500 truncate max-w-[150px]">{t.origin} ➔ {t.destination}</p>
+                              <p className="text-sm font-black text-fg">{t.trip_number}</p>
+                              <p className="text-[10px] font-bold text-fg-secondary truncate max-w-[150px]">{t.origin} ➔ {t.destination}</p>
                             </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded">{formatDate(t.trip_start_date)}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 bg-surface-raised text-fg rounded">{formatDate(t.trip_start_date)}</span>
                           </div>
-                          <div className="grid grid-cols-3 text-[11px] text-slate-600">
+                          <div className="grid grid-cols-3 text-[11px] text-fg-secondary">
                             <div>Bata: <strong className="text-emerald-600">₹{tripBata}</strong></div>
                             <div>Halt: <strong className="text-amber-600">₹{halt}</strong></div>
                             <div>Adv: <strong className="text-rose-600">₹{adv}</strong></div>
