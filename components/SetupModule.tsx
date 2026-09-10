@@ -265,13 +265,13 @@ export function SetupModule() {
         destination_name: finalDest.toUpperCase().trim(), 
         cargo_type: cType, 
         capacity_tons: cap, 
-        average_kms: Number(avgKms), 
+        standard_km: Number(avgKms), 
         freight_rate_per_ton: Number(fRate), 
         is_active: true 
       }]);
 
       if (error) {
-        alert("DATABASE REJECTION ERROR:\n\n" + error.message + "\n\nMake sure your capacity_tons column in Supabase is set to 'Text' (not Numeric) so it can accept '25/30', and ensure the average_kms column exists!");
+        alert("DATABASE REJECTION ERROR:\n\n" + error.message + "\n\nMake sure your capacity_tons column in Supabase is set to 'Text' (not Numeric) so it can accept '25/30', and ensure the standard_km column exists!");
       } else {
         setDest(""); setCustomDest(""); setFRate(""); setAvgKms(""); fetchData(); 
       }
@@ -484,7 +484,7 @@ export function SetupModule() {
                       <tr key={s.id} className="hover:bg-[#1E222D]">
                         <td className="p-3 font-bold text-white">{s.origin} ➔ {s.destination_name}</td>
                         <td className="p-3 text-slate-300">{s.capacity_tons}MT {s.cargo_type}</td>
-                        <td className="p-3 text-slate-300 text-center">{s.average_kms ? `${s.average_kms} KM` : '-'}</td>
+                        <td className="p-3 text-slate-300 text-center">{s.standard_km ? `${s.standard_km} KM` : '-'}</td>
                         <td className="p-3 font-black text-emerald-400 text-right">₹{s.freight_rate_per_ton}</td>
                       </tr>
                     ))}
