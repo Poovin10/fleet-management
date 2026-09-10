@@ -21,6 +21,7 @@ export function SetupModule() {
   const [auditList, setAuditList] = useState<any[]>([]);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
 
+  // Selected truck for Compliance Editing
   const [selectedTruckForCompliance, setSelectedTruckForCompliance] = useState<any>(null);
   const [fcExp, setFcExp] = useState("");
   const [insExp, setInsExp] = useState("");
@@ -30,6 +31,7 @@ export function SetupModule() {
   const [spExp, setSpExp] = useState("");
   const [tankExp, setTankExp] = useState("");
 
+  // New User Form States
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("VIEWER");
@@ -50,9 +52,11 @@ export function SetupModule() {
   const [dest, setDest] = useState("");
   const [customDest, setCustomDest] = useState("");
   
+  // Freight / Bata Form States
   const [cType, setCType] = useState("BULK");
-  const [cap, setCap] = useState("35");
+  const [cap, setCap] = useState("35"); // Default for bulk
   const [fRate, setFRate] = useState<number | "">("");
+  const [avgKms, setAvgKms] = useState<number | "">(""); // NEW: Avg KMs State
   const [bataAmt, setBataAmt] = useState<number | "">("");
 
   const fetchData = async () => {
@@ -252,25 +256,20 @@ export function SetupModule() {
     const finalSrc = src === "CUSTOM" ? customSrc : src;
     const finalDest = dest === "CUSTOM" ? customDest : dest;
 
-    if (!finalDest.trim() || !fRate) return;
+    if (!finalDest.trim() || !fRate || !avgKms) return;
     
-    const capacitiesToSave = (cap === "25" || cap === "30") ? ["25", "30"] : [cap];
-
-    triggerModal("Add Freight Slab", `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()} (${capacitiesToSave.join('/')} MT)?`, false, "Save Slab", async () => {
+    triggerModal("Add Freight Slab", `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Slab", async () => {
       setIsProcessing(true);
-      
-      const insertRows = capacitiesToSave.map(c => ({
-        origin: finalSrc.toUpperCase().trim(),
-        destination_name: finalDest.toUpperCase().trim(),
-        cargo_type: cType,
-        capacity_tons: Number(c),
-        freight_rate_per_ton: Number(fRate),
-        is_active: true
-      }));
-
-      await supabase.from('destinations_freight_master').insert(insertRows);
-      
-      setDest(""); setCustomDest(""); setFRate(""); fetchData(); setIsProcessing(false); closeModal();
+      await supabase.from('destinations_freight_master').insert([{ 
+        origin: finalSrc.toUpperCase().trim(), 
+        destination_name: finalDest.toUpperCase().trim(), 
+        cargo_type: cType, 
+        capacity_tons: cap, // Passed as string to support "25/30"
+        average_kms: Number(avgKms), 
+        freight_rate_per_ton: Number(fRate), 
+        is_active: true 
+      }]);
+      setDest(""); setCustomDest(""); setFRate(""); setAvgKms(""); fetchData(); setIsProcessing(false); closeModal();
     });
   };
 
@@ -283,7 +282,13 @@ export function SetupModule() {
     
     triggerModal("Add Bata Master", `Set ₹${bataAmt} default Bata for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Bata", async () => {
       setIsProcessing(true);
-      await supabase.from('driver_bata_master').insert([{ origin: finalSrc.toUpperCase().trim(), destination_name: finalDest.toUpperCase().trim(), cargo_type: cType, capacity_tons: Number(cap), standard_bata_inr: Number(bataAmt) }]);
+      await supabase.from('driver_bata_master').insert([{ 
+        origin: finalSrc.toUpperCase().trim(), 
+        destination_name: finalDest.toUpperCase().trim(), 
+        cargo_type: cType, 
+        capacity_tons: cap, // Passed as string to support "25/30"
+        standard_bata_inr: Number(bataAmt) 
+      }]);
       setDest(""); setCustomDest(""); setBataAmt(""); fetchData(); setIsProcessing(false); closeModal();
     });
   };
@@ -338,11 +343,11 @@ export function SetupModule() {
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Driver Code</label>
                   <input 
                     type="text" 
-                    value={`DRV-${String(driversList.length + 1).padStart(3, '0')}`} 
+                    value={`DRV-[Auto-Generated]`} 
                     disabled 
                     className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black uppercase bg-[#0F1117] text-[#FF5A00] cursor-not-allowed" 
                   />
-                  <p className="text-[9px] text-slate-500 mt-1 font-bold italic">System Auto-Generated</p>
+                  <p className="text-[9px] text-slate-500 mt-1 font-bold italic">System Auto-Generated sequentially on save.</p>
                 </div>
                 <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Full Name *</label><input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="e.g. ANEESH CR" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#1A1F2C] text-white focus:border-[#FF5A00]" required /></div>
               </div>
@@ -387,7 +392,8 @@ export function SetupModule() {
         {sTab === "Freight Slabs" && (
           <>
             <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Add Freight Slab</h3>
-            <form onSubmit={handleSaveSlab} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
+            <form onSubmit={handleSaveSlab} className="grid grid-cols-1 md:grid-cols-7 gap-4 items-start">
+              
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label>
                 <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white">
@@ -398,6 +404,7 @@ export function SetupModule() {
                   <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
                 )}
               </div>
+              
               <div className="md:col-span-2">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destination *</label>
                 <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white uppercase" required>
@@ -409,25 +416,67 @@ export function SetupModule() {
                   <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
                 )}
               </div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>BULK</option><option>BAG</option></select></div>
+              
               <div className="md:col-span-1">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label>
-                <select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
-                  <option value="35">35 MT (Unique)</option>
-                  <option value="30">30 MT (Shared w/ 25)</option>
-                  <option value="25">25 MT (Shared w/ 30)</option>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label>
+                <select value={cType} onChange={e => {
+                  setCType(e.target.value);
+                  if (e.target.value === "BAG") setCap("25/30");
+                  if (e.target.value === "BULK" && cap !== "35") setCap("25/30");
+                }} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
+                  <option value="BULK">BULK</option>
+                  <option value="BAG">BAG</option>
                 </select>
               </div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rate(₹)</label><input type="number" value={fRate} onChange={e=>setFRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-emerald-400 bg-[#0F1117]" required /></div>
-              <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95 mt-2">Save Freight Rule</button>
+              
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label>
+                <select value={cap} onChange={e=>setCap(e.target.value)} disabled={cType === "BAG"} className={`w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] ${cType === "BAG" ? "text-slate-500 cursor-not-allowed" : "text-white"}`}>
+                  {cType === "BAG" ? (
+                    <option value="25/30">25/30 MT</option>
+                  ) : (
+                    <>
+                      <option value="25/30">25/30 MT</option>
+                      <option value="35">35 MT</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rate(₹)</label>
+                <input type="number" value={fRate} onChange={e=>setFRate(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-emerald-400 bg-[#0F1117]" required />
+              </div>
+
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Avg KMs</label>
+                <input type="number" value={avgKms} onChange={e=>setAvgKms(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-sky-400 bg-[#0F1117]" required />
+              </div>
+              
+              <button type="submit" disabled={isProcessing} className="md:col-span-7 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95 mt-2">Save Freight Rule</button>
             </form>
+            
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
-                  <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Rate/MT</th></tr></thead>
+                  <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0">
+                    <tr>
+                      <th className="p-3">Route</th>
+                      <th className="p-3">Type</th>
+                      <th className="p-3 text-center">Avg KMs</th>
+                      <th className="p-3 text-right">Rate/MT</th>
+                    </tr>
+                  </thead>
                   <tbody className="divide-y divide-[#272B36] bg-[#161922]">
-                    {slabsList.map(s => <tr key={s.id} className="hover:bg-[#1E222D]"><td className="p-3 font-bold text-white">{s.origin} ➔ {s.destination_name}</td><td className="p-3 text-slate-300">{s.capacity_tons}MT {s.cargo_type}</td><td className="p-3 font-black text-emerald-400 text-right">₹{s.freight_rate_per_ton}</td></tr>)}
-                    {slabsList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-slate-400">No slabs active.</td></tr>}
+                    {slabsList.map(s => (
+                      <tr key={s.id} className="hover:bg-[#1E222D]">
+                        <td className="p-3 font-bold text-white">{s.origin} ➔ {s.destination_name}</td>
+                        <td className="p-3 text-slate-300">{s.capacity_tons}MT {s.cargo_type}</td>
+                        <td className="p-3 text-slate-300 text-center">{s.average_kms ? `${s.average_kms} KM` : '-'}</td>
+                        <td className="p-3 font-black text-emerald-400 text-right">₹{s.freight_rate_per_ton}</td>
+                      </tr>
+                    ))}
+                    {slabsList.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">No slabs active.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -440,6 +489,7 @@ export function SetupModule() {
           <>
             <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Add Bata Rule</h3>
             <form onSubmit={handleSaveBata} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
+              
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label>
                 <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white">
@@ -450,6 +500,7 @@ export function SetupModule() {
                   <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
                 )}
               </div>
+              
               <div className="md:col-span-2">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destination *</label>
                 <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required>
@@ -461,11 +512,41 @@ export function SetupModule() {
                   <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />
                 )}
               </div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label><select value={cType} onChange={e=>setCType(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>BULK</option><option>BAG</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label><select value={cap} onChange={e=>setCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white"><option>35</option><option>30</option><option>25</option></select></div>
-              <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bata(₹)</label><input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-[#FF5A00] bg-[#0F1117]" required /></div>
+
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label>
+                <select value={cType} onChange={e => {
+                  setCType(e.target.value);
+                  if (e.target.value === "BAG") setCap("25/30");
+                  if (e.target.value === "BULK" && cap !== "35") setCap("25/30");
+                }} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
+                  <option value="BULK">BULK</option>
+                  <option value="BAG">BAG</option>
+                </select>
+              </div>
+              
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label>
+                <select value={cap} onChange={e=>setCap(e.target.value)} disabled={cType === "BAG"} className={`w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] ${cType === "BAG" ? "text-slate-500 cursor-not-allowed" : "text-white"}`}>
+                  {cType === "BAG" ? (
+                    <option value="25/30">25/30 MT</option>
+                  ) : (
+                    <>
+                      <option value="25/30">25/30 MT</option>
+                      <option value="35">35 MT</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bata(₹)</label>
+                <input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-[#FF5A00] bg-[#0F1117]" required />
+              </div>
+              
               <button type="submit" disabled={isProcessing} className="md:col-span-6 w-full py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors mt-2 shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Bata Rule</button>
             </form>
+            
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
