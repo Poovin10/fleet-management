@@ -2,470 +2,220 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { AlertModal } from "@/components/AlertModal";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
-export function ModifyTrips({ onSuccess }: { onSuccess?: () => void }) {
+export function ModifyTrips() {
   const supabase = createClient();
-  
-  // Search & Filter States
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All Statuses");
-  const [matchedTrips, setMatchedTrips] = useState<any[]>([]);
-  const [selectedTripId, setSelectedTripId] = useState<string>("");
-  
-  // Master Data
-  const [routeMaster, setRouteMaster] = useState<any[]>([]);
-  const [dieselRate, setDieselRate] = useState(95.0);
-
-  // Form States
-  const [activeTrip, setActiveTrip] = useState<any>(null);
-  
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [lrNo, setLrNo] = useState("");
-  
-  const [routeSlab, setRouteSlab] = useState("-- MANUAL / SPOT ROUTE --");
-  const [origin, setOrigin] = useState("");
-  const [destination, setDestination] = useState("");
-  const [spotRate, setSpotRate] = useState<number | "">("");
-  const [stdKm, setStdKm] = useState<number | "">("");
-  
-  const [startKm, setStartKm] = useState<number | "">("");
-  const [endKm, setEndKm] = useState<number | "">("");
-  
-  const [loadedMt, setLoadedMt] = useState<number | "">("");
-  const [freight, setFreight] = useState<number | "">("");
-  const [bata, setBata] = useState<number | "">("");
-  const [advance, setAdvance] = useState<number | "">("");
-  
-  const [diesel, setDiesel] = useState<number | "">("");
-  const [isTankFull, setIsTankFull] = useState(false);
-  
-  const [podNo, setPodNo] = useState("");
-  const [unloadedMt, setUnloadedMt] = useState<number | "">("");
-  const [haltBata, setHaltBata] = useState<number | "">("");
-  const [claims, setClaims] = useState<number | "">("");
-  const [tripStatus, setTripStatus] = useState("IN_TRANSIT");
-
+  const [tripsList, setTripsList] = useState<any[]>([]);
+  const [selectedTripId, setSelectedTripId] = useState("");
+  const [currentTrip, setCurrentTrip] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Sleek Alert State
-  const [alertConfig, setAlertConfig] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    type: "info" as "success" | "error" | "info"
+  // Form states for editing trip
+  const [tonnage, setTonnage] = useState("");
+  const [spotRate, setSpotRate] = useState<number | "">("");
+  const [driverBata, setDriverBata] = useState<number | "">("");
+  const [haltBata, setHaltBata] = useState<number | "">("");
+  const [advanceIssued, setAdvanceIssued] = useState<number | "">("");
+  const [status, setStatus] = useState("DISPATCHED");
+
+  const [modalConfig, setModalConfig] = useState({ 
+    isOpen: false, 
+    title: "", 
+    message: "", 
+    isDanger: false, 
+    confirmText: "Confirm", 
+    action: async () => {} 
   });
+  
+  const triggerModal = (title: string, message: string, isDanger: boolean, confirmText: string, action: () => Promise<void>) => 
+    setModalConfig({ isOpen: true, title, message, isDanger, confirmText, action });
+  
+  const closeModal = () => setModalConfig({ ...modalConfig, isOpen: false });
 
-  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return 'N/A';
-    if (!dateStr.includes('-')) return dateStr;
-    const parts = dateStr.split('T')[0].split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return dateStr;
-  };
-
-  useEffect(() => {
-    async function fetchMaster() {
-      const { data } = await supabase.from('destinations_freight_master').select('*').eq('is_active', true);
-      if (data) setRouteMaster(data);
-    }
-    fetchMaster();
-  }, [supabase]);
-
-  const handleSearch = async () => {
-    setIsProcessing(true);
-    let query = supabase
+  const fetchTrips = async () => {
+    const { data } = await supabase
       .from('trips')
-      .select(`
-        *,
-        vehicles ( vehicle_number, carrying_capacity_tons ),
-        drivers ( full_name )
-      `)
-      .order('trip_id', { ascending: false })
-      .limit(100);
+      .select('*, vehicles(vehicle_number), drivers(full_name)')
+      .order('trip_start_date', { ascending: false })
+      .limit(50);
+    if (data) setTripsList(data);
+  };
 
-    if (statusFilter !== "All Statuses") {
-      query = query.eq('trip_status', statusFilter);
+  useEffect(() => {
+    fetchTrips();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedTripId) {
+      setCurrentTrip(null);
+      return;
     }
+    const found = tripsList.find(t => String(t.trip_id) === selectedTripId);
+    if (found) {
+      setCurrentTrip(found);
+      setTonnage(found.tonnage_loaded || "");
+      setSpotRate(found.spot_freight_rate || "");
+      setDriverBata(found.driver_bata || "");
+      setHaltBata(found.halt_bata || "");
+      setAdvanceIssued(found.cash_advance_issued || "");
+      setStatus(found.trip_status || "DISPATCHED");
+    }
+  }, [selectedTripId, tripsList]);
 
-    const { data, error } = await query;
-    
+  // Handle route / tonnage rate lookups cleanly without legacy fallback
+  const handleRateLookup = async (origin: string, destination: string, capacity: number) => {
+    const { data } = await supabase
+      .from('destinations_freight_master')
+      .select('freight_rate_per_ton')
+      .ilike('origin', origin)
+      .ilike('destination_name', destination)
+      .eq('capacity_tons', capacity)
+      .single();
+
     if (data) {
-      const filtered = searchQuery
-        ? data.filter((t: any) => 
-            t.trip_number?.toUpperCase().includes(searchQuery.toUpperCase()) ||
-            t.vehicles?.vehicle_number?.toUpperCase().includes(searchQuery.toUpperCase())
-          )
-        : data;
-      setMatchedTrips(filtered);
-      setSelectedTripId("");
-      setActiveTrip(null);
+      setSpotRate(data.freight_rate_per_ton || 0);
     }
-    setIsProcessing(false);
   };
 
-  useEffect(() => {
-    if (selectedTripId) {
-      const trip = matchedTrips.find((t) => String(t.trip_id) === selectedTripId);
-      if (trip) {
-        setActiveTrip(trip);
-        setStartDate(trip.trip_start_date || "");
-        setEndDate(trip.trip_end_date || "");
-        setLrNo(trip.trip_number || "");
-        
-        setOrigin(trip.origin || "");
-        setDestination(trip.destination || "");
-        
-        const match = routeMaster.find(route => route.origin === trip.origin && (route.destination_name === trip.destination || route.destination === trip.destination));
-        if (match) {
-          setRouteSlab(`${match.origin} ➔ ${match.destination_name || match.destination}`);
-          setSpotRate(match.freight_rate_per_ton || match.freight_rate_per_mt || 0);
-          setStdKm(match.standard_km || 0);
-        } else {
-          setRouteSlab("-- MANUAL / SPOT ROUTE --");
-          setSpotRate(Number(trip.freight_revenue) / (Number(trip.loaded_weight_mt) || 1) || 0);
-          setStdKm(trip.total_km_run || 0);
-        }
+  const handleUpdateTrip = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentTrip) return;
 
-        setStartKm(trip.start_km || 0);
-        setEndKm(trip.end_km || 0);
-        setLoadedMt(trip.loaded_weight_mt || trip.vehicles?.carrying_capacity_tons || 0);
-        setFreight(trip.freight_revenue || 0);
-        setBata(trip.driver_bata || 0);
-        setAdvance(trip.cash_advance_issued || 0);
-        setDiesel(trip.fuel_litres || 0);
-        setIsTankFull(trip.is_tank_full || false);
-        setPodNo(trip.pod_number || "");
-        setUnloadedMt(trip.unloaded_weight_mt || trip.loaded_weight_mt || 0);
-        setHaltBata(trip.halt_bata || 0);
-        setClaims(trip.enroute_repairs_maintenance || 0);
-        setTripStatus(trip.trip_status || "IN_TRANSIT");
+    triggerModal("Update Trip", `Save modifications for Trip #${currentTrip.trip_number}?`, false, "Save Changes", async () => {
+      setIsProcessing(true);
+      const { error } = await supabase.from('trips').update({
+        tonnage_loaded: tonnage ? parseFloat(String(tonnage)) : null,
+        spot_freight_rate: spotRate !== "" ? Number(spotRate) : null,
+        driver_bata: driverBata !== "" ? Number(driverBata) : null,
+        halt_bata: haltBata !== "" ? Number(haltBata) : null,
+        cash_advance_issued: advanceIssued !== "" ? Number(advanceIssued) : null,
+        trip_status: status
+      }).eq('trip_id', currentTrip.trip_id);
+
+      if (error) {
+        alert("Error updating trip: " + error.message);
+      } else {
+        alert("Trip updated successfully!");
+        fetchTrips();
       }
-    } else {
-      setActiveTrip(null);
-    }
-  }, [selectedTripId, matchedTrips, routeMaster]);
-
-  useEffect(() => {
-    if (loadedMt !== "" && spotRate !== "") {
-      setFreight(Math.round(Number(loadedMt) * Number(spotRate) * 100) / 100);
-    }
-  }, [loadedMt, spotRate]);
-
-  const calcTotalKm = () => {
-    const s = Number(startKm) || 0;
-    const e = Number(endKm) || 0;
-    return e > s ? e - s : (activeTrip?.total_km_run > 0 ? activeTrip.total_km_run : (Number(stdKm) || 0));
-  };
-
-  const handleCommitUpdates = async () => {
-    if (!activeTrip) return;
-    
-    if (loadedMt === "" || Number(loadedMt) <= 0 || freight === "" || Number(freight) < 0) {
-      setAlertConfig({
-        isOpen: true,
-        title: "Validation Error",
-        message: "⚠️ Loaded MT and Freight must have valid positive values.",
-        type: "error"
-      });
-      return;
-    }
-    
-    setIsProcessing(true);
-    const totalKm = calcTotalKm();
-    const fuelCost = Number(diesel) * dieselRate;
-    const shortage = Math.max(0, Number(loadedMt) - Number(unloadedMt));
-
-    const { error: tripError } = await supabase.from('trips').update({
-      trip_start_date: startDate,
-      trip_end_date: endDate || null,
-      trip_number: lrNo.toUpperCase(),
-      origin: origin.toUpperCase(),
-      destination: destination.toUpperCase(),
-      start_km: Number(startKm),
-      end_km: Number(endKm),
-      total_km_run: totalKm,
-      loaded_weight_mt: Number(loadedMt),
-      unloaded_weight_mt: Number(unloadedMt),
-      tonnage_loaded: Number(loadedMt),
-      shortage_mt: shortage,
-      freight_revenue: Number(freight),
-      fuel_litres: Number(diesel),
-      fuel_expense: fuelCost,
-      driver_bata: Number(bata),
-      halt_bata: Number(haltBata),
-      cash_advance_issued: Number(advance),
-      enroute_repairs_maintenance: Number(claims),
-      pod_number: podNo || null,
-      trip_status: tripStatus,
-      is_tank_full: isTankFull
-    }).eq('trip_id', activeTrip.trip_id);
-
-    if (tripError) {
-      setAlertConfig({
-        isOpen: true,
-        title: "Update Failed",
-        message: "Error updating trip: " + tripError.message,
-        type: "error"
-      });
       setIsProcessing(false);
-      return;
-    }
-
-    const vStatus = tripStatus === 'COMPLETED' ? 'AVAILABLE_FOR_LOAD' : 'IN_TRANSIT';
-    await supabase.from('vehicles').update({ current_status: vStatus }).eq('vehicle_id', activeTrip.vehicle_id);
-
-    if (Number(diesel) > 0) {
-      await supabase.from('diesel_fuel_logs').update({
-        fuel_date: startDate,
-        lr_number: lrNo.toUpperCase(),
-        litres_filled: Number(diesel),
-        total_fuel_cost: fuelCost,
-        filling_odometer_km: Number(startKm),
-        is_tank_full: isTankFull
-      }).eq('trip_id', activeTrip.trip_id);
-    }
-
-    setAlertConfig({
-      isOpen: true,
-      title: "Success",
-      message: "Trip updated successfully!",
-      type: "success"
+      closeModal();
     });
-    if (onSuccess) onSuccess();
-    handleSearch(); 
-    setIsProcessing(false);
-  };
-
-  const handleReopenTrip = async () => {
-    if (!confirm(`Are you sure you want to reopen LR: ${activeTrip.trip_number}?`)) return;
-    setIsProcessing(true);
-    await supabase.from('trips').update({ trip_status: 'IN_TRANSIT', pod_number: null }).eq('trip_id', activeTrip.trip_id);
-    await supabase.from('vehicles').update({ current_status: 'IN_TRANSIT' }).eq('vehicle_id', activeTrip.vehicle_id);
-    setAlertConfig({ isOpen: true, title: "Reopened", message: "Trip Reopened!", type: "success" });
-    handleSearch();
-    setIsProcessing(false);
-  };
-
-  const handleDeleteTrip = async () => {
-    if (!confirm(`WARNING: Permanently delete Trip ${activeTrip.trip_number}?`)) return;
-    setIsProcessing(true);
-    await supabase.from('diesel_fuel_logs').update({ trip_id: null }).eq('trip_id', activeTrip.trip_id);
-    await supabase.from('trips').delete().eq('trip_id', activeTrip.trip_id);
-    await supabase.from('vehicles').update({ current_status: 'AVAILABLE_FOR_LOAD', status_remarks: 'Available' }).eq('vehicle_id', activeTrip.vehicle_id);
-    setAlertConfig({ isOpen: true, title: "Deleted", message: "Trip Deleted Successfully!", type: "success" });
-    setSelectedTripId("");
-    setActiveTrip(null);
-    handleSearch();
-    setIsProcessing(false);
   };
 
   return (
-    <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
-      
-      <AlertModal 
-        isOpen={alertConfig.isOpen}
-        title={alertConfig.title}
-        message={alertConfig.message}
-        type={alertConfig.type}
-        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <ConfirmModal 
+        isOpen={modalConfig.isOpen} 
+        title={modalConfig.title} 
+        message={modalConfig.message} 
+        isDanger={modalConfig.isDanger} 
+        confirmText={modalConfig.confirmText} 
+        onConfirm={modalConfig.action} 
+        onCancel={closeModal} 
+        isProcessing={isProcessing} 
       />
 
-      {/* Header & Search */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-border pb-6">
-        <div>
-          <h3 className="text-base font-bold text-fg uppercase tracking-tight">Modify / Correct Trips</h3>
-          <p className="text-xs text-fg-secondary mt-1">Search active or completed trips to override parameters.</p>
-        </div>
-        <div className="flex w-full md:w-auto gap-3">
-          <input 
-            type="text" 
-            placeholder="Search LR or Truck No..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full md:w-48 text-sm p-2.5 rounded-lg border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" 
-          />
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-36 text-sm p-2.5 rounded-lg border border-border-strong bg-app outline-none focus:ring-2 focus:ring-[#FF5A00]"
-          >
-            <option value="All Statuses">All Statuses</option>
-            <option value="IN_TRANSIT">In Transit</option>
-            <option value="COMPLETED">Completed</option>
-          </select>
-          <button 
-            onClick={handleSearch}
-            disabled={isProcessing}
-            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-lg transition-colors shadow-sm"
-          >
-            Search
-          </button>
-        </div>
-      </div>
+      <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl max-w-4xl mx-auto">
+        <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Modify Existing Trip</h3>
 
-      {/* Target Trip Selector */}
-      {matchedTrips.length > 0 && (
-        <div className="mb-8">
-          <label className="block text-xs font-bold text-fg uppercase mb-2 text-[#FF5A00]">Target Trip ({matchedTrips.length} found)</label>
+        <div className="mb-6">
+          <label className="block text-xs font-bold text-slate-300 uppercase mb-2">Select Trip to Modify</label>
           <select 
-            value={selectedTripId}
-            onChange={(e) => setSelectedTripId(e.target.value)}
-            className="w-full text-sm p-3 rounded-xl border-2 border-orange-100 bg-orange-50/50 focus:bg-surface outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold text-fg cursor-pointer"
+            value={selectedTripId} 
+            onChange={e => setSelectedTripId(e.target.value)}
+            className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] font-bold outline-none focus:border-[#FF5A00] text-white"
           >
-            <option value="">-- SELECT TRIP TO MODIFY --</option>
-            {matchedTrips.map(t => (
+            <option value="">-- SELECT TRIP --</option>
+            {tripsList.map(t => (
               <option key={t.trip_id} value={t.trip_id}>
-                LR: {t.trip_number} | Date: {formatDate(t.trip_start_date)} | Truck: {t.vehicles?.vehicle_number} | Status: {t.trip_status}
+                LR: {t.trip_number} | {t.vehicles?.vehicle_number || 'Truck'} ({t.origin} ➔ {t.destination}) [{t.trip_status}]
               </option>
             ))}
           </select>
         </div>
-      )}
 
-      {/* Full Edit Form */}
-      {activeTrip && (
-        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
-          
-          <div className="flex gap-2 items-center mb-4">
-            <span className="px-3 py-1 bg-surface-raised text-fg-secondary font-bold text-[10px] uppercase rounded-md border border-border">
-              Driver: {activeTrip.drivers?.full_name}
-            </span>
-            <span className="px-3 py-1 bg-surface-raised text-fg-secondary font-bold text-[10px] uppercase rounded-md border border-border">
-              Truck: {activeTrip.vehicles?.vehicle_number}
-            </span>
-          </div>
+        {currentTrip && (
+          <form onSubmit={handleUpdateTrip} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tonnage Loaded (MT)</label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  value={tonnage} 
+                  onChange={e => setTonnage(e.target.value)} 
+                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white font-bold outline-none focus:border-[#FF5A00]" 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Freight Rate / MT (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  value={spotRate} 
+                  onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} 
+                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-emerald-400 font-bold outline-none focus:border-[#FF5A00]" 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Trip Status</label>
+                <select 
+                  value={status} 
+                  onChange={e => setStatus(e.target.value)} 
+                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white font-bold outline-none"
+                >
+                  <option value="DISPATCHED">DISPATCHED</option>
+                  <option value="IN_TRANSIT">IN_TRANSIT</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="CANCELLED">CANCELLED</option>
+                </select>
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Start Date</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Driver Bata (₹)</label>
+                <input 
+                  type="number" 
+                  value={driverBata} 
+                  onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} 
+                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-[#FF5A00] font-bold outline-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Halt Bata (₹)</label>
+                <input 
+                  type="number" 
+                  value={haltBata} 
+                  onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} 
+                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-[#FF5A00] font-bold outline-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cash Advance Issued (₹)</label>
+                <input 
+                  type="number" 
+                  value={advanceIssued} 
+                  onChange={e => setAdvanceIssued(e.target.value === "" ? "" : parseFloat(e.target.value))} 
+                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-amber-400 font-bold outline-none" 
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Closing Date</label>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">LR No</label>
-              <input type="text" value={lrNo} onChange={e => setLrNo(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-border-strong uppercase outline-none focus:border-[#FF5A00] font-bold" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Route Slab</label>
-              <select value={routeSlab} onChange={e => setRouteSlab(e.target.value)} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]">
-                <option value="-- MANUAL / SPOT ROUTE --">-- MANUAL / SPOT ROUTE --</option>
-                <option value={`${origin} ➔ ${destination}`}>{origin} ➔ {destination} (Current)</option>
-              </select>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Origin</label>
-              <input type="text" value={origin} onChange={e => setOrigin(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-border-strong uppercase outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Destination</label>
-              <input type="text" value={destination} onChange={e => setDestination(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-border-strong uppercase outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Spot Rate/MT (₹)</label>
-              <input type="number" step="0.01" min="0" value={spotRate} onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Standard KM</label>
-              <input type="number" min="0" value={stdKm} onChange={e => setStdKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-          </div>
-
-          <hr className="border-border" />
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Start KM</label>
-              <input type="number" min="0" value={startKm} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">End KM</label>
-              <input type="number" min="0" value={endKm} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Total Dist (KM)</label>
-              <input type="text" value={calcTotalKm().toFixed(2)} disabled className="w-full text-sm p-2 rounded border border-border bg-app text-fg-secondary cursor-not-allowed" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Loaded MT</label>
-              <input type="number" step="0.01" min="0.01" value={loadedMt} onChange={e => setLoadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00] font-bold" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Freight (₹)</label>
-              <input type="number" step="0.01" min="0" value={freight} onChange={e => setFreight(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00] text-[#FF5A00] font-bold" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Bata (₹)</label>
-              <input type="number" min="0" value={bata} onChange={e => setBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Advance (₹)</label>
-              <input type="number" min="0" value={advance} onChange={e => setAdvance(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Diesel (L)</label>
-              <input type="number" step="0.1" min="0" value={diesel} onChange={e => setDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">POD No</label>
-              <input type="text" value={podNo} onChange={e => setPodNo(e.target.value.toUpperCase())} className="w-full text-sm p-2 rounded border border-border-strong uppercase outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Unloaded MT</label>
-              <input type="number" step="0.01" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Halt Bata (₹)</label>
-              <input type="number" min="0" value={haltBata} onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Claims (₹)</label>
-              <input type="number" min="0" value={claims} onChange={e => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Trip Status</label>
-              <select value={tripStatus} onChange={e => setTripStatus(e.target.value)} className="w-full text-sm p-2 rounded border border-border-strong outline-none focus:border-[#FF5A00] font-bold text-[#FF5A00]">
-                <option value="IN_TRANSIT">IN TRANSIT</option>
-                <option value="COMPLETED">COMPLETED</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t border-border flex flex-wrap justify-between items-center gap-4">
-            <div className="flex gap-3">
-              {activeTrip.trip_status === 'COMPLETED' && (
-                <button type="button" onClick={handleReopenTrip} disabled={isProcessing} className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs rounded-lg transition-colors border border-amber-200">
-                  🔓 Reopen Trip
-                </button>
-              )}
-              <button type="button" onClick={handleDeleteTrip} disabled={isProcessing} className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-lg transition-colors border border-rose-200">
-                🗑️ Delete Trip
+            <div className="pt-4 flex justify-end">
+              <button 
+                type="submit" 
+                disabled={isProcessing} 
+                className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95"
+              >
+                Save Trip Updates
               </button>
             </div>
-            
-            <button type="button" onClick={handleCommitUpdates} disabled={isProcessing} className="px-8 py-2.5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
-              {isProcessing ? "Processing..." : "💾 Commit Updates"}
-            </button>
-          </div>
-          
-        </div>
-      )}
+          </form>
+        )}
+      </div>
     </div>
   );
 }
