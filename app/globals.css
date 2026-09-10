@@ -1,77 +1,79 @@
+/* ============================================
+   KSS ROADWAYS — GLOBAL THEME TOKENS
+   Single source of truth. Every page/component
+   pulls colors from here — never hardcode
+   bg-white / text-black / bg-gray-900 anywhere.
+   ============================================ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  /* Surfaces */
+  --bg-app: #0b0d10;        /* page background, near-black w/ slight warmth */
+  --bg-surface: #14171b;    /* card / panel background */
+  --bg-surface-raised: #1a1e23; /* hover / nested panel */
+  --border: #262b31;
+  --border-strong: #34393f;
+
+  /* Text */
+  --text-primary: #f2f0ec;
+  --text-secondary: #9aa0a8;
+  --text-muted: #6b7178;
+
+  /* Brand accent — one orange, used deliberately */
+  --accent: #e8722c;
+  --accent-hover: #f2843f;
+  --accent-fg: #14171b;      /* text ON accent-colored elements */
+  --accent-soft: rgba(232, 114, 44, 0.12); /* accent tint for subtle bg */
+
+  /* Semantic (financial data only — never decorative) */
+  --success: #4caf7d;
+  --danger: #e2574c;
+
+  /* Motion */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+
+  /* Shape */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Elevation — one shadow scale, reused everywhere */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.24);
+  --shadow-raised: 0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.32);
 }
 
-/* Force global full-black background across the entire web page */
-html, body, #__next, div[data-nextjs-scroll-focus-boundary] {
-  background-color: #050507 !important;
-  color: #F8FAFC !important;
+* {
+  box-sizing: border-box;
 }
 
-/* Ensure all cards, containers, and modules adopt the deep dark command-center theme */
-.bg-white, div[class*="bg-white"], .bg-slate-50, .bg-slate-100 {
-  background-color: #12141C !important;
-  border-color: #222634 !important;
-  color: #F8FAFC !important;
+html, body {
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* High contrast text overrides */
-h1, h2, h3, h4, h5, h6, span, p, label {
-  color: inherit;
-}
-.text-slate-950, .text-slate-900, .text-slate-800, .text-slate-700 {
-  color: #F8FAFC !important;
-}
-.text-slate-600, .text-slate-500 {
-  color: #94A3B8 !important;
+/* Tabular numbers everywhere currency/counts appear */
+.font-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
-/* Custom Sleek Scrollbars with Orange Hover */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #050507;
-}
-::-webkit-scrollbar-thumb {
-  background: #222634;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #FF5A00;
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-/* Professional Dark Form Inputs with Orange Accent Focus */
-input, select, textarea {
-  background-color: #1A1F2C !important;
-  border: 1px solid #2B3142 !important;
-  color: #FFFFFF !important;
-}
-input:focus, select:focus, textarea:focus {
-  border-color: #FF5A00 !important;
-  box-shadow: 0 0 0 2px rgba(255, 90, 0, 0.25) !important;
-  outline: none !important;
-}
-
-/* Data Tables Contrast */
-table {
-  background-color: #12141C !important;
-  color: #F8FAFC !important;
-}
-th {
-  background-color: #1A1F2C !important;
-  color: #94A3B8 !important;
-  border-bottom: 1px solid #222634 !important;
-}
-td {
-  border-bottom: 1px solid #1A1F2C !important;
-  color: #E2E8F0 !important;
-}
-tr:hover {
-  background-color: #1A1F2C !important;
+/* Visible keyboard focus — don't strip this for "cleanliness" */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
