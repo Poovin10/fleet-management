@@ -95,7 +95,6 @@ export function DriverPortal() {
     const firstDay = `${currentYearMonth}-01`;
 
     const [reqRes, tripRes, advRes] = await Promise.all([
-      // FIX: Using submitted_at
       supabase.from('driver_pending_entries').select('*').eq('driver_code', drvCode).order('submitted_at', { ascending: false }).limit(10),
       supabase.from('trips').select('*').eq('primary_driver_id', drvId).gte('trip_start_date', firstDay).order('trip_start_date', { ascending: false }),
       supabase.from('driver_direct_advances').select('*').eq('driver_id', drvId).gte('advance_date', firstDay).order('advance_date', { ascending: false })
@@ -222,6 +221,10 @@ export function DriverPortal() {
     const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown";
 
     if (actionType === "FUEL") {
+      
+      // AUTO-APPEND THE ACTIVE LR NUMBER SO THE OFFICE SEES IT!
+      const activeLr = currentTrip ? currentTrip.trip_number : "SUNDRY";
+
       const { error } = await supabase.from('driver_pending_entries').insert([{
         vehicle_id: Number(selectedTruckId),
         driver_code: savedDriverCode || "DRV-MOBILE",
@@ -229,7 +232,7 @@ export function DriverPortal() {
         litres: Number(fuelLitres),
         amount_inr: 0,
         odometer_km: Number(odometer) || 0,
-        receipt_remarks: `${remarks} [Truck: ${truckNumberText}]`,
+        receipt_remarks: `[LR: ${activeLr}] ${remarks} [Truck: ${truckNumberText}]`.trim(),
         status: 'PENDING'
       }]);
 
@@ -289,7 +292,6 @@ export function DriverPortal() {
           updatePayload.status_remarks = statusRemarksText;
         }
 
-        // Call the atomic RPC to ensure both tables update together safely
         const { error: rpcError } = await supabase.rpc('update_trip_status_atomic', {
           p_trip_id: currentTrip.trip_id,
           p_vehicle_id: selectedTruckId,
@@ -314,7 +316,6 @@ export function DriverPortal() {
 
   const handleCancelRequest = async (id: number) => {
     if (!confirm("Delete this request?")) return;
-    // FIX: Using entry_id
     await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
     if (activeDriverObj) fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
     setAlertConfig({ isOpen: true, title: "Deleted", message: "Request cancelled.", type: "success" });
@@ -522,7 +523,6 @@ export function DriverPortal() {
                 <div>
                   <h4 className="text-xs font-bold text-fg uppercase mb-3">Pending Requests</h4>
                   <div className="space-y-3">
-                    {/* FIX: Using entry_id */}
                     {pendingRequests.map(r => (
                       <div key={r.entry_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm">
                         <div className="flex justify-between items-start mb-1">
