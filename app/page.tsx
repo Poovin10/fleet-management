@@ -333,7 +333,14 @@ export default function SaaS_ERPDashboard() {
 
   return (
     <div className="min-h-screen bg-[#050507] text-white font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
-      <ConfirmModal confirmText="Log Out Now" isDanger="{true}" isOpen="{isLogoutModalOpen}" message="Are you sure you want to log out of the KSS Roadways ERP system?" onCancel="{()" onConfirm="{executeLogout}" title="Secure Sign Out"> setIsLogoutModalOpen(false)}
+      <ConfirmModal 
+        isOpen={isLogoutModalOpen}
+        title="Secure Sign Out"
+        message="Are you sure you want to log out of the KSS Roadways ERP system?"
+        isDanger={true}
+        confirmText="Log Out Now"
+        onConfirm={executeLogout}
+        onCancel={() => setIsLogoutModalOpen(false)}
       />
 
       <header className="sticky top-0 z-40 bg-[#050507]/90 backdrop-blur-md border-b border-[#222634] shadow-sm">
@@ -579,15 +586,15 @@ export default function SaaS_ERPDashboard() {
               
               {opSubTab === "Trips" && (
                 // @ts-ignore
-                <TripForm onSuccess="{()"> fetchDashboardData()} />
+                <TripForm onSuccess={() => fetchDashboardData()} />
               )}
               {opSubTab === "POD Closure" && (
                 // @ts-ignore
-                <PodClosure onSuccess="{()"> fetchDashboardData()} />
+                <PodClosure onSuccess={() => fetchDashboardData()} />
               )}
               {opSubTab === "Modify Trips" && (
                 // @ts-ignore
-                <ModifyTrips onSuccess="{()"> fetchDashboardData()} />
+                <ModifyTrips onSuccess={() => fetchDashboardData()} />
               )}
               {opSubTab === "Driver Approvals" && <ApprovalQueue/>}
               
