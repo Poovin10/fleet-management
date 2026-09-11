@@ -226,6 +226,7 @@ export function DriverPortal() {
         driver_code: savedDriverCode || "DRV-MOBILE",
         entry_type: "FUEL",
         litres: Number(fuelLitres),
+        amount_inr: 0, // Fix for NOT NULL constraint
         odometer_km: Number(odometer) || 0,
         receipt_remarks: `${remarks} [Truck: ${truckNumberText}]`,
         status: 'PENDING'
