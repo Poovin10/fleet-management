@@ -279,7 +279,7 @@ export default function SaaS_ERPDashboard() {
           <h1 className="text-xl font-black text-white">KSS Roadways</h1>
           <p className="text-xs text-[#FF5A00] uppercase tracking-widest font-bold">Driver Highway Portal</p>
         </div>
-        <DriverPortal />
+        <DriverPortal/>
       </div>
     );
   }
@@ -295,7 +295,7 @@ export default function SaaS_ERPDashboard() {
         <div className="relative bg-[#12141C]/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md p-6 sm:p-10 border border-[#222634]">
           <div className="text-center mb-8 sm:mb-10">
             <div className="mx-auto mb-6 w-20 h-20 sm:w-24 sm:h-24 shadow-md rounded-2xl overflow-hidden border border-[#222634] bg-[#050507] flex items-center justify-center">
-               <KssLogo className="w-16 h-16 sm:w-20 sm:h-20" />
+               <KssLogo className="w-16 h-16 sm:w-20 sm:h-20"/>
             </div>
             <div className="inline-block bg-[#050507] px-4 py-2 rounded-xl shadow-sm mb-3 border border-[#222634]">
               <h1 className="text-2xl sm:text-3xl font-black text-[#FF5A00] tracking-tight leading-none">KSS Roadways</h1>
@@ -333,21 +333,14 @@ export default function SaaS_ERPDashboard() {
 
   return (
     <div className="min-h-screen bg-[#050507] text-white font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
-      <ConfirmModal 
-        isOpen={isLogoutModalOpen}
-        title="Secure Sign Out"
-        message="Are you sure you want to log out of the KSS Roadways ERP system?"
-        isDanger={true}
-        confirmText="Log Out Now"
-        onConfirm={executeLogout}
-        onCancel={() => setIsLogoutModalOpen(false)}
+      <ConfirmModal confirmText="Log Out Now" isDanger="{true}" isOpen="{isLogoutModalOpen}" message="Are you sure you want to log out of the KSS Roadways ERP system?" onCancel="{()" onConfirm="{executeLogout}" title="Secure Sign Out"> setIsLogoutModalOpen(false)}
       />
 
       <header className="sticky top-0 z-40 bg-[#050507]/90 backdrop-blur-md border-b border-[#222634] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-sm border border-[#222634] overflow-hidden flex-shrink-0 bg-[#0F1117] flex items-center justify-center">
-               <KssLogo className="w-8 h-8 sm:w-10 sm:h-10" />
+               <KssLogo className="w-8 h-8 sm:w-10 sm:h-10"/>
             </div>
             <div className="bg-[#12141C] px-3 py-1.5 rounded-lg border border-[#222634] truncate">
               <h1 className="text-lg sm:text-xl font-black tracking-tight text-[#FF5A00] hidden sm:block leading-none">KSS Roadways Pvt Ltd</h1>
@@ -460,21 +453,21 @@ export default function SaaS_ERPDashboard() {
                     <div className="p-3 sm:p-4 rounded-xl bg-[#1A1F2C] border border-[#2B3142] flex flex-col justify-between min-w-0">
                       <div>
                         <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Total Trips</p>
-                        <p className="text-lg sm:text-xl md:text-2xl lg:text-lg xl:text-xl 2xl:text-2xl font-black text-white mt-1 tracking-tighter truncate">{monthTripsCount}</p>
+                        <p className="text-xl sm:text-2xl md:text-3xl lg:text-xl xl:text-2xl 2xl:text-3xl font-black text-white mt-1 tracking-tighter truncate">{monthTripsCount}</p>
                       </div>
                     </div>
                     
                     <div className="p-3 sm:p-4 rounded-xl bg-rose-950/20 border border-rose-900/50 flex flex-col justify-between min-w-0">
                       <div>
                         <p className="text-[9px] sm:text-[10px] font-bold text-rose-400 uppercase tracking-wider truncate">PODs Pending</p>
-                        <p className="text-lg sm:text-xl md:text-2xl lg:text-lg xl:text-xl 2xl:text-2xl font-black text-rose-300 mt-1 tracking-tighter truncate">{activeTripCount}</p>
+                        <p className="text-xl sm:text-2xl md:text-3xl lg:text-xl xl:text-2xl 2xl:text-3xl font-black text-rose-300 mt-1 tracking-tighter truncate">{activeTripCount}</p>
                       </div>
                     </div>
                     
                     <div className="p-3 sm:p-4 rounded-xl bg-emerald-950/20 border border-emerald-900/50 flex flex-col justify-between min-w-0">
                       <div>
                         <p className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-wider truncate">Freight Gen.</p>
-                        <p className="text-lg sm:text-xl md:text-2xl lg:text-lg xl:text-xl 2xl:text-2xl font-black text-emerald-300 mt-1 tracking-tighter truncate">
+                        <p className="text-xl sm:text-2xl md:text-3xl lg:text-xl xl:text-2xl 2xl:text-3xl font-black text-emerald-300 mt-1 tracking-tighter truncate">
                           ₹{formatAmt(monthFreight)}
                         </p>
                       </div>
@@ -483,7 +476,7 @@ export default function SaaS_ERPDashboard() {
                     <div className="p-3 sm:p-4 rounded-xl bg-[#0F1117] border border-[#222634] text-white shadow-md flex flex-col justify-between min-w-0">
                       <div>
                         <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Net Retention</p>
-                        <p className="text-lg sm:text-xl md:text-2xl lg:text-lg xl:text-xl 2xl:text-2xl font-black text-[#FF5A00] mt-1 tracking-tighter truncate">
+                        <p className="text-xl sm:text-2xl md:text-3xl lg:text-xl xl:text-2xl 2xl:text-3xl font-black text-[#FF5A00] mt-1 tracking-tighter truncate">
                           ₹{formatAmt(monthNetRetention)}
                         </p>
                       </div>
@@ -496,7 +489,7 @@ export default function SaaS_ERPDashboard() {
                   
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Plant Loading' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all min-w-0 ${selectedStatus === 'Plant Loading' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'Plant Loading' ? null : 'Plant Loading')}
                     >
                       <p className="text-2xl sm:text-3xl lg:text-2xl xl:text-3xl font-black text-white tracking-tighter truncate">{statusCounts["Plant Loading"]}</p>
@@ -504,7 +497,7 @@ export default function SaaS_ERPDashboard() {
                     </div>
                     
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'In Transit' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all min-w-0 ${selectedStatus === 'In Transit' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'In Transit' ? null : 'In Transit')}
                     >
                       <p className="text-2xl sm:text-3xl lg:text-2xl xl:text-3xl font-black text-white tracking-tighter truncate">{statusCounts["In Transit"]}</p>
@@ -512,7 +505,7 @@ export default function SaaS_ERPDashboard() {
                     </div>
                     
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Workshop / Repairs' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all min-w-0 ${selectedStatus === 'Workshop / Repairs' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'Workshop / Repairs' ? null : 'Workshop / Repairs')}
                     >
                       <p className="text-2xl sm:text-3xl lg:text-2xl xl:text-3xl font-black text-white tracking-tighter truncate">{statusCounts["Workshop / Repairs"]}</p>
@@ -520,7 +513,7 @@ export default function SaaS_ERPDashboard() {
                     </div>
                     
                     <div 
-                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'No Driver / Leave' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
+                      className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all min-w-0 ${selectedStatus === 'No Driver / Leave' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'No Driver / Leave' ? null : 'No Driver / Leave')}
                     >
                       <p className="text-2xl sm:text-3xl lg:text-2xl xl:text-3xl font-black text-white tracking-tighter truncate">{statusCounts["No Driver / Leave"]}</p>
@@ -560,7 +553,7 @@ export default function SaaS_ERPDashboard() {
               </div>
 
               <div className="w-full lg:w-[380px] shrink-0">
-                <LiveAlertsWidget />
+                <LiveAlertsWidget/>
               </div>
 
             </div>
@@ -581,18 +574,81 @@ export default function SaaS_ERPDashboard() {
                   >
                     {sub}
                   </button>
-                ))}I can see exactly what you're referring to in the image **132de8d8-44bb-4780-9176-edfd545c4464**. Under the "OPERATIONS SUMMARY" section, the "FREIGHT GEN." value is truncating to **₹13,14,088...** because the text is too large for its container box, and it isn't automatically scaling down (minimizing) to fit.
-
-Currently, your CSS is likely using `text-overflow: ellipsis` (which adds the `...`) to prevent the text from breaking out of the box. To make the text actually shrink to fit the box, you have a few development options depending on your setup.
-
-Here are the best ways to fix this so the full freight value is always visible:
-
-### 1. The Modern CSS Approach: Container Queries
-If you want the font size to react specifically to the size of that dark grey box (rather than the whole screen), CSS container queries are the best pure-CSS method.
-
-First, define the parent box as a container:
-```css
-.summary-box {
-  container-type: inline-size;
-  container-name: stat-box;
+                ))}
+              </div>
+              
+              {opSubTab === "Trips" && (
+                // @ts-ignore
+                <TripForm onSuccess="{()"> fetchDashboardData()} />
+              )}
+              {opSubTab === "POD Closure" && (
+                // @ts-ignore
+                <PodClosure onSuccess="{()"> fetchDashboardData()} />
+              )}
+              {opSubTab === "Modify Trips" && (
+                // @ts-ignore
+                <ModifyTrips onSuccess="{()"> fetchDashboardData()} />
+              )}
+              {opSubTab === "Driver Approvals" && <ApprovalQueue/>}
+              
+              {opSubTab === "Quick Status" && (
+                <div className="bg-[#161922] border border-[#222634] rounded-xl p-4 sm:p-6 shadow-sm max-w-2xl animate-in fade-in duration-300">
+                  <h3 className="text-xs sm:text-sm font-black text-white mb-6 uppercase tracking-wider border-b border-[#222634] pb-2">Manual Status Override</h3>
+                  <form onSubmit={handleQuickStatusSubmit} className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Select Truck</label>
+                      <select 
+                        value={qsTruckId} 
+                        onChange={(e) => setQsTruckId(e.target.value)} 
+                        className="w-full text-sm p-3 rounded-lg border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white"
+                      >
+                        <option value="">Select a vehicle...</option>
+                        {liveVehicles.map(v => (
+                          <option key={v.vehicle_id} value={v.vehicle_id}>
+                            {v.vehicle_number} ({v.carrying_capacity_tons}MT {v.truck_type})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">New Operational Status</label>
+                      <select 
+                        value={qsStatus} 
+                        onChange={(e) => setQsStatus(e.target.value)} 
+                        className="w-full text-sm p-3 rounded-lg border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white"
+                      >
+                        <option value="WAITING_FOR_LOAD">Plant Loading</option>
+                        <option value="IN_TRANSIT">In Transit</option>
+                        <option value="WORKSHOP_MAINTENANCE">Workshop / Repairs</option>
+                        <option value="DRIVER_UNAVAILABLE">No Driver / Leave</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">Location / Breakdown Details</label>
+                      <input 
+                        type="text" 
+                        value={qsRemarks} 
+                        onChange={(e) => setQsRemarks(e.target.value)} 
+                        placeholder="e.g. Broken Down near Erode Toll" 
+                        className="w-full text-sm p-3 rounded-lg border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-semibold text-white" 
+                      />
+                    </div>
+                    <button type="submit" className="mt-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black py-3 px-6 rounded-lg transition-colors shadow-sm">
+                      Update Status
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {activeTab === "Fuel & Adv" && userRole === "ADMIN" && <div className="p-4 sm:p-6 mt-6"><FuelAdvanceModule/></div>}
+          {activeTab === "Workshop & Tyres" && userRole === "ADMIN" && <div className="p-6 mt-6"><WorkshopModule/></div>}
+          {activeTab === "Financials" && <div className="p-6 mt-6"><FinancialsModule/></div>}
+          {activeTab === "P&L Statement" && <div className="p-6 mt-6"><ProfitLossModule/></div>}
+          {activeTab === "Setup" && userRole === "ADMIN" && <div className="p-6 mt-6"><SetupModule/></div>}
+        </div>
+      </main>
+    </div>
+  );
 }
