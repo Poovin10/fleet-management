@@ -206,7 +206,6 @@ export function ModifyTrips() {
         destination: destination.toUpperCase().trim(),
         primary_driver_id: driverId ? Number(driverId) : null,
         tonnage_loaded: tonnage !== "" ? Number(tonnage) : null,
-        spot_freight_rate: spotRate !== "" ? Number(spotRate) : null,
         freight_revenue: grossFreight,
         fuel_litres: dieselL !== "" ? Number(dieselL) : null,
         driver_bata: driverBata !== "" ? Number(driverBata) : null,
