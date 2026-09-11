@@ -212,7 +212,7 @@ export function FinancialsModule() {
   const aggRetention = sortedFleetData.reduce((acc, c) => acc + c.net_retention, 0);
   const aggRetentionPct = aggFreight > 0 ? (aggRetention / aggFreight) * 100 : 0;
 
-  // 🚀 CSV EXPORT FUNCTION WITH INJECTION PROTECTION
+  // 🚀 CSV EXPORT FUNCTION
   const exportAnalyticsToCSV = () => {
     let headers: string[] = [];
     let rows: string[] = [];
@@ -271,17 +271,18 @@ export function FinancialsModule() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300" style={{ colorScheme: 'light' }}>
+    <div className="space-y-6 animate-in fade-in duration-300">
       
-      <div className="flex flex-wrap gap-2 border-b border-border pb-4">
+      {/* TABS */}
+      <div className="flex flex-wrap gap-2 border-b border-[#272B36] pb-4">
         {["💵 Driver Settlement", "📈 Analytics & Margins"].map((tab) => (
           <button
             key={tab}
             onClick={() => setFinNav(tab)}
             className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               finNav === tab 
-                ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" 
-                : "bg-surface text-fg-secondary hover:bg-surface-raised border border-border"
+                ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" 
+                : "bg-[#161922] text-slate-400 hover:text-white hover:bg-[#1E222D] border border-[#272B36]"
             }`}
           >
             {tab}
@@ -290,14 +291,14 @@ export function FinancialsModule() {
       </div>
 
       {finNav === "💵 Driver Settlement" && (
-        <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="md:col-span-2">
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Select Driver *</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Select Driver *</label>
               <select 
                 value={selectedDriverId} 
                 onChange={(e) => { setSelectedDriverId(e.target.value); setHasSearched(false); }}
-                className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg"
+                className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold"
                 disabled={isLoading}
               >
                 <option value="">-- SELECT DRIVER --</option>
@@ -305,15 +306,15 @@ export function FinancialsModule() {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">From Date *</label>
-              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" />
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">From Date *</label>
+              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
             </div>
             <div className="flex items-end">
               <div className="w-full">
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">To Date *</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">To Date *</label>
                 <div className="flex gap-2">
-                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-semibold bg-surface text-fg" />
-                  <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold rounded-xl transition-all shadow-sm disabled:bg-slate-300">
+                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
+                  <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black rounded-xl transition-all shadow-sm disabled:bg-slate-700 active:scale-95">
                     Load
                   </button>
                 </div>
@@ -324,80 +325,86 @@ export function FinancialsModule() {
           {hasSearched && (
             <div className="space-y-8 animate-in slide-in-from-bottom-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl border border-border bg-app">
-                  <p className="text-[10px] font-bold text-fg-secondary uppercase mb-1">Total Diesel Issued</p>
-                  <p className="text-sm sm:text-xl font-bold text-fg font-nums">{formatDec(grandTotalDiesel)} L</p>
+                <div className="p-4 rounded-xl border border-[#2B3142] bg-[#0F1117]">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Total Diesel Issued</p>
+                  <p className="text-xl sm:text-2xl font-black text-white">{formatDec(grandTotalDiesel)} L</p>
                 </div>
-                <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50">
-                  <p className="text-[10px] font-bold text-emerald-700 uppercase mb-1">Total Bata Earned</p>
-                  <p className="text-sm sm:text-xl font-bold text-emerald-700 font-nums">₹{formatAmt(grandTotalBata)}</p>
+                <div className="p-4 rounded-xl border border-emerald-900/50 bg-emerald-950/20">
+                  <p className="text-[10px] font-bold text-emerald-500 uppercase mb-1">Total Bata Earned</p>
+                  <p className="text-xl sm:text-2xl font-black text-emerald-400">₹{formatAmt(grandTotalBata)}</p>
                 </div>
-                <div className="p-4 rounded-xl border border-rose-200 bg-rose-50">
-                  <p className="text-[10px] font-bold text-rose-700 uppercase mb-1">Total Adv Deducted</p>
-                  <p className="text-sm sm:text-xl font-bold text-rose-700 font-nums">₹{formatAmt(grandTotalAdv)}</p>
+                <div className="p-4 rounded-xl border border-rose-900/50 bg-rose-950/20">
+                  <p className="text-[10px] font-bold text-rose-500 uppercase mb-1">Total Adv Deducted</p>
+                  <p className="text-xl sm:text-2xl font-black text-rose-400">₹{formatAmt(grandTotalAdv)}</p>
                 </div>
-                <div className="p-4 rounded-xl border border-[#FF5A00]/20 bg-[#FF5A00] text-white shadow-sm">
-                  <p className="text-[10px] font-bold text-[#fff0e6] uppercase mb-1">Balance Payable</p>
-                  <p className="text-sm sm:text-2xl font-bold font-nums">₹{formatAmt(finalBalancePayable)}</p>
+                <div className="p-4 rounded-xl border border-[#FF5A00]/30 bg-[#FF5A00]/10 shadow-sm">
+                  <p className="text-[10px] font-bold text-[#FF5A00] uppercase mb-1">Balance Payable</p>
+                  <p className="text-xl sm:text-3xl font-black text-[#FF5A00]">₹{formatAmt(finalBalancePayable)}</p>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-sm font-bold text-fg uppercase border-b border-border pb-2 mb-4">Trip Details</h4>
-                <div className="overflow-x-auto rounded-xl border border-border w-full">
-                  <table className="min-w-full divide-y divide-slate-200 text-xs whitespace-nowrap">
-                    <thead className="bg-app">
-                      <tr className="text-left font-bold text-fg-secondary uppercase">
-                        <th className="px-4 py-3">Date / LR No</th><th className="px-4 py-3">Truck & Route</th><th className="px-4 py-3 text-right">Diesel (L)</th><th className="px-4 py-3 text-right">Bata (₹)</th><th className="px-4 py-3 text-right">Adv (₹)</th><th className="px-4 py-3 text-right">Trip Bal (₹)</th><th className="px-4 py-3 text-center">Status</th>
+                <h4 className="text-xs font-black text-white uppercase border-b border-[#272B36] pb-2 mb-4">Trip Details</h4>
+                <div className="overflow-x-auto rounded-xl border border-[#272B36] w-full max-h-80">
+                  <table className="min-w-full divide-y divide-[#272B36] text-xs whitespace-nowrap">
+                    <thead className="bg-[#0F1117] sticky top-0">
+                      <tr className="text-left font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="px-4 py-3 border-b border-[#272B36]">Date / LR No</th>
+                        <th className="px-4 py-3 border-b border-[#272B36]">Truck & Route</th>
+                        <th className="px-4 py-3 text-right border-b border-[#272B36]">Diesel (L)</th>
+                        <th className="px-4 py-3 text-right border-b border-[#272B36]">Bata (₹)</th>
+                        <th className="px-4 py-3 text-right border-b border-[#272B36]">Adv (₹)</th>
+                        <th className="px-4 py-3 text-right border-b border-[#272B36]">Trip Bal (₹)</th>
+                        <th className="px-4 py-3 text-center border-b border-[#272B36]">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-surface divide-y divide-slate-100">
+                    <tbody className="bg-[#161922] divide-y divide-[#272B36]">
                       {driverTrips.map(t => {
                         const tripBata = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0);
                         const tripAdv = Number(t.cash_advance_issued) || 0;
                         const tripBal = tripBata - tripAdv;
                         const isSettled = t.settlement_status === "SETTLED";
                         return (
-                          <tr key={t.trip_id} className="hover:bg-app">
-                            <td className="px-4 py-3 font-semibold text-fg">{formatDate(t.trip_start_date)}<br/><span className="text-fg-secondary font-normal">{t.trip_number}</span></td>
-                            <td className="px-4 py-3 text-fg font-bold">{t.vehicles?.vehicle_number}<br/><span className="text-[10px] font-normal text-fg-secondary">{t.origin} ➔ {t.destination}</span></td>
-                            <td className="px-4 py-3 text-right font-bold text-fg">{formatDec(t.fuel_litres)}</td>
-                            <td className="px-4 py-3 text-right font-bold text-emerald-600">{formatAmt(tripBata)}</td>
-                            <td className="px-4 py-3 text-right font-bold text-rose-500">{formatAmt(tripAdv)}</td>
-                            <td className="px-4 py-3 text-right font-bold text-[#FF5A00]">{formatAmt(tripBal)}</td>
+                          <tr key={t.trip_id} className="hover:bg-[#1E222D]">
+                            <td className="px-4 py-3 font-semibold text-white">{formatDate(t.trip_start_date)}<br/><span className="text-slate-500 font-bold">{t.trip_number}</span></td>
+                            <td className="px-4 py-3 text-white font-bold">{t.vehicles?.vehicle_number}<br/><span className="text-[10px] font-bold text-slate-500">{t.origin} ➔ {t.destination}</span></td>
+                            <td className="px-4 py-3 text-right font-black text-white">{formatDec(t.fuel_litres)}</td>
+                            <td className="px-4 py-3 text-right font-black text-emerald-400">{formatAmt(tripBata)}</td>
+                            <td className="px-4 py-3 text-right font-black text-rose-400">{formatAmt(tripAdv)}</td>
+                            <td className="px-4 py-3 text-right font-black text-[#FF5A00]">{formatAmt(tripBal)}</td>
                             <td className="px-4 py-3 text-center">
-                              {isSettled ? <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[9px] font-bold">SETTLED</span> : <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[9px] font-bold">PENDING</span>}
+                              {isSettled ? <span className="px-2 py-1 bg-emerald-950/40 border border-emerald-900/50 text-emerald-400 rounded text-[9px] font-black uppercase tracking-wider">SETTLED</span> : <span className="px-2 py-1 bg-amber-950/40 border border-amber-900/50 text-amber-500 rounded text-[9px] font-black uppercase tracking-wider">PENDING</span>}
                             </td>
                           </tr>
                         );
                       })}
-                      {driverTrips.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center text-fg-muted">No trips logged in this period.</td></tr>}
+                      {driverTrips.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500 font-medium">No trips logged in this period.</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-sm font-bold text-fg uppercase border-b border-border pb-2 mb-4">Direct Advances</h4>
-                <div className="overflow-x-auto rounded-xl border border-border w-full">
-                  <table className="min-w-full divide-y divide-slate-200 text-xs whitespace-nowrap">
-                    <thead className="bg-app">
-                      <tr className="text-left font-bold text-fg-secondary uppercase"><th className="px-4 py-3">Date</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Remarks</th><th className="px-4 py-3 text-right">Amount (₹)</th></tr>
+                <h4 className="text-xs font-black text-white uppercase border-b border-[#272B36] pb-2 mb-4">Direct Advances</h4>
+                <div className="overflow-x-auto rounded-xl border border-[#272B36] w-full max-h-60">
+                  <table className="min-w-full divide-y divide-[#272B36] text-xs whitespace-nowrap">
+                    <thead className="bg-[#0F1117] sticky top-0">
+                      <tr className="text-left font-bold text-slate-400 uppercase tracking-wider"><th className="px-4 py-3 border-b border-[#272B36]">Date</th><th className="px-4 py-3 border-b border-[#272B36]">Category</th><th className="px-4 py-3 border-b border-[#272B36]">Remarks</th><th className="px-4 py-3 text-right border-b border-[#272B36]">Amount (₹)</th></tr>
                     </thead>
-                    <tbody className="bg-surface divide-y divide-slate-100">
+                    <tbody className="bg-[#161922] divide-y divide-[#272B36]">
                       {driverAdvances.map(a => (
-                        <tr key={a.advance_id} className="hover:bg-app">
-                          <td className="px-4 py-3 font-semibold text-fg">{formatDate(a.advance_date)}</td><td className="px-4 py-3 text-fg">{a.advance_type}</td><td className="px-4 py-3 text-fg-secondary">{a.reference_remarks || "-"}</td><td className="px-4 py-3 text-right font-bold text-rose-500">{formatAmt(a.amount_inr)}</td>
+                        <tr key={a.advance_id} className="hover:bg-[#1E222D]">
+                          <td className="px-4 py-3 font-semibold text-white">{formatDate(a.advance_date)}</td><td className="px-4 py-3 text-slate-300 font-bold">{a.advance_type}</td><td className="px-4 py-3 text-slate-500">{a.reference_remarks || "-"}</td><td className="px-4 py-3 text-right font-black text-rose-400">{formatAmt(a.amount_inr)}</td>
                         </tr>
                       ))}
-                      {driverAdvances.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center text-fg-muted">No direct advances in this period.</td></tr>}
+                      {driverAdvances.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500 font-medium">No direct advances in this period.</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-border flex justify-end gap-4">
-                <button onClick={handleMarkSettled} disabled={isProcessing} className="px-8 py-2.5 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
+              <div className="pt-4 border-t border-[#272B36] flex justify-end gap-4">
+                <button onClick={handleMarkSettled} disabled={isProcessing} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">
                   {isProcessing ? "Processing..." : "✅ Mark All as Settled"}
                 </button>
               </div>
@@ -407,11 +414,11 @@ export function FinancialsModule() {
       )}
 
       {finNav === "📈 Analytics & Margins" && (
-        <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="md:col-span-2">
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Analysis Window</label>
-              <select value={analysisWindow} onChange={e => setAnalysisWindow(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Analysis Window</label>
+              <select value={analysisWindow} onChange={e => setAnalysisWindow(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold">
                 <option value="Current Fiscal Month">Current Fiscal Month</option>
                 <option value="Lifetime Fleet">Lifetime Fleet</option>
                 <option value="Custom Dates">Custom Dates</option>
@@ -420,21 +427,21 @@ export function FinancialsModule() {
             {analysisWindow === "Custom Dates" && (
               <>
                 <div>
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">From Date</label>
-                  <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">From Date</label>
+                  <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00]" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">To Date</label>
-                  <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg" />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">To Date</label>
+                  <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00]" />
                 </div>
               </>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-border pb-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-[#272B36] pb-6 mb-6">
             <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Sort By Metric</label>
-              <select value={sortMetric} onChange={e => setSortMetric(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Sort By Metric</label>
+              <select value={sortMetric} onChange={e => setSortMetric(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold">
                 <option value="Total Net Retention (₹)">Total Net Retention (₹)</option>
                 <option value="Total Freight Revenue (₹)">Total Freight Revenue (₹)</option>
                 <option value="Total Trips">Total Trips</option>
@@ -448,8 +455,8 @@ export function FinancialsModule() {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Sort Order</label>
-              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-surface text-fg">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Sort Order</label>
+              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold">
                 <option value="Top Performers (Descending)">Top Performers (Descending)</option>
                 <option value="Underperformers (Ascending)">Underperformers (Ascending)</option>
               </select>
@@ -463,120 +470,120 @@ export function FinancialsModule() {
                   key={tab}
                   onClick={() => setAnalyticsSubTab(tab)}
                   className={`pb-2 text-sm font-bold transition-all duration-200 border-b-2 ${
-                    analyticsSubTab === tab ? "border-[#FF5A00] text-[#FF5A00]" : "border-transparent text-fg-secondary hover:text-fg"
+                    analyticsSubTab === tab ? "border-[#FF5A00] text-[#FF5A00]" : "border-transparent text-slate-500 hover:text-white"
                   }`}
                 >
                   {tab}
                 </button>
               ))}
               {analyticsSubTab === "⚖️ Variant Benchmarks" && (
-                <select value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)} className="ml-auto text-xs p-1.5 rounded border border-border-strong font-bold text-fg bg-surface outline-none">
+                <select value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)} className="ml-auto text-xs p-2 rounded-lg border border-[#2B3142] font-bold text-white bg-[#0F1117] outline-none">
                   <option value="All Variants">All Variants</option>
                   {variantTypes.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               )}
             </div>
 
-            <button onClick={exportAnalyticsToCSV} className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold text-sm rounded-lg transition-all shadow-sm flex items-center gap-2">
+            <button onClick={exportAnalyticsToCSV} className="px-6 py-2.5 bg-[#0F1117] hover:bg-[#1A1F2C] border border-[#272B36] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95">
               <span className="text-lg leading-none">📊</span> Export CSV
             </button>
           </div>
 
           {analyticsSubTab !== "👨‍✈️ Driver Scorecard" && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
-              <div className="p-3 sm:p-4 rounded-xl border border-border overflow-hidden">
-                <p className="text-[9px] sm:text-[10px] font-bold text-fg-secondary uppercase mb-1 truncate">Fleet Revenue</p>
-                <p className="text-sm sm:text-lg md:text-xl font-bold text-fg font-nums">₹{formatAmt(aggFreight)}</p>
+              <div className="p-4 rounded-xl border border-[#2B3142] bg-[#1A1F2C] min-w-0">
+                <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase mb-1 truncate">Fleet Revenue</p>
+                <p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-black text-white leading-none whitespace-nowrap">₹{formatAmt(aggFreight)}</p>
               </div>
-              <div className="p-3 sm:p-4 rounded-xl border border-rose-200 bg-rose-50/30 overflow-hidden">
-                <p className="text-[9px] sm:text-[10px] font-bold text-rose-700 uppercase mb-1 truncate">Diesel Cost</p>
-                <p className="text-sm sm:text-lg md:text-xl font-bold text-rose-700 font-nums">₹{formatAmt(aggDiesel)}</p>
+              <div className="p-4 rounded-xl border border-rose-900/50 bg-rose-950/20 min-w-0">
+                <p className="text-[9px] sm:text-[10px] font-bold text-rose-500 uppercase mb-1 truncate">Diesel Cost</p>
+                <p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-black text-rose-400 leading-none whitespace-nowrap">₹{formatAmt(aggDiesel)}</p>
               </div>
-              <div className="p-3 sm:p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 overflow-hidden">
-                <p className="text-[9px] sm:text-[10px] font-bold text-emerald-700 uppercase mb-1 truncate">Net Margin</p>
-                <p className="text-sm sm:text-lg md:text-xl font-bold text-emerald-700 font-nums">₹{formatAmt(aggRetention)}</p>
+              <div className="p-4 rounded-xl border border-emerald-900/50 bg-emerald-950/20 min-w-0">
+                <p className="text-[9px] sm:text-[10px] font-bold text-emerald-500 uppercase mb-1 truncate">Net Margin</p>
+                <p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-black text-emerald-400 leading-none whitespace-nowrap">₹{formatAmt(aggRetention)}</p>
               </div>
-              <div className="p-3 sm:p-4 rounded-xl border border-[#FF5A00]/20 bg-[#FF5A00]/10 text-[#FF5A00] overflow-hidden">
-                <p className="text-[9px] sm:text-[10px] font-bold uppercase mb-1 truncate">Retention %</p>
-                <p className="text-lg sm:text-xl md:text-2xl font-bold font-nums">{formatDec(aggRetentionPct)}%</p>
+              <div className="p-4 rounded-xl border border-[#FF5A00]/30 bg-[#FF5A00]/10 min-w-0">
+                <p className="text-[9px] sm:text-[10px] font-bold text-[#FF5A00] uppercase mb-1 truncate">Retention %</p>
+                <p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-black text-[#FF5A00] leading-none whitespace-nowrap">{formatDec(aggRetentionPct)}%</p>
               </div>
             </div>
           )}
 
-          <div className="overflow-x-auto rounded-xl border border-border relative min-h-[300px] w-full">
+          <div className="overflow-x-auto rounded-xl border border-[#272B36] relative min-h-[300px] w-full">
             {isAnalyticsLoading && (
-              <div className="absolute inset-0 bg-surface/60 backdrop-blur-sm z-10 flex items-center justify-center">
+              <div className="absolute inset-0 bg-[#161922]/80 backdrop-blur-sm z-10 flex items-center justify-center">
                 <span className="font-bold text-[#FF5A00] animate-pulse">Aggregating Metrics...</span>
               </div>
             )}
             
             {(analyticsSubTab === "📊 Fleet Retention" || analyticsSubTab === "⚖️ Variant Benchmarks") && (
-              <table className="min-w-full divide-y divide-slate-200 text-xs text-right whitespace-nowrap">
-                <thead className="bg-app sticky top-0">
-                  <tr className="font-bold text-fg-secondary uppercase">
-                    <th className="px-4 py-3 text-left">Truck No</th>
-                    <th className="px-4 py-3 text-left">Type</th>
-                    <th className="px-4 py-3">Trips</th>
-                    <th className="px-4 py-3">Tons (MT)</th>
-                    <th className="px-4 py-3">Inc. Trips</th>
-                    <th className="px-4 py-3">Freight (₹)</th>
-                    <th className="px-4 py-3">Diesel (L)</th>
-                    <th className="px-4 py-3">Diesel Cost (₹)</th>
-                    <th className="px-4 py-3">Net Ret (₹)</th>
-                    <th className="px-4 py-3">Ret %</th>
-                    <th className="px-4 py-3">Diesel %</th>
-                    <th className="px-4 py-3">KMPL</th>
+              <table className="min-w-full divide-y divide-[#272B36] text-xs text-right whitespace-nowrap">
+                <thead className="bg-[#0F1117] sticky top-0 z-10">
+                  <tr className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
+                    <th className="px-4 py-4 text-left border-b border-[#272B36]">Truck No</th>
+                    <th className="px-4 py-4 text-left border-b border-[#272B36]">Type</th>
+                    <th className="px-4 py-4 border-b border-[#272B36]">Trips</th>
+                    <th className="px-4 py-4 border-b border-[#272B36]">Tons (MT)</th>
+                    <th className="px-4 py-4 border-b border-[#272B36]">Inc. Trips</th>
+                    <th className="px-4 py-4 border-b border-[#272B36]">Freight (₹)</th>
+                    <th className="px-4 py-4 border-b border-[#272B36]">Diesel (L)</th>
+                    <th className="px-4 py-4 border-b border-[#272B36]">Diesel Cost (₹)</th>
+                    <th className="px-4 py-4 border-b border-[#272B36]">Net Ret (₹)</th>
+                    <th className="px-4 py-4 border-b border-[#272B36]">Ret %</th>
+                    <th className="px-4 py-4 border-b border-[#272B36]">Diesel %</th>
+                    <th className="px-4 py-4 border-b border-[#272B36]">KMPL</th>
                   </tr>
                 </thead>
-                <tbody className="bg-surface divide-y divide-slate-100">
+                <tbody className="bg-[#161922] divide-y divide-[#272B36]">
                   {sortedFleetData.map((row: any) => (
-                    <tr key={row.vehicle_number} className="hover:bg-app">
-                      <td className="px-4 py-2 text-left font-bold text-fg">{row.vehicle_number}</td>
-                      <td className="px-4 py-2 text-left text-fg-secondary">{row.truck_type}</td>
-                      <td className="px-4 py-2 font-semibold text-fg">{row.total_trips}</td>
-                      <td className="px-4 py-2 text-fg-secondary">{formatDec(row.total_tons)}</td>
-                      <td className="px-4 py-2 text-rose-500 font-bold">{row.incomplete_trips}</td>
-                      <td className="px-4 py-2 font-bold text-fg">{formatAmt(row.total_freight)}</td>
-                      <td className="px-4 py-2 text-fg-secondary">{formatDec(row.total_diesel_litres)}</td>
-                      <td className="px-4 py-2 text-rose-600">{formatAmt(row.total_diesel_cost)}</td>
-                      <td className="px-4 py-2 font-bold text-[#FF5A00]">{formatAmt(row.net_retention)}</td>
-                      <td className="px-4 py-2 font-bold text-emerald-600">{formatDec(row.retention_pct)}%</td>
-                      <td className="px-4 py-2 text-fg-secondary">{formatDec(row.diesel_pct)}%</td>
-                      <td className="px-4 py-2 font-bold text-amber-600">{formatDec(row.kmpl)}</td>
+                    <tr key={row.vehicle_number} className="hover:bg-[#1E222D]">
+                      <td className="px-4 py-3 text-left font-black text-white">{row.vehicle_number}</td>
+                      <td className="px-4 py-3 text-left font-bold text-slate-400">{row.truck_type}</td>
+                      <td className="px-4 py-3 font-black text-white">{row.total_trips}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-400">{formatDec(row.total_tons)}</td>
+                      <td className="px-4 py-3 text-rose-500 font-bold">{row.incomplete_trips}</td>
+                      <td className="px-4 py-3 font-bold text-slate-300">{formatAmt(row.total_freight)}</td>
+                      <td className="px-4 py-3 font-bold text-slate-400">{formatDec(row.total_diesel_litres)}</td>
+                      <td className="px-4 py-3 font-bold text-rose-400">{formatAmt(row.total_diesel_cost)}</td>
+                      <td className="px-4 py-3 font-black text-[#FF5A00]">{formatAmt(row.net_retention)}</td>
+                      <td className="px-4 py-3 font-black text-emerald-400">{formatDec(row.retention_pct)}%</td>
+                      <td className="px-4 py-3 font-bold text-slate-400">{formatDec(row.diesel_pct)}%</td>
+                      <td className="px-4 py-3 font-bold text-amber-500">{formatDec(row.kmpl)}</td>
                     </tr>
                   ))}
                   {sortedFleetData.length === 0 && !isAnalyticsLoading && (
-                    <tr><td colSpan={12} className="px-4 py-8 text-center text-fg-muted">No fleet data found for this period.</td></tr>
+                    <tr><td colSpan={12} className="px-4 py-8 text-center text-slate-500 font-medium">No fleet data found for this period.</td></tr>
                   )}
                 </tbody>
               </table>
             )}
 
             {analyticsSubTab === "👨‍✈️ Driver Scorecard" && (
-              <table className="min-w-full divide-y divide-slate-200 text-xs text-right whitespace-nowrap">
-                <thead className="bg-app sticky top-0">
-                  <tr className="font-bold text-fg-secondary uppercase">
-                    <th className="px-6 py-3 text-left">Driver Code</th>
-                    <th className="px-6 py-3 text-left">Full Name</th>
-                    <th className="px-6 py-3">Total Trips</th>
-                    <th className="px-6 py-3">Total KM</th>
-                    <th className="px-6 py-3">Est KMPL</th>
-                    <th className="px-6 py-3">Generated Revenue (₹)</th>
+              <table className="min-w-full divide-y divide-[#272B36] text-xs text-right whitespace-nowrap">
+                <thead className="bg-[#0F1117] sticky top-0 z-10">
+                  <tr className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
+                    <th className="px-6 py-4 text-left border-b border-[#272B36]">Driver Code</th>
+                    <th className="px-6 py-4 text-left border-b border-[#272B36]">Full Name</th>
+                    <th className="px-6 py-4 border-b border-[#272B36]">Total Trips</th>
+                    <th className="px-6 py-4 border-b border-[#272B36]">Total KM</th>
+                    <th className="px-6 py-4 border-b border-[#272B36]">Est KMPL</th>
+                    <th className="px-6 py-4 border-b border-[#272B36]">Generated Revenue (₹)</th>
                   </tr>
                 </thead>
-                <tbody className="bg-surface divide-y divide-slate-100">
+                <tbody className="bg-[#161922] divide-y divide-[#272B36]">
                   {driverScorecard.map((row: any) => (
-                    <tr key={row.driver_code} className="hover:bg-app">
-                      <td className="px-6 py-3 text-left font-bold text-fg">{row.driver_code}</td>
-                      <td className="px-6 py-3 text-left text-fg font-semibold">{row.full_name}</td>
-                      <td className="px-6 py-3 font-bold text-[#FF5A00]">{row.trips}</td>
-                      <td className="px-6 py-3 text-fg-secondary">{formatDec(row.total_km)}</td>
-                      <td className="px-6 py-3 font-bold text-amber-600">{formatDec(row.kmpl)}</td>
-                      <td className="px-6 py-3 font-bold text-emerald-600">₹{formatAmt(row.revenue)}</td>
+                    <tr key={row.driver_code} className="hover:bg-[#1E222D]">
+                      <td className="px-6 py-4 text-left font-black text-white">{row.driver_code}</td>
+                      <td className="px-6 py-4 text-left font-bold text-slate-300">{row.full_name}</td>
+                      <td className="px-6 py-4 font-black text-[#FF5A00]">{row.trips}</td>
+                      <td className="px-6 py-4 font-semibold text-slate-400">{formatDec(row.total_km)}</td>
+                      <td className="px-6 py-4 font-black text-amber-500">{formatDec(row.kmpl)}</td>
+                      <td className="px-6 py-4 font-black text-emerald-400">₹{formatAmt(row.revenue)}</td>
                     </tr>
                   ))}
                   {driverScorecard.length === 0 && !isAnalyticsLoading && (
-                    <tr><td colSpan={6} className="px-6 py-8 text-center text-fg-muted">No driver activity logged in this period.</td></tr>
+                    <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500 font-medium">No driver activity logged in this period.</td></tr>
                   )}
                 </tbody>
               </table>
