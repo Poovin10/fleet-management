@@ -76,14 +76,14 @@ export function ModifyTrips() {
   const loadInitialData = async () => {
     setIsProcessing(true);
     // Fetch vehicles for the dropdown
-    const { data: vData } = await supabase.from('vehicles').select('vehicle_number').eq('is_active', true).order('vehicle_number');
+    const { data: vData } = await supabase.from('vehicles').select('vehicle_id, vehicle_number').eq('is_active', true).order('vehicle_number');
     if (vData) setVehicles(vData);
 
     // Fetch active drivers for the dropdown
     const { data: dData } = await supabase.from('drivers').select('driver_id, full_name, driver_code').eq('is_active', true).order('full_name');
     if (dData) setDrivers(dData);
 
-    // Initial trip fetch (Top 200)
+    // Initial trip fetch
     await handleSearchTrips();
   };
 
@@ -196,7 +196,7 @@ export function ModifyTrips() {
     e.preventDefault();
     if (!currentTrip) return;
 
-    triggerModal("Update Trip & Sync Ledgers", `Save all modifications for Trip #${currentTrip.trip_number}? This will automatically sync your fuel audits.`, false, "Save & Sync", async () => {
+    triggerModal("Update Trip & Sync Ledgers", `Save modifications for Trip #${currentTrip.trip_number}? This will automatically self-heal and sync your fuel audits.`, false, "Save & Sync", async () => {
       setIsProcessing(true);
       
       // 1. Calculate the exact new diesel cost if litres were changed
@@ -210,7 +210,7 @@ export function ModifyTrips() {
       }
       const newFuelCost = Math.round((Number(dieselL) || 0) * currentDieselRate * 100) / 100;
 
-      // 2. Prepare the Trip Update Payload
+      // 2. Prepare the Trip Update Payload (Excluding spot_freight_rate to prevent schema errors)
       const updatePayload = {
         trip_number: tripNumber.toUpperCase().trim(),
         trip_start_date: startDate || null,
@@ -239,45 +239,48 @@ export function ModifyTrips() {
         return;
       }
 
-      // 4. THE MASTER SYNC: Update the Fuel Audit DB based on the changes!
-      if (Number(dieselL) !== Number(currentTrip.fuel_litres || 0)) {
-        if (Number(dieselL) > 0) {
-            // Find if a fuel log already exists for this trip
-            const { data: existingLogs } = await supabase.from('diesel_fuel_logs').select('fuel_log_id').eq('trip_id', currentTrip.trip_id);
+      // 4. THE SELF-HEALING MASTER SYNC
+      // It always checks the fuel logs, even if you didn't change the number, to make sure the receipt isn't missing.
+      if (Number(dieselL) > 0) {
+        const { data: existingLogs } = await supabase.from('diesel_fuel_logs').select('fuel_log_id').eq('trip_id', currentTrip.trip_id);
+        
+        if (existingLogs && existingLogs.length > 0) {
+            // Update the existing log with new totals and latest LR/Date
+            const { error: updErr } = await supabase.from('diesel_fuel_logs').update({
+                litres_filled: Number(dieselL),
+                total_fuel_cost: newFuelCost,
+                diesel_rate_per_litre: currentDieselRate,
+                lr_number: tripNumber.toUpperCase().trim(),
+                fuel_date: startDate || new Date().toISOString().split('T')[0]
+            }).eq('fuel_log_id', existingLogs[0].fuel_log_id);
             
-            if (existingLogs && existingLogs.length > 0) {
-                // Update the existing log with new totals
-                await supabase.from('diesel_fuel_logs').update({
-                    litres_filled: Number(dieselL),
-                    total_fuel_cost: newFuelCost,
-                    diesel_rate_per_litre: currentDieselRate,
-                    lr_number: tripNumber.toUpperCase().trim()
-                }).eq('fuel_log_id', existingLogs[0].fuel_log_id);
-                
-                // If by some glitch there are multiple logs for one trip, delete the extras to keep ledgers clean
-                if (existingLogs.length > 1) {
-                    const extraIds = existingLogs.slice(1).map(l => l.fuel_log_id);
-                    await supabase.from('diesel_fuel_logs').delete().in('fuel_log_id', extraIds);
-                }
-            } else {
-                // If user added diesel to a trip that originally had 0L, inject a new log
-                await supabase.from('diesel_fuel_logs').insert([{
-                    fuel_date: startDate || new Date().toISOString().split('T')[0],
-                    vehicle_id: currentTrip.vehicle_id,
-                    trip_id: currentTrip.trip_id,
-                    lr_number: tripNumber.toUpperCase().trim(),
-                    diesel_category: "TRIP_DIESEL",
-                    litres_filled: Number(dieselL),
-                    diesel_rate_per_litre: currentDieselRate,
-                    total_fuel_cost: newFuelCost,
-                    filling_odometer_km: currentTrip.start_km || 0,
-                    is_tank_full: false
-                }]);
+            if (updErr) alert("Warning: Could not update fuel log: " + updErr.message);
+            
+            // Clean up any duplicates caused by older glitches
+            if (existingLogs.length > 1) {
+                const extraIds = existingLogs.slice(1).map((l: any) => l.fuel_log_id);
+                await supabase.from('diesel_fuel_logs').delete().in('fuel_log_id', extraIds);
             }
         } else {
-            // If the user changed diesel to 0, completely delete the audit log
-            await supabase.from('diesel_fuel_logs').delete().eq('trip_id', currentTrip.trip_id);
+            // THE FIX: The log was missing from the audit entirely! Inject a brand new receipt.
+            const { error: insErr } = await supabase.from('diesel_fuel_logs').insert([{
+                fuel_date: startDate || new Date().toISOString().split('T')[0],
+                vehicle_id: currentTrip.vehicle_id,
+                trip_id: currentTrip.trip_id,
+                lr_number: tripNumber.toUpperCase().trim(),
+                diesel_category: "TRIP_DIESEL",
+                litres_filled: Number(dieselL),
+                diesel_rate_per_litre: currentDieselRate,
+                total_fuel_cost: newFuelCost,
+                filling_odometer_km: currentTrip.start_km || 0,
+                is_tank_full: false
+            }]);
+            
+            if (insErr) alert("Warning: Could not create missing fuel log: " + insErr.message);
         }
+      } else {
+        // If the user changed diesel to 0, completely delete the audit log
+        await supabase.from('diesel_fuel_logs').delete().eq('trip_id', currentTrip.trip_id);
       }
 
       await handleSearchTrips();
@@ -318,7 +321,7 @@ export function ModifyTrips() {
             
             {/* Quick Read-Only Warning */}
             <div className="flex flex-wrap gap-4 bg-emerald-950/20 p-3 rounded-xl border border-emerald-900/50">
-              <span className="text-xs text-emerald-500 font-bold uppercase tracking-wider">✅ Auto-Sync Enabled: Any changes to Diesel Litres will automatically update your Fuel Audit database.</span>
+              <span className="text-xs text-emerald-500 font-bold uppercase tracking-wider">✅ Self-Healing Sync: Hitting save will automatically repair any missing Fuel Audit logs for this trip.</span>
             </div>
 
             {/* ROW 1: LR No, Start Date, Status */}
