@@ -14,13 +14,12 @@ export function ApprovalQueue() {
 
   // --- UI MODAL STATES ---
   const [rejectId, setRejectId] = useState<number | null>(null);
-  const [approveData, setApproveData] = useState<{ isOpen: boolean; req: any; amount: string }>({ isOpen: false, req: null, amount: "" });
+  const [approveData, setApproveData] = useState<{ isOpen: boolean; req: any; amount: string; lrNo: string }>({ isOpen: false, req: null, amount: "", lrNo: "" });
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
 
   const fetchQueue = async () => {
     setIsLoading(true);
     
-    // 1. Fetch latest diesel rate for auto-calculation
     const { data: dData } = await supabase
       .from('diesel_fuel_logs')
       .select('diesel_rate_per_litre')
@@ -29,7 +28,6 @@ export function ApprovalQueue() {
       
     if (dData && dData.length > 0) setDieselRate(Number(dData[0].diesel_rate_per_litre));
 
-    // 2. Safely fetch queue entries
     const { data: qData, error: qError } = await supabase
       .from('driver_pending_entries')
       .select('*')
@@ -42,9 +40,7 @@ export function ApprovalQueue() {
     }
 
     if (qData && qData.length > 0) {
-      // 3. Fetch vehicles separately to map the names manually
       const { data: vData } = await supabase.from('vehicles').select('vehicle_id, vehicle_number');
-      
       const mappedQueue = qData.map(req => {
         const truck = vData?.find(v => v.vehicle_id === req.vehicle_id);
         return {
@@ -68,48 +64,66 @@ export function ApprovalQueue() {
   const handleApproveClick = (req: any) => {
     if (req.entry_type === 'FUEL') {
       const estimatedCost = Math.round((Number(req.litres) || 0) * dieselRate);
-      setApproveData({ isOpen: true, req, amount: String(estimatedCost) });
+      
+      // Auto-extract LR Number from driver's smart tag e.g. "[LR: 236]"
+      const lrMatch = req.receipt_remarks?.match(/\[LR:\s*([^\]]+)\]/i);
+      let extractedLr = lrMatch ? lrMatch[1] : "";
+      if (extractedLr.toUpperCase() === "SUNDRY") extractedLr = "";
+      
+      setApproveData({ isOpen: true, req, amount: String(estimatedCost), lrNo: extractedLr });
     }
   };
 
   // Execute the Approval Logic
   const executeApprove = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { req, amount } = approveData;
+    const { req, amount, lrNo } = approveData;
     if (!req || !amount) return;
 
     setIsProcessing(true);
     const finalCost = Number(amount);
     const actualRate = finalCost / Number(req.litres);
+    const finalLr = lrNo.trim() || 'SUNDRY';
+    const finalCategory = finalLr === 'SUNDRY' ? 'SUNDRY_DIESEL' : 'TRIP_DIESEL';
 
     // 1. Insert into Diesel Logs
     const { error: insertError } = await supabase.from('diesel_fuel_logs').insert([{
       fuel_date: new Date().toISOString().split('T')[0],
       vehicle_id: req.vehicle_id,
-      diesel_category: 'TRIP_DIESEL',
+      diesel_category: finalCategory,
       litres_filled: Number(req.litres),
       diesel_rate_per_litre: actualRate,
       total_fuel_cost: finalCost,
       filling_odometer_km: req.odometer_km || 0,
-      lr_number: 'SUNDRY',
+      lr_number: finalLr,
       is_tank_full: false
     }]);
 
     if (insertError) {
       setIsProcessing(false);
-      setApproveData({ isOpen: false, req: null, amount: "" });
+      setApproveData({ isOpen: false, req: null, amount: "", lrNo: "" });
       return setAlertConfig({ isOpen: true, title: "Failed", message: "Failed to save diesel log: " + insertError.message, type: "error" });
     }
 
-    // 2. Mark Request as Approved
+    // 2. Synchronize with the Trips ledger automatically!
+    if (finalLr !== 'SUNDRY') {
+      const { data: tripData } = await supabase.from('trips').select('trip_id, fuel_litres, fuel_expense').ilike('trip_number', finalLr).single();
+      if (tripData) {
+        const newLitres = (Number(tripData.fuel_litres) || 0) + Number(req.litres);
+        const newExpense = (Number(tripData.fuel_expense) || 0) + finalCost;
+        await supabase.from('trips').update({ fuel_litres: newLitres, fuel_expense: newExpense }).eq('trip_id', tripData.trip_id);
+      }
+    }
+
+    // 3. Mark Request as Approved
     await supabase.from('driver_pending_entries').update({ 
       status: 'APPROVED', 
       amount_inr: finalCost 
     }).eq('entry_id', req.entry_id);
 
     setIsProcessing(false);
-    setApproveData({ isOpen: false, req: null, amount: "" });
-    setAlertConfig({ isOpen: true, title: "Approved!", message: "Fuel request approved and added to expenses.", type: "success" });
+    setApproveData({ isOpen: false, req: null, amount: "", lrNo: "" });
+    setAlertConfig({ isOpen: true, title: "Approved!", message: `Fuel request approved and officially linked to ${finalLr}.`, type: "success" });
     fetchQueue();
   };
 
@@ -137,13 +151,7 @@ export function ApprovalQueue() {
     <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl max-w-5xl mx-auto animate-in fade-in duration-300">
       
       {/* GLOBAL ALERTS & CONFIRMATIONS */}
-      <AlertModal 
-        isOpen={alertConfig.isOpen} 
-        title={alertConfig.title} 
-        message={alertConfig.message} 
-        type={alertConfig.type} 
-        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} 
-      />
+      <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
       <ConfirmModal 
         isOpen={rejectId !== null}
@@ -161,7 +169,7 @@ export function ApprovalQueue() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-[#12141C] border border-[#272B36] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <form onSubmit={executeApprove}>
-              <div className="p-6">
+              <div className="p-6 pb-2">
                 <h3 className="text-lg font-black text-white uppercase tracking-wide mb-1">Approve Fuel Request</h3>
                 <p className="text-xs text-slate-400 mb-6">Review the details and confirm the final bill amount.</p>
                 
@@ -171,20 +179,33 @@ export function ApprovalQueue() {
                   <div className="flex justify-between items-center pt-2 border-t border-[#272B36]"><span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Requested Litres</span> <span className="text-[#FF5A00] font-black text-lg">{approveData.req?.litres} L</span></div>
                 </div>
 
-                <label className="block text-[10px] font-bold text-emerald-500 uppercase mb-2">Final Bill Amount (₹) *</label>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  required 
-                  value={approveData.amount} 
-                  onChange={e => setApproveData({...approveData, amount: e.target.value})}
-                  className="w-full text-xl p-4 rounded-xl border border-[#272B36] bg-[#0F1117] text-white font-black outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-                />
+                <div className="mb-4">
+                  <label className="block text-[10px] font-bold text-sky-400 uppercase mb-2">Trip LR Number (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={approveData.lrNo} 
+                    onChange={e => setApproveData({...approveData, lrNo: e.target.value.toUpperCase()})}
+                    placeholder="e.g. 236 (Leave blank for SUNDRY)"
+                    className="w-full text-sm p-3.5 rounded-xl border border-[#272B36] bg-[#0F1117] text-white font-bold outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all uppercase"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-[10px] font-bold text-emerald-500 uppercase mb-2">Final Bill Amount (₹) *</label>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    required 
+                    value={approveData.amount} 
+                    onChange={e => setApproveData({...approveData, amount: e.target.value})}
+                    className="w-full text-xl p-3.5 rounded-xl border border-[#272B36] bg-[#0F1117] text-white font-black outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
               </div>
-              <div className="flex gap-3 p-6 pt-0">
-                <button type="button" onClick={() => setApproveData({isOpen: false, req: null, amount: ""})} disabled={isProcessing} className="flex-1 py-3.5 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button>
+              <div className="flex gap-3 p-6 pt-0 mt-4">
+                <button type="button" onClick={() => setApproveData({isOpen: false, req: null, amount: "", lrNo: ""})} disabled={isProcessing} className="flex-1 py-3.5 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button>
                 <button type="submit" disabled={isProcessing} className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-emerald-900/20 disabled:bg-slate-700 disabled:shadow-none">
-                  {isProcessing ? "Processing..." : "Approve & Log Expense"}
+                  {isProcessing ? "Processing..." : "Approve & Save"}
                 </button>
               </div>
             </form>
