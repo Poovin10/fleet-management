@@ -34,7 +34,10 @@ export function FuelAdvanceModule() {
   const [recentFuelLogs, setRecentFuelLogs] = useState<any[]>([]);
   const [recentAdvances, setRecentAdvances] = useState<any[]>([]);
 
-  // --- 1. ISSUE DIESEL STATES ---
+  // --- UNIFIED DIESEL FORM STATES ---
+  const [editLogId, setEditLogId] = useState<string | null>(null);
+  const [editTripId, setEditTripId] = useState<number | null>(null);
+  
   const [fDate, setFDate] = useState(new Date().toISOString().split('T')[0]);
   const [fVehicleId, setFVehicleId] = useState("");
   const [fCategory, setFCategory] = useState("TRIP_DIESEL");
@@ -44,28 +47,14 @@ export function FuelAdvanceModule() {
   const [fDieselRate, setFDieselRate] = useState<number | "">(95.0);
   const [fIsTankFull, setFIsTankFull] = useState(false);
 
-  // --- 2. EDIT DIESEL LOG STATES ---
-  const [allFuelLogs, setAllFuelLogs] = useState<any[]>([]);
-  const [selectedEditLogId, setSelectedEditLogId] = useState("");
-  const [editLog, setEditLog] = useState<any>(null);
-  
-  const [eFuelDate, setEFuelDate] = useState("");
-  const [eVehicleId, setEVehicleId] = useState("");
-  const [eCategory, setECategory] = useState("");
-  const [eLrNo, setELrNo] = useState("");
-  const [eFillingKm, setEFillingKm] = useState<number | "">("");
-  const [eLitres, setELitres] = useState<number | "">("");
-  const [eRate, setERate] = useState<number | "">("");
-  const [eIsTankFull, setEIsTankFull] = useState(false);
-
-  // --- 3. DRIVER ADVANCE STATES ---
+  // --- DRIVER ADVANCE STATES ---
   const [advDate, setAdvDate] = useState(new Date().toISOString().split('T')[0]);
   const [advDriverId, setAdvDriverId] = useState("");
   const [advAmount, setAdvAmount] = useState<number | "">("");
   const [advCategory, setAdvCategory] = useState("GENERAL_ADVANCE");
   const [advRef, setAdvRef] = useState("");
 
-  // --- 4. FUEL AUDIT STATES ---
+  // --- FUEL AUDIT STATES ---
   const [auditDateMode, setAuditDateMode] = useState("All Time");
   const [auditSpecificDate, setAuditSpecificDate] = useState(new Date().toISOString().split('T')[0]);
   const [auditFromDate, setAuditFromDate] = useState(() => {
@@ -93,7 +82,7 @@ export function FuelAdvanceModule() {
     const [vehRes, drvRes, fuelRes, advRes, dieselRateRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number'),
       supabase.from('drivers').select('*').eq('is_active', true).order('full_name'),
-      supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).limit(50),
+      supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(50),
       supabase.from('driver_direct_advances').select('*, drivers(full_name, driver_code)').order('advance_date', { ascending: false }).limit(50),
       supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(1)
     ]);
@@ -106,12 +95,7 @@ export function FuelAdvanceModule() {
     if (dieselRateRes.data && dieselRateRes.data.length > 0 && dieselRateRes.data[0].diesel_rate_per_litre) {
       const latestRate = Number(dieselRateRes.data[0].diesel_rate_per_litre);
       setDieselRate(latestRate);
-      setFDieselRate(latestRate);
-    }
-
-    if (faNav === "📝 Edit Diesel Log") {
-      const { data: allLogs } = await supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_log_id', { ascending: false }).limit(200);
-      if (allLogs) setAllFuelLogs(allLogs);
+      if (!editLogId) setFDieselRate(latestRate);
     }
 
     setIsLoading(false);
@@ -122,73 +106,86 @@ export function FuelAdvanceModule() {
     if (faNav === "📊 Fuel Audit") handleRunAudit();
   }, [faNav]);
 
-  const handleIssueDiesel = (e: React.FormEvent) => {
+  const clearFuelForm = () => {
+    setEditLogId(null);
+    setEditTripId(null);
+    setFDate(new Date().toISOString().split('T')[0]);
+    setFVehicleId("");
+    setFCategory("TRIP_DIESEL");
+    setFLrNo("");
+    setFFillingKm("");
+    setFLitres("");
+    setFDieselRate(dieselRate);
+    setFIsTankFull(false);
+  };
+
+  const handleEditClick = (log: any) => {
+    setFaNav("⛽ Issue Diesel");
+    setEditLogId(log.fuel_log_id);
+    setEditTripId(log.trip_id || null);
+    setFDate(log.fuel_date || "");
+    setFVehicleId(String(log.vehicle_id) || "");
+    setFCategory(log.diesel_category || "TRIP_DIESEL");
+    setFLrNo(log.lr_number === "SUNDRY" ? "" : (log.lr_number || ""));
+    setFFillingKm(log.filling_odometer_km || "");
+    setFLitres(log.litres_filled || "");
+    setFDieselRate(log.diesel_rate_per_litre || dieselRate);
+    setFIsTankFull(log.is_tank_full || false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSaveDiesel = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fVehicleId || Number(fLitres) <= 0 || Number(fDieselRate) <= 0) return;
 
-    triggerModal("Record Diesel Entry", `Are you sure you want to issue ${fLitres}L of diesel? This will automatically update your expenses.`, false, "Record Diesel", async () => {
-      setIsProcessing(true);
-      const totalCost = Math.round((Number(fLitres) * Number(fDieselRate)) * 100) / 100;
-
-      await supabase.from('diesel_fuel_logs').insert([{
-        fuel_date: fDate, vehicle_id: Number(fVehicleId), lr_number: fLrNo.toUpperCase().trim() || "SUNDRY",
-        diesel_category: fCategory, litres_filled: Number(fLitres), diesel_rate_per_litre: Number(fDieselRate),
-        total_fuel_cost: totalCost, filling_odometer_km: Number(fFillingKm) || 0, is_tank_full: fIsTankFull
-      }]);
-
-      setFLitres(""); setFLrNo(""); setFFillingKm(""); setFIsTankFull(false);
-      fetchData();
-      setIsProcessing(false);
-      closeModal();
-    });
-  };
-
-  useEffect(() => {
-    if (selectedEditLogId) {
-      const log = allFuelLogs.find(l => String(l.fuel_log_id) === selectedEditLogId);
-      if (log) {
-        setEditLog(log);
-        setEFuelDate(log.fuel_date || ""); setEVehicleId(String(log.vehicle_id) || "");
-        setECategory(log.diesel_category || "TRIP_DIESEL"); setELrNo(log.lr_number === "SUNDRY" ? "" : (log.lr_number || ""));
-        setEFillingKm(log.filling_odometer_km || 0); setELitres(log.litres_filled || 0);
-        setERate(log.diesel_rate_per_litre || dieselRate); setEIsTankFull(log.is_tank_full || false);
-      }
-    } else setEditLog(null);
-  }, [selectedEditLogId, allFuelLogs]);
-
-  const handleUpdateFuelLog = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editLog || Number(eLitres) <= 0) return;
+    const isUpdate = editLogId !== null;
+    const cost = Math.round((Number(fLitres) * Number(fDieselRate)) * 100) / 100;
     
-    triggerModal("Commit Diesel Updates", "Are you sure you want to edit this fuel log? If it is attached to a trip, the trip expenses will be automatically recalculated.", false, "Commit Updates", async () => {
-      setIsProcessing(true);
-      const cost = Math.round((Number(eLitres) * Number(eRate)) * 100) / 100;
+    const payload = {
+      fuel_date: fDate, 
+      vehicle_id: Number(fVehicleId), 
+      lr_number: fLrNo.toUpperCase().trim() || "SUNDRY",
+      diesel_category: fCategory, 
+      litres_filled: Number(fLitres), 
+      diesel_rate_per_litre: Number(fDieselRate),
+      total_fuel_cost: cost, 
+      filling_odometer_km: Number(fFillingKm) || 0, 
+      is_tank_full: fIsTankFull
+    };
 
-      await supabase.from('diesel_fuel_logs').update({
-        fuel_date: eFuelDate, vehicle_id: Number(eVehicleId), diesel_category: eCategory,
-        lr_number: eLrNo.toUpperCase().trim() || "SUNDRY", filling_odometer_km: Number(eFillingKm),
-        litres_filled: Number(eLitres), diesel_rate_per_litre: Number(eRate), total_fuel_cost: cost, is_tank_full: eIsTankFull
-      }).eq('fuel_log_id', editLog.fuel_log_id);
+    triggerModal(
+      isUpdate ? "Update Diesel Record" : "Record Diesel Entry", 
+      isUpdate ? "Are you sure you want to edit this fuel log? If linked to a trip, expenses will be automatically recalculated." : `Are you sure you want to issue ${fLitres}L of diesel? This will automatically update your expenses.`, 
+      false, 
+      isUpdate ? "Update Record" : "Record Diesel", 
+      async () => {
+        setIsProcessing(true);
 
-      if (editLog.trip_id) {
-        const { data: trip } = await supabase.from('trips').select('start_km').eq('trip_id', editLog.trip_id).single();
-        let updatePayload: any = { fuel_litres: Number(eLitres), fuel_expense: cost };
-        if (trip && (trip.start_km === 0 || trip.start_km === null)) updatePayload.start_km = Number(eFillingKm);
-        await supabase.from('trips').update(updatePayload).eq('trip_id', editLog.trip_id);
+        if (isUpdate) {
+          await supabase.from('diesel_fuel_logs').update(payload).eq('fuel_log_id', editLogId);
+          if (editTripId) {
+            const { data: trip } = await supabase.from('trips').select('start_km').eq('trip_id', editTripId).single();
+            let updatePayload: any = { fuel_litres: Number(fLitres), fuel_expense: cost };
+            if (trip && (trip.start_km === 0 || trip.start_km === null)) updatePayload.start_km = Number(fFillingKm);
+            await supabase.from('trips').update(updatePayload).eq('trip_id', editTripId);
+          }
+        } else {
+          await supabase.from('diesel_fuel_logs').insert([payload]);
+        }
+
+        clearFuelForm();
+        fetchData();
+        setIsProcessing(false);
+        closeModal();
       }
-
-      setSelectedEditLogId("");
-      fetchData();
-      setIsProcessing(false);
-      closeModal();
-    });
+    );
   };
 
   const handleDeleteFuel = (id: string) => {
     triggerModal("Delete Fuel Record", "Warning: Are you sure you want to permanently delete this fuel log? This action cannot be reversed.", true, "Delete Log", async () => {
       setIsProcessing(true);
       await supabase.from('diesel_fuel_logs').delete().eq('fuel_log_id', id);
-      if (faNav === "📝 Edit Diesel Log") setSelectedEditLogId("");
+      clearFuelForm();
       fetchData();
       if (faNav === "📊 Fuel Audit") handleRunAudit();
       setIsProcessing(false);
@@ -240,10 +237,9 @@ export function FuelAdvanceModule() {
     setIsProcessing(false);
   };
 
-  // 🚀 CSV EXPORT FUNCTION
   const exportAuditToCSV = () => {
     if (auditResults.length === 0) return alert("No audit data to export.");
-    const headers = ["Log ID", "Date", "Truck No", "Category", "LR Number", "Odometer KM", "Litres Filled", "Total Cost (INR)"];
+    const headers = ["Log ID", "Date", "Truck No", "Category", "LR Number", "Odometer KM", "Litres Filled", "Total Cost (INR)", "Tank Full"];
     
     const rows = auditResults.map(l => [
       l.fuel_log_id,
@@ -253,7 +249,8 @@ export function FuelAdvanceModule() {
       l.lr_number || "-",
       l.filling_odometer_km || 0,
       l.litres_filled || 0,
-      l.total_fuel_cost || 0
+      l.total_fuel_cost || 0,
+      l.is_tank_full ? "Yes" : "No"
     ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
 
     const csvContent = [headers.join(","), ...rows].join("\n");
@@ -268,7 +265,7 @@ export function FuelAdvanceModule() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300" style={{ colorScheme: 'light' }}>
+    <div className="space-y-6 animate-in fade-in duration-300">
       
       <ConfirmModal 
         isOpen={modalConfig.isOpen} 
@@ -281,15 +278,15 @@ export function FuelAdvanceModule() {
         isProcessing={isProcessing}
       />
       
-      <div className="flex flex-wrap gap-2 border-b border-border pb-4">
-        {["⛽ Issue Diesel", "📝 Edit Diesel Log", "💵 Driver Advances", "📊 Fuel Audit"].map((tab) => (
+      <div className="flex flex-wrap gap-2 border-b border-[#272B36] pb-4">
+        {["⛽ Issue Diesel", "💵 Driver Advances", "📊 Fuel Audit"].map((tab) => (
           <button
             key={tab}
             onClick={() => setFaNav(tab)}
             className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               faNav === tab 
-                ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" 
-                : "bg-surface text-fg-secondary hover:bg-surface-raised border border-border"
+                ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" 
+                : "bg-[#161922] text-slate-400 hover:text-white hover:bg-[#1E222D] border border-[#272B36]"
             }`}
           >
             {tab}
@@ -299,93 +296,115 @@ export function FuelAdvanceModule() {
 
       {faNav === "⛽ Issue Diesel" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
-          <div className="lg:col-span-5 bg-surface border border-border rounded-2xl p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Record Fuel Bill</h3>
-            <form onSubmit={handleIssueDiesel} className="space-y-4">
+          
+          <div className="lg:col-span-5 bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl h-fit">
+            <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-5">
+              <h3 className="text-sm font-black text-white uppercase tracking-wide">
+                {editLogId ? "Edit Diesel Log" : "Record Fuel Bill"}
+              </h3>
+              {editLogId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg uppercase tracking-widest animate-pulse">Editing Mode</span>}
+            </div>
+
+            <form onSubmit={handleSaveDiesel} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Fuel Date *</label>
-                <input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fuel Date *</label>
+                <input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" required />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Select Truck *</label>
-                <select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required disabled={isLoading}>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Select Truck *</label>
+                <select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold" required disabled={isLoading}>
                   <option value="">-- SELECT TRUCK --</option>
                   {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Category *</label>
-                <select value={fCategory} onChange={e => setFCategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category *</label>
+                <select value={fCategory} onChange={e => setFCategory(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold">
                   <option value="TRIP_DIESEL">TRIP_DIESEL</option>
                   <option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Trip LR No (Optional)</label>
-                <input type="text" value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="w-full text-sm p-2.5 rounded-lg border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Trip LR No (Optional)</label>
+                <input type="text" value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white uppercase outline-none focus:border-[#FF5A00] font-semibold" />
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Filling KM</label>
-                  <input type="number" min="0" value={fFillingKm} onChange={e => setFFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Filling KM</label>
+                  <input type="number" min="0" value={fFillingKm} onChange={e => setFFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Litres *</label>
-                  <input type="number" step="0.1" min="0.1" value={fLitres} onChange={e => setFLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-orange-600" required />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Litres *</label>
+                  <input type="number" step="0.1" min="0.1" value={fLitres} onChange={e => setFLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] outline-none focus:border-[#FF5A00] font-black text-[#FF5A00]" required />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Rate (₹/L) *</label>
-                  <input type="number" step="0.1" min="0.1" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Rate (₹/L) *</label>
+                  <input type="number" step="0.1" min="0.1" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold" required />
                 </div>
               </div>
               
-              <div className="flex justify-between items-center bg-app p-3 rounded-lg border border-border mt-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={fIsTankFull} onChange={e => setFIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500" />
-                  <span className="text-xs font-bold text-fg">⛽ Tank Full</span>
+              <div className="flex justify-between items-center bg-[#0F1117] p-4 rounded-xl border border-[#272B36] mt-2">
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input type="checkbox" checked={fIsTankFull} onChange={e => setFIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] bg-[#1A1F2C] border-[#272B36] focus:ring-[#FF5A00]" />
+                  <span className="text-xs font-black text-white uppercase">⛽ Tank Full</span>
                 </label>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-fg-secondary uppercase mr-3">Total Cost:</span>
-                  <span className="text-lg font-bold text-rose-600">₹{((Number(fLitres) || 0) * (Number(fDieselRate) || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase mr-3">Cost:</span>
+                  <span className="text-lg font-black text-rose-500">₹{((Number(fLitres) || 0) * (Number(fDieselRate) || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-border">
-                <button type="submit" disabled={!fVehicleId || Number(fLitres) <= 0} className="w-full py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
-                  Record Diesel Entry
+              <div className="flex gap-3 pt-4 border-t border-[#272B36]">
+                {editLogId && (
+                  <>
+                     <button type="button" onClick={() => handleDeleteFuel(editLogId)} className="px-4 py-3 bg-rose-950/40 text-rose-500 hover:bg-rose-900 border border-rose-900/50 rounded-xl font-bold transition-colors">🗑️</button>
+                     <button type="button" onClick={clearFuelForm} className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button>
+                  </>
+                )}
+                <button type="submit" disabled={!fVehicleId || Number(fLitres) <= 0 || isProcessing} className="flex-[2] py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">
+                  {editLogId ? "Update Record" : "Record Diesel"}
                 </button>
               </div>
             </form>
           </div>
           
-          <div className="lg:col-span-7 bg-surface border border-border rounded-2xl p-6 shadow-sm overflow-hidden flex flex-col">
-            <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Recent Fuel Entries</h3>
-            <div className="overflow-x-auto flex-1 max-h-[500px] overflow-y-auto w-full">
-              <table className="min-w-full divide-y divide-slate-200 whitespace-nowrap">
-                <thead className="bg-app sticky top-0">
-                  <tr className="text-[10px] font-bold text-fg-secondary uppercase">
-                    <th className="px-4 py-2 text-left">Date</th>
-                    <th className="px-4 py-2 text-left">Truck</th>
-                    <th className="px-4 py-2 text-left">Category / LR</th>
-                    <th className="px-4 py-2 text-right">Litres</th>
-                    <th className="px-4 py-2 text-right">Cost (₹)</th>
+          <div className="lg:col-span-7 bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden flex flex-col shadow-xl h-fit">
+            <div className="bg-[#12141C] px-6 py-4 flex justify-between items-center border-b border-[#272B36]">
+              <h3 className="text-sm font-black text-white uppercase tracking-wide">Recent Fuel Entries (Click to Edit)</h3>
+            </div>
+            
+            <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
+              <table className="min-w-full divide-y divide-[#272B36] whitespace-nowrap">
+                <thead className="bg-[#0F1117] sticky top-0 z-10">
+                  <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left border-b border-[#272B36]">Date</th>
+                    <th className="px-5 py-3 text-left border-b border-[#272B36]">Truck</th>
+                    <th className="px-5 py-3 text-left border-b border-[#272B36]">Category / LR</th>
+                    <th className="px-5 py-3 text-right border-b border-[#272B36]">Litres</th>
+                    <th className="px-5 py-3 text-right border-b border-[#272B36]">Cost (₹)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-xs">
+                <tbody className="divide-y divide-[#272B36] text-xs bg-[#161922]">
                   {recentFuelLogs.map((log) => (
-                    <tr key={log.fuel_log_id} className="hover:bg-app">
-                      <td className="px-4 py-3 text-fg-secondary">{formatDate(log.fuel_date)}</td>
-                      <td className="px-4 py-3 font-bold text-fg">{log.vehicles?.vehicle_number}</td>
-                      <td className="px-4 py-3 text-fg-secondary">
+                    <tr 
+                      key={log.fuel_log_id} 
+                      onClick={() => handleEditClick(log)} 
+                      className={`cursor-pointer transition-colors ${editLogId === log.fuel_log_id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}
+                    >
+                      <td className="px-5 py-3.5 font-semibold text-slate-300">{formatDate(log.fuel_date)}</td>
+                      <td className="px-5 py-3.5 font-black text-white">{log.vehicles?.vehicle_number}</td>
+                      <td className="px-5 py-3.5 text-slate-300">
                         {log.diesel_category}<br/>
-                        <span className="text-[9px] text-fg-muted">{log.lr_number}</span>
+                        <span className="text-[9px] text-slate-500">{log.lr_number}</span>
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-[#FF5A00]">{log.litres_filled} L</td>
-                      <td className="px-4 py-3 text-right text-rose-600">₹{(log.total_fuel_cost || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                      <td className="px-5 py-3.5 text-right font-black text-[#FF5A00]">
+                        {log.litres_filled} L {log.is_tank_full && <span title="Tank Full" className="ml-1 text-sm">⛽</span>}
+                      </td>
+                      <td className="px-5 py-3.5 text-right font-bold text-rose-500">₹{(log.total_fuel_cost || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                     </tr>
                   ))}
-                  {recentFuelLogs.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-fg-muted">No recent logs found.</td></tr>}
+                  {recentFuelLogs.length === 0 && <tr><td colSpan={5} className="p-8 text-center font-medium text-slate-500">No recent logs found.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -393,114 +412,29 @@ export function FuelAdvanceModule() {
         </div>
       )}
 
-      {faNav === "📝 Edit Diesel Log" && (
-        <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm max-w-4xl mx-auto animate-in slide-in-from-bottom-4">
-          <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Edit Diesel Log</h3>
-          
-          <div className="mb-6">
-            <label className="block text-xs font-bold text-fg uppercase mb-2">Select Record to Edit</label>
-            <select 
-              value={selectedEditLogId} 
-              onChange={(e) => setSelectedEditLogId(e.target.value)}
-              className="w-full text-sm p-3 rounded-xl border border-border-strong bg-app font-bold outline-none focus:ring-2 focus:ring-[#FF5A00]"
-            >
-              <option value="">-- SELECT LOG --</option>
-              {allFuelLogs.map(l => (
-                <option key={l.fuel_log_id} value={l.fuel_log_id}>
-                  Log #{l.fuel_log_id} | {formatDate(l.fuel_date)} | {l.vehicles?.vehicle_number} | {l.litres_filled} L
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {editLog && (
-            <form onSubmit={handleUpdateFuelLog} className="space-y-5 animate-in slide-in-from-bottom-4">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div className="md:col-span-1">
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Fuel Date *</label>
-                  <input type="date" value={eFuelDate} onChange={e => setEFuelDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Vehicle *</label>
-                  <select value={eVehicleId} onChange={e => setEVehicleId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required>
-                    {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Category *</label>
-                  <select value={eCategory} onChange={e => setECategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]">
-                    <option value="TRIP_DIESEL">TRIP_DIESEL</option>
-                    <option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Trip LR No</label>
-                  <input type="text" value={eLrNo} onChange={e => setELrNo(e.target.value.toUpperCase())} className="w-full text-sm p-2.5 rounded-lg border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" />
-                </div>
-                <div className="md:col-span-1">
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Filling KM *</label>
-                  <input type="number" min="0" value={eFillingKm} onChange={e => setEFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
-                </div>
-                <div className="md:col-span-1">
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Litres *</label>
-                  <input type="number" step="0.1" min="0.1" value={eLitres} onChange={e => setELitres(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required />
-                </div>
-                <div className="md:col-span-1">
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Rate (₹/L) *</label>
-                  <input type="number" step="0.1" min="0.1" value={eRate} onChange={e => setERate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center bg-app p-3 rounded-lg border border-border">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={eIsTankFull} onChange={e => setEIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00]" />
-                  <span className="text-xs font-bold text-fg">⛽ Mark Tank Full</span>
-                </label>
-                <div className="text-right">
-                  <span className="text-[10px] font-bold text-fg-secondary uppercase mr-3">Recalculated Cost:</span>
-                  <span className="text-lg font-bold text-rose-600">₹{((Number(eLitres) * Number(eRate)) || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-border flex justify-between">
-                <button type="button" onClick={() => handleDeleteFuel(editLog.fuel_log_id)} className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-lg transition-colors border border-rose-200">
-                  🗑️ Delete Log
-                </button>
-                <button type="submit" className="px-8 py-2.5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
-                  💾 Commit Updates
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      )}
-
       {faNav === "💵 Driver Advances" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
-          <div className="lg:col-span-4 bg-surface border border-border rounded-2xl p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Direct Cash Advance</h3>
+          <div className="lg:col-span-4 bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl h-fit">
+            <h3 className="text-sm font-black text-white uppercase tracking-wide border-b border-[#272B36] pb-3 mb-5">Direct Cash Advance</h3>
             <form onSubmit={handleIssueAdvance} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Advance Date *</label>
-                <input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" required />
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Advance Date *</label>
+                <input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" required />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Driver Account *</label>
-                <select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold" required disabled={isLoading}>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Driver Account *</label>
+                <select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold" required disabled={isLoading}>
                   <option value="">-- SELECT DRIVER --</option>
                   {drivers.map(d => <option key={d.driver_id} value={String(d.driver_id)}>{d.driver_code} - {d.full_name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Advance Amount (₹) *</label>
-                <input type="number" min="1" value={advAmount} onChange={e => setAdvAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold text-emerald-700" required />
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Advance Amount (₹) *</label>
+                <input type="number" min="1" value={advAmount} onChange={e => setAdvAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] outline-none focus:border-[#FF5A00] font-black text-emerald-400" required />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Category</label>
-                <select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label>
+                <select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold">
                   <option value="GENERAL_ADVANCE">GENERAL_ADVANCE</option>
                   <option value="BATA_ADVANCE">BATA_ADVANCE</option>
                   <option value="EMERGENCY_MEDICAL">EMERGENCY_MEDICAL</option>
@@ -508,46 +442,48 @@ export function FuelAdvanceModule() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Reference Note</label>
-                <input type="text" value={advRef} onChange={e => setAdvRef(e.target.value)} placeholder="e.g. For enroute expenses" className="w-full text-sm p-2.5 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Reference Note</label>
+                <input type="text" value={advRef} onChange={e => setAdvRef(e.target.value)} placeholder="e.g. For enroute expenses" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
               </div>
-              <div className="pt-4 border-t border-border">
-                <button type="submit" disabled={!advDriverId || Number(advAmount) <= 0} className="w-full py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-sm active:scale-95">
+              <div className="pt-4 border-t border-[#272B36]">
+                <button type="submit" disabled={!advDriverId || Number(advAmount) <= 0 || isProcessing} className="w-full py-3.5 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">
                   Issue Advance
                 </button>
               </div>
             </form>
           </div>
           
-          <div className="lg:col-span-8 bg-surface border border-border rounded-2xl p-6 shadow-sm overflow-hidden flex flex-col">
-            <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Advance History</h3>
-            <div className="overflow-x-auto flex-1 max-h-[500px] overflow-y-auto w-full">
-              <table className="min-w-full divide-y divide-slate-200 whitespace-nowrap">
-                <thead className="bg-app sticky top-0">
-                  <tr className="text-[10px] font-bold text-fg-secondary uppercase">
-                    <th className="px-4 py-2 text-left">Date</th>
-                    <th className="px-4 py-2 text-left">Driver</th>
-                    <th className="px-4 py-2 text-left">Category & Ref</th>
-                    <th className="px-4 py-2 text-right">Amount (₹)</th>
-                    <th className="px-4 py-2 text-center">Action</th>
+          <div className="lg:col-span-8 bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden flex flex-col shadow-xl h-fit">
+            <div className="bg-[#12141C] px-6 py-4 flex justify-between items-center border-b border-[#272B36]">
+              <h3 className="text-sm font-black text-white uppercase tracking-wide">Advance History</h3>
+            </div>
+            <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
+              <table className="min-w-full divide-y divide-[#272B36] whitespace-nowrap">
+                <thead className="bg-[#0F1117] sticky top-0 z-10">
+                  <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left border-b border-[#272B36]">Date</th>
+                    <th className="px-5 py-3 text-left border-b border-[#272B36]">Driver</th>
+                    <th className="px-5 py-3 text-left border-b border-[#272B36]">Category & Ref</th>
+                    <th className="px-5 py-3 text-right border-b border-[#272B36]">Amount (₹)</th>
+                    <th className="px-5 py-3 text-center border-b border-[#272B36]">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-xs">
+                <tbody className="divide-y divide-[#272B36] text-xs bg-[#161922]">
                   {recentAdvances.map((adv) => (
-                    <tr key={adv.advance_id} className="hover:bg-app">
-                      <td className="px-4 py-3 text-fg-secondary">{formatDate(adv.advance_date)}</td>
-                      <td className="px-4 py-3 font-bold text-fg">{adv.drivers?.full_name} <br/><span className="text-[9px] font-normal text-fg-muted">{adv.drivers?.driver_code}</span></td>
-                      <td className="px-4 py-3 text-fg-secondary">
+                    <tr key={adv.advance_id} className="hover:bg-[#1E222D] transition-colors">
+                      <td className="px-5 py-3.5 font-semibold text-slate-300">{formatDate(adv.advance_date)}</td>
+                      <td className="px-5 py-3.5 font-black text-white">{adv.drivers?.full_name} <br/><span className="text-[9px] font-bold text-[#FF5A00]">{adv.drivers?.driver_code}</span></td>
+                      <td className="px-5 py-3.5 text-slate-300">
                         {adv.advance_type}<br/>
-                        <span className="text-[9px] text-fg-muted">{adv.reference_remarks || "-"}</span>
+                        <span className="text-[9px] text-slate-500">{adv.reference_remarks || "-"}</span>
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-emerald-600">₹{(adv.amount_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                      <td className="px-4 py-3 text-center">
-                        <button onClick={() => handleDeleteAdvance(adv.advance_id)} className="text-rose-500 hover:text-rose-700 bg-rose-50 p-1.5 rounded">🗑️</button>
+                      <td className="px-5 py-3.5 text-right font-black text-emerald-400">₹{(adv.amount_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                      <td className="px-5 py-3.5 text-center">
+                        <button onClick={() => handleDeleteAdvance(adv.advance_id)} className="text-rose-500 hover:text-white hover:bg-rose-600 bg-rose-950/40 border border-rose-900/50 p-2 rounded-lg transition-all" title="Delete Advance">🗑️</button>
                       </td>
                     </tr>
                   ))}
-                  {recentAdvances.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-fg-muted">No advances recorded.</td></tr>}
+                  {recentAdvances.length === 0 && <tr><td colSpan={5} className="p-8 text-center font-medium text-slate-500">No advances recorded.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -556,13 +492,13 @@ export function FuelAdvanceModule() {
       )}
 
       {faNav === "📊 Fuel Audit" && (
-        <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm animate-in slide-in-from-bottom-4">
-          <h3 className="text-sm font-bold text-fg uppercase tracking-tight border-b border-border pb-3 mb-5">Fuel Audit & Search</h3>
+        <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom-4">
+          <h3 className="text-sm font-black text-white uppercase tracking-wide border-b border-[#272B36] pb-3 mb-5">Fuel Audit & Search</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Date Mode</label>
-              <select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date Mode</label>
+              <select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold">
                 <option value="All Time">All Time</option>
                 <option value="Specific Date">Specific Date</option>
                 <option value="Date Range">Date Range</option>
@@ -571,35 +507,35 @@ export function FuelAdvanceModule() {
             
             {auditDateMode === "Specific Date" && (
               <div>
-                <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Date</label>
-                <input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date</label>
+                <input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
               </div>
             )}
             
             {auditDateMode === "Date Range" && (
               <>
                 <div>
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">From</label>
-                  <input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">From</label>
+                  <input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">To</label>
-                  <input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">To</label>
+                  <input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
                 </div>
               </>
             )}
             {auditDateMode === "All Time" && <div className="hidden md:block md:col-span-2"></div>}
 
             <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Truck No</label>
-              <select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Truck No</label>
+              <select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold">
                 <option value="All Trucks">All Trucks</option>
                 {vehicles.map(v => <option key={v.vehicle_id} value={v.vehicle_number}>{v.vehicle_number}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Category</label>
-              <select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="w-full text-sm p-2 rounded-lg border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00]">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label>
+              <select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold">
                 <option value="All Categories">All Categories</option>
                 <option value="TRIP_DIESEL">TRIP_DIESEL</option>
                 <option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option>
@@ -609,52 +545,53 @@ export function FuelAdvanceModule() {
 
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
-              <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Search LR No</label>
-              <input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="w-full text-sm p-2 rounded-lg border border-border-strong uppercase outline-none focus:ring-2 focus:ring-[#FF5A00]" />
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Search LR No</label>
+              <input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white uppercase outline-none focus:border-[#FF5A00] font-semibold" />
             </div>
             <div className="flex items-end gap-3">
-              <button onClick={handleRunAudit} className="px-8 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-lg transition-all shadow-sm">
+              <button onClick={handleRunAudit} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">
                 Search Logs
               </button>
-              {/* V2 EXPORT BUTTON */}
-              <button onClick={exportAuditToCSV} className="px-5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold text-sm rounded-lg transition-all shadow-sm flex items-center gap-2">
+              <button onClick={exportAuditToCSV} className="px-6 py-3 bg-[#0F1117] hover:bg-[#1A1F2C] border border-[#272B36] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95">
                 <span className="text-lg leading-none">📊</span> Export CSV
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-border w-full">
-            <table className="min-w-full divide-y divide-slate-200 text-xs whitespace-nowrap">
-              <thead className="bg-app">
-                <tr className="text-left font-bold text-fg-secondary uppercase">
-                  <th className="px-4 py-3">Log ID</th>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Truck</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">LR No</th>
-                  <th className="px-4 py-3 text-right">Odometer</th>
-                  <th className="px-4 py-3 text-right">Litres</th>
-                  <th className="px-4 py-3 text-right">Cost (₹)</th>
-                  <th className="px-4 py-3 text-center">Action</th>
+          <div className="overflow-x-auto rounded-xl border border-[#272B36] w-full">
+            <table className="min-w-full divide-y divide-[#272B36] text-xs whitespace-nowrap">
+              <thead className="bg-[#0F1117]">
+                <tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[10px]">
+                  <th className="px-5 py-4">Log ID</th>
+                  <th className="px-5 py-4">Date</th>
+                  <th className="px-5 py-4">Truck</th>
+                  <th className="px-5 py-4">Category</th>
+                  <th className="px-5 py-4">LR No</th>
+                  <th className="px-5 py-4 text-right">Odometer</th>
+                  <th className="px-5 py-4 text-right">Litres</th>
+                  <th className="px-5 py-4 text-right">Cost (₹)</th>
+                  <th className="px-5 py-4 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="bg-surface divide-y divide-slate-100">
+              <tbody className="bg-[#161922] divide-y divide-[#272B36]">
                 {auditResults.map(l => (
-                  <tr key={l.fuel_log_id} className="hover:bg-app">
-                    <td className="px-4 py-2 font-bold text-fg-secondary">#{l.fuel_log_id}</td>
-                    <td className="px-4 py-2 font-semibold">{formatDate(l.fuel_date)}</td>
-                    <td className="px-4 py-2 font-bold text-fg">{l.vehicles?.vehicle_number}</td>
-                    <td className="px-4 py-2 text-fg-secondary">{l.diesel_category}</td>
-                    <td className="px-4 py-2 text-fg-secondary">{l.lr_number}</td>
-                    <td className="px-4 py-2 text-right">{l.filling_odometer_km}</td>
-                    <td className="px-4 py-2 text-right font-bold text-[#FF5A00]">{l.litres_filled} L</td>
-                    <td className="px-4 py-2 text-right font-bold text-rose-600">₹{(l.total_fuel_cost || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                    <td className="px-4 py-2 text-center">
-                      <button onClick={() => handleDeleteFuel(l.fuel_log_id)} className="text-rose-500 hover:text-rose-700 bg-rose-50 p-1.5 rounded" title="Delete Log">🗑️</button>
+                  <tr key={l.fuel_log_id} onClick={() => handleEditClick(l)} className="hover:bg-[#1E222D] cursor-pointer transition-colors">
+                    <td className="px-5 py-3 font-bold text-slate-500">#{l.fuel_log_id}</td>
+                    <td className="px-5 py-3 font-semibold text-slate-300">{formatDate(l.fuel_date)}</td>
+                    <td className="px-5 py-3 font-black text-white">{l.vehicles?.vehicle_number}</td>
+                    <td className="px-5 py-3 text-slate-300">{l.diesel_category}</td>
+                    <td className="px-5 py-3 font-bold text-[#FF5A00]">{l.lr_number}</td>
+                    <td className="px-5 py-3 text-right text-slate-300">{l.filling_odometer_km}</td>
+                    <td className="px-5 py-3 text-right font-black text-[#FF5A00]">
+                      {l.litres_filled} L {l.is_tank_full && <span title="Tank Full" className="ml-1 text-sm">⛽</span>}
+                    </td>
+                    <td className="px-5 py-3 text-right font-bold text-rose-500">₹{(l.total_fuel_cost || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                    <td className="px-5 py-3 text-center">
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteFuel(l.fuel_log_id); }} className="text-rose-500 hover:text-white hover:bg-rose-600 bg-rose-950/40 border border-rose-900/50 p-2 rounded-lg transition-all" title="Delete Log">🗑️</button>
                     </td>
                   </tr>
                 ))}
-                {auditResults.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-fg-muted">No logs match your search criteria.</td></tr>}
+                {auditResults.length === 0 && <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-500 font-medium">No logs match your search criteria.</td></tr>}
               </tbody>
             </table>
           </div>
