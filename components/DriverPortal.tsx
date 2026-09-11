@@ -95,7 +95,8 @@ export function DriverPortal() {
     const firstDay = `${currentYearMonth}-01`;
 
     const [reqRes, tripRes, advRes] = await Promise.all([
-      supabase.from('driver_pending_entries').select('*').eq('driver_code', drvCode).order('created_at', { ascending: false }).limit(10),
+      // FIX: Using submitted_at
+      supabase.from('driver_pending_entries').select('*').eq('driver_code', drvCode).order('submitted_at', { ascending: false }).limit(10),
       supabase.from('trips').select('*').eq('primary_driver_id', drvId).gte('trip_start_date', firstDay).order('trip_start_date', { ascending: false }),
       supabase.from('driver_direct_advances').select('*').eq('driver_id', drvId).gte('advance_date', firstDay).order('advance_date', { ascending: false })
     ]);
@@ -226,7 +227,7 @@ export function DriverPortal() {
         driver_code: savedDriverCode || "DRV-MOBILE",
         entry_type: "FUEL",
         litres: Number(fuelLitres),
-        amount_inr: 0, // Fix for NOT NULL constraint
+        amount_inr: 0,
         odometer_km: Number(odometer) || 0,
         receipt_remarks: `${remarks} [Truck: ${truckNumberText}]`,
         status: 'PENDING'
@@ -313,7 +314,8 @@ export function DriverPortal() {
 
   const handleCancelRequest = async (id: number) => {
     if (!confirm("Delete this request?")) return;
-    await supabase.from('driver_pending_entries').delete().eq('id', id);
+    // FIX: Using entry_id
+    await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
     if (activeDriverObj) fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
     setAlertConfig({ isOpen: true, title: "Deleted", message: "Request cancelled.", type: "success" });
   };
@@ -520,14 +522,15 @@ export function DriverPortal() {
                 <div>
                   <h4 className="text-xs font-bold text-fg uppercase mb-3">Pending Requests</h4>
                   <div className="space-y-3">
+                    {/* FIX: Using entry_id */}
                     {pendingRequests.map(r => (
-                      <div key={r.id} className="p-3 bg-surface border border-border rounded-xl shadow-sm">
+                      <div key={r.entry_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm">
                         <div className="flex justify-between items-start mb-1">
                           <span className="text-xs font-bold text-fg">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : `₹${r.amount_inr}`}</span>
                           <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
                         </div>
                         <div className="flex justify-end mt-2">
-                          <button onClick={() => handleCancelRequest(r.id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-surface border border-rose-200 rounded-lg">Cancel Request ❌</button>
+                          <button onClick={() => handleCancelRequest(r.entry_id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-surface border border-rose-200 rounded-lg">Cancel Request ❌</button>
                         </div>
                       </div>
                     ))}
