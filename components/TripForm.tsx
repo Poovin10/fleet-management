@@ -121,7 +121,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const activeTruckCap = activeTruck ? Number(activeTruck.carrying_capacity_tons) : 0;
   const finalSource = source === "CUSTOM" ? customSource : source;
 
-  // SMART ROUTE MATCHER: Checks if the DB "25/30" text matches the 30MT or 25MT truck
+  // SMART ROUTE MATCHER
   const validRoutes = freightMaster.filter((r) => {
     let isCapMatch = false;
     if (activeTruckCap === 0) {
@@ -232,6 +232,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
     const grossFreight = Math.round(Number(loadedMt) * Number(freightRate) * 100) / 100;
     const fuelCost = Math.round((Number(dieselL) || 0) * dieselRate * 100) / 100;
 
+    // 1. Insert Trip
     const { data: newTrip, error: tripError } = await supabase
       .from("trips")
       .insert([{
@@ -270,8 +271,10 @@ export function TripForm({ onSuccess }: TripFormProps) {
       return;
     }
 
+    // 2. Insert Fuel Log safely with Error Tracking
+    let fuelErrorMessage = null;
     if (Number(dieselL) > 0) {
-      await supabase.from("diesel_fuel_logs").insert([{
+      const { error: fuelError } = await supabase.from("diesel_fuel_logs").insert([{
         fuel_date: startDate,
         vehicle_id: Number(selectedTruckId),
         trip_id: newTrip.trip_id,
@@ -283,8 +286,11 @@ export function TripForm({ onSuccess }: TripFormProps) {
         filling_odometer_km: finalStartKm,
         is_tank_full: isTankFull
       }]);
+      
+      if (fuelError) fuelErrorMessage = fuelError.message;
     }
 
+    // 3. Update Vehicle Status
     await supabase
       .from("vehicles")
       .update({
@@ -294,12 +300,22 @@ export function TripForm({ onSuccess }: TripFormProps) {
       })
       .eq("vehicle_id", Number(selectedTruckId));
 
-    setAlertConfig({
-      isOpen: true,
-      title: "Trip Dispatched!",
-      message: `LR No. ${lrNo.toUpperCase()} has been successfully registered and the truck status is now In Transit.`,
-      type: "success"
-    });
+    // Handle Alerts based on Fuel Log Success/Failure
+    if (fuelErrorMessage) {
+      setAlertConfig({
+        isOpen: true,
+        title: "Trip Created (Fuel Error)",
+        message: `Trip ${lrNo.toUpperCase()} was dispatched, BUT the diesel log failed to save (${fuelErrorMessage}). Please add the diesel manually in the Fuel & Adv tab.`,
+        type: "error"
+      });
+    } else {
+      setAlertConfig({
+        isOpen: true,
+        title: "Trip Dispatched!",
+        message: `LR No. ${lrNo.toUpperCase()} has been successfully registered and the truck status is now In Transit.`,
+        type: "success"
+      });
+    }
     
     setIsSubmitting(false);
     handleClear(); 
