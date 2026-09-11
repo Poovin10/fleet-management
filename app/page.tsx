@@ -457,33 +457,33 @@ export default function SaaS_ERPDashboard() {
                   </div>
                   
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="p-3 sm:p-4 rounded-xl bg-[#1A1F2C] border border-[#2B3142] flex flex-col justify-between">
+                    <div className="p-3 sm:p-4 rounded-xl bg-[#1A1F2C] border border-[#2B3142] flex flex-col justify-between min-w-0">
                       <div>
-                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Trips</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-white mt-1 sm:mt-2">{monthTripsCount}</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Total Trips</p>
+                        <p className="text-lg sm:text-xl md:text-2xl lg:text-lg xl:text-xl 2xl:text-2xl font-black text-white mt-1 tracking-tighter truncate">{monthTripsCount}</p>
                       </div>
                     </div>
                     
-                    <div className="p-3 sm:p-4 rounded-xl bg-rose-950/20 border border-rose-900/50 flex flex-col justify-between">
+                    <div className="p-3 sm:p-4 rounded-xl bg-rose-950/20 border border-rose-900/50 flex flex-col justify-between min-w-0">
                       <div>
-                        <p className="text-[9px] sm:text-[10px] font-bold text-rose-400 uppercase tracking-wider">PODs Pending</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-rose-300 mt-1 sm:mt-2">{activeTripCount}</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold text-rose-400 uppercase tracking-wider truncate">PODs Pending</p>
+                        <p className="text-lg sm:text-xl md:text-2xl lg:text-lg xl:text-xl 2xl:text-2xl font-black text-rose-300 mt-1 tracking-tighter truncate">{activeTripCount}</p>
                       </div>
                     </div>
                     
-                    <div className="p-3 sm:p-4 rounded-xl bg-emerald-950/20 border border-emerald-900/50 flex flex-col justify-between">
+                    <div className="p-3 sm:p-4 rounded-xl bg-emerald-950/20 border border-emerald-900/50 flex flex-col justify-between min-w-0">
                       <div>
-                        <p className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Freight Gen.</p>
-                        <p className="text-sm sm:text-xl lg:text-2xl font-black text-emerald-300 mt-1 sm:mt-2 tracking-tight truncate">
+                        <p className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-wider truncate">Freight Gen.</p>
+                        <p className="text-lg sm:text-xl md:text-2xl lg:text-lg xl:text-xl 2xl:text-2xl font-black text-emerald-300 mt-1 tracking-tighter truncate">
                           ₹{formatAmt(monthFreight)}
                         </p>
                       </div>
                     </div>
                     
-                    <div className="p-3 sm:p-4 rounded-xl bg-[#0F1117] border border-[#222634] text-white shadow-md flex flex-col justify-between">
+                    <div className="p-3 sm:p-4 rounded-xl bg-[#0F1117] border border-[#222634] text-white shadow-md flex flex-col justify-between min-w-0">
                       <div>
-                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Retention</p>
-                        <p className="text-sm sm:text-xl lg:text-2xl font-black text-[#FF5A00] mt-1 sm:mt-2 tracking-tight truncate">
+                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Net Retention</p>
+                        <p className="text-lg sm:text-xl md:text-2xl lg:text-lg xl:text-xl 2xl:text-2xl font-black text-[#FF5A00] mt-1 tracking-tighter truncate">
                           ₹{formatAmt(monthNetRetention)}
                         </p>
                       </div>
@@ -499,32 +499,32 @@ export default function SaaS_ERPDashboard() {
                       className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Plant Loading' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'Plant Loading' ? null : 'Plant Loading')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-white">{statusCounts["Plant Loading"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Plant Loading</p>
+                      <p className="text-2xl sm:text-3xl lg:text-2xl xl:text-3xl font-black text-white tracking-tighter truncate">{statusCounts["Plant Loading"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1 truncate">Plant Loading</p>
                     </div>
                     
                     <div 
                       className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'In Transit' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'In Transit' ? null : 'In Transit')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-white">{statusCounts["In Transit"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">In Transit</p>
+                      <p className="text-2xl sm:text-3xl lg:text-2xl xl:text-3xl font-black text-white tracking-tighter truncate">{statusCounts["In Transit"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1 truncate">In Transit</p>
                     </div>
                     
                     <div 
                       className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'Workshop / Repairs' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'Workshop / Repairs' ? null : 'Workshop / Repairs')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-white">{statusCounts["Workshop / Repairs"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Workshop</p>
+                      <p className="text-2xl sm:text-3xl lg:text-2xl xl:text-3xl font-black text-white tracking-tighter truncate">{statusCounts["Workshop / Repairs"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1 truncate">Workshop</p>
                     </div>
                     
                     <div 
                       className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all ${selectedStatus === 'No Driver / Leave' ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/30 bg-[#FF5A00]/10' : 'border-[#2B3142] hover:border-[#FF5A00]/50 bg-[#1A1F2C]'}`}
                       onClick={() => setSelectedStatus(selectedStatus === 'No Driver / Leave' ? null : 'No Driver / Leave')}
                     >
-                      <p className="text-2xl sm:text-4xl font-black text-white">{statusCounts["No Driver / Leave"]}</p>
-                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">No Driver</p>
+                      <p className="text-2xl sm:text-3xl lg:text-2xl xl:text-3xl font-black text-white tracking-tighter truncate">{statusCounts["No Driver / Leave"]}</p>
+                      <p className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mt-1 truncate">No Driver</p>
                     </div>
                   </div>
 
@@ -581,81 +581,18 @@ export default function SaaS_ERPDashboard() {
                   >
                     {sub}
                   </button>
-                ))}
-              </div>
-              
-              {opSubTab === "Trips" && (
-                // @ts-ignore
-                <TripForm onSuccess={() => fetchDashboardData()} />
-              )}
-              {opSubTab === "POD Closure" && (
-                // @ts-ignore
-                <PodClosure onSuccess={() => fetchDashboardData()} />
-              )}
-              {opSubTab === "Modify Trips" && (
-                // @ts-ignore
-                <ModifyTrips onSuccess={() => fetchDashboardData()} />
-              )}
-              {opSubTab === "Driver Approvals" && <ApprovalQueue />}
-              
-              {opSubTab === "Quick Status" && (
-                <div className="bg-[#161922] border border-[#222634] rounded-xl p-4 sm:p-6 shadow-sm max-w-2xl animate-in fade-in duration-300">
-                  <h3 className="text-xs sm:text-sm font-black text-white mb-6 uppercase tracking-wider border-b border-[#222634] pb-2">Manual Status Override</h3>
-                  <form onSubmit={handleQuickStatusSubmit} className="space-y-5">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Select Truck</label>
-                      <select 
-                        value={qsTruckId} 
-                        onChange={(e) => setQsTruckId(e.target.value)} 
-                        className="w-full text-sm p-3 rounded-lg border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white"
-                      >
-                        <option value="">Select a vehicle...</option>
-                        {liveVehicles.map(v => (
-                          <option key={v.vehicle_id} value={v.vehicle_id}>
-                            {v.vehicle_number} ({v.carrying_capacity_tons}MT {v.truck_type})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">New Operational Status</label>
-                      <select 
-                        value={qsStatus} 
-                        onChange={(e) => setQsStatus(e.target.value)} 
-                        className="w-full text-sm p-3 rounded-lg border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white"
-                      >
-                        <option value="WAITING_FOR_LOAD">Plant Loading</option>
-                        <option value="IN_TRANSIT">In Transit</option>
-                        <option value="WORKSHOP_MAINTENANCE">Workshop / Repairs</option>
-                        <option value="DRIVER_UNAVAILABLE">No Driver / Leave</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">Location / Breakdown Details</label>
-                      <input 
-                        type="text" 
-                        value={qsRemarks} 
-                        onChange={(e) => setQsRemarks(e.target.value)} 
-                        placeholder="e.g. Broken Down near Erode Toll" 
-                        className="w-full text-sm p-3 rounded-lg border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-semibold text-white" 
-                      />
-                    </div>
-                    <button type="submit" className="mt-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black py-3 px-6 rounded-lg transition-colors shadow-sm">
-                      Update Status
-                    </button>
-                  </form>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {activeTab === "Fuel & Adv" && userRole === "ADMIN" && <div className="p-4 sm:p-6 mt-6"><FuelAdvanceModule /></div>}
-          {activeTab === "Workshop & Tyres" && userRole === "ADMIN" && <div className="p-6 mt-6"><WorkshopModule /></div>}
-          {activeTab === "Financials" && <div className="p-6 mt-6"><FinancialsModule /></div>}
-          {activeTab === "P&L Statement" && <div className="p-6 mt-6"><ProfitLossModule /></div>}
-          {activeTab === "Setup" && userRole === "ADMIN" && <div className="p-6 mt-6"><SetupModule /></div>}
-        </div>
-      </main>
-    </div>
-  );
+                ))}I can see exactly what you're referring to in the image **132de8d8-44bb-4780-9176-edfd545c4464**. Under the "OPERATIONS SUMMARY" section, the "FREIGHT GEN." value is truncating to **₹13,14,088...** because the text is too large for its container box, and it isn't automatically scaling down (minimizing) to fit.
+
+Currently, your CSS is likely using `text-overflow: ellipsis` (which adds the `...`) to prevent the text from breaking out of the box. To make the text actually shrink to fit the box, you have a few development options depending on your setup.
+
+Here are the best ways to fix this so the full freight value is always visible:
+
+### 1. The Modern CSS Approach: Container Queries
+If you want the font size to react specifically to the size of that dark grey box (rather than the whole screen), CSS container queries are the best pure-CSS method.
+
+First, define the parent box as a container:
+```css
+.summary-box {
+  container-type: inline-size;
+  container-name: stat-box;
 }
