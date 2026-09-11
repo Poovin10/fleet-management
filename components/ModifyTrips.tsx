@@ -6,12 +6,25 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 
 export function ModifyTrips() {
   const supabase = createClient();
+  
+  const [vehicles, setVehicles] = useState<any[]>([]);
   const [tripsList, setTripsList] = useState<any[]>([]);
   const [editTripId, setEditTripId] = useState<number | null>(null);
   const [currentTrip, setCurrentTrip] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Form states for editing trip
+  // --- TRIP SEARCH & AUDIT STATES ---
+  const [auditDateMode, setAuditDateMode] = useState("All Time");
+  const [auditSpecificDate, setAuditSpecificDate] = useState(new Date().toISOString().split('T')[0]);
+  const [auditFromDate, setAuditFromDate] = useState(() => {
+    const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0];
+  });
+  const [auditToDate, setAuditToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [auditTruck, setAuditTruck] = useState("All Trucks");
+  const [auditStatus, setAuditStatus] = useState("All Statuses");
+  const [auditSearchLr, setAuditSearchLr] = useState("");
+
+  // --- EDIT FORM STATES ---
   const [tonnage, setTonnage] = useState("");
   const [spotRate, setSpotRate] = useState<number | "">("");
   const [driverBata, setDriverBata] = useState<number | "">("");
@@ -44,18 +57,73 @@ export function ModifyTrips() {
     return dateStr;
   };
 
-  const fetchTrips = async () => {
-    const { data } = await supabase
-      .from('trips')
-      .select('*, vehicles(vehicle_number), drivers(full_name)')
-      .order('trip_start_date', { ascending: false })
-      .limit(100); // Increased limit for better audit logging
-    if (data) setTripsList(data);
+  const loadInitialData = async () => {
+    setIsProcessing(true);
+    // Fetch vehicles for the dropdown
+    const { data: vData } = await supabase.from('vehicles').select('vehicle_number').eq('is_active', true).order('vehicle_number');
+    if (vData) setVehicles(vData);
+
+    // Initial trip fetch (Top 100)
+    await handleSearchTrips();
   };
 
   useEffect(() => {
-    fetchTrips();
+    loadInitialData();
   }, []);
+
+  const handleSearchTrips = async () => {
+    setIsProcessing(true);
+    
+    // If filtering by a specific truck, we must use inner join
+    const selectString = auditTruck !== "All Trucks" 
+      ? '*, vehicles!inner(vehicle_number), drivers(full_name)' 
+      : '*, vehicles(vehicle_number), drivers(full_name)';
+
+    let query = supabase.from('trips').select(selectString).order('trip_start_date', { ascending: false }).order('trip_id', { ascending: false }).limit(200);
+
+    if (auditDateMode === "Specific Date") query = query.eq('trip_start_date', auditSpecificDate);
+    else if (auditDateMode === "Date Range") query = query.gte('trip_start_date', auditFromDate).lte('trip_start_date', auditToDate);
+
+    if (auditTruck !== "All Trucks") query = query.eq('vehicles.vehicle_number', auditTruck);
+    if (auditStatus !== "All Statuses") query = query.eq('trip_status', auditStatus);
+    if (auditSearchLr) query = query.ilike('trip_number', `%${auditSearchLr}%`);
+
+    const { data } = await query;
+    if (data) setTripsList(data);
+    else setTripsList([]);
+    
+    setIsProcessing(false);
+  };
+
+  const exportTripsToCSV = () => {
+    if (tripsList.length === 0) return alert("No trip data to export.");
+    const headers = ["Trip ID", "Date", "LR Number", "Truck No", "Driver", "Route", "Status", "Loaded MT", "Freight Rate", "Driver Bata", "Halt Bata", "Advance Issued"];
+    
+    const rows = tripsList.map(t => [
+      t.trip_id,
+      t.trip_start_date,
+      t.trip_number || "-",
+      t.vehicles?.vehicle_number || "Unknown",
+      t.drivers?.full_name || "Unknown",
+      `${t.origin} ➔ ${t.destination}`,
+      t.trip_status,
+      t.tonnage_loaded || 0,
+      t.spot_freight_rate || 0,
+      t.driver_bata || 0,
+      t.halt_bata || 0,
+      t.cash_advance_issued || 0
+    ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `Trip_Audit_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleEditClick = (trip: any) => {
     setEditTripId(trip.trip_id);
@@ -98,7 +166,7 @@ export function ModifyTrips() {
       if (error) {
         alert("Error updating trip: " + error.message);
       } else {
-        fetchTrips();
+        await handleSearchTrips();
         clearForm();
       }
       setIsProcessing(false);
@@ -130,7 +198,7 @@ export function ModifyTrips() {
 
         {!currentTrip ? (
           <div className="py-12 text-center border-2 border-dashed border-[#272B36] rounded-xl bg-[#0F1117]">
-            <p className="text-slate-400 font-bold text-sm">Select a trip from the Activity Log below to modify its details.</p>
+            <p className="text-slate-400 font-bold text-sm">Select a trip from the Search & Audit Log below to modify its details.</p>
           </div>
         ) : (
           <form onSubmit={handleUpdateTrip} className="space-y-5 animate-in slide-in-from-bottom-4">
@@ -228,12 +296,82 @@ export function ModifyTrips() {
         )}
       </div>
 
-      {/* BOTTOM SECTION: SYSTEM AUDIT / CLICK TO EDIT LOG */}
-      <div className="bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden flex flex-col shadow-xl max-w-5xl mx-auto h-fit">
+      {/* BOTTOM SECTION: TRIP AUDIT & SEARCH */}
+      <div className="bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden flex flex-col shadow-xl max-w-5xl mx-auto h-fit mt-6">
         <div className="bg-[#12141C] px-6 py-4 flex justify-between items-center border-b border-[#272B36]">
-          <h3 className="text-sm font-black text-white uppercase tracking-wide">Trip Activity Log (Click to Edit)</h3>
+          <h3 className="text-sm font-black text-white uppercase tracking-wide">Trip Audit & Search</h3>
         </div>
         
+        {/* FILTERS */}
+        <div className="p-6 border-b border-[#272B36] bg-[#1A1F2C]">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date Mode</label>
+              <select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold">
+                <option value="All Time">All Time</option>
+                <option value="Specific Date">Specific Date</option>
+                <option value="Date Range">Date Range</option>
+              </select>
+            </div>
+            
+            {auditDateMode === "Specific Date" && (
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date</label>
+                <input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
+              </div>
+            )}
+            
+            {auditDateMode === "Date Range" && (
+              <>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">From</label>
+                  <input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">To</label>
+                  <input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
+                </div>
+              </>
+            )}
+            {auditDateMode === "All Time" && <div className="hidden md:block md:col-span-2"></div>}
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Truck No</label>
+              <select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold">
+                <option value="All Trucks">All Trucks</option>
+                {vehicles.map(v => <option key={v.vehicle_number} value={v.vehicle_number}>{v.vehicle_number}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Status</label>
+              <select value={auditStatus} onChange={e => setAuditStatus(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold">
+                <option value="All Statuses">All Statuses</option>
+                <option value="DISPATCHED">DISPATCHED</option>
+                <option value="IN_TRANSIT">IN_TRANSIT</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Search LR No</label>
+              <input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white uppercase outline-none focus:border-[#FF5A00] font-semibold" />
+            </div>
+            <div className="flex items-end gap-3">
+              <button onClick={handleSearchTrips} disabled={isProcessing} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">
+                {isProcessing ? "Searching..." : "Search Trips"}
+              </button>
+              <button onClick={exportTripsToCSV} className="px-6 py-3 bg-[#0F1117] hover:bg-[#12141C] border border-[#272B36] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95">
+                <span className="text-lg leading-none">📊</span> Export CSV
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* RESULTS TABLE */}
         <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
           <table className="min-w-full text-xs text-left whitespace-nowrap">
             <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0 z-10">
@@ -273,8 +411,8 @@ export function ModifyTrips() {
                   </tr>
                 );
               })}
-              {tripsList.length === 0 && (
-                <tr><td colSpan={5} className="p-8 text-center text-slate-500 font-medium">No recent trips available.</td></tr>
+              {tripsList.length === 0 && !isProcessing && (
+                <tr><td colSpan={5} className="p-8 text-center text-slate-500 font-medium">No trips found matching your search.</td></tr>
               )}
             </tbody>
           </table>
