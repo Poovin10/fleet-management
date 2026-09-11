@@ -12,7 +12,7 @@ export function ApprovalQueue() {
   const fetchQueue = async () => {
     setIsLoading(true);
     
-    // Fetch latest diesel rate for auto-calculation
+    // 1. Fetch latest diesel rate for auto-calculation
     const { data: dData } = await supabase
       .from('diesel_fuel_logs')
       .select('diesel_rate_per_litre')
@@ -21,14 +21,34 @@ export function ApprovalQueue() {
       
     if (dData && dData.length > 0) setDieselRate(Number(dData[0].diesel_rate_per_litre));
 
-    // Safely fetch queue entries without breaking on driver ID joins
-    const { data: qData, error } = await supabase
+    // 2. Safely fetch queue entries WITHOUT a relational join to prevent silent Supabase failures
+    const { data: qData, error: qError } = await supabase
       .from('driver_pending_entries')
-      .select('*, vehicles(vehicle_number)')
+      .select('*')
       .eq('status', 'PENDING')
       .order('created_at', { ascending: false });
 
-    if (qData) setQueue(qData);
+    if (qError) {
+      console.error("Error fetching queue:", qError);
+      alert("Database Error: " + qError.message);
+    }
+
+    if (qData && qData.length > 0) {
+      // 3. Fetch vehicles separately to map the names manually
+      const { data: vData } = await supabase.from('vehicles').select('vehicle_id, vehicle_number');
+      
+      const mappedQueue = qData.map(req => {
+        const truck = vData?.find(v => v.vehicle_id === req.vehicle_id);
+        return {
+          ...req,
+          truck_number: truck ? truck.vehicle_number : `Truck ID: ${req.vehicle_id}`
+        };
+      });
+      setQueue(mappedQueue);
+    } else {
+      setQueue([]);
+    }
+    
     setIsLoading(false);
   };
 
@@ -41,7 +61,7 @@ export function ApprovalQueue() {
       const estimatedCost = Math.round((Number(req.litres) || 0) * dieselRate);
       
       const userInput = prompt(
-        `APPROVE FUEL REQUEST\nTruck: ${req.vehicles?.vehicle_number || 'Unknown'}\nRequested: ${req.litres} Litres\n\nPlease confirm/enter the FINAL BILL AMOUNT (₹):`,
+        `APPROVE FUEL REQUEST\nTruck: ${req.truck_number}\nRequested: ${req.litres} Litres\n\nPlease confirm/enter the FINAL BILL AMOUNT (₹):`,
         estimatedCost.toString()
       );
       
@@ -117,7 +137,7 @@ export function ApprovalQueue() {
               <tr key={req.id} className="hover:bg-[#1A1F2C] transition-colors">
                 <td className="p-4 font-semibold text-slate-300">{formatDateTime(req.created_at)}</td>
                 <td className="p-4">
-                  <span className="font-black text-white">{req.vehicles?.vehicle_number || "Unknown"}</span><br/>
+                  <span className="font-black text-white">{req.truck_number}</span><br/>
                   <span className="text-[10px] font-bold text-[#FF5A00]">{req.driver_code}</span>
                 </td>
                 <td className="p-4">
