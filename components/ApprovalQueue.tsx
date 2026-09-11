@@ -2,230 +2,149 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { AlertModal } from "@/components/AlertModal";
 
 export function ApprovalQueue() {
   const supabase = createClient();
-  const [pendingEntries, setPendingEntries] = useState<any[]>([]);
+  const [queue, setQueue] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [dieselRate, setDieselRate] = useState(95.0);
 
-  const [alertConfig, setAlertConfig] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    type: "info" as "success" | "error" | "info"
-  });
-
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null);
-  const [rejectionReason, setRejectionReason] = useState("");
-
-  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return 'N/A';
-    if (!dateStr.includes('-')) return dateStr;
-    const parts = dateStr.split('T')[0].split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return dateStr;
-  };
-
-  const fetchPendingQueue = async () => {
+  const fetchQueue = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
+    
+    // Fetch latest diesel rate for auto-calculation
+    const { data: dData } = await supabase
+      .from('diesel_fuel_logs')
+      .select('diesel_rate_per_litre')
+      .order('fuel_date', { ascending: false })
+      .limit(1);
+      
+    if (dData && dData.length > 0) setDieselRate(Number(dData[0].diesel_rate_per_litre));
+
+    // Safely fetch queue entries without breaking on driver ID joins
+    const { data: qData, error } = await supabase
       .from('driver_pending_entries')
       .select('*, vehicles(vehicle_number)')
       .eq('status', 'PENDING')
       .order('created_at', { ascending: false });
 
-    if (data) setPendingEntries(data);
-    if (error) console.error("Error fetching queue:", error.message);
+    if (qData) setQueue(qData);
     setIsLoading(false);
   };
 
   useEffect(() => {
-    fetchPendingQueue();
-  }, [supabase]);
+    fetchQueue();
+  }, []);
 
-  const handleApprove = async (entry: any) => {
-    setIsProcessing(true);
-    try {
-      // Execute the atomic RPC function
-      const { data, error } = await supabase.rpc('approve_driver_entry', { 
-        p_entry_id: entry.id 
-      });
+  const handleApprove = async (req: any) => {
+    if (req.entry_type === 'FUEL') {
+      const estimatedCost = Math.round((Number(req.litres) || 0) * dieselRate);
+      
+      const userInput = prompt(
+        `APPROVE FUEL REQUEST\nTruck: ${req.vehicles?.vehicle_number || 'Unknown'}\nRequested: ${req.litres} Litres\n\nPlease confirm/enter the FINAL BILL AMOUNT (₹):`,
+        estimatedCost.toString()
+      );
+      
+      if (!userInput) return; // User clicked Cancel
+      
+      const finalCost = Number(userInput);
+      const actualRate = finalCost / Number(req.litres);
 
-      if (error) throw error;
-      if (!data.success) throw new Error(data.message);
+      // 1. Insert into Diesel Logs
+      const { error: insertError } = await supabase.from('diesel_fuel_logs').insert([{
+        fuel_date: new Date().toISOString().split('T')[0],
+        vehicle_id: req.vehicle_id,
+        diesel_category: 'TRIP_DIESEL',
+        litres_filled: Number(req.litres),
+        diesel_rate_per_litre: actualRate,
+        total_fuel_cost: finalCost,
+        filling_odometer_km: req.odometer_km || 0,
+        lr_number: 'SUNDRY',
+        is_tank_full: false
+      }]);
 
-      setAlertConfig({
-        isOpen: true,
-        title: "Approved Successfully",
-        message: data.message,
-        type: "success"
-      });
+      if (insertError) return alert("Failed to save diesel log: " + insertError.message);
 
-      fetchPendingQueue();
-    } catch (err: any) {
-      setAlertConfig({
-        isOpen: true,
-        title: "Approval Failed",
-        message: err.message || "Failed to process approval.",
-        type: "error"
-      });
+      // 2. Mark Request as Approved
+      await supabase.from('driver_pending_entries').update({ 
+        status: 'APPROVED', 
+        amount_inr: finalCost 
+      }).eq('id', req.id);
+
+      alert("Fuel request approved and added to expenses!");
+      fetchQueue();
     }
-    setIsProcessing(false);
   };
 
-  const handleOpenReject = (id: number) => {
-    setSelectedEntryId(id);
-    setRejectionReason("");
-    setRejectModalOpen(true);
+  const handleReject = async (id: number) => {
+    if (!confirm("Are you sure you want to REJECT this driver request?")) return;
+    
+    await supabase.from('driver_pending_entries').update({ 
+      status: 'REJECTED' 
+    }).eq('id', id);
+    
+    fetchQueue();
   };
 
-  const handleConfirmReject = async () => {
-    if (!selectedEntryId) return;
-    setIsProcessing(true);
-
-    const { error } = await supabase
-      .from('driver_pending_entries')
-      .update({ 
-        status: 'REJECTED', 
-        rejection_reason: rejectionReason.trim() || "Rejected by manager" 
-      })
-      .eq('id', selectedEntryId);
-
-    if (error) {
-      setAlertConfig({
-        isOpen: true,
-        title: "Error",
-        message: error.message,
-        type: "error"
-      });
-    } else {
-      setAlertConfig({
-        isOpen: true,
-        title: "Rejected",
-        message: "The driver entry request has been rejected.",
-        type: "success"
-      });
-      setRejectModalOpen(false);
-      fetchPendingQueue();
-    }
-    setIsProcessing(false);
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return 'N/A';
+    const d = new Date(dateStr);
+    return `${d.toLocaleDateString('en-GB')} at ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
   };
 
   return (
-    <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm max-w-5xl mx-auto animate-in fade-in duration-300 relative" style={{ colorScheme: 'light' }}>
-      
-      <AlertModal 
-        isOpen={alertConfig.isOpen}
-        title={alertConfig.title}
-        message={alertConfig.message}
-        type={alertConfig.type}
-        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
-      />
-
-      {/* REJECTION REASON MODAL */}
-      {rejectModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
-            <h3 className="text-lg font-bold text-fg mb-2">Reject Driver Request</h3>
-            <p className="text-xs text-fg-secondary mb-4">Please provide a reason so the driver knows why this was rejected.</p>
-            
-            <textarea 
-              value={rejectionReason} 
-              onChange={e => setRejectionReason(e.target.value)} 
-              placeholder="e.g. Invalid receipt bill photo / Odometer mismatch" 
-              className="w-full h-28 text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] bg-app font-medium mb-4"
-              required 
-            />
-
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setRejectModalOpen(false)} className="px-4 py-2 bg-surface-raised hover:bg-surface-raised text-fg font-bold text-xs rounded-xl">Cancel</button>
-              <button onClick={handleConfirmReject} disabled={isProcessing} className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl">
-                {isProcessing ? "Rejecting..." : "Confirm Rejection"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex justify-between items-center border-b border-border pb-4 mb-6">
-        <div>
-          <h3 className="text-base font-bold text-fg uppercase tracking-tight">Driver Submissions Approval Queue</h3>
-          <p className="text-xs text-fg-secondary mt-0.5">Review and approve on-road fuel bills or cash advance requests submitted from driver mobile portals.</p>
-        </div>
-        <span className="px-3 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-full">
-          {pendingEntries.length} Pending
+    <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl max-w-5xl mx-auto animate-in fade-in duration-300">
+      <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-6">
+        <h3 className="text-sm font-black text-white uppercase tracking-wide">Driver Submissions Approval Queue</h3>
+        <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg uppercase tracking-widest">
+          {queue.length} Pending
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border w-full relative min-h-[300px]">
-        {isLoading && (
-          <div className="absolute inset-0 bg-surface/70 backdrop-blur-sm z-10 flex items-center justify-center">
-            <span className="font-bold text-[#FF5A00] animate-pulse">Loading Queue...</span>
-          </div>
-        )}
-
-        <table className="min-w-full divide-y divide-slate-200 text-xs text-left whitespace-nowrap">
-          <thead className="bg-app sticky top-0">
-            <tr className="font-bold text-fg-secondary uppercase">
-              <th className="px-4 py-3">Submitted At</th>
-              <th className="px-4 py-3">Driver Code</th>
-              <th className="px-4 py-3">Truck No</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Details</th>
-              <th className="px-4 py-3">Remarks</th>
-              <th className="px-4 py-3 text-center">Actions</th>
+      <div className="overflow-x-auto w-full">
+        <table className="min-w-full text-xs text-left whitespace-nowrap">
+          <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold">
+            <tr>
+              <th className="p-4 border-b border-[#272B36]">Submitted At</th>
+              <th className="p-4 border-b border-[#272B36]">Driver / Truck</th>
+              <th className="p-4 border-b border-[#272B36]">Request Details</th>
+              <th className="p-4 border-b border-[#272B36]">Driver Remarks</th>
+              <th className="p-4 border-b border-[#272B36] text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-surface divide-y divide-slate-100">
-            {pendingEntries.map(e => (
-              <tr key={e.id} className="hover:bg-app">
-                <td className="px-4 py-3 font-semibold text-fg-secondary">{formatDate(e.created_at)}</td>
-                <td className="px-4 py-3 font-bold text-fg">{e.driver_code}</td>
-                <td className="px-4 py-3 font-bold text-[#FF5A00]">{e.vehicles?.vehicle_number || "N/A"}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded text-[10px] font-bold ${e.entry_type === 'FUEL' ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                    {e.entry_type}
+          <tbody className="divide-y divide-[#272B36] bg-[#12141C]">
+            {queue.map(req => (
+              <tr key={req.id} className="hover:bg-[#1A1F2C] transition-colors">
+                <td className="p-4 font-semibold text-slate-300">{formatDateTime(req.created_at)}</td>
+                <td className="p-4">
+                  <span className="font-black text-white">{req.vehicles?.vehicle_number || "Unknown"}</span><br/>
+                  <span className="text-[10px] font-bold text-[#FF5A00]">{req.driver_code}</span>
+                </td>
+                <td className="p-4">
+                  <span className="px-2 py-1 rounded bg-sky-950/50 text-sky-400 font-black text-[10px] uppercase mr-2">{req.entry_type}</span>
+                  <span className="font-bold text-slate-200">
+                    {req.entry_type === 'FUEL' ? `${req.litres} Litres (Odo: ${req.odometer_km})` : `₹${req.amount_inr}`}
                   </span>
                 </td>
-                <td className="px-4 py-3 font-bold text-fg">
-                  {e.entry_type === 'FUEL' ? `${e.litres} Litres (Odo: ${e.odometer_km || 0} KM)` : `₹${Number(e.amount_inr || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`}
+                <td className="p-4 text-slate-400 italic text-[11px] max-w-[200px] truncate" title={req.receipt_remarks}>
+                  {req.receipt_remarks || "No remarks"}
                 </td>
-                <td className="px-4 py-3 text-fg-secondary max-w-[200px] truncate">{e.receipt_remarks || "-"}</td>
-                <td className="px-4 py-3 text-center space-x-2">
-                  <button 
-                    onClick={() => handleApprove(e)} 
-                    disabled={isProcessing}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors shadow-sm disabled:bg-slate-300"
-                  >
-                    Approve ✅
+                <td className="p-4 text-right space-x-2">
+                  <button onClick={() => handleReject(req.id)} className="px-3 py-1.5 bg-rose-950/40 text-rose-500 hover:bg-rose-900 border border-rose-900/50 rounded-lg font-bold transition-colors">
+                    Reject
                   </button>
-                  <button 
-                    onClick={() => handleOpenReject(e.id)} 
-                    disabled={isProcessing}
-                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg border border-rose-200 transition-colors"
-                  >
-                    Reject ❌
+                  <button onClick={() => handleApprove(req)} className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-lg transition-colors shadow-lg shadow-emerald-900/20">
+                    Approve
                   </button>
                 </td>
               </tr>
             ))}
-            {pendingEntries.length === 0 && !isLoading && (
-              <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-fg-muted font-medium">
-                  🎉 All driver requests have been processed! The queue is currently empty.
-                </td>
-              </tr>
+            {queue.length === 0 && !isLoading && (
+              <tr><td colSpan={5} className="p-8 text-center text-slate-500 font-medium">✨ All driver requests have been processed! The queue is empty.</td></tr>
             )}
           </tbody>
         </table>
       </div>
-
     </div>
   );
 }
