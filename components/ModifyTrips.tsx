@@ -159,8 +159,8 @@ export function ModifyTrips() {
     
     setTonnage(trip.tonnage_loaded || "");
     // Fallback calculation if spot_freight_rate is missing but revenue exists
-    const rate = trip.spot_freight_rate || (trip.freight_revenue && trip.tonnage_loaded ? trip.freight_revenue / trip.tonnage_loaded : "");
-    setSpotRate(rate);
+    const rate = trip.spot_freight_rate || (trip.freight_revenue && trip.tonnage_loaded ? (trip.freight_revenue / trip.tonnage_loaded).toFixed(2) : "");
+    setSpotRate(Number(rate));
     
     setDieselL(trip.fuel_litres || "");
     setDriverBata(trip.driver_bata || "");
@@ -196,9 +196,21 @@ export function ModifyTrips() {
     e.preventDefault();
     if (!currentTrip) return;
 
-    triggerModal("Update Trip", `Save all modifications for Trip #${currentTrip.trip_number}?`, false, "Save Changes", async () => {
+    triggerModal("Update Trip & Sync Ledgers", `Save all modifications for Trip #${currentTrip.trip_number}? This will automatically sync your fuel audits.`, false, "Save & Sync", async () => {
       setIsProcessing(true);
       
+      // 1. Calculate the exact new diesel cost if litres were changed
+      let currentDieselRate = 95.0; // Fallback
+      if (currentTrip.fuel_litres && currentTrip.fuel_expense) {
+          currentDieselRate = currentTrip.fuel_expense / currentTrip.fuel_litres;
+      } else {
+          // If trip had no fuel before, grab the latest global diesel rate
+          const { data: dData } = await supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).limit(1);
+          if (dData && dData.length > 0) currentDieselRate = Number(dData[0].diesel_rate_per_litre);
+      }
+      const newFuelCost = Math.round((Number(dieselL) || 0) * currentDieselRate * 100) / 100;
+
+      // 2. Prepare the Trip Update Payload
       const updatePayload = {
         trip_number: tripNumber.toUpperCase().trim(),
         trip_start_date: startDate || null,
@@ -208,6 +220,7 @@ export function ModifyTrips() {
         tonnage_loaded: tonnage !== "" ? Number(tonnage) : null,
         freight_revenue: grossFreight,
         fuel_litres: dieselL !== "" ? Number(dieselL) : null,
+        fuel_expense: newFuelCost, // Save the newly calculated fuel cost
         driver_bata: driverBata !== "" ? Number(driverBata) : null,
         cash_advance_issued: advanceIssued !== "" ? Number(advanceIssued) : null,
         trip_status: status,
@@ -216,14 +229,59 @@ export function ModifyTrips() {
         halt_bata: haltBata !== "" ? Number(haltBata) : null,
       };
 
+      // 3. Save Trip
       const { error } = await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
 
       if (error) {
         alert("Error updating trip: " + error.message);
-      } else {
-        await handleSearchTrips();
-        clearForm();
+        setIsProcessing(false);
+        closeModal();
+        return;
       }
+
+      // 4. THE MASTER SYNC: Update the Fuel Audit DB based on the changes!
+      if (Number(dieselL) !== Number(currentTrip.fuel_litres || 0)) {
+        if (Number(dieselL) > 0) {
+            // Find if a fuel log already exists for this trip
+            const { data: existingLogs } = await supabase.from('diesel_fuel_logs').select('fuel_log_id').eq('trip_id', currentTrip.trip_id);
+            
+            if (existingLogs && existingLogs.length > 0) {
+                // Update the existing log with new totals
+                await supabase.from('diesel_fuel_logs').update({
+                    litres_filled: Number(dieselL),
+                    total_fuel_cost: newFuelCost,
+                    diesel_rate_per_litre: currentDieselRate,
+                    lr_number: tripNumber.toUpperCase().trim()
+                }).eq('fuel_log_id', existingLogs[0].fuel_log_id);
+                
+                // If by some glitch there are multiple logs for one trip, delete the extras to keep ledgers clean
+                if (existingLogs.length > 1) {
+                    const extraIds = existingLogs.slice(1).map(l => l.fuel_log_id);
+                    await supabase.from('diesel_fuel_logs').delete().in('fuel_log_id', extraIds);
+                }
+            } else {
+                // If user added diesel to a trip that originally had 0L, inject a new log
+                await supabase.from('diesel_fuel_logs').insert([{
+                    fuel_date: startDate || new Date().toISOString().split('T')[0],
+                    vehicle_id: currentTrip.vehicle_id,
+                    trip_id: currentTrip.trip_id,
+                    lr_number: tripNumber.toUpperCase().trim(),
+                    diesel_category: "TRIP_DIESEL",
+                    litres_filled: Number(dieselL),
+                    diesel_rate_per_litre: currentDieselRate,
+                    total_fuel_cost: newFuelCost,
+                    filling_odometer_km: currentTrip.start_km || 0,
+                    is_tank_full: false
+                }]);
+            }
+        } else {
+            // If the user changed diesel to 0, completely delete the audit log
+            await supabase.from('diesel_fuel_logs').delete().eq('trip_id', currentTrip.trip_id);
+        }
+      }
+
+      await handleSearchTrips();
+      clearForm();
       setIsProcessing(false);
       closeModal();
     });
@@ -259,8 +317,8 @@ export function ModifyTrips() {
           <form onSubmit={handleUpdateTrip} className="space-y-5 animate-in slide-in-from-bottom-4">
             
             {/* Quick Read-Only Warning */}
-            <div className="flex flex-wrap gap-4 bg-amber-950/20 p-3 rounded-xl border border-amber-900/50">
-              <span className="text-xs text-amber-500 font-bold uppercase tracking-wider">⚠️ Adjusting gross freight or diesel here may affect linked Financial & P&L records. Ensure accuracy.</span>
+            <div className="flex flex-wrap gap-4 bg-emerald-950/20 p-3 rounded-xl border border-emerald-900/50">
+              <span className="text-xs text-emerald-500 font-bold uppercase tracking-wider">✅ Auto-Sync Enabled: Any changes to Diesel Litres will automatically update your Fuel Audit database.</span>
             </div>
 
             {/* ROW 1: LR No, Start Date, Status */}
