@@ -8,6 +8,7 @@ export function ModifyTrips() {
   const supabase = createClient();
   
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
   const [tripsList, setTripsList] = useState<any[]>([]);
   const [editTripId, setEditTripId] = useState<number | null>(null);
   const [currentTrip, setCurrentTrip] = useState<any>(null);
@@ -24,13 +25,28 @@ export function ModifyTrips() {
   const [auditStatus, setAuditStatus] = useState("All Statuses");
   const [auditSearchLr, setAuditSearchLr] = useState("");
 
-  // --- EDIT FORM STATES ---
-  const [tonnage, setTonnage] = useState("");
-  const [spotRate, setSpotRate] = useState<number | "">("");
-  const [driverBata, setDriverBata] = useState<number | "">("");
-  const [haltBata, setHaltBata] = useState<number | "">("");
-  const [advanceIssued, setAdvanceIssued] = useState<number | "">("");
+  // --- FULL EDIT FORM STATES ---
+  const [tripNumber, setTripNumber] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [status, setStatus] = useState("DISPATCHED");
+  
+  const [origin, setOrigin] = useState("");
+  const [destination, setDestination] = useState("");
+  const [driverId, setDriverId] = useState("");
+  
+  const [tonnage, setTonnage] = useState<number | "">("");
+  const [spotRate, setSpotRate] = useState<number | "">("");
+  
+  const [dieselL, setDieselL] = useState<number | "">("");
+  const [driverBata, setDriverBata] = useState<number | "">("");
+  const [advanceIssued, setAdvanceIssued] = useState<number | "">("");
+  
+  const [endDate, setEndDate] = useState("");
+  const [unloadedMt, setUnloadedMt] = useState<number | "">("");
+  const [haltBata, setHaltBata] = useState<number | "">("");
+
+  // Auto-calculated gross freight
+  const grossFreight = Math.round((Number(tonnage) || 0) * (Number(spotRate) || 0) * 100) / 100;
 
   const [modalConfig, setModalConfig] = useState({ 
     isOpen: false, 
@@ -46,7 +62,7 @@ export function ModifyTrips() {
   
   const closeModal = () => setModalConfig({ ...modalConfig, isOpen: false });
 
-  // Helper to format dates
+  // Helper to format dates visually
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
     if (!dateStr.includes('-')) return dateStr;
@@ -63,7 +79,11 @@ export function ModifyTrips() {
     const { data: vData } = await supabase.from('vehicles').select('vehicle_number').eq('is_active', true).order('vehicle_number');
     if (vData) setVehicles(vData);
 
-    // Initial trip fetch (Top 100)
+    // Fetch active drivers for the dropdown
+    const { data: dData } = await supabase.from('drivers').select('driver_id, full_name, driver_code').eq('is_active', true).order('full_name');
+    if (dData) setDrivers(dData);
+
+    // Initial trip fetch (Top 200)
     await handleSearchTrips();
   };
 
@@ -74,7 +94,6 @@ export function ModifyTrips() {
   const handleSearchTrips = async () => {
     setIsProcessing(true);
     
-    // If filtering by a specific truck, we must use inner join
     const selectString = auditTruck !== "All Trucks" 
       ? '*, vehicles!inner(vehicle_number), drivers(full_name)' 
       : '*, vehicles(vehicle_number), drivers(full_name)';
@@ -128,40 +147,77 @@ export function ModifyTrips() {
   const handleEditClick = (trip: any) => {
     setEditTripId(trip.trip_id);
     setCurrentTrip(trip);
-    setTonnage(trip.tonnage_loaded || "");
-    setSpotRate(trip.spot_freight_rate || "");
-    setDriverBata(trip.driver_bata || "");
-    setHaltBata(trip.halt_bata || "");
-    setAdvanceIssued(trip.cash_advance_issued || "");
+    
+    // Populate all fields safely
+    setTripNumber(trip.trip_number || "");
+    setStartDate(trip.trip_start_date ? trip.trip_start_date.split('T')[0] : "");
     setStatus(trip.trip_status || "DISPATCHED");
+    
+    setOrigin(trip.origin || "");
+    setDestination(trip.destination || "");
+    setDriverId(trip.primary_driver_id ? String(trip.primary_driver_id) : "");
+    
+    setTonnage(trip.tonnage_loaded || "");
+    // Fallback calculation if spot_freight_rate is missing but revenue exists
+    const rate = trip.spot_freight_rate || (trip.freight_revenue && trip.tonnage_loaded ? trip.freight_revenue / trip.tonnage_loaded : "");
+    setSpotRate(rate);
+    
+    setDieselL(trip.fuel_litres || "");
+    setDriverBata(trip.driver_bata || "");
+    setAdvanceIssued(trip.cash_advance_issued || "");
+    
+    setEndDate(trip.trip_end_date ? trip.trip_end_date.split('T')[0] : "");
+    setUnloadedMt(trip.unloaded_weight_mt || "");
+    setHaltBata(trip.halt_bata || "");
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const clearForm = () => {
     setEditTripId(null);
     setCurrentTrip(null);
+    setTripNumber("");
+    setStartDate("");
+    setStatus("DISPATCHED");
+    setOrigin("");
+    setDestination("");
+    setDriverId("");
     setTonnage("");
     setSpotRate("");
+    setDieselL("");
     setDriverBata("");
-    setHaltBata("");
     setAdvanceIssued("");
-    setStatus("DISPATCHED");
+    setEndDate("");
+    setUnloadedMt("");
+    setHaltBata("");
   };
 
   const handleUpdateTrip = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentTrip) return;
 
-    triggerModal("Update Trip", `Save modifications for Trip #${currentTrip.trip_number}?`, false, "Save Changes", async () => {
+    triggerModal("Update Trip", `Save all modifications for Trip #${currentTrip.trip_number}?`, false, "Save Changes", async () => {
       setIsProcessing(true);
-      const { error } = await supabase.from('trips').update({
-        tonnage_loaded: tonnage ? parseFloat(String(tonnage)) : null,
+      
+      const updatePayload = {
+        trip_number: tripNumber.toUpperCase().trim(),
+        trip_start_date: startDate || null,
+        origin: origin.toUpperCase().trim(),
+        destination: destination.toUpperCase().trim(),
+        primary_driver_id: driverId ? Number(driverId) : null,
+        tonnage_loaded: tonnage !== "" ? Number(tonnage) : null,
         spot_freight_rate: spotRate !== "" ? Number(spotRate) : null,
+        freight_revenue: grossFreight,
+        fuel_litres: dieselL !== "" ? Number(dieselL) : null,
         driver_bata: driverBata !== "" ? Number(driverBata) : null,
-        halt_bata: haltBata !== "" ? Number(haltBata) : null,
         cash_advance_issued: advanceIssued !== "" ? Number(advanceIssued) : null,
-        trip_status: status
-      }).eq('trip_id', currentTrip.trip_id);
+        trip_status: status,
+        trip_end_date: endDate || null,
+        unloaded_weight_mt: unloadedMt !== "" ? Number(unloadedMt) : null,
+        halt_bata: haltBata !== "" ? Number(haltBata) : null,
+      };
+
+      const { error } = await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
 
       if (error) {
         alert("Error updating trip: " + error.message);
@@ -187,7 +243,7 @@ export function ModifyTrips() {
         isProcessing={isProcessing} 
       />
 
-      {/* TOP SECTION: EDIT FORM */}
+      {/* TOP SECTION: FULL EDIT FORM */}
       <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl max-w-5xl mx-auto h-fit">
         <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-6">
           <h3 className="text-sm font-black text-white uppercase tracking-wide">
@@ -203,41 +259,24 @@ export function ModifyTrips() {
         ) : (
           <form onSubmit={handleUpdateTrip} className="space-y-5 animate-in slide-in-from-bottom-4">
             
-            {/* Quick Read-Only Info */}
-            <div className="flex flex-wrap gap-4 bg-[#0F1117] p-4 rounded-xl border border-[#272B36]">
-              <span className="text-xs text-slate-400"><strong className="text-slate-500 mr-1">TRUCK:</strong> {currentTrip.vehicles?.vehicle_number}</span>
-              <span className="text-xs text-slate-400"><strong className="text-slate-500 mr-1">DRIVER:</strong> {currentTrip.drivers?.full_name}</span>
-              <span className="text-xs text-slate-400"><strong className="text-slate-500 mr-1">ROUTE:</strong> {currentTrip.origin} ➔ {currentTrip.destination}</span>
+            {/* Quick Read-Only Warning */}
+            <div className="flex flex-wrap gap-4 bg-amber-950/20 p-3 rounded-xl border border-amber-900/50">
+              <span className="text-xs text-amber-500 font-bold uppercase tracking-wider">⚠️ Adjusting gross freight or diesel here may affect linked Financial & P&L records. Ensure accuracy.</span>
             </div>
 
+            {/* ROW 1: LR No, Start Date, Status */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tonnage Loaded (MT)</label>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  value={tonnage} 
-                  onChange={e => setTonnage(e.target.value)} 
-                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]" 
-                />
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">LR Number</label>
+                <input type="text" value={tripNumber} onChange={e => setTripNumber(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white uppercase font-bold outline-none focus:border-[#FF5A00]" />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Freight Rate / MT (₹)</label>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  value={spotRate} 
-                  onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-emerald-400 font-bold outline-none focus:border-[#FF5A00]" 
-                />
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Dispatch Date</label>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]" />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Trip Status</label>
-                <select 
-                  value={status} 
-                  onChange={e => setStatus(e.target.value)} 
-                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]"
-                >
+                <select value={status} onChange={e => setStatus(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]">
                   <option value="DISPATCHED">DISPATCHED</option>
                   <option value="IN_TRANSIT">IN_TRANSIT</option>
                   <option value="COMPLETED">COMPLETED</option>
@@ -246,33 +285,70 @@ export function ModifyTrips() {
               </div>
             </div>
 
+            {/* ROW 2: Source, Destination, Driver */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source (Origin)</label>
+                <input type="text" value={origin} onChange={e => setOrigin(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white uppercase font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destination</label>
+                <input type="text" value={destination} onChange={e => setDestination(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white uppercase font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Primary Driver</label>
+                <select value={driverId} onChange={e => setDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]">
+                  <option value="">-- UNASSIGNED --</option>
+                  {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* ROW 3: Loaded MT, Rate, Auto Gross */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-[#0F1117] rounded-xl border border-[#272B36]">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Loaded MT</label>
+                <input type="number" step="0.01" value={tonnage} onChange={e => setTonnage(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Freight Rate / MT (₹)</label>
+                <input type="number" step="0.01" value={spotRate} onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-emerald-400 font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Auto-Calc Gross Freight (₹)</label>
+                <input type="text" value={`₹${grossFreight.toLocaleString('en-IN', {minimumFractionDigits: 2})}`} disabled className="w-full text-sm p-3 rounded-xl border border-emerald-900/50 bg-emerald-950/20 text-emerald-400 font-black outline-none cursor-not-allowed" />
+              </div>
+            </div>
+
+            {/* ROW 4: Diesel, Driver Bata, Advance */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Diesel Issued (L)</label>
+                <input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+              <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Driver Bata (₹)</label>
-                <input 
-                  type="number" 
-                  value={driverBata} 
-                  onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]" 
-                />
+                <input type="number" value={driverBata} onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cash Adv Issued (₹)</label>
+                <input type="number" value={advanceIssued} onChange={e => setAdvanceIssued(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-amber-400 font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+            </div>
+
+            {/* ROW 5: POD Date, Unloaded MT, Halt Bata */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">POD Closing Date</label>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Unloaded MT</label>
+                <input type="number" step="0.01" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]" />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Halt Bata (₹)</label>
-                <input 
-                  type="number" 
-                  value={haltBata} 
-                  onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]" 
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cash Advance Issued (₹)</label>
-                <input 
-                  type="number" 
-                  value={advanceIssued} 
-                  onChange={e => setAdvanceIssued(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-                  className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-amber-400 font-bold outline-none focus:border-[#FF5A00]" 
-                />
+                <input type="number" value={haltBata} onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-amber-400 font-bold outline-none focus:border-[#FF5A00]" />
               </div>
             </div>
 
@@ -280,14 +356,14 @@ export function ModifyTrips() {
               <button 
                 type="button" 
                 onClick={clearForm} 
-                className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors"
+                className="flex-1 py-3.5 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors"
               >
                 Cancel Edit
               </button>
               <button 
                 type="submit" 
                 disabled={isProcessing} 
-                className="flex-[2] py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95"
+                className="flex-[2] py-3.5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95"
               >
                 Save Trip Updates
               </button>
