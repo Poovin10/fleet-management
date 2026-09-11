@@ -18,7 +18,6 @@ export function SetupModule() {
   const [driversList, setDriversList] = useState<any[]>([]);
   const [slabsList, setSlabsList] = useState<any[]>([]);
   const [bataList, setBataList] = useState<any[]>([]);
-  const [auditList, setAuditList] = useState<any[]>([]);
   const [systemUsers, setSystemUsers] = useState<any[]>([]);
 
   // Selected truck for Compliance Editing
@@ -71,12 +70,11 @@ export function SetupModule() {
     const loggedUser = sessionStorage.getItem("kss_username") || "superadmin";
     setCurrentUsername(loggedUser);
 
-    const [v, d, s, b, a, u] = await Promise.all([
+    const [v, d, s, b, u] = await Promise.all([
       supabase.from('vehicles').select('*').order('vehicle_number'),
       supabase.from('drivers').select('*').order('full_name'),
       supabase.from('destinations_freight_master').select('*').order('destination_name'),
       supabase.from('driver_bata_master').select('*').order('destination_name'),
-      supabase.from('trips').select('trip_id, trip_number, trip_start_date, trip_status, origin, destination, vehicles(vehicle_number), drivers(full_name)').order('trip_start_date', { ascending: false }).limit(50),
       supabase.from('app_users').select('*').order('username')
     ]);
     
@@ -84,7 +82,6 @@ export function SetupModule() {
     if (d.data) setDriversList(d.data);
     if (s.data) setSlabsList(s.data);
     if (b.data) setBataList(b.data);
-    if (a.data) setAuditList(a.data);
     if (u.data) setSystemUsers(u.data);
   };
 
@@ -378,7 +375,6 @@ export function SetupModule() {
           { label: "Drivers", icon: "👨‍✈️" }, 
           { label: "Freight Slabs", icon: "🛣️" }, 
           { label: "Bata", icon: "💰" }, 
-          { label: "System Audit", icon: "📋" }, 
           { label: "🚚 Truck Compliance", icon: "🛡️" },
           { label: "🔐 User Control", icon: "⚙️" }
         ].map((tab) => (
@@ -648,36 +644,6 @@ export function SetupModule() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          </>
-        )}
-
-        {/* SYSTEM AUDIT */}
-        {sTab === "System Audit" && (
-          <>
-            <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Recent Trip Activity Log</h3>
-            <div className="overflow-x-auto rounded-xl border border-[#272B36] w-full max-h-[500px]">
-              <table className="min-w-full text-xs text-left whitespace-nowrap">
-                <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0">
-                  <tr><th className="p-3">Date</th><th className="p-3">Trip LR</th><th className="p-3">Truck & Driver</th><th className="p-3">Route</th><th className="p-3 text-center">Status</th></tr>
-                </thead>
-                <tbody className="divide-y divide-[#272B36] bg-[#161922]">
-                  {auditList.map(a => (
-                    <tr key={a.trip_id} className="hover:bg-[#1E222D]">
-                      <td className="p-3 font-semibold text-slate-300">{a.trip_start_date}</td>
-                      <td className="p-3 font-bold text-white">{a.trip_number}</td>
-                      <td className="p-3 text-slate-300"><span className="font-bold text-white">{a.vehicles?.vehicle_number}</span><br/><span className="text-[10px] text-slate-400">{a.drivers?.full_name}</span></td>
-                      <td className="p-3 text-slate-300">{a.origin} ➔ {a.destination}</td>
-                      <td className="p-3 text-center">
-                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${a.trip_status === 'COMPLETED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}`}>
-                          {a.trip_status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {auditList.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-slate-400">No recent system activity.</td></tr>}
-                </tbody>
-              </table>
             </div>
           </>
         )}
