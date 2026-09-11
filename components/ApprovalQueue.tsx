@@ -21,12 +21,12 @@ export function ApprovalQueue() {
       
     if (dData && dData.length > 0) setDieselRate(Number(dData[0].diesel_rate_per_litre));
 
-    // 2. Safely fetch queue entries WITHOUT a relational join to prevent silent Supabase failures
+    // 2. Safely fetch queue entries using correct column names
     const { data: qData, error: qError } = await supabase
       .from('driver_pending_entries')
       .select('*')
       .eq('status', 'PENDING')
-      .order('created_at', { ascending: false });
+      .order('submitted_at', { ascending: false }); // FIX: Using submitted_at
 
     if (qError) {
       console.error("Error fetching queue:", qError);
@@ -85,11 +85,11 @@ export function ApprovalQueue() {
 
       if (insertError) return alert("Failed to save diesel log: " + insertError.message);
 
-      // 2. Mark Request as Approved
+      // 2. Mark Request as Approved (FIX: Using entry_id)
       await supabase.from('driver_pending_entries').update({ 
         status: 'APPROVED', 
         amount_inr: finalCost 
-      }).eq('id', req.id);
+      }).eq('entry_id', req.entry_id);
 
       alert("Fuel request approved and added to expenses!");
       fetchQueue();
@@ -99,9 +99,10 @@ export function ApprovalQueue() {
   const handleReject = async (id: number) => {
     if (!confirm("Are you sure you want to REJECT this driver request?")) return;
     
+    // FIX: Using entry_id
     await supabase.from('driver_pending_entries').update({ 
       status: 'REJECTED' 
-    }).eq('id', id);
+    }).eq('entry_id', id);
     
     fetchQueue();
   };
@@ -134,8 +135,8 @@ export function ApprovalQueue() {
           </thead>
           <tbody className="divide-y divide-[#272B36] bg-[#12141C]">
             {queue.map(req => (
-              <tr key={req.id} className="hover:bg-[#1A1F2C] transition-colors">
-                <td className="p-4 font-semibold text-slate-300">{formatDateTime(req.created_at)}</td>
+              <tr key={req.entry_id} className="hover:bg-[#1A1F2C] transition-colors">
+                <td className="p-4 font-semibold text-slate-300">{formatDateTime(req.submitted_at)}</td>
                 <td className="p-4">
                   <span className="font-black text-white">{req.truck_number}</span><br/>
                   <span className="text-[10px] font-bold text-[#FF5A00]">{req.driver_code}</span>
@@ -150,7 +151,7 @@ export function ApprovalQueue() {
                   {req.receipt_remarks || "No remarks"}
                 </td>
                 <td className="p-4 text-right space-x-2">
-                  <button onClick={() => handleReject(req.id)} className="px-3 py-1.5 bg-rose-950/40 text-rose-500 hover:bg-rose-900 border border-rose-900/50 rounded-lg font-bold transition-colors">
+                  <button onClick={() => handleReject(req.entry_id)} className="px-3 py-1.5 bg-rose-950/40 text-rose-500 hover:bg-rose-900 border border-rose-900/50 rounded-lg font-bold transition-colors">
                     Reject
                   </button>
                   <button onClick={() => handleApprove(req)} className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-lg transition-colors shadow-lg shadow-emerald-900/20">
