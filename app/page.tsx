@@ -118,10 +118,10 @@ export default function SaaS_ERPDashboard() {
     if (vehiclesData && vehiclesData.length > 0) {
       setLiveVehicles(vehiclesData);
       setStatusCounts({
-        "Plant Loading": vehiclesData.filter(v => extractStatus(v) === 'WAITING_FOR_LOAD' || extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
-        "In Transit": vehiclesData.filter(v => extractStatus(v) === 'IN_TRANSIT').length,
-        "Workshop / Repairs": vehiclesData.filter(v => extractStatus(v) === 'WORKSHOP_MAINTENANCE').length,
-        "No Driver / Leave": vehiclesData.filter(v => extractStatus(v) === 'DRIVER_UNAVAILABLE').length
+        "Plant Loading": vehiclesData.filter((v: any) => extractStatus(v) === 'WAITING_FOR_LOAD' || extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
+        "In Transit": vehiclesData.filter((v: any) => extractStatus(v) === 'IN_TRANSIT').length,
+        "Workshop / Repairs": vehiclesData.filter((v: any) => extractStatus(v) === 'WORKSHOP_MAINTENANCE').length,
+        "No Driver / Leave": vehiclesData.filter((v: any) => extractStatus(v) === 'DRIVER_UNAVAILABLE').length
       });
     }
 
@@ -131,7 +131,7 @@ export default function SaaS_ERPDashboard() {
     const { count: driverPendingCount } = await supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
     setPendingDriverCount(driverPendingCount || 0);
 
-    // --- NEW 10-DAY COMPLIANCE LOGIC ---
+    // --- 10-DAY COMPLIANCE LOGIC ---
     const today = new Date();
     today.setHours(0,0,0,0);
     const tenDaysFromNow = new Date(today);
@@ -150,11 +150,11 @@ export default function SaaS_ERPDashboard() {
     };
 
     const { data: drivers } = await supabase.from('drivers').select('driver_code, full_name, license_expiry_date').eq('is_active', true);
-    if (drivers) drivers.forEach(d => checkDoc("Driving License", `${d.driver_code} - ${d.full_name}`, d.license_expiry_date));
+    if (drivers) drivers.forEach((d: any) => checkDoc("Driving License", `${d.driver_code} - ${d.full_name}`, d.license_expiry_date));
 
     const { data: vehicles } = await supabase.from('vehicles').select('vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date').eq('is_active', true);
     if (vehicles) {
-      vehicles.forEach(v => {
+      vehicles.forEach((v: any) => {
         const tName = `Truck ${v.vehicle_number}`;
         checkDoc("FC Test", tName, v.fc_expiry_date);
         checkDoc("Insurance", tName, v.insurance_expiry_date);
@@ -183,11 +183,11 @@ export default function SaaS_ERPDashboard() {
     if (monthTrips && monthDiesel) {
       setMonthTripsCount(monthTrips.length);
       let totalFreight = 0; let nonFuelExpenses = 0; let totalDieselCost = 0;
-      monthTrips.forEach(t => {
+      monthTrips.forEach((t: any) => {
         totalFreight += Number(t.freight_revenue) || 0;
         nonFuelExpenses += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0) + (Number(t.enroute_repairs_maintenance) || 0);
       });
-      monthDiesel.forEach(d => { totalDieselCost += Number(d.total_fuel_cost) || 0; });
+      monthDiesel.forEach((d: any) => { totalDieselCost += Number(d.total_fuel_cost) || 0; });
       setMonthFreight(totalFreight);
       setMonthDieselCost(totalDieselCost);
       setMonthNetRetention(totalFreight - totalDieselCost - nonFuelExpenses);
@@ -203,8 +203,11 @@ export default function SaaS_ERPDashboard() {
     const statusMap: Record<string, string[]> = {
       "Plant Loading": ["WAITING_FOR_LOAD", "AVAILABLE_FOR_LOAD"], "In Transit": ["IN_TRANSIT"], "Workshop / Repairs": ["WORKSHOP_MAINTENANCE"], "No Driver / Leave": ["DRIVER_UNAVAILABLE"]
     };
-    return liveVehicles.filter(v => (statusMap[statusLabel] || []).includes(extractStatus(v)));
+    return liveVehicles.filter((v: any) => (statusMap[statusLabel] || []).includes(extractStatus(v)));
   };
+
+  // ADDED MISSING VARIABLE DEFINITION HERE
+  const currentDrillDownData = selectedStatus ? getDrillDownData(selectedStatus) : [];
 
   const handleQuickStatusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -312,7 +315,7 @@ export default function SaaS_ERPDashboard() {
                   </div>
                 )}
 
-                {/* NEW GROUPED COMPLIANCE ALERTS (10 DAYS) */}
+                {/* GROUPED COMPLIANCE ALERTS (10 DAYS) */}
                 {Object.keys(expiringDocs).length > 0 && (
                   <div className="bg-rose-950/30 border-l-4 border-rose-500 rounded-2xl shadow-sm p-4 sm:p-5 animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3 mb-4">
@@ -378,7 +381,7 @@ export default function SaaS_ERPDashboard() {
                         <button onClick={() => setSelectedStatus(null)} className="text-[10px] font-bold text-slate-400 hover:text-white bg-[#222634] px-3 py-1.5 rounded-lg transition-colors">CLOSE</button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {currentDrillDownData.map(v => (
+                        {currentDrillDownData.map((v: any) => (
                           <div key={v.vehicle_id} className="p-3 border border-[#2B3142] rounded-lg bg-[#161922] flex justify-between items-center">
                             <div><p className="text-sm font-black text-white">{v.vehicle_number}</p><p className="text-[10px] font-bold text-slate-500">{v.truck_type}</p></div>
                             <div className="text-right"><span className="text-[9px] font-bold px-2 py-1 bg-[#1A1F2C] border border-[#2B3142] rounded text-slate-300 shadow-sm">{v.carrying_capacity_tons} MT</span></div>
