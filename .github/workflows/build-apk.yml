@@ -43,5 +43,5 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KSS-Roadways-Debug-APK
+          name: KSS-Roadways-Driver-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
