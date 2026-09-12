@@ -1,0 +1,9 @@
+{
+  "appId": "com.kssroadways.erp",
+  "appName": "KSS Roadways",
+  "webDir": "public",
+  "server": {
+    "url": "https://kss-roadways-erp.vercel.app",
+    "cleartext": true
+  }
+}
