@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 
-// Vercel-safe dynamic loader using eval to bypass Turbopack static analysis
+// Vercel-safe dynamic loader using eval with explicit typing to satisfy TypeScript
 let NativeBiometric: any = null;
 if (typeof window !== "undefined") {
   try {
     eval('import("capacitor-native-biometric")')
-      .then((mod) => {
+      .then((mod: any) => {
         NativeBiometric = mod.NativeBiometric;
       })
       .catch(() => {});
