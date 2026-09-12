@@ -38,6 +38,10 @@ export function ModifyTrips() {
   const [spotRate, setSpotRate] = useState<number | "">("");
   
   const [dieselL, setDieselL] = useState<number | "">("");
+  const [isTankFull, setIsTankFull] = useState(false);
+  const [startKm, setStartKm] = useState<number | "">("");
+  const [endKm, setEndKm] = useState<number | "">("");
+
   const [driverBata, setDriverBata] = useState<number | "">("");
   const [advanceIssued, setAdvanceIssued] = useState<number | "">("");
   
@@ -116,7 +120,7 @@ export function ModifyTrips() {
 
   const exportTripsToCSV = () => {
     if (tripsList.length === 0) return alert("No trip data to export.");
-    const headers = ["Trip ID", "Date", "LR Number", "Truck No", "Driver", "Route", "Status", "Loaded MT", "Freight Rate", "Driver Bata", "Halt Bata", "Advance Issued"];
+    const headers = ["Trip ID", "Date", "LR Number", "Truck No", "Driver", "Route", "Status", "Loaded MT", "Freight Rate", "Driver Bata", "Halt Bata", "Advance Issued", "Start KM", "End KM"];
     
     const rows = tripsList.map(t => [
       t.trip_id,
@@ -130,7 +134,9 @@ export function ModifyTrips() {
       t.spot_freight_rate || 0,
       t.driver_bata || 0,
       t.halt_bata || 0,
-      t.cash_advance_issued || 0
+      t.cash_advance_issued || 0,
+      t.start_km || 0,
+      t.end_km || 0
     ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
 
     const csvContent = [headers.join(","), ...rows].join("\n");
@@ -163,6 +169,10 @@ export function ModifyTrips() {
     setSpotRate(Number(rate));
     
     setDieselL(trip.fuel_litres || "");
+    setIsTankFull(trip.is_tank_full || false);
+    setStartKm(trip.start_km || "");
+    setEndKm(trip.end_km || "");
+
     setDriverBata(trip.driver_bata || "");
     setAdvanceIssued(trip.cash_advance_issued || "");
     
@@ -185,6 +195,9 @@ export function ModifyTrips() {
     setTonnage("");
     setSpotRate("");
     setDieselL("");
+    setIsTankFull(false);
+    setStartKm("");
+    setEndKm("");
     setDriverBata("");
     setAdvanceIssued("");
     setEndDate("");
@@ -210,17 +223,29 @@ export function ModifyTrips() {
       }
       const newFuelCost = Math.round((Number(dieselL) || 0) * currentDieselRate * 100) / 100;
 
-      // 2. Prepare the Trip Update Payload (Excluding spot_freight_rate to prevent schema errors)
+      // 2. Calculate KM run
+      const finalStart = startKm !== "" ? Number(startKm) : 0;
+      const finalEnd = endKm !== "" ? Number(endKm) : 0;
+      const totalKm = finalEnd > finalStart ? finalEnd - finalStart : 0;
+
+      // 3. Prepare the Trip Update Payload (Excluding spot_freight_rate to prevent schema errors)
       const updatePayload = {
         trip_number: tripNumber.toUpperCase().trim(),
         trip_start_date: startDate || null,
         origin: origin.toUpperCase().trim(),
         destination: destination.toUpperCase().trim(),
         primary_driver_id: driverId ? Number(driverId) : null,
+        
         tonnage_loaded: tonnage !== "" ? Number(tonnage) : null,
         freight_revenue: grossFreight,
+        
         fuel_litres: dieselL !== "" ? Number(dieselL) : null,
         fuel_expense: newFuelCost, // Save the newly calculated fuel cost
+        is_tank_full: isTankFull,
+        start_km: finalStart || null,
+        end_km: finalEnd || null,
+        total_km_run: totalKm || null,
+
         driver_bata: driverBata !== "" ? Number(driverBata) : null,
         cash_advance_issued: advanceIssued !== "" ? Number(advanceIssued) : null,
         trip_status: status,
@@ -229,7 +254,7 @@ export function ModifyTrips() {
         halt_bata: haltBata !== "" ? Number(haltBata) : null,
       };
 
-      // 3. Save Trip
+      // 4. Save Trip
       const { error } = await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
 
       if (error) {
@@ -239,19 +264,21 @@ export function ModifyTrips() {
         return;
       }
 
-      // 4. THE SELF-HEALING MASTER SYNC
+      // 5. THE SELF-HEALING MASTER SYNC
       // It always checks the fuel logs, even if you didn't change the number, to make sure the receipt isn't missing.
       if (Number(dieselL) > 0) {
         const { data: existingLogs } = await supabase.from('diesel_fuel_logs').select('fuel_log_id').eq('trip_id', currentTrip.trip_id);
         
         if (existingLogs && existingLogs.length > 0) {
-            // Update the existing log with new totals and latest LR/Date
+            // Update the existing log with new totals, latest LR/Date, and Odometer/Tank status
             const { error: updErr } = await supabase.from('diesel_fuel_logs').update({
                 litres_filled: Number(dieselL),
                 total_fuel_cost: newFuelCost,
                 diesel_rate_per_litre: currentDieselRate,
                 lr_number: tripNumber.toUpperCase().trim(),
-                fuel_date: startDate || new Date().toISOString().split('T')[0]
+                fuel_date: startDate || new Date().toISOString().split('T')[0],
+                is_tank_full: isTankFull,
+                filling_odometer_km: finalStart
             }).eq('fuel_log_id', existingLogs[0].fuel_log_id);
             
             if (updErr) alert("Warning: Could not update fuel log: " + updErr.message);
@@ -272,8 +299,8 @@ export function ModifyTrips() {
                 litres_filled: Number(dieselL),
                 diesel_rate_per_litre: currentDieselRate,
                 total_fuel_cost: newFuelCost,
-                filling_odometer_km: currentTrip.start_km || 0,
-                is_tank_full: false
+                filling_odometer_km: finalStart,
+                is_tank_full: isTankFull
             }]);
             
             if (insErr) alert("Warning: Could not create missing fuel log: " + insErr.message);
@@ -380,15 +407,37 @@ export function ModifyTrips() {
               </div>
             </div>
 
-            {/* ROW 4: Diesel, Driver Bata, Advance */}
+            {/* ROW 4: Fuel & Odometer */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Diesel Issued (L)</label>
+                <div className="flex justify-between items-end mb-1">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">Diesel Issued (L)</label>
+                  <label className="flex items-center gap-1 cursor-pointer select-none">
+                    <input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="w-3 h-3 rounded text-[#FF5A00] focus:ring-[#FF5A00] bg-[#1A1F2C] border-[#272B36]" />
+                    <span className="text-[9px] font-black text-white uppercase">⛽ Tank Full</span>
+                  </label>
+                </div>
                 <input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]" />
               </div>
               <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Start KM</label>
+                <input type="number" value={startKm} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-sky-400 font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">End KM</label>
+                <input type="number" value={endKm} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-sky-400 font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+            </div>
+
+            {/* ROW 5: Finances (Advances/Bata) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Driver Bata (₹)</label>
                 <input type="number" value={driverBata} onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Halt Bata (₹)</label>
+                <input type="number" value={haltBata} onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]" />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cash Adv Issued (₹)</label>
@@ -396,8 +445,8 @@ export function ModifyTrips() {
               </div>
             </div>
 
-            {/* ROW 5: POD Date, Unloaded MT, Halt Bata */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* ROW 6: Closing Variables */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">POD Closing Date</label>
                 <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]" />
@@ -405,10 +454,6 @@ export function ModifyTrips() {
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Unloaded MT</label>
                 <input type="number" step="0.01" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Halt Bata (₹)</label>
-                <input type="number" value={haltBata} onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#1A1F2C] text-amber-400 font-bold outline-none focus:border-[#FF5A00]" />
               </div>
             </div>
 
