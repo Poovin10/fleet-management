@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
+import { NativeBiometric } from "capacitor-native-biometric";
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -117,7 +118,6 @@ export function DriverPortal() {
     }
   }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab, activeDriverObj]);
 
-  // FETCH PREVIOUS ODOMETER LOGIC
   useEffect(() => {
     if (selectedTruckId) {
       const fetchLastOdo = async () => {
@@ -140,7 +140,6 @@ export function DriverPortal() {
     }
   }, [selectedTruckId, activeTrips, pendingRequests]);
 
-  // SMART AUTO-SELECT NEXT ACTION
   useEffect(() => {
     const isStartPending = pendingRequests.some(r => r.entry_type === "START_TRIP" && r.status === "PENDING" && String(r.vehicle_id) === String(selectedTruckId));
     const isStarted = (currentTrip && currentTrip.start_km > 0) || isStartPending;
@@ -201,6 +200,34 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
+  // Fingerprint / Biometric Login Verification
+  const handleFingerprintLogin = async () => {
+    if (!driverCode) return setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Please select your profile first.", type: "error" });
+    const selectedDrv = drivers.find(d => d.driver_code === driverCode);
+    if (!selectedDrv) return;
+
+    try {
+      const result = await NativeBiometric.verifyIdentity({
+        reason: "Verify your identity to log in to KSS Roadways",
+        title: "Driver Authentication",
+        subtitle: "Use fingerprint to login securely",
+        description: "Touch the sensor to confirm your profile",
+      });
+
+      if (result) {
+        localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
+        setSavedDriverCode(driverCode.toUpperCase().trim());
+        setIsDriverLocked(true); 
+        setDriverPin(""); 
+        setConfirmPin("");
+        setAlertConfig({ isOpen: true, title: "Success", message: "Fingerprint verified successfully!", type: "success" });
+      }
+    } catch (error) {
+      console.error("Biometric authentication failed:", error);
+      setAlertConfig({ isOpen: true, title: "Authentication Failed", message: "Fingerprint verification cancelled or failed. Use PIN instead.", type: "error" });
+    }
+  };
+
   const handleLockDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!driverCode) return setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Please select your profile.", type: "error" });
@@ -231,10 +258,7 @@ export function DriverPortal() {
     }
   };
 
-  const handleDriverSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTruckId) return setAlertConfig({ isOpen: true, title: "Truck Required", message: "Select active Truck.", type: "error" });
-
+  const executeStatusUpdate = async () => {
     setIsSubmitting(true);
     const timestamp = new Date().toISOString();
     const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown";
@@ -322,6 +346,30 @@ export function DriverPortal() {
     setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData(); 
   };
 
+  const handleDriverSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTruckId) return setAlertConfig({ isOpen: true, title: "Truck Required", message: "Select active Truck.", type: "error" });
+
+    // Enforce Biometric Authentication for High-Priority Actions (Breakdown or Unloaded or Start)
+    if (actionType === "BREAKDOWN" || actionType === "UNLOADED" || actionType === "START_TRIP") {
+      try {
+        const bioResult = await NativeBiometric.verifyIdentity({
+          reason: `Authorize ${actionType.replace('_', ' ')} action securely`,
+          title: "Driver Verification",
+          subtitle: "Confirm action with fingerprint",
+          description: "Touch the sensor to submit update",
+        });
+        if (bioResult) {
+          await executeStatusUpdate();
+        }
+      } catch (err) {
+        setAlertConfig({ isOpen: true, title: "Verification Cancelled", message: "Fingerprint verification is required to submit this milestone.", type: "error" });
+      }
+    } else {
+      await executeStatusUpdate();
+    }
+  };
+
   const handleCancelRequest = async (id: number) => {
     if (!confirm("Delete this request?")) return;
     await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
@@ -348,7 +396,7 @@ export function DriverPortal() {
         <form onSubmit={handleLockDriver} className="flex flex-col">
           <div className="flex flex-col p-6 space-y-1">
             <h3 className="font-bold tracking-tight text-xl">{isFirstTimeSetup ? "First-Time PIN Setup" : "Secure Login"}</h3>
-            <p className="text-sm text-fg-secondary">{isFirstTimeSetup ? "Create a 4-digit security PIN for your account. Keep it safe!" : "Select your profile and enter your 4-digit PIN."}</p>
+            <p className="text-sm text-fg-secondary">{isFirstTimeSetup ? "Create a 4-digit security PIN for your account. Keep it safe!" : "Select your profile and enter your PIN or use fingerprint."}</p>
           </div>
           <div className="p-6 pt-0 grid gap-5">
             <div className="grid gap-1.5">
@@ -358,16 +406,27 @@ export function DriverPortal() {
                 {drivers.map(d => (<option key={d.driver_id} value={d.driver_code}>{d.full_name} ({d.driver_code})</option>))}
               </select>
             </div>
+            
+            {!isFirstTimeSetup && (
+              <button 
+                type="button" 
+                onClick={handleFingerprintLogin}
+                className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:bg-slate-800 transition-all"
+              >
+                🔓 Tap to Login with Fingerprint
+              </button>
+            )}
+
             <div className="grid gap-1.5">
-              <label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Security PIN"}</label>
-              <input type="password" maxLength={4} value={driverPin} onChange={e => setDriverPin(e.target.value)} placeholder="••••" className={inputStyle} required />
+              <label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Or Enter Security PIN"}</label>
+              <input type="password" maxLength={4} value={driverPin} onChange={e => setDriverPin(e.target.value)} placeholder="••••" className={inputStyle} required={isFirstTimeSetup} />
             </div>
             {isFirstTimeSetup && (
               <div className="grid gap-1.5"><label className={labelStyle}>Confirm 4-Digit PIN</label><input type="password" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value)} placeholder="••••" className={inputStyle} required /></div>
             )}
             {!isFirstTimeSetup && driverCode && <p className="text-[11px] text-fg-muted italic">Forgot your PIN? Contact office Admin to reset it.</p>}
             <button type="submit" className="inline-flex items-center justify-center rounded-lg text-sm font-bold bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-10 px-4 py-2 w-full mt-2">
-              {isFirstTimeSetup ? "Save & Lock Device" : "Verify & Login"}
+              {isFirstTimeSetup ? "Save & Lock Device" : "Verify & Login with PIN"}
             </button>
           </div>
         </form>
@@ -477,7 +536,7 @@ export function DriverPortal() {
                   <div className="grid gap-1.5"><label className={labelStyle}>{actionType === "BREAKDOWN" ? "Breakdown Details" : "Additional Remarks"}</label><input type="text" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder={actionType === "BREAKDOWN" ? "Describe issue & location" : "Any damages or notes?"} className={inputStyle} required={actionType === "BREAKDOWN"} /></div>
                 )}
                 <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-lg text-sm font-bold transition-colors bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-12 px-4 py-2 w-full mt-2 disabled:opacity-50">
-                  {isSubmitting ? "Updating..." : `Confirm Status Update`}
+                  {isSubmitting ? "Updating..." : `Confirm Status Update (Biometric 🔒)`}
                 </button>
               </div>
             </form>
