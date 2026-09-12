@@ -64,9 +64,10 @@ export function LiveAlertsWidget() {
       const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
       const { data: drivers } = await supabase.from('drivers').select('*').eq('is_active', true);
       
-      vehicles?.forEach(v => {
-        const expiries = [];
+      vehicles?.forEach((v: any) => {
+        const expiries: string[] = []; // Explicitly defined as an array of strings
         const check = (d: string, n: string) => { if (d && new Date(d) <= tenDaysFromNow) expiries.push(n); };
+        
         check(v.fc_expiry_date, 'FC');
         check(v.insurance_expiry_date, 'Insurance');
         check(v.puc_expiry_date, 'PUC');
@@ -85,7 +86,7 @@ export function LiveAlertsWidget() {
         }
       });
 
-      drivers?.forEach(d => {
+      drivers?.forEach((d: any) => {
         if (d.license_expiry_date && new Date(d.license_expiry_date) <= tenDaysFromNow) {
           newItems.push({
             id: `exp_d_${d.driver_id}`,
