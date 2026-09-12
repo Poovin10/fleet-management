@@ -1,26 +1,15 @@
-import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata } from "next";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
-
-// Set theme color for mobile browser bars & disable pinch-to-zoom
-export const viewport: Viewport = {
-  themeColor: "#FF5A00",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false, 
-};
-
 export const metadata: Metadata = {
-  title: "KSS Roadways",
-  description: "Enterprise fleet and logistics management system",
-  manifest: "/manifest.json",
+  title: "KSS Roadways ERP",
+  description: "KSS Roadways Fleet Management Portal",
+  manifest: "/manifest.json", 
+  themeColor: "#050507",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "KSS Driver",
+    title: "KSS Roadways",
   },
 };
 
@@ -31,7 +20,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className="antialiased">
+        {children}
+        
+        {/* PWA Service Worker Registration Script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                  }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
+      </body>
     </html>
   );
 }
