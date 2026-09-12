@@ -3,7 +3,14 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
-import { NativeBiometric } from "capacitor-native-biometric";
+
+// Vercel-safe dynamic loader for native mobile biometric module
+let NativeBiometric: any = null;
+if (typeof window !== "undefined") {
+  import("capacitor-native-biometric").then((mod) => {
+    NativeBiometric = mod.NativeBiometric;
+  }).catch(() => {});
+}
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -203,6 +210,8 @@ export function DriverPortal() {
   // Fingerprint / Biometric Login Verification
   const handleFingerprintLogin = async () => {
     if (!driverCode) return setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Please select your profile first.", type: "error" });
+    if (!NativeBiometric) return setAlertConfig({ isOpen: true, title: "Not Available", message: "Biometrics require the mobile app container.", type: "error" });
+    
     const selectedDrv = drivers.find(d => d.driver_code === driverCode);
     if (!selectedDrv) return;
 
@@ -350,8 +359,8 @@ export function DriverPortal() {
     e.preventDefault();
     if (!selectedTruckId) return setAlertConfig({ isOpen: true, title: "Truck Required", message: "Select active Truck.", type: "error" });
 
-    // Enforce Biometric Authentication for High-Priority Actions (Breakdown or Unloaded or Start)
-    if (actionType === "BREAKDOWN" || actionType === "UNLOADED" || actionType === "START_TRIP") {
+    // Enforce Biometric Authentication for High-Priority Actions if NativeBiometric is present
+    if ((actionType === "BREAKDOWN" || actionType === "UNLOADED" || actionType === "START_TRIP") && NativeBiometric) {
       try {
         const bioResult = await NativeBiometric.verifyIdentity({
           reason: `Authorize ${actionType.replace('_', ' ')} action securely`,
