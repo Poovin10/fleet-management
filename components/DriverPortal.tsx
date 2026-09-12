@@ -34,6 +34,7 @@ export function DriverPortal() {
   const [actionType, setActionType] = useState("START_TRIP"); 
   
   const [odometer, setOdometer] = useState<number | "">("");
+  const [lastOdometer, setLastOdometer] = useState<number | "">("");
   const [fuelLitres, setFuelLitres] = useState<number | "">("");
   const [remarks, setRemarks] = useState("");
   
@@ -108,15 +109,52 @@ export function DriverPortal() {
 
   useEffect(() => {
     if (isDriverLocked && drivers.length > 0 && activeDriverObj) {
-      if (activeTrips.length > 0 && activeTrip) {
-        setSelectedTruckId(String(activeTrip.vehicle_id));
+      if (activeTrips.length > 0) {
+        const activeTrip = activeTrips.find(t => String(t.primary_driver_id) === String(activeDriverObj.driver_id));
+        if (activeTrip) setSelectedTruckId(String(activeTrip.vehicle_id));
       }
       fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
     }
   }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab, activeDriverObj]);
 
-  var activeTrip = activeTrips.find(t => String(t.primary_driver_id) === String(activeDriverObj?.driver_id));
+  // FETCH PREVIOUS ODOMETER LOGIC
+  useEffect(() => {
+    if (selectedTruckId) {
+      const fetchLastOdo = async () => {
+        const [tripData, fuelData, pendingData] = await Promise.all([
+          supabase.from("trips").select("end_km, start_km").eq("vehicle_id", selectedTruckId).order("trip_id", { ascending: false }).limit(1),
+          supabase.from("diesel_fuel_logs").select("filling_odometer_km").eq("vehicle_id", selectedTruckId).order("fuel_log_id", { ascending: false }).limit(1),
+          supabase.from("driver_pending_entries").select("odometer_km").eq("vehicle_id", selectedTruckId).order("submitted_at", { ascending: false }).limit(1)
+        ]);
+        
+        let maxOdo = 0;
+        if (tripData.data && tripData.data.length > 0) maxOdo = Math.max(maxOdo, Number(tripData.data[0].end_km || 0), Number(tripData.data[0].start_km || 0));
+        if (fuelData.data && fuelData.data.length > 0) maxOdo = Math.max(maxOdo, Number(fuelData.data[0].filling_odometer_km || 0));
+        if (pendingData.data && pendingData.data.length > 0) maxOdo = Math.max(maxOdo, Number(pendingData.data[0].odometer_km || 0));
+        
+        setLastOdometer(maxOdo > 0 ? maxOdo : "");
+      };
+      fetchLastOdo();
+    } else {
+      setLastOdometer("");
+    }
+  }, [selectedTruckId, activeTrips, pendingRequests]);
 
+  // SMART AUTO-SELECT NEXT ACTION
+  useEffect(() => {
+    const isStartPending = pendingRequests.some(r => r.entry_type === "START_TRIP" && r.status === "PENDING" && String(r.vehicle_id) === String(selectedTruckId));
+    const isStarted = (currentTrip && currentTrip.start_km > 0) || isStartPending;
+    
+    if (isStarted && actionType === "START_TRIP") {
+       if (currentTrip?.trip_status === "IN_TRANSIT") setActionType("REACHED");
+       else if (currentTrip?.trip_status === "REACHED_DESTINATION") setActionType("UNLOADED");
+       else if (currentTrip?.trip_status === "UNLOADED") setActionType("RETURNING");
+       else if (currentTrip?.trip_status === "RETURNING") setActionType("WAITING_FOR_LOAD");
+       else setActionType("FUEL");
+    } else if (!isStarted && !currentTrip) {
+       setActionType("START_TRIP");
+    }
+  }, [currentTrip, pendingRequests, selectedTruckId, actionType]);
 
   useEffect(() => {
     const warnings: any[] = [];
@@ -201,7 +239,6 @@ export function DriverPortal() {
     const timestamp = new Date().toISOString();
     const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown";
 
-    // NEW LOGIC: Check if trying to update a trip that doesn't exist yet
     if (!currentTrip && actionType !== "FUEL" && actionType !== "START_TRIP") {
       setIsSubmitting(false);
       return setAlertConfig({ 
@@ -211,7 +248,6 @@ export function DriverPortal() {
       });
     }
 
-    // SCENARIO 1: FUEL OR START_TRIP (When office hasn't created the trip yet)
     if (actionType === "FUEL" || (!currentTrip && actionType === "START_TRIP")) {
       const activeLr = currentTrip ? currentTrip.trip_number : "PRE-DISPATCH";
       
@@ -235,7 +271,6 @@ export function DriverPortal() {
         setAlertConfig({ isOpen: true, title: "Success", message: msg, type: "success" });
       }
     } 
-    // SCENARIO 2: ACTIVE TRIP UPDATES (Office has already dispatched)
     else if (currentTrip) {
         let updatePayload: any = {}; let finalRemarks = remarks; let vehicleStatusUpdate = "IN_TRANSIT"; let statusRemarksText = "";
 
@@ -296,6 +331,7 @@ export function DriverPortal() {
 
   const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5A00] focus-visible:border-[#FF5A00]";
   const labelStyle = "text-xs font-bold text-fg-secondary uppercase tracking-wide leading-none mb-1";
+  const numProps = { onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur() };
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-border bg-surface text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: 'light' }}>
@@ -383,30 +419,57 @@ export function DriverPortal() {
               <div className="grid gap-1.5">
                 <label className={labelStyle}>Update Lifecycle Status</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {[ { id: "START_TRIP", label: "🚀 Start Trip" }, { id: "REACHED", label: "📍 Reached Dest." }, { id: "UNLOADED", label: "📦 Unloaded" }, { id: "RETURNING", label: "🔄 Returning" }, { id: "WAITING_FOR_LOAD", label: "🏭 Reached Plant" }, { id: "BREAKDOWN", label: "⚠️ Breakdown" }, { id: "FUEL", label: "⛽ Fuel Fill Request" } ].map((item, idx, arr) => (
-                    <button type="button" key={item.id} onClick={() => setActionType(item.id)} className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-fg border-border hover:bg-app'} ${idx === arr.length - 1 ? 'col-span-2' : ''}`}>
-                      {item.label}
-                    </button>
-                  ))}
+                  {[ { id: "START_TRIP", label: "🚀 Start Trip" }, { id: "REACHED", label: "📍 Reached Dest." }, { id: "UNLOADED", label: "📦 Unloaded" }, { id: "RETURNING", label: "🔄 Returning" }, { id: "WAITING_FOR_LOAD", label: "🏭 Reached Plant" }, { id: "BREAKDOWN", label: "⚠️ Breakdown" }, { id: "FUEL", label: "⛽ Fuel Fill Request" } ].map((item, idx, arr) => {
+                    
+                    const isStartPending = pendingRequests.some(r => r.entry_type === "START_TRIP" && r.status === "PENDING" && String(r.vehicle_id) === String(selectedTruckId));
+                    const alreadyStarted = item.id === "START_TRIP" && ((currentTrip && currentTrip.start_km > 0) || isStartPending);
+
+                    return (
+                      <button 
+                        type="button" 
+                        key={item.id} 
+                        onClick={() => !alreadyStarted && setActionType(item.id)} 
+                        disabled={alreadyStarted}
+                        className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border 
+                          ${alreadyStarted ? 'opacity-40 cursor-not-allowed bg-surface text-fg-muted border-border' : 
+                            actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-fg border-border hover:bg-app'} 
+                          ${idx === arr.length - 1 ? 'col-span-2' : ''}`}
+                      >
+                        {alreadyStarted ? "✅ Started" : item.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="space-y-4">
                 {(actionType === "START_TRIP" || actionType === "WAITING_FOR_LOAD" || actionType === "FUEL" || actionType === "BREAKDOWN") && (
-                  <div className="grid gap-1.5"><label className={labelStyle}>Odometer (KM)</label><input type="number" min="0" value={odometer} onChange={e => setOdometer(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 145230" className={inputStyle} required /></div>
+                  <div className="grid gap-1.5">
+                    <label className={labelStyle}>Odometer (KM)</label>
+                    <input 
+                      type="number" 
+                      min={lastOdometer ? lastOdometer : 0} 
+                      value={odometer} 
+                      onChange={e => setOdometer(e.target.value === "" ? "" : parseFloat(e.target.value))} 
+                      placeholder={lastOdometer ? `Previous KM: ${lastOdometer}` : "e.g. 145230"} 
+                      className={inputStyle} 
+                      required 
+                      {...numProps}
+                    />
+                  </div>
                 )}
                 {actionType === "FUEL" && (
-                  <div className="grid gap-1.5"><label className={labelStyle}>Litres Filled</label><input type="number" step="0.01" min="0.1" value={fuelLitres} onChange={e => setFuelLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={inputStyle} required /></div>
+                  <div className="grid gap-1.5"><label className={labelStyle}>Litres Filled</label><input type="number" step="any" min="0.1" value={fuelLitres} onChange={e => setFuelLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={inputStyle} required {...numProps}/></div>
                 )}
                 {actionType === "UNLOADED" && (
                   <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl space-y-3">
                     {isBulk ? (
                       <>
-                        <div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 uppercase">Unloaded Weight (MT)</label><input type="number" step="0.01" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} /></div>
+                        <div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 uppercase">Unloaded Weight (MT)</label><input type="number" step="any" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} {...numProps}/></div>
                         <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={noWeighment} onChange={(e) => setNoWeighment(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-orange-300" /><span className="text-xs font-bold text-orange-800">No weighment facility</span></label>
                       </>
                     ) : (
-                      <div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 uppercase">Damaged Bags Count</label><input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required /></div>
+                      <div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 uppercase">Damaged Bags Count</label><input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required {...numProps}/></div>
                     )}
                   </div>
                 )}
