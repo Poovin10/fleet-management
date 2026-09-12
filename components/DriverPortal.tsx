@@ -211,7 +211,7 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
-  // Fingerprint / Biometric Login Verification
+  // Fingerprint / Biometric Login Verification (Only for Login)
   const handleFingerprintLogin = async () => {
     if (!driverCode) return setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Please select your profile first.", type: "error" });
     if (!NativeBiometric) return setAlertConfig({ isOpen: true, title: "Not Available", message: "Biometrics require the mobile app container.", type: "error" });
@@ -271,7 +271,10 @@ export function DriverPortal() {
     }
   };
 
-  const executeStatusUpdate = async () => {
+  const handleDriverSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTruckId) return setAlertConfig({ isOpen: true, title: "Truck Required", message: "Select active Truck.", type: "error" });
+
     setIsSubmitting(true);
     const timestamp = new Date().toISOString();
     const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown";
@@ -357,30 +360,6 @@ export function DriverPortal() {
     }
 
     setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData(); 
-  };
-
-  const handleDriverSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTruckId) return setAlertConfig({ isOpen: true, title: "Truck Required", message: "Select active Truck.", type: "error" });
-
-    // Enforce Biometric Authentication for High-Priority Actions if NativeBiometric is present
-    if ((actionType === "BREAKDOWN" || actionType === "UNLOADED" || actionType === "START_TRIP") && NativeBiometric) {
-      try {
-        const bioResult = await NativeBiometric.verifyIdentity({
-          reason: `Authorize ${actionType.replace('_', ' ')} action securely`,
-          title: "Driver Verification",
-          subtitle: "Confirm action with fingerprint",
-          description: "Touch the sensor to submit update",
-        });
-        if (bioResult) {
-          await executeStatusUpdate();
-        }
-      } catch (err) {
-        setAlertConfig({ isOpen: true, title: "Verification Cancelled", message: "Fingerprint verification is required to submit this milestone.", type: "error" });
-      }
-    } else {
-      await executeStatusUpdate();
-    }
   };
 
   const handleCancelRequest = async (id: number) => {
@@ -549,7 +528,7 @@ export function DriverPortal() {
                   <div className="grid gap-1.5"><label className={labelStyle}>{actionType === "BREAKDOWN" ? "Breakdown Details" : "Additional Remarks"}</label><input type="text" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder={actionType === "BREAKDOWN" ? "Describe issue & location" : "Any damages or notes?"} className={inputStyle} required={actionType === "BREAKDOWN"} /></div>
                 )}
                 <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-lg text-sm font-bold transition-colors bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-12 px-4 py-2 w-full mt-2 disabled:opacity-50">
-                  {isSubmitting ? "Updating..." : `Confirm Status Update (Biometric 🔒)`}
+                  {isSubmitting ? "Updating..." : `Confirm Status Update`}
                 </button>
               </div>
             </form>
