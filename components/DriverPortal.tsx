@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 
-// Vercel-safe dynamic loader using eval with explicit typing to satisfy TypeScript
+// Vercel-safe dynamic loader using eval with explicit typing
 let NativeBiometric: any = null;
 if (typeof window !== "undefined") {
   try {
@@ -191,12 +191,39 @@ export function DriverPortal() {
     setComplianceWarnings(warnings);
   }, [activeDriverObj, selectedTruckObj]);
 
-  const handleDriverChange = (code: string) => {
-    setDriverCode(code); setDriverPin(""); setConfirmPin("");
+  const handleDriverChange = async (code: string) => {
+    setDriverCode(code); 
+    setDriverPin(""); 
+    setConfirmPin("");
+    
     if (code) {
       const drv = drivers.find(d => d.driver_code === code);
-      setIsFirstTimeSetup(!drv || !drv.pin || drv.pin.trim() === "");
-    } else setIsFirstTimeSetup(false);
+      const isNew = !drv || !drv.pin || drv.pin.trim() === "";
+      setIsFirstTimeSetup(isNew);
+
+      // PROFESSIONAL TOUCH: If not first-time setup and running inside the mobile app, 
+      // automatically trigger the biometric fingerprint scanner instantly!
+      if (!isNew && NativeBiometric) {
+        try {
+          const result = await NativeBiometric.verifyIdentity({
+            reason: "Log in to KSS Roadways Driver Portal",
+            title: "Driver Authentication",
+            subtitle: "Touch fingerprint sensor",
+            description: "Verify identity to access your portal",
+          });
+
+          if (result) {
+            localStorage.setItem("kss_device_driver", code.toUpperCase().trim());
+            setSavedDriverCode(code.toUpperCase().trim());
+            setIsDriverLocked(true);
+          }
+        } catch (err) {
+          // Driver cancelled or failed biometrics -> they can smoothly use PIN below
+        }
+      }
+    } else {
+      setIsFirstTimeSetup(false);
+    }
   };
 
   const displayDriverName = activeDriverObj ? `${activeDriverObj.full_name} (${activeDriverObj.driver_code})` : savedDriverCode;
@@ -211,33 +238,26 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
-  // Fingerprint / Biometric Login Verification (Only for Login)
-  const handleFingerprintLogin = async () => {
-    if (!driverCode) return setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Please select your profile first.", type: "error" });
-    if (!NativeBiometric) return setAlertConfig({ isOpen: true, title: "Not Available", message: "Biometrics require the mobile app container.", type: "error" });
-    
-    const selectedDrv = drivers.find(d => d.driver_code === driverCode);
-    if (!selectedDrv) return;
+  // Manual trigger if they want to re-invoke fingerprint via a sleek, professional inline button
+  const handleManualFingerprint = async () => {
+    if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
+    if (!NativeBiometric) return setAlertConfig({ isOpen: true, title: "Not Available", message: "Biometric sensor only active in mobile app.", type: "error" });
 
     try {
       const result = await NativeBiometric.verifyIdentity({
-        reason: "Verify your identity to log in to KSS Roadways",
+        reason: "Log in to KSS Roadways Driver Portal",
         title: "Driver Authentication",
-        subtitle: "Use fingerprint to login securely",
-        description: "Touch the sensor to confirm your profile",
+        subtitle: "Touch fingerprint sensor",
+        description: "Verify identity to access your portal",
       });
 
       if (result) {
         localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
         setSavedDriverCode(driverCode.toUpperCase().trim());
-        setIsDriverLocked(true); 
-        setDriverPin(""); 
-        setConfirmPin("");
-        setAlertConfig({ isOpen: true, title: "Success", message: "Fingerprint verified successfully!", type: "success" });
+        setIsDriverLocked(true);
       }
-    } catch (error) {
-      console.error("Biometric authentication failed:", error);
-      setAlertConfig({ isOpen: true, title: "Authentication Failed", message: "Fingerprint verification cancelled or failed. Use PIN instead.", type: "error" });
+    } catch (e) {
+      // User dismissed
     }
   };
 
@@ -388,7 +408,7 @@ export function DriverPortal() {
         <form onSubmit={handleLockDriver} className="flex flex-col">
           <div className="flex flex-col p-6 space-y-1">
             <h3 className="font-bold tracking-tight text-xl">{isFirstTimeSetup ? "First-Time PIN Setup" : "Secure Login"}</h3>
-            <p className="text-sm text-fg-secondary">{isFirstTimeSetup ? "Create a 4-digit security PIN for your account. Keep it safe!" : "Select your profile and enter your PIN or use fingerprint."}</p>
+            <p className="text-sm text-fg-secondary">{isFirstTimeSetup ? "Create a 4-digit security PIN for your account. Keep it safe!" : "Select your profile to authenticate."}</p>
           </div>
           <div className="p-6 pt-0 grid gap-5">
             <div className="grid gap-1.5">
@@ -399,13 +419,13 @@ export function DriverPortal() {
               </select>
             </div>
             
-            {!isFirstTimeSetup && (
+            {!isFirstTimeSetup && driverCode && (
               <button 
                 type="button" 
-                onClick={handleFingerprintLogin}
-                className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:bg-slate-800 transition-all"
+                onClick={handleManualFingerprint}
+                className="w-full border border-slate-700 bg-slate-900/60 hover:bg-slate-900 text-slate-200 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all"
               >
-                🔓 Tap to Login with Fingerprint
+                <span className="text-base">🪪</span> Tap to verify with Fingerprint
               </button>
             )}
 
