@@ -4,18 +4,6 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 
-// Vercel-safe dynamic loader using eval with explicit typing
-let NativeBiometric: any = null;
-if (typeof window !== "undefined") {
-  try {
-    eval('import("capacitor-native-biometric")')
-      .then((mod: any) => {
-        NativeBiometric = mod.NativeBiometric;
-      })
-      .catch(() => {});
-  } catch (e) {}
-}
-
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
     <rect width="200" height="200" fill="#FF5A00" />
@@ -191,36 +179,14 @@ export function DriverPortal() {
     setComplianceWarnings(warnings);
   }, [activeDriverObj, selectedTruckObj]);
 
-  const handleDriverChange = async (code: string) => {
+  const handleDriverChange = (code: string) => {
     setDriverCode(code); 
     setDriverPin(""); 
     setConfirmPin("");
     
     if (code) {
       const drv = drivers.find(d => d.driver_code === code);
-      const isNew = !drv || !drv.pin || drv.pin.trim() === "";
-      setIsFirstTimeSetup(isNew);
-
-      // PROFESSIONAL TOUCH: If not first-time setup and running inside the mobile app, 
-      // automatically trigger the biometric fingerprint scanner instantly!
-      if (!isNew && NativeBiometric) {
-        try {
-          const result = await NativeBiometric.verifyIdentity({
-            reason: "Log in to KSS Roadways Driver Portal",
-            title: "Driver Authentication",
-            subtitle: "Touch fingerprint sensor",
-            description: "Verify identity to access your portal",
-          });
-
-          if (result) {
-            localStorage.setItem("kss_device_driver", code.toUpperCase().trim());
-            setSavedDriverCode(code.toUpperCase().trim());
-            setIsDriverLocked(true);
-          }
-        } catch (err) {
-          // Driver cancelled or failed biometrics -> they can smoothly use PIN below
-        }
-      }
+      setIsFirstTimeSetup(!drv || !drv.pin || drv.pin.trim() === "");
     } else {
       setIsFirstTimeSetup(false);
     }
@@ -238,12 +204,21 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
-  // Manual trigger if they want to re-invoke fingerprint via a sleek, professional inline button
+  // On-demand professional biometric login trigger (safely evaluated inside mobile container)
   const handleManualFingerprint = async () => {
-    if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
-    if (!NativeBiometric) return setAlertConfig({ isOpen: true, title: "Not Available", message: "Biometric sensor only active in mobile app.", type: "error" });
+    if (!driverCode) {
+      return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
+    }
 
     try {
+      // Dynamically load on tap to bypass Vercel build issues and eliminate null timing bugs
+      const bioModule = await eval('import("capacitor-native-biometric")');
+      const NativeBiometric = bioModule.NativeBiometric || bioModule.default?.NativeBiometric;
+
+      if (!NativeBiometric) {
+        throw new Error("Biometric plugin unavailable");
+      }
+
       const result = await NativeBiometric.verifyIdentity({
         reason: "Log in to KSS Roadways Driver Portal",
         title: "Driver Authentication",
@@ -256,8 +231,14 @@ export function DriverPortal() {
         setSavedDriverCode(driverCode.toUpperCase().trim());
         setIsDriverLocked(true);
       }
-    } catch (e) {
-      // User dismissed
+    } catch (error) {
+      console.error("Biometric error:", error);
+      setAlertConfig({ 
+        isOpen: true, 
+        title: "Authentication Failed", 
+        message: "Fingerprint scanner not supported on this view or cancelled. Please use your 4-digit PIN.", 
+        type: "error" 
+      });
     }
   };
 
@@ -423,9 +404,9 @@ export function DriverPortal() {
               <button 
                 type="button" 
                 onClick={handleManualFingerprint}
-                className="w-full border border-slate-700 bg-slate-900/60 hover:bg-slate-900 text-slate-200 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                className="w-full border border-slate-700 bg-slate-900/60 hover:bg-slate-900 text-slate-200 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm"
               >
-                <span className="text-base">🪪</span> Tap to verify with Fingerprint
+                <span className="text-base">🔓</span> Tap to verify with Fingerprint
               </button>
             )}
 
