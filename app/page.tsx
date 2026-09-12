@@ -131,13 +131,11 @@ export default function SaaS_ERPDashboard() {
     const { count: driverPendingCount } = await supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
     setPendingDriverCount(driverPendingCount || 0);
 
-    // --- 10-DAY COMPLIANCE LOGIC (RED ONLY IF EXPIRED OR 1 DAY LEFT) ---
+    // --- 10-DAY COMPLIANCE LOGIC ---
     const today = new Date();
     today.setHours(0,0,0,0);
-    
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    
     const tenDaysFromNow = new Date(today);
     tenDaysFromNow.setDate(today.getDate() + 10);
 
@@ -148,11 +146,8 @@ export default function SaaS_ERPDashboard() {
       expDate.setHours(0,0,0,0);
       
       if (expDate <= tenDaysFromNow) {
-        // Only RED if it expires tomorrow or is already expired
         const isUrgent = expDate <= tomorrow; 
         if (!alerts[docName]) alerts[docName] = [];
-        
-        // Strip "Truck" prefix for cleaner UI
         const cleanName = entityName.replace("Truck ", "");
         alerts[docName].push({ name: cleanName, date: dateVal, isUrgent, expDate });
       }
@@ -324,7 +319,6 @@ export default function SaaS_ERPDashboard() {
                   </div>
                 )}
 
-                {/* NEW STACKED COMPLIANCE ALERTS (10 DAYS) */}
                 {Object.keys(expiringDocs).length > 0 && (
                   <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6 animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3 mb-5">
@@ -350,7 +344,6 @@ export default function SaaS_ERPDashboard() {
                   </div>
                 )}
 
-                {/* NEW STACKED OPERATIONS SUMMARY */}
                 <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">Operations Summary</h3>
@@ -385,7 +378,10 @@ export default function SaaS_ERPDashboard() {
                     </div>
 
                     <div className="p-4 rounded-xl bg-sky-950/20 border border-sky-900/50 flex flex-col sm:flex-row sm:items-center justify-between">
-                      <p className="text-[10px] font-bold text-sky-400 uppercase tracking-wider mb-1 sm:mb-0">Diesel Expense</p>
+                      <div className="mb-1 sm:mb-0">
+                        <p className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Diesel Expense</p>
+                        {monthFreight > 0 && <p className="text-[10px] font-bold text-sky-500 mt-1">{((monthDieselCost/monthFreight)*100).toFixed(1)}% of Freight</p>}
+                      </div>
                       <p className="text-2xl sm:text-3xl font-black text-sky-300 leading-none">₹{formatAmt(monthDieselCost)}</p>
                     </div>
                   </div>
