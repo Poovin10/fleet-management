@@ -4,12 +4,16 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 
-// Vercel-safe dynamic loader for native mobile biometric module
+// Vercel-safe dynamic loader using eval to bypass Turbopack static analysis
 let NativeBiometric: any = null;
 if (typeof window !== "undefined") {
-  import("capacitor-native-biometric").then((mod) => {
-    NativeBiometric = mod.NativeBiometric;
-  }).catch(() => {});
+  try {
+    eval('import("capacitor-native-biometric")')
+      .then((mod) => {
+        NativeBiometric = mod.NativeBiometric;
+      })
+      .catch(() => {});
+  } catch (e) {}
 }
 
 const KssLogo = ({ className }: { className?: string }) => (
