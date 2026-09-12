@@ -36,7 +36,7 @@ export function DriverPortal() {
   const [driverPin, setDriverPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
-  const [actionType, setActionType] = useState("REACHED"); 
+  const [actionType, setActionType] = useState("START_TRIP"); 
   
   // Standard Form fields
   const [odometer, setOdometer] = useState<number | "">("");
@@ -81,7 +81,8 @@ export function DriverPortal() {
     const [vRes, dRes, tRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true),
       supabase.from('drivers').select('*').eq('is_active', true),
-      supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status, trip_start_date, reached_at, unloaded_at, returning_at').neq('trip_status', 'COMPLETED')
+      // ADDED start_km to selection so we can auto-calculate total_km_run on closing
+      supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status, trip_start_date, reached_at, unloaded_at, returning_at, start_km').neq('trip_status', 'COMPLETED')
     ]);
 
     if (vRes.data) setVehicles(vRes.data);
@@ -221,8 +222,6 @@ export function DriverPortal() {
     const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown";
 
     if (actionType === "FUEL") {
-      
-      // AUTO-APPEND THE ACTIVE LR NUMBER SO THE OFFICE SEES IT!
       const activeLr = currentTrip ? currentTrip.trip_number : "SUNDRY";
 
       const { error } = await supabase.from('driver_pending_entries').insert([{
@@ -245,12 +244,19 @@ export function DriverPortal() {
         let vehicleStatusUpdate = "IN_TRANSIT";
         let statusRemarksText = "";
 
-        if (actionType === "REACHED") { 
+        // 1. START TRIP
+        if (actionType === "START_TRIP") { 
+          updatePayload.trip_status = "IN_TRANSIT"; 
+          updatePayload.start_km = Number(odometer) || 0; 
+          statusRemarksText = `Started trip from ${currentTrip.origin} at ${formatDateTime(timestamp)}`;
+        }
+        // 2. REACHED DESTINATION
+        else if (actionType === "REACHED") { 
           updatePayload.reached_at = timestamp; 
           updatePayload.trip_status = "REACHED_DESTINATION"; 
-          updatePayload.end_km = Number(odometer) || 0; 
           statusRemarksText = `Reached ${currentTrip.destination} at ${formatDateTime(timestamp)}`;
         }
+        // 3. UNLOADED
         else if (actionType === "UNLOADED") { 
           updatePayload.unloaded_at = timestamp; 
           updatePayload.trip_status = "UNLOADED"; 
@@ -269,16 +275,27 @@ export function DriverPortal() {
           }
           statusRemarksText = `Unloaded at ${currentTrip.destination}`;
         }
+        // 4. RETURNING
         else if (actionType === "RETURNING") { 
           updatePayload.returning_at = timestamp; 
           updatePayload.trip_status = "RETURNING"; 
           statusRemarksText = `Returning from ${currentTrip.destination}`;
         }
+        // 5. REACHED PLANT (WAITING FOR LOAD) - Trip Closer
         else if (actionType === "WAITING_FOR_LOAD") {
           updatePayload.trip_status = "WAITING_FOR_LOAD";
+          updatePayload.end_km = Number(odometer) || 0;
+          
+          // Auto-calculate total km run if start_km exists
+          const startKm = Number(currentTrip.start_km) || 0;
+          if (startKm > 0 && Number(odometer) > startKm) {
+            updatePayload.total_km_run = Number(odometer) - startKm;
+          }
+
           vehicleStatusUpdate = "WAITING_FOR_LOAD";
-          statusRemarksText = `Waiting for load at plant (${currentTrip.origin})`;
+          statusRemarksText = `Reached plant, waiting for load (${formatDateTime(timestamp)})`;
         }
+        // 6. BREAKDOWN
         else if (actionType === "BREAKDOWN") { 
           updatePayload.breakdown_remarks = `${finalRemarks} [Odo: ${odometer}]`; 
           updatePayload.trip_status = "BREAKDOWN"; 
@@ -439,14 +456,20 @@ export function DriverPortal() {
                 <label className={labelStyle}>Update Lifecycle Status</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[ 
-                    { id: "REACHED", label: "📍 Reached Destination" }, 
+                    { id: "START_TRIP", label: "🚀 Start Trip" }, 
+                    { id: "REACHED", label: "📍 Reached Dest." }, 
                     { id: "UNLOADED", label: "📦 Unloaded" }, 
                     { id: "RETURNING", label: "🔄 Returning" }, 
-                    { id: "WAITING_FOR_LOAD", label: "⏳ Waiting for Load" }, 
+                    { id: "WAITING_FOR_LOAD", label: "🏭 Reached Plant" }, 
                     { id: "BREAKDOWN", label: "⚠️ Breakdown" }, 
                     { id: "FUEL", label: "⛽ Fuel Fill Request" } 
-                  ].map(item => (
-                    <button type="button" key={item.id} onClick={() => setActionType(item.id)} className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-fg border-border hover:bg-app'}`}>
+                  ].map((item, idx, arr) => (
+                    <button 
+                      type="button" 
+                      key={item.id} 
+                      onClick={() => setActionType(item.id)} 
+                      className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-fg border-border hover:bg-app'} ${idx === arr.length - 1 ? 'col-span-2' : ''}`}
+                    >
                       {item.label}
                     </button>
                   ))}
@@ -454,10 +477,10 @@ export function DriverPortal() {
               </div>
 
               <div className="space-y-4">
-                {(actionType === "FUEL" || actionType === "BREAKDOWN" || actionType === "REACHED") && (
+                {(actionType === "START_TRIP" || actionType === "WAITING_FOR_LOAD" || actionType === "FUEL" || actionType === "BREAKDOWN") && (
                   <div className="grid gap-1.5">
                     <label className={labelStyle}>Odometer (KM)</label>
-                    <input type="number" min="0" value={odometer} onChange={e => setOdometer(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 145230" className={inputStyle} required={actionType === "FUEL"}/>
+                    <input type="number" min="0" value={odometer} onChange={e => setOdometer(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="e.g. 145230" className={inputStyle} required />
                   </div>
                 )}
                 {actionType === "FUEL" && (
