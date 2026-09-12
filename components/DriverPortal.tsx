@@ -118,7 +118,7 @@ export function DriverPortal() {
 
   // NEW COMPLIANCE WARNING ENGINE (10 DAYS)
   useEffect(() => {
-    const warnings = [];
+    const warnings: any[] = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tenDaysFromNow = new Date(today);
@@ -157,7 +157,15 @@ export function DriverPortal() {
   const currentTrip = activeTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
   const isBulk = selectedTruckObj ? String(selectedTruckObj.truck_type).toUpperCase().includes("BULK") : true;
 
-  const currentMonthNetBalance = (currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0) + currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0)) - (currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0) + currentMonthAdvances.reduce((sum, a) => sum + (Number(a.amount_inr) || 0), 0));
+  // LEDGER MATH - Restored explicitly for TS
+  const monthEarnedBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
+  const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
+  const monthTripAdvances = currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
+  const monthDirectAdvances = currentMonthAdvances.reduce((sum, a) => sum + (Number(a.amount_inr) || 0), 0);
+  
+  const totalMonthEarnings = monthEarnedBata + monthHaltBata;
+  const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
+  const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
   const handleLockDriver = async (e: React.FormEvent) => {
     e.preventDefault();
