@@ -60,8 +60,8 @@ export function SetupModule() {
   const [customDest, setCustomDest] = useState("");
   
   const [cType, setCType] = useState("BULK");
-  const [cap, setCap] = useState("35"); // For Freight Form
-  const [bataCap, setBataCap] = useState("35"); // For Bata Form
+  const [cap, setCap] = useState("35"); 
+  const [bataCap, setBataCap] = useState("35"); 
   const [fRate, setFRate] = useState<number | "">("");
   const [avgKms, setAvgKms] = useState<number | "">(""); 
   const [bataAmt, setBataAmt] = useState<number | "">("");
@@ -113,7 +113,8 @@ export function SetupModule() {
   };
 
   const handleEditSlab = (s: any) => {
-    setEditSlabId(s.id);
+    // FIX: Exact DB Match
+    setEditSlabId(s.destination_id);
     if (originOptions.includes(s.origin)) { setSrc(s.origin); setCustomSrc(""); } else { setSrc("CUSTOM"); setCustomSrc(s.origin); }
     if (destOptions.includes(s.destination_name)) { setDest(s.destination_name); setCustomDest(""); } else { setDest("CUSTOM"); setCustomDest(s.destination_name); }
     setCType(s.cargo_type);
@@ -124,7 +125,8 @@ export function SetupModule() {
   };
 
   const handleEditBata = (b: any) => {
-    setEditBataId(b.id);
+    // FIX: Exact DB Match
+    setEditBataId(b.bata_rule_id);
     if (originOptions.includes(b.origin)) { setSrc(b.origin); setCustomSrc(""); } else { setSrc("CUSTOM"); setCustomSrc(b.origin); }
     if (destOptions.includes(b.destination_name)) { setDest(b.destination_name); setCustomDest(""); } else { setDest("CUSTOM"); setCustomDest(b.destination_name); }
     setCType(b.cargo_type);
@@ -320,7 +322,8 @@ export function SetupModule() {
 
       let error;
       if (isUpdate) {
-        const res = await supabase.from('destinations_freight_master').update(payload).eq('id', editSlabId);
+        // EXACT DB MATCH: destination_id
+        const res = await supabase.from('destinations_freight_master').update(payload).eq('destination_id', editSlabId);
         error = res.error;
       } else {
         const res = await supabase.from('destinations_freight_master').insert([payload]);
@@ -352,7 +355,8 @@ export function SetupModule() {
 
       let error;
       if (isUpdate) {
-        const res = await supabase.from('driver_bata_master').update(payload).eq('id', editBataId);
+        // EXACT DB MATCH: bata_rule_id
+        const res = await supabase.from('driver_bata_master').update(payload).eq('bata_rule_id', editBataId);
         error = res.error;
       } else {
         const res = await supabase.from('driver_bata_master').insert([payload]);
@@ -554,14 +558,16 @@ export function SetupModule() {
                     <tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-center">Avg KMs</th><th className="p-3 text-right">Rate/MT</th></tr>
                   </thead>
                   <tbody className="divide-y divide-[#272B36] bg-[#161922]">
-                    {slabsList.map(s => (
-                      <tr key={s.id} onClick={() => handleEditSlab(s)} className={`cursor-pointer transition-colors ${editSlabId === s.id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
+                    {slabsList.map(s => {
+                      const pk = s.destination_id;
+                      return (
+                      <tr key={pk} onClick={() => handleEditSlab(s)} className={`cursor-pointer transition-colors ${editSlabId === pk ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
                         <td className="p-3 font-bold text-white">{s.origin} ➔ {s.destination_name}</td>
                         <td className="p-3 text-slate-300">{s.capacity_tons}MT {s.cargo_type}</td>
                         <td className="p-3 text-slate-300 text-center">{s.standard_km ? `${s.standard_km} KM` : '-'}</td>
                         <td className="p-3 font-black text-emerald-400 text-right">₹{s.freight_rate_per_ton}</td>
                       </tr>
-                    ))}
+                    )})}
                     {slabsList.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">No slabs active.</td></tr>}
                   </tbody>
                 </table>
@@ -633,13 +639,15 @@ export function SetupModule() {
                 <table className="min-w-full text-xs text-left whitespace-nowrap">
                   <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0"><tr><th className="p-3">Route</th><th className="p-3">Type</th><th className="p-3 text-right">Bata Amt</th></tr></thead>
                   <tbody className="divide-y divide-[#272B36] bg-[#161922]">
-                    {bataList.map(b => (
-                      <tr key={b.id} onClick={() => handleEditBata(b)} className={`cursor-pointer transition-colors ${editBataId === b.id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
+                    {bataList.map(b => {
+                      const pk = b.bata_rule_id;
+                      return (
+                      <tr key={pk} onClick={() => handleEditBata(b)} className={`cursor-pointer transition-colors ${editBataId === pk ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
                         <td className="p-3 font-bold text-white">{b.origin} ➔ {b.destination_name}</td>
                         <td className="p-3 text-slate-300">{b.capacity_tons}MT {b.cargo_type}</td>
                         <td className="p-3 font-black text-[#FF5A00] text-right">₹{b.standard_bata_inr}</td>
                       </tr>
-                    ))}
+                    )})}
                     {bataList.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-slate-400">No bata rules active.</td></tr>}
                   </tbody>
                 </table>
@@ -726,6 +734,42 @@ export function SetupModule() {
                 </div>
               </form>
             )}
+
+            {/* Master Fleet Compliance List */}
+            <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
+              <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Fleet Compliance Overview (Click to Edit)</h4>
+              <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
+                <table className="min-w-full text-xs text-left whitespace-nowrap">
+                  <thead className="bg-[#0F1117] text-slate-400 uppercase font-bold sticky top-0">
+                    <tr>
+                      <th className="p-3">Truck No</th>
+                      <th className="p-3">FC Expiry</th>
+                      <th className="p-3">Insurance</th>
+                      <th className="p-3">Q-Tax</th>
+                      <th className="p-3">PUC</th>
+                      <th className="p-3">NP Expiry</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#272B36] bg-[#161922]">
+                    {trucksList.map(t => (
+                      <tr 
+                        key={t.vehicle_id} 
+                        onClick={() => { setSelectedTruckForCompliance(t); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                        className={`cursor-pointer transition-colors ${selectedTruckForCompliance?.vehicle_id === t.vehicle_id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}
+                      >
+                        <td className="p-3 font-bold text-[#FF5A00]">{t.vehicle_number}</td>
+                        <td className="p-3 text-slate-300 font-semibold">{t.fc_expiry_date || '-'}</td>
+                        <td className="p-3 text-slate-300 font-semibold">{t.insurance_expiry_date || '-'}</td>
+                        <td className="p-3 text-slate-300 font-semibold">{t.qtax_expiry_date || '-'}</td>
+                        <td className="p-3 text-slate-300 font-semibold">{t.puc_expiry_date || '-'}</td>
+                        <td className="p-3 text-slate-300 font-semibold">{t.np_expiry_date || '-'}</td>
+                      </tr>
+                    ))}
+                    {trucksList.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">No trucks available.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
