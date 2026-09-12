@@ -131,9 +131,13 @@ export default function SaaS_ERPDashboard() {
     const { count: driverPendingCount } = await supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
     setPendingDriverCount(driverPendingCount || 0);
 
-    // --- 10-DAY COMPLIANCE LOGIC ---
+    // --- 10-DAY COMPLIANCE LOGIC (RED ONLY IF EXPIRED OR 1 DAY LEFT) ---
     const today = new Date();
     today.setHours(0,0,0,0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    
     const tenDaysFromNow = new Date(today);
     tenDaysFromNow.setDate(today.getDate() + 10);
 
@@ -142,10 +146,15 @@ export default function SaaS_ERPDashboard() {
       if (!dateVal) return;
       const expDate = new Date(dateVal);
       expDate.setHours(0,0,0,0);
+      
       if (expDate <= tenDaysFromNow) {
-        const isUrgent = expDate <= today;
+        // Only RED if it expires tomorrow or is already expired
+        const isUrgent = expDate <= tomorrow; 
         if (!alerts[docName]) alerts[docName] = [];
-        alerts[docName].push({ name: entityName, date: dateVal, isUrgent, expDate });
+        
+        // Strip "Truck" prefix for cleaner UI
+        const cleanName = entityName.replace("Truck ", "");
+        alerts[docName].push({ name: cleanName, date: dateVal, isUrgent, expDate });
       }
     };
 
@@ -162,7 +171,7 @@ export default function SaaS_ERPDashboard() {
         checkDoc("PUC Certificate", tName, v.puc_expiry_date);
         checkDoc("National Permit", tName, v.np_expiry_date);
         checkDoc("State Permit", tName, v.state_permit_expiry_date);
-        if (String(v.truck_type).toUpperCase().includes("BULK")) checkDoc("Tank / Pressure Cert", tName, v.tank_cert_expiry_date);
+        if (String(v.truck_type).toUpperCase().includes("BULK")) checkDoc("Tank Cert", tName, v.tank_cert_expiry_date);
       });
     }
 
@@ -206,7 +215,6 @@ export default function SaaS_ERPDashboard() {
     return liveVehicles.filter((v: any) => (statusMap[statusLabel] || []).includes(extractStatus(v)));
   };
 
-  // ADDED MISSING VARIABLE DEFINITION HERE
   const currentDrillDownData = selectedStatus ? getDrillDownData(selectedStatus) : [];
 
   const handleQuickStatusSubmit = async (e: React.FormEvent) => {
@@ -300,6 +308,7 @@ export default function SaaS_ERPDashboard() {
           {activeTab === "Dashboard" && (
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="flex-1 space-y-6 min-w-0">
+                
                 {pendingDriverCount > 0 && (
                   <div className="bg-amber-950/30 border-l-4 border-amber-500 rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3">
@@ -315,21 +324,23 @@ export default function SaaS_ERPDashboard() {
                   </div>
                 )}
 
-                {/* GROUPED COMPLIANCE ALERTS (10 DAYS) */}
+                {/* NEW STACKED COMPLIANCE ALERTS (10 DAYS) */}
                 {Object.keys(expiringDocs).length > 0 && (
-                  <div className="bg-rose-950/30 border-l-4 border-rose-500 rounded-2xl shadow-sm p-4 sm:p-5 animate-in slide-in-from-top-4">
-                    <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6 animate-in slide-in-from-top-4">
+                    <div className="flex items-center gap-3 mb-5">
                       <span className="text-xl">🚨</span>
-                      <h3 className="text-xs sm:text-sm font-black text-rose-400 uppercase tracking-wide">Action Required: Compliance Alerts (10 Days)</h3>
+                      <h3 className="text-xs sm:text-sm font-black text-rose-400 uppercase tracking-wide">Compliance Alerts (10 Days)</h3>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {Object.entries(expiringDocs).map(([docType, items]) => (
-                        <div key={docType} className="bg-[#12141C] border border-[#222634] rounded-xl p-3">
-                          <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-[#222634] pb-1">{docType}</h4>
-                          <div className="space-y-1.5">
+                        <div key={docType} className="bg-[#1A1F2C] border border-[#2B3142] rounded-xl p-4">
+                          <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 border-b border-[#222634] pb-2">
+                            {docType.toUpperCase()}
+                          </h4>
+                          <div className="space-y-2.5">
                             {(items as any[]).map((item, idx) => (
-                              <div key={idx} className={`text-xs font-bold truncate ${item.isUrgent ? 'text-rose-500' : 'text-amber-500'}`}>
-                                {idx + 1}. {item.name} expiring on {item.date}
+                              <div key={idx} className={`text-xs font-bold ${item.isUrgent ? 'text-rose-500' : 'text-amber-500'}`}>
+                                {idx + 1}. {item.name} - {item.date}
                               </div>
                             ))}
                           </div>
@@ -339,6 +350,7 @@ export default function SaaS_ERPDashboard() {
                   </div>
                 )}
 
+                {/* NEW STACKED OPERATIONS SUMMARY */}
                 <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">Operations Summary</h3>
@@ -347,18 +359,34 @@ export default function SaaS_ERPDashboard() {
                     </span>
                   </div>
                   
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="p-3 sm:p-4 rounded-xl bg-[#1A1F2C] border border-[#2B3142] flex flex-col justify-between min-w-0">
-                      <div><p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Trips</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-black text-white mt-1 leading-none">{monthTripsCount}</p></div>
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
+                    <div className="p-4 rounded-xl bg-[#1A1F2C] border border-[#2B3142] flex flex-col justify-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Trips</p>
+                      <p className="text-3xl font-black text-white mt-1 leading-none">{monthTripsCount}</p>
                     </div>
-                    <div className="p-3 sm:p-4 rounded-xl bg-rose-950/20 border border-rose-900/50 flex flex-col justify-between min-w-0">
-                      <div><p className="text-[9px] sm:text-[10px] font-bold text-rose-400 uppercase tracking-wider">PODs Pending</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-black text-rose-300 mt-1 leading-none">{activeTripCount}</p></div>
+                    <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-900/50 flex flex-col justify-center">
+                      <p className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">PODs Pending</p>
+                      <p className="text-3xl font-black text-rose-300 mt-1 leading-none">{activeTripCount}</p>
                     </div>
-                    <div className="p-3 sm:p-4 rounded-xl bg-emerald-950/20 border border-emerald-900/50 flex flex-col justify-between min-w-0">
-                      <div><p className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Freight Gen.</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-black text-emerald-300 mt-1 leading-none whitespace-nowrap">₹{formatAmt(monthFreight)}</p></div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:gap-4">
+                    <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-900/50 flex flex-col sm:flex-row sm:items-center justify-between">
+                      <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1 sm:mb-0">Freight Generated</p>
+                      <p className="text-2xl sm:text-3xl font-black text-emerald-300 leading-none">₹{formatAmt(monthFreight)}</p>
                     </div>
-                    <div className="p-3 sm:p-4 rounded-xl bg-[#0F1117] border border-[#222634] text-white shadow-md flex flex-col justify-between min-w-0">
-                      <div><p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Retention</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-black text-[#FF5A00] mt-1 leading-none whitespace-nowrap">₹{formatAmt(monthNetRetention)}</p></div>
+
+                    <div className="p-4 rounded-xl bg-[#0F1117] border border-[#222634] shadow-md flex flex-col sm:flex-row sm:items-center justify-between">
+                      <div className="mb-1 sm:mb-0">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Retention</p>
+                         {monthFreight > 0 && <p className="text-[10px] font-bold text-emerald-500 mt-1">{((monthNetRetention/monthFreight)*100).toFixed(1)}% Margin</p>}
+                      </div>
+                      <p className="text-2xl sm:text-3xl font-black text-[#FF5A00] leading-none">₹{formatAmt(monthNetRetention)}</p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-sky-950/20 border border-sky-900/50 flex flex-col sm:flex-row sm:items-center justify-between">
+                      <p className="text-[10px] font-bold text-sky-400 uppercase tracking-wider mb-1 sm:mb-0">Diesel Expense</p>
+                      <p className="text-2xl sm:text-3xl font-black text-sky-300 leading-none">₹{formatAmt(monthDieselCost)}</p>
                     </div>
                   </div>
                 </div>
