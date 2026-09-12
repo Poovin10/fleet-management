@@ -46,7 +46,6 @@ export function DriverPortal() {
   const [currentMonthAdvances, setCurrentMonthAdvances] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- COMPLIANCE ALERTS ---
   const [complianceWarnings, setComplianceWarnings] = useState<any[]>([]);
 
   const formatDateTime = (dateStr: string) => {
@@ -105,29 +104,28 @@ export function DriverPortal() {
 
   const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
   const selectedTruckObj = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
+  const currentTrip = activeTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
 
   useEffect(() => {
     if (isDriverLocked && drivers.length > 0 && activeDriverObj) {
-      if (activeTrips.length > 0) {
-        const activeTrip = activeTrips.find(t => String(t.primary_driver_id) === String(activeDriverObj.driver_id));
-        if (activeTrip) setSelectedTruckId(String(activeTrip.vehicle_id));
+      if (activeTrips.length > 0 && activeTrip) {
+        setSelectedTruckId(String(activeTrip.vehicle_id));
       }
       fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
     }
   }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab, activeDriverObj]);
 
-  // NEW COMPLIANCE WARNING ENGINE (10 DAYS)
+  var activeTrip = activeTrips.find(t => String(t.primary_driver_id) === String(activeDriverObj?.driver_id));
+
+
   useEffect(() => {
     const warnings: any[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tenDaysFromNow = new Date(today);
-    tenDaysFromNow.setDate(today.getDate() + 10);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tenDaysFromNow = new Date(today); tenDaysFromNow.setDate(today.getDate() + 10);
 
     const checkWarning = (name: string, docName: string, dateVal: string) => {
       if (!dateVal) return;
-      const expDate = new Date(dateVal);
-      expDate.setHours(0, 0, 0, 0);
+      const expDate = new Date(dateVal); expDate.setHours(0, 0, 0, 0);
       if (expDate <= tenDaysFromNow) warnings.push({ name, docName, date: dateVal, isUrgent: expDate <= today });
     };
 
@@ -154,10 +152,8 @@ export function DriverPortal() {
   };
 
   const displayDriverName = activeDriverObj ? `${activeDriverObj.full_name} (${activeDriverObj.driver_code})` : savedDriverCode;
-  const currentTrip = activeTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
   const isBulk = selectedTruckObj ? String(selectedTruckObj.truck_type).toUpperCase().includes("BULK") : true;
 
-  // LEDGER MATH - Restored explicitly for TS
   const monthEarnedBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
   const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
   const monthTripAdvances = currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
@@ -205,16 +201,42 @@ export function DriverPortal() {
     const timestamp = new Date().toISOString();
     const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown";
 
-    if (actionType === "FUEL") {
-      const activeLr = currentTrip ? currentTrip.trip_number : "SUNDRY";
-      const { error } = await supabase.from('driver_pending_entries').insert([{
-        vehicle_id: Number(selectedTruckId), driver_code: savedDriverCode || "DRV-MOBILE", entry_type: "FUEL", litres: Number(fuelLitres),
-        amount_inr: 0, odometer_km: Number(odometer) || 0, receipt_remarks: `[LR: ${activeLr}] ${remarks} [Truck: ${truckNumberText}]`.trim(), status: 'PENDING'
-      }]);
-      if (error) setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
-      else setAlertConfig({ isOpen: true, title: "Success", message: `Fuel fill request sent to dispatch!`, type: "success" });
-    } else {
-      if (currentTrip) {
+    // NEW LOGIC: Check if trying to update a trip that doesn't exist yet
+    if (!currentTrip && actionType !== "FUEL" && actionType !== "START_TRIP") {
+      setIsSubmitting(false);
+      return setAlertConfig({ 
+        isOpen: true, title: "No Active Trip", 
+        message: "The office has not dispatched a trip for this truck yet. You can only log Fuel or Start Trip.", 
+        type: "error" 
+      });
+    }
+
+    // SCENARIO 1: FUEL OR START_TRIP (When office hasn't created the trip yet)
+    if (actionType === "FUEL" || (!currentTrip && actionType === "START_TRIP")) {
+      const activeLr = currentTrip ? currentTrip.trip_number : "PRE-DISPATCH";
+      
+      const payloadObj = {
+        vehicle_id: Number(selectedTruckId),
+        driver_code: savedDriverCode || "DRV-MOBILE",
+        entry_type: actionType,
+        litres: actionType === "FUEL" ? Number(fuelLitres) : null,
+        amount_inr: 0,
+        odometer_km: Number(odometer) || 0,
+        receipt_remarks: `[LR: ${activeLr}] ${remarks} [Truck: ${truckNumberText}]`.trim(),
+        status: 'PENDING'
+      };
+
+      const { error } = await supabase.from('driver_pending_entries').insert([payloadObj]);
+
+      if (error) {
+        setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
+      } else {
+        const msg = actionType === "FUEL" ? "Fuel fill request sent to dispatch!" : "Start Odometer logged! Waiting for office dispatch.";
+        setAlertConfig({ isOpen: true, title: "Success", message: msg, type: "success" });
+      }
+    } 
+    // SCENARIO 2: ACTIVE TRIP UPDATES (Office has already dispatched)
+    else if (currentTrip) {
         let updatePayload: any = {}; let finalRemarks = remarks; let vehicleStatusUpdate = "IN_TRANSIT"; let statusRemarksText = "";
 
         if (actionType === "START_TRIP") { 
@@ -258,8 +280,8 @@ export function DriverPortal() {
           p_trip_id: currentTrip.trip_id, p_vehicle_id: selectedTruckId, p_payload: updatePayload, p_vehicle_status: vehicleStatusUpdate, p_vehicle_remarks: statusRemarksText
         });
         if (rpcError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Failed", message: rpcError.message, type: "error" }); }
-      }
-      setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
+        
+        setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
     }
 
     setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData(); 
@@ -346,11 +368,15 @@ export function DriverPortal() {
                 </div>
               )}
 
-              {currentTrip && (
+              {currentTrip ? (
                 <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-2">
                   <div className="flex justify-between items-center"><span className="text-xs font-bold text-orange-900">Active LR: {currentTrip.trip_number}</span><span className="text-[10px] font-bold px-2 py-0.5 bg-orange-200 text-orange-900 rounded-full">{currentTrip.trip_status}</span></div>
                   <p className="text-xs font-bold text-fg">{currentTrip.origin} ➔ {currentTrip.destination}</p>
                   <p className="text-[11px] text-fg-secondary pt-1 border-t border-orange-200/60">Started: {formatDateTime(currentTrip.trip_start_date)}</p>
+                </div>
+              ) : (
+                <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl">
+                  <p className="text-xs font-bold text-slate-500 text-center">No active trip dispatched for this truck yet.</p>
                 </div>
               )}
 
@@ -415,7 +441,7 @@ export function DriverPortal() {
                     {pendingRequests.map(r => (
                       <div key={r.entry_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm">
                         <div className="flex justify-between items-start mb-1">
-                          <span className="text-xs font-bold text-fg">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : `₹${r.amount_inr}`}</span>
+                          <span className="text-xs font-bold text-fg">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : r.entry_type === 'START_TRIP' ? `${r.odometer_km} KM` : `₹${r.amount_inr}`}</span>
                           <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
                         </div>
                         <div className="flex justify-end mt-2"><button onClick={() => handleCancelRequest(r.entry_id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-surface border border-rose-200 rounded-lg">Cancel Request ❌</button></div>
