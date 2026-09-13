@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// We can keep useRouter imported just in case, but we are using window.location for the actual redirect now
 import { useRouter } from "next/navigation"; 
 import { createClient } from "@/lib/supabase/client";
+import { Capacitor } from "@capacitor/core";
+import { NativeBiometric } from "capacitor-native-biometric";
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -19,69 +20,121 @@ export function LoginForm() {
   const router = useRouter();
   const [supabase, setSupabase] = useState<any>(null);
 
+  // Biometric States
+  const [isNative, setIsNative] = useState(false);
+  const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  const [hasStoredCredentials, setHasStoredCredentials] = useState(false);
+
+  const [userId, setUserId] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("Secure Login");
+
+  const SERVER_KEY = "kss-erp-admin-auth";
+
   useEffect(() => {
     try {
       setSupabase(createClient());
     } catch (err) {
       console.warn("Supabase client failed to initialize", err);
     }
+
+    // Safety Shield: Only check hardware if running as an actual Android App
+    if (Capacitor.isNativePlatform()) {
+      setIsNative(true);
+      checkBiometrics();
+    }
   }, []);
 
-  const [userId, setUserId] = useState("");
-  const [password, setPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!supabase) {
-      setErrorMsg("Client not ready. Please refresh.");
-      return;
+  const checkBiometrics = async () => {
+    try {
+      const result = await NativeBiometric.isAvailable();
+      if (result.isAvailable) {
+        setIsBiometricAvailable(true);
+        // Check if admin credentials exist in the Android Keystore
+        try {
+          await NativeBiometric.getCredentials({ server: SERVER_KEY });
+          setHasStoredCredentials(true);
+        } catch (e) {
+          setHasStoredCredentials(false);
+        }
+      }
+    } catch (err) {
+      console.warn("Biometrics not supported on this device.");
     }
+  };
 
+  const executeSupabaseLogin = async (email: string, pass: string, saveToKeystore: boolean) => {
     setIsLoading(true);
     setErrorMsg("");
+    setStatusMsg("Authenticating...");
 
     try {
-      // Automatically format the username into an email for Supabase Auth
-      const formattedEmail = userId.includes("@") 
-        ? userId.trim() 
-        : `${userId.trim().toLowerCase()}@kss.com`;
-
-      console.log("Attempting login for:", formattedEmail);
-
-      // Create the Supabase auth request
       const loginPromise = supabase.auth.signInWithPassword({
-        email: formattedEmail,
-        password: password,
+        email: email,
+        password: pass,
       });
 
-      // 6-second timeout to prevent indefinite hanging
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Connection timed out. Check network.")), 6000)
       );
 
-      // Race the login against the timeout
       const response: any = await Promise.race([loginPromise, timeoutPromise]);
-      console.log("Supabase response:", response);
-
       const { data, error } = response;
 
       if (error || !data?.session) {
-        setErrorMsg(error?.message || "Invalid User ID or Password.");
+        setErrorMsg(error?.message || "Invalid Admin ID or Password.");
         setIsLoading(false);
+        setStatusMsg("Secure Login");
         return;
       }
 
-      // Successful Auth! 
-      // Using a HARD navigation instead of Next.js router to guarantee the cookie saves and transmits.
-      console.log("Login successful! Forcing hard redirect...");
+      // Secure the credentials in the Android Keystore for future fingerprint logins
+      if (saveToKeystore && isBiometricAvailable) {
+        setStatusMsg("Securing biometric profile...");
+        await NativeBiometric.setCredentials({
+          username: email,
+          password: pass,
+          server: SERVER_KEY,
+        });
+      }
+
+      setStatusMsg("Success! Redirecting...");
       window.location.href = "/";
       
     } catch (err: any) {
       console.error("Login catch error:", err);
       setErrorMsg(err.message || "An error occurred during login.");
       setIsLoading(false);
+      setStatusMsg("Secure Login");
+    }
+  };
+
+  const handleManualLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) return;
+
+    const formattedEmail = userId.includes("@") 
+      ? userId.trim() 
+      : `${userId.trim().toLowerCase()}@kss.com`;
+
+    // Only attempt to save to Keystore if running natively
+    await executeSupabaseLogin(formattedEmail, password, isNative);
+  };
+
+  const handleFingerprintLogin = async () => {
+    setErrorMsg("");
+    try {
+      const credentials = await NativeBiometric.getCredentials({
+        server: SERVER_KEY,
+      });
+
+      if (credentials) {
+        await executeSupabaseLogin(credentials.username, credentials.password, false);
+      }
+    } catch (error) {
+      setErrorMsg("Fingerprint not recognized or canceled.");
     }
   };
 
@@ -105,41 +158,60 @@ export function LoginForm() {
           </div>
         )}
 
-        <form onSubmit={handleAdminLogin} className="space-y-5 relative z-10">
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Admin User ID</label>
-            <input 
-              type="text" 
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="e.g. superadmin" 
-              className={inputStyle}
-              required 
-              autoComplete="off"
-              autoCapitalize="none"
-            />
+        {isNative && isBiometricAvailable && hasStoredCredentials ? (
+          <div className="space-y-4 relative z-10">
+            <button 
+              onClick={handleFingerprintLogin}
+              disabled={isLoading}
+              className="w-full h-20 bg-[#161922] border border-[#2B3142] hover:border-[#FF5A00] text-[#FF5A00] rounded-xl flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+            >
+              <span className="text-3xl">👆</span>
+              <span className="text-xs font-black uppercase tracking-wider">{isLoading ? statusMsg : "Tap to Unlock"}</span>
+            </button>
+            <button 
+              onClick={() => setHasStoredCredentials(false)}
+              className="w-full text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider py-2 hover:text-white transition-colors"
+            >
+              Use Password Instead
+            </button>
           </div>
+        ) : (
+          <form onSubmit={handleManualLogin} className="space-y-5 relative z-10">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Admin User ID</label>
+              <input 
+                type="text" 
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="e.g. superadmin" 
+                className={inputStyle}
+                required 
+                autoComplete="off"
+                autoCapitalize="none"
+              />
+            </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••" 
-              className={inputStyle}
-              required 
-            />
-          </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••" 
+                className={inputStyle}
+                required 
+              />
+            </div>
 
-          <button 
-            type="submit" 
-            disabled={isLoading}
-            className="w-full h-12 mt-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white rounded-lg text-sm font-bold tracking-wide shadow-[0_0_20px_rgba(255,90,0,0.3)] hover:shadow-[0_0_25px_rgba(255,90,0,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isLoading ? "Authenticating..." : "Secure Login"}
-          </button>
-        </form>
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className="w-full h-12 mt-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white rounded-lg text-sm font-bold tracking-wide shadow-[0_0_20px_rgba(255,90,0,0.3)] hover:shadow-[0_0_25px_rgba(255,90,0,0.5)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isLoading ? statusMsg : "Secure Login"}
+            </button>
+          </form>
+        )}
 
         <div className="mt-8 text-center border-t border-slate-800 pt-6">
           <p className="text-[10px] text-slate-500 font-semibold flex items-center justify-center gap-1.5">
