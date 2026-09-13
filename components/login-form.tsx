@@ -47,23 +47,38 @@ export function LoginForm() {
         ? userId.trim() 
         : `${userId.trim().toLowerCase()}@kss.com`;
 
-      // Use actual Supabase Authentication to generate the secure cookie
-      const { data, error } = await supabase.auth.signInWithPassword({
+      console.log("Attempting login for:", formattedEmail);
+
+      // Create the Supabase auth request
+      const loginPromise = supabase.auth.signInWithPassword({
         email: formattedEmail,
         password: password,
       });
 
-      if (error || !data.session) {
+      // 6-second timeout to prevent indefinite hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Connection timed out. Check network.")), 6000)
+      );
+
+      // Race the login against the timeout
+      const response: any = await Promise.race([loginPromise, timeoutPromise]);
+      console.log("Supabase response:", response);
+
+      const { data, error } = response;
+
+      if (error || !data?.session) {
         setErrorMsg(error?.message || "Invalid User ID or Password.");
         setIsLoading(false);
         return;
       }
 
       // Successful Auth! Push to dashboard and refresh to apply cookies
+      console.log("Login successful! Redirecting...");
       router.push("/");
       router.refresh();
       
     } catch (err: any) {
+      console.error("Login catch error:", err);
       setErrorMsg(err.message || "An error occurred during login.");
       setIsLoading(false);
     }
