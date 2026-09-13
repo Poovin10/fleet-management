@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
+import { BackgroundGeolocation } from "@capgo/background-geolocation";
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -13,6 +14,19 @@ const KssLogo = ({ className }: { className?: string }) => (
     <path d="M 85 85 C 130 95, 145 130, 145 165" stroke="#FF5A00" strokeWidth="24" fill="none" />
   </svg>
 );
+
+// Helper function to calculate distance in meters between two GPS points
+const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3; // Earth radius in meters
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; 
+};
 
 export function DriverPortal() {
   const supabase = createClient();
@@ -70,11 +84,11 @@ export function DriverPortal() {
     const [vRes, dRes, tRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true),
       supabase.from('drivers').select('*').eq('is_active', true),
-      supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status, trip_start_date, reached_at, unloaded_at, returning_at, start_km').neq('trip_status', 'COMPLETED')
+      supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status, trip_start_date, reached_at, unloaded_at, returning_at, start_km, destination_lat, destination_lng, origin_lat, origin_lng').neq('trip_status', 'COMPLETED')
     ]);
 
     if (vRes.data) setVehicles(vRes.data);
-    if (dRes.data) setDrivers(dRes.data);
+    if (dRes.data) setDrivers(vRes.data);
     if (tRes.data) setActiveTrips(tRes.data);
   };
 
@@ -204,14 +218,13 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
-  // On-demand professional biometric login trigger (safely evaluated inside mobile container)
+  // Professional On-Demand Biometric Login Trigger
   const handleManualFingerprint = async () => {
     if (!driverCode) {
       return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
     }
 
     try {
-      // Dynamically load on tap to bypass Vercel build issues and eliminate null timing bugs
       const bioModule = await eval('import("capacitor-native-biometric")');
       const NativeBiometric = bioModule.NativeBiometric || bioModule.default?.NativeBiometric;
 
@@ -277,6 +290,51 @@ export function DriverPortal() {
     if (!selectedTruckId) return setAlertConfig({ isOpen: true, title: "Truck Required", message: "Select active Truck.", type: "error" });
 
     setIsSubmitting(true);
+
+    // =========================================================================
+    // SMART 1 KM GEOFENCE VERIFICATION & AUTO-LEARNING BLOCK
+    // =========================================================================
+    if ((actionType === "REACHED" || actionType === "WAITING_FOR_LOAD") && currentTrip) {
+      try {
+        const position = await BackgroundGeolocation.getCurrentPosition({ timeout: 10000 });
+
+        if (position) {
+          const isPlantArrival = actionType === "WAITING_FOR_LOAD";
+          const targetLat = isPlantArrival ? currentTrip.origin_lat : currentTrip.destination_lat;
+          const targetLng = isPlantArrival ? currentTrip.origin_lng : currentTrip.destination_lng;
+          const locationName = isPlantArrival ? currentTrip.origin : currentTrip.destination;
+
+          if (!targetLat || !targetLng) {
+            // AUTO-LEARN: If coordinates don't exist yet, save them from the driver's current position!
+            const updateFields = isPlantArrival 
+              ? { origin_lat: position.latitude, origin_lng: position.longitude }
+              : { destination_lat: position.latitude, destination_lng: position.longitude };
+
+            await supabase.from('trips').update(updateFields).eq('trip_id', currentTrip.trip_id);
+          } else {
+            // GEOFENCE CHECK: Verify driver is within 1 km (1000 meters)
+            const distance = getDistanceInMeters(position.latitude, position.longitude, Number(targetLat), Number(targetLng));
+            const ALLOWED_RADIUS_METERS = 1000; // 1 km radius
+
+            if (distance > ALLOWED_RADIUS_METERS) {
+              setIsSubmitting(false);
+              setAlertConfig({
+                isOpen: true,
+                title: "Geofence Restriction 🚫",
+                message: `You are ${(distance / 1000).toFixed(2)} km away from ${locationName || 'the target location'}. You must be within 1 km to mark this status.`,
+                type: "error"
+              });
+              return; // BLOCKS SUBMISSION OUTSIDE GEOFENCE
+            }
+          }
+        }
+      } catch (geoError) {
+        console.error("Geofence GPS verification failed:", geoError);
+        // Allows proceeding if GPS locks fail completely, or you can block based on your security needs
+      }
+    }
+    // =========================================================================
+
     const timestamp = new Date().toISOString();
     const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown";
 
