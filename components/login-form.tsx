@@ -27,6 +27,7 @@ export function LoginForm() {
 
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
+  const [showPlainPassword, setShowPlainPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("Secure Login");
@@ -221,26 +222,33 @@ export function LoginForm() {
                 autoCorrect="off"
                 spellCheck="false"
                 data-lpignore="true"
-                inputMode="text"
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" 
-                className={inputStyle}
-                required 
-                autoComplete="one-time-code"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck="false"
-                data-lpignore="true"
-                inputMode="text"
-              />
+              <div className="relative">
+                <input 
+                  type={showPlainPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" 
+                  className={`${inputStyle} pr-16`}
+                  required 
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  data-lpignore="true"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPlainPassword(!showPlainPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded"
+                >
+                  {showPlainPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
 
             <button 
