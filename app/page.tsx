@@ -28,15 +28,23 @@ const KssLogo = ({ className }: { className?: string }) => (
 );
 
 export default function SaaS_ERPDashboard() {
-  const supabase = createClient();
   const router = useRouter();
+  const [supabase, setSupabase] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      setSupabase(createClient());
+    } catch (err) {
+      console.error("Failed to init supabase", err);
+    }
+  }, []);
 
   const [isDriverRoute, setIsDriverRoute] = useState(false);
   const [isCheckingRoute, setIsCheckingRoute] = useState(true);
 
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<string>("VIEWER"); // Updated to accept SUPERADMIN
+  const [userRole, setUserRole] = useState<string>("VIEWER");
   
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
@@ -78,17 +86,16 @@ export default function SaaS_ERPDashboard() {
 
   // SECURE AUTHENTICATION BARRIER & ROLE SYNC
   useEffect(() => {
+    if (!supabase) return;
+
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
         setIsAuthenticated(true);
-        
-        // Extract the username (e.g., "superadmin" from "superadmin@kssroadways.com")
         const sessionUsername = session.user.email?.split('@')[0];
         
         if (sessionUsername) {
-          // Re-link to your custom table to get the REAL enterprise role (like SUPERADMIN)
           const { data: userData } = await supabase.from('app_users')
             .select('role')
             .eq('username', sessionUsername)
@@ -97,12 +104,11 @@ export default function SaaS_ERPDashboard() {
           if (userData && userData.role) {
             setUserRole(userData.role); 
           } else {
-            setUserRole("ADMIN"); // Fallback
+            setUserRole("ADMIN");
           }
         }
         setIsAuthLoading(false);
       } else {
-        // If not authenticated, force them to the login screen immediately
         setIsAuthenticated(false);
         setUserRole("VIEWER");
         if (!isDriverRoute) router.replace("/auth/login");
@@ -112,13 +118,13 @@ export default function SaaS_ERPDashboard() {
     if (!isDriverRoute) {
       checkAuth();
     } else {
-      setIsAuthLoading(false); // Driver portal handles its own auth
+      setIsAuthLoading(false);
     }
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (session) {
         setIsAuthenticated(true);
-        if (event === 'SIGNED_IN') window.location.reload(); // Reload to fetch specific role on fresh login
+        if (event === 'SIGNED_IN') window.location.reload();
       } else if (!isDriverRoute) {
         router.replace("/auth/login");
       }
@@ -127,9 +133,10 @@ export default function SaaS_ERPDashboard() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [router, supabase.auth, isDriverRoute]);
+  }, [supabase, router, isDriverRoute]);
 
   const executeLogout = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     setIsLogoutModalOpen(false);
     router.replace("/auth/login");
@@ -138,6 +145,7 @@ export default function SaaS_ERPDashboard() {
   const extractStatus = (v: any) => String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
 
   const fetchDashboardData = async () => {
+    if (!supabase) return;
     const { data: vehiclesData } = await supabase.from('vehicles').select('*').eq('is_active', true);
     if (vehiclesData && vehiclesData.length > 0) {
       setLiveVehicles(vehiclesData);
@@ -155,7 +163,6 @@ export default function SaaS_ERPDashboard() {
     const { count: driverPendingCount } = await supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
     setPendingDriverCount(driverPendingCount || 0);
 
-    // --- 10-DAY COMPLIANCE LOGIC ---
     const today = new Date();
     today.setHours(0,0,0,0);
     const tomorrow = new Date(today);
@@ -197,7 +204,6 @@ export default function SaaS_ERPDashboard() {
     Object.keys(alerts).forEach(k => alerts[k].sort((a, b) => a.expDate.getTime() - b.expDate.getTime()));
     setExpiringDocs(alerts);
 
-    // --- FINANCES ---
     const now = new Date();
     const year = now.getFullYear();
     const monthStr = String(now.getMonth() + 1).padStart(2, '0');
@@ -223,11 +229,11 @@ export default function SaaS_ERPDashboard() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && supabase) {
       setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
       fetchDashboardData();
     }
-  }, [activeTab, isAuthenticated]);
+  }, [activeTab, isAuthenticated, supabase]);
 
   const getDrillDownData = (statusLabel: string) => {
     const statusMap: Record<string, string[]> = {
@@ -240,14 +246,14 @@ export default function SaaS_ERPDashboard() {
 
   const handleQuickStatusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
     if (!qsTruckId) return alert("Please select a truck.");
     const { error } = await supabase.from('vehicles').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('vehicle_id', qsTruckId);
     if (error) alert("Error updating status: " + error.message);
     else { alert("Vehicle status updated successfully!"); setQsTruckId(""); setQsRemarks(""); fetchDashboardData(); }
   };
 
-  // Render a blank screen while verifying authentication to prevent flashing the dashboard
-  if (isCheckingRoute || isAuthLoading) return <div className="min-h-screen bg-[#050507]" />;
+  if (isCheckingRoute || isAuthLoading || !supabase) return <div className="min-h-screen bg-[#050507]" />;
 
   if (isDriverRoute) {
     return (
@@ -261,10 +267,8 @@ export default function SaaS_ERPDashboard() {
     );
   }
 
-  // Double check: if they somehow bypassed the redirect, don't render the secure UI
   if (!isAuthenticated) return null;
 
-  // Determine allowed tabs based on userRole (SUPERADMIN gets everything ADMIN gets)
   const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "Setup"];
   const navItems = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? allNavItems : ["Dashboard", "Financials", "P&L Statement"];
 
