@@ -36,6 +36,7 @@ export function DriverPortal() {
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
 
   const [savedDriverCode, setSavedDriverCode] = useState("");
+  const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState(""); // Tracks the authorized device owner
   const [isDriverLocked, setIsDriverLocked] = useState(false);
   const [activeTab, setActiveTab] = useState<"STATUS" | "LEDGER">("STATUS");
 
@@ -109,6 +110,10 @@ export function DriverPortal() {
   useEffect(() => {
     fetchPortalData();
     const storedDriver = localStorage.getItem("kss_device_driver");
+    const enrolledBioDriver = localStorage.getItem("kss_biometric_enrolled_driver");
+    
+    if (enrolledBioDriver) setEnrolledBiometricDriver(enrolledBioDriver);
+
     if (storedDriver) {
       setSavedDriverCode(storedDriver);
       setDriverCode(storedDriver);
@@ -217,16 +222,21 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
-  // Clean, proper dynamic import for the biometric plugin (TypeScript strict mode fixed)
   const handleManualFingerprint = async () => {
-    if (!driverCode) {
-      return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
+    if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
+
+    // Enterprise Security Lock: Prevent a different driver from using the phone owner's fingerprint
+    if (driverCode !== enrolledBiometricDriver) {
+      return setAlertConfig({ 
+        isOpen: true, 
+        title: "Security Lock 🔒", 
+        message: "Biometrics are tied to another driver on this device. Please log in with your PIN to link your fingerprint to this phone.", 
+        type: "error" 
+      });
     }
 
     try {
       const { NativeBiometric } = await import("capacitor-native-biometric");
-
-      // Await the scanner. If it fails, it throws an error and jumps to catch.
       await NativeBiometric.verifyIdentity({
         reason: "Log in to KSS Roadways Driver Portal",
         title: "Driver Authentication",
@@ -234,19 +244,11 @@ export function DriverPortal() {
         description: "Verify identity to access your portal",
       });
 
-      // If we reach this line, the fingerprint was verified successfully!
       localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
       setSavedDriverCode(driverCode.toUpperCase().trim());
       setIsDriverLocked(true);
-      
     } catch (error) {
       console.error("Biometric error:", error);
-      setAlertConfig({ 
-        isOpen: true, 
-        title: "Authentication Failed", 
-        message: "Fingerprint scanner not supported on this device or cancelled. Please use your 4-digit PIN.", 
-        type: "error" 
-      });
     }
   };
 
@@ -267,6 +269,10 @@ export function DriverPortal() {
     } else {
       if (driverPin.trim() !== (selectedDrv.pin || "").toString().trim()) return setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "Incorrect PIN.", type: "error" });
     }
+
+    // SUCCESSFUL PIN LOGIN: Silently assign this device's biometric scanner to this driver
+    localStorage.setItem("kss_biometric_enrolled_driver", driverCode.toUpperCase().trim());
+    setEnrolledBiometricDriver(driverCode.toUpperCase().trim());
 
     localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
     setSavedDriverCode(driverCode.toUpperCase().trim());
@@ -448,7 +454,8 @@ export function DriverPortal() {
               </select>
             </div>
             
-            {!isFirstTimeSetup && driverCode && (
+            {/* ONLY show Fingerprint button if this driver previously authenticated with PIN on THIS specific phone */}
+            {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
               <button 
                 type="button" 
                 onClick={handleManualFingerprint}
