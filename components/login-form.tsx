@@ -17,7 +17,7 @@ const KssLogo = ({ className }: { className?: string }) => (
 export function LoginForm() {
   const router = useRouter();
   const [supabase, setSupabase] = useState<any>(null);
-  
+
   useEffect(() => {
     try {
       setSupabase(createClient());
@@ -25,7 +25,7 @@ export function LoginForm() {
       console.warn("Supabase client failed to initialize", err);
     }
   }, []);
-  
+
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -37,35 +37,32 @@ export function LoginForm() {
       setErrorMsg("Client not ready. Please refresh.");
       return;
     }
-    
+
     setIsLoading(true);
     setErrorMsg("");
 
     try {
-      // Add a 6-second timeout promise to prevent indefinite hanging
-      const loginPromise = supabase
-        .from("app_users")
-        .select("*")
-        .eq("username", userId.trim().toLowerCase())
-        .eq("password", password)
-        .single();
+      // Automatically format the username into an email for Supabase Auth
+      const formattedEmail = userId.includes("@") 
+        ? userId.trim() 
+        : `${userId.trim().toLowerCase()}@kss.com`;
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Connection timed out. Check network.")), 6000)
-      );
+      // Use actual Supabase Authentication to generate the secure cookie
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formattedEmail,
+        password: password,
+      });
 
-      const response: any = await Promise.race([loginPromise, timeoutPromise]);
-      const { data, error } = response;
-
-      if (error || !data) {
-        setErrorMsg("Invalid User ID or Password.");
+      if (error || !data.session) {
+        setErrorMsg(error?.message || "Invalid User ID or Password.");
         setIsLoading(false);
         return;
       }
 
-      // Successful login!
+      // Successful Auth! Push to dashboard and refresh to apply cookies
       router.push("/");
       router.refresh();
+      
     } catch (err: any) {
       setErrorMsg(err.message || "An error occurred during login.");
       setIsLoading(false);
