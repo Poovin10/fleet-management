@@ -101,7 +101,7 @@ export function LoginForm() {
 
       setStatusMsg("Success! Redirecting...");
       window.location.href = "/";
-      
+
     } catch (err: any) {
       console.error("Login catch error:", err);
       setErrorMsg(err.message || "An error occurred during login.");
@@ -125,7 +125,7 @@ export function LoginForm() {
     setErrorMsg("");
     setIsLoading(true);
     setStatusMsg("Waiting for scan...");
-    
+
     try {
       await NativeBiometric.verifyIdentity({
         reason: "Scan fingerprint to unlock KSS Roadways",
@@ -178,7 +178,7 @@ export function LoginForm() {
               className="relative w-28 h-28 bg-transparent border border-[#FF5A00]/30 hover:border-[#FF5A00] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)] hover:shadow-[0_0_30px_rgba(255,90,0,0.3)] group active:scale-95 disabled:opacity-50"
             >
               <div className="absolute inset-0 rounded-full border border-[#FF5A00] animate-ping opacity-20"></div>
-              
+
               <svg 
                 className={`w-12 h-12 text-[#FF5A00] ${isLoading ? 'animate-pulse' : 'group-hover:scale-110 transition-transform duration-300'}`} 
                 fill="none" 
@@ -211,7 +211,6 @@ export function LoginForm() {
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Admin User ID</label>
               <input 
                 type="text" 
-                name="kss_user_identifier"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 placeholder="e.g. superadmin" 
@@ -222,6 +221,7 @@ export function LoginForm() {
                 autoCorrect="off"
                 spellCheck="false"
                 data-lpignore="true"
+                inputMode="text"
               />
             </div>
 
@@ -229,14 +229,17 @@ export function LoginForm() {
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
               <input 
                 type="password" 
-                name="kss_secure_pass"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••" 
                 className={inputStyle}
                 required 
-                autoComplete="new-password"
+                autoComplete="one-time-code"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
                 data-lpignore="true"
+                inputMode="text"
               />
             </div>
 
