@@ -51,7 +51,6 @@ export function LoginForm() {
       const result = await NativeBiometric.isAvailable();
       if (result.isAvailable) {
         setIsBiometricAvailable(true);
-        // Safely check if we saved credentials before WITHOUT waking up the scanner
         const hasSaved = localStorage.getItem("kss_bio_saved") === "true";
         setHasStoredCredentials(hasSaved);
       }
@@ -85,7 +84,6 @@ export function LoginForm() {
         return;
       }
 
-      // Secure the credentials in the Android Keystore for future fingerprint logins
       if (saveToKeystore && isBiometricAvailable) {
         setStatusMsg("Securing biometric profile...");
         try {
@@ -94,7 +92,6 @@ export function LoginForm() {
             password: pass,
             server: SERVER_KEY,
           });
-          // Drop a safe flag so the app knows it can show the fingerprint button next time
           localStorage.setItem("kss_bio_saved", "true");
           setHasStoredCredentials(true);
         } catch (bioError) {
@@ -121,7 +118,6 @@ export function LoginForm() {
       ? userId.trim() 
       : `${userId.trim().toLowerCase()}@kss.com`;
 
-    // Try to save to Keystore if running natively
     await executeSupabaseLogin(formattedEmail, password, isNative);
   };
 
@@ -131,7 +127,14 @@ export function LoginForm() {
     setStatusMsg("Waiting for scan...");
     
     try {
-      // THIS is what physically turns on the Android fingerprint UI
+      // 1. THIS forces the physical Android UI to appear before allowing access
+      await NativeBiometric.verifyIdentity({
+        reason: "Scan fingerprint to unlock KSS Roadways",
+        title: "Enterprise Authentication",
+        subtitle: "Verify your identity to proceed",
+      });
+
+      // 2. If the scan is successful, fetch the password quietly
       const credentials = await NativeBiometric.getCredentials({
         server: SERVER_KEY,
       });
@@ -143,7 +146,10 @@ export function LoginForm() {
     } catch (error: any) {
       setIsLoading(false);
       setStatusMsg("Tap to Unlock");
-      setErrorMsg(`Scanner: ${error.message || "Canceled or not recognized."}`);
+      // Don't show an error if they just tapped "Cancel"
+      if (error.code !== "user_canceled") {
+        setErrorMsg(`Scanner: ${error.message || "Not recognized."}`);
+      }
     }
   };
 
@@ -168,24 +174,42 @@ export function LoginForm() {
         )}
 
         {isNative && isBiometricAvailable && hasStoredCredentials ? (
-          <div className="space-y-4 relative z-10">
+          <div className="flex flex-col items-center justify-center space-y-6 relative z-10 py-4">
+            {/* Sleek, Transparent, Animated Fingerprint Button */}
             <button 
               onClick={handleFingerprintLogin}
               disabled={isLoading}
-              className="w-full h-20 bg-[#161922] border border-[#2B3142] hover:border-[#FF5A00] text-[#FF5A00] rounded-xl flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+              className="relative w-28 h-28 bg-transparent border border-[#FF5A00]/30 hover:border-[#FF5A00] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)] hover:shadow-[0_0_30px_rgba(255,90,0,0.3)] group active:scale-95 disabled:opacity-50"
             >
-              <span className="text-3xl">👆</span>
-              <span className="text-xs font-black uppercase tracking-wider">{isLoading ? statusMsg : "Tap to Unlock"}</span>
+              {/* Outer pulsing ring */}
+              <div className="absolute inset-0 rounded-full border border-[#FF5A00] animate-ping opacity-20"></div>
+              
+              {/* SVG Fingerprint Icon */}
+              <svg 
+                className={`w-12 h-12 text-[#FF5A00] ${isLoading ? 'animate-pulse' : 'group-hover:scale-110 transition-transform duration-300'}`} 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor" 
+                strokeWidth="1.2"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+              </svg>
             </button>
-            <button 
-              onClick={() => {
-                setHasStoredCredentials(false);
-                localStorage.removeItem("kss_bio_saved");
-              }}
-              className="w-full text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider py-2 hover:text-white transition-colors"
-            >
-              Use Password Instead
-            </button>
+
+            <div className="text-center space-y-1">
+              <p className="text-xs font-black text-[#FF5A00] uppercase tracking-widest">
+                {isLoading ? statusMsg : "Tap to Unlock"}
+              </p>
+              <button 
+                onClick={() => {
+                  setHasStoredCredentials(false);
+                  localStorage.removeItem("kss_bio_saved");
+                }}
+                className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-4 hover:text-white transition-colors"
+              >
+                Use Password Instead
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleManualLogin} className="space-y-5 relative z-10">
@@ -224,6 +248,12 @@ export function LoginForm() {
             </button>
           </form>
         )}
+
+        <div className="mt-8 text-center border-t border-slate-800 pt-6">
+          <p className="text-[10px] text-slate-500 font-semibold flex items-center justify-center gap-1.5">
+            <span>🔒</span> Encrypted 256-bit Connection
+          </p>
+        </div>
       </div>
     </div>
   );
