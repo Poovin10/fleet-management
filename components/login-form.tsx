@@ -127,14 +127,12 @@ export function LoginForm() {
     setStatusMsg("Waiting for scan...");
     
     try {
-      // 1. THIS forces the physical Android UI to appear before allowing access
       await NativeBiometric.verifyIdentity({
         reason: "Scan fingerprint to unlock KSS Roadways",
         title: "Enterprise Authentication",
         subtitle: "Verify your identity to proceed",
       });
 
-      // 2. If the scan is successful, fetch the password quietly
       const credentials = await NativeBiometric.getCredentials({
         server: SERVER_KEY,
       });
@@ -146,7 +144,6 @@ export function LoginForm() {
     } catch (error: any) {
       setIsLoading(false);
       setStatusMsg("Tap to Unlock");
-      // Don't show an error if they just tapped "Cancel"
       if (error.code !== "user_canceled") {
         setErrorMsg(`Scanner: ${error.message || "Not recognized."}`);
       }
@@ -175,16 +172,13 @@ export function LoginForm() {
 
         {isNative && isBiometricAvailable && hasStoredCredentials ? (
           <div className="flex flex-col items-center justify-center space-y-6 relative z-10 py-4">
-            {/* Sleek, Transparent, Animated Fingerprint Button */}
             <button 
               onClick={handleFingerprintLogin}
               disabled={isLoading}
               className="relative w-28 h-28 bg-transparent border border-[#FF5A00]/30 hover:border-[#FF5A00] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)] hover:shadow-[0_0_30px_rgba(255,90,0,0.3)] group active:scale-95 disabled:opacity-50"
             >
-              {/* Outer pulsing ring */}
               <div className="absolute inset-0 rounded-full border border-[#FF5A00] animate-ping opacity-20"></div>
               
-              {/* SVG Fingerprint Icon */}
               <svg 
                 className={`w-12 h-12 text-[#FF5A00] ${isLoading ? 'animate-pulse' : 'group-hover:scale-110 transition-transform duration-300'}`} 
                 fill="none" 
@@ -212,11 +206,12 @@ export function LoginForm() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleManualLogin} className="space-y-5 relative z-10">
+          <form onSubmit={handleManualLogin} className="space-y-5 relative z-10" autoComplete="off">
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Admin User ID</label>
               <input 
                 type="text" 
+                name="kss_user_identifier"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 placeholder="e.g. superadmin" 
@@ -224,6 +219,9 @@ export function LoginForm() {
                 required 
                 autoComplete="off"
                 autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+                data-lpignore="true"
               />
             </div>
 
@@ -231,11 +229,14 @@ export function LoginForm() {
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
               <input 
                 type="password" 
+                name="kss_secure_pass"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••" 
                 className={inputStyle}
                 required 
+                autoComplete="new-password"
+                data-lpignore="true"
               />
             </div>
 
