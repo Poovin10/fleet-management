@@ -45,26 +45,26 @@ export default function Dashboard() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string>("VIEWER");
-  
+
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [opSubTab, setOpSubTab] = useState("Trips");
-  
+
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
   const [currentMonthText, setCurrentMonthText] = useState("");
   const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
-  
+
   const [monthTripsCount, setMonthTripsCount] = useState<number>(0);
   const [monthFreight, setMonthFreight] = useState<number>(0);
   const [monthDieselCost, setMonthDieselCost] = useState<number>(0);
   const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
   const [activeTripCount, setActiveTripCount] = useState<number>(0); 
   const [pendingDriverCount, setPendingDriverCount] = useState<number>(0);
-  
+
   const [expiringDocs, setExpiringDocs] = useState<Record<string, any[]>>({});
-  
+
   const [statusCounts, setStatusCounts] = useState({
     "Plant Loading": 0, "In Transit": 0, "Workshop / Repairs": 0, "No Driver / Leave": 0
   });
@@ -89,18 +89,19 @@ export default function Dashboard() {
     if (!supabase) return;
 
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
+      // Use getUser() instead of getSession() to force a true server validation
+      const { data: { user }, error } = await supabase.auth.getUser();
+
+      if (user && !error) {
         setIsAuthenticated(true);
-        const sessionUsername = session.user.email?.split('@')[0];
-        
+        const sessionUsername = user.email?.split('@')[0];
+
         if (sessionUsername) {
           const { data: userData } = await supabase.from('app_users')
             .select('role')
             .eq('username', sessionUsername)
             .single();
-            
+
           if (userData && userData.role) {
             setUserRole(userData.role); 
           } else {
@@ -109,9 +110,12 @@ export default function Dashboard() {
         }
         setIsAuthLoading(false);
       } else {
+        // Only redirect if it's explicitly not a driver route
         setIsAuthenticated(false);
         setUserRole("VIEWER");
-        if (!isDriverRoute) router.replace("/auth/login");
+        if (!isDriverRoute) {
+          router.replace("/auth/login");
+        }
       }
     };
 
@@ -175,7 +179,7 @@ export default function Dashboard() {
       if (!dateVal) return;
       const expDate = new Date(dateVal);
       expDate.setHours(0,0,0,0);
-      
+
       if (expDate <= tenDaysFromNow) {
         const isUrgent = expDate <= tomorrow; 
         if (!alerts[docName]) alerts[docName] = [];
@@ -308,7 +312,7 @@ export default function Dashboard() {
           {activeTab === "Dashboard" && (
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="flex-1 space-y-6 min-w-0">
-                
+
                 {pendingDriverCount > 0 && (
                   <div className="bg-amber-950/30 border-l-4 border-amber-500 rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3">
@@ -356,7 +360,7 @@ export default function Dashboard() {
                       {currentMonthText.toUpperCase()}
                     </span>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
                     <div className="p-4 rounded-xl bg-[#1A1F2C] border border-[#2B3142] flex flex-col justify-center">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Trips</p>
@@ -435,12 +439,12 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
-              
+
               {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
               {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
               {opSubTab === "Modify Trips" && <ModifyTrips />}
               {opSubTab === "Driver Approvals" && <ApprovalQueue/>}
-              
+
               {opSubTab === "Quick Status" && (
                 <div className="bg-[#161922] border border-[#222634] rounded-xl p-4 sm:p-6 shadow-sm max-w-2xl animate-in fade-in duration-300">
                   <h3 className="text-xs sm:text-sm font-black text-white mb-6 uppercase tracking-wider border-b border-[#222634] pb-2">Manual Status Override</h3>
@@ -468,7 +472,7 @@ export default function Dashboard() {
               )}
             </div>
           )}
-          
+
           {activeTab === "Fuel & Adv" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-4 sm:p-6 mt-6"><FuelAdvanceModule/></div>}
           {activeTab === "Workshop & Tyres" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-6 mt-6"><WorkshopModule/></div>}
           {activeTab === "Financials" && <div className="p-6 mt-6"><FinancialsModule/></div>}
