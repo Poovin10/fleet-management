@@ -1,9 +1,15 @@
 {
-  "appId": "com.kssroadways.erp",
-  "appName": "KSS Roadways Driver",
+  "appId": "com.kss.roadways",
+  "appName": "KSS ERP",
   "webDir": "public",
+  "bundledWebRuntime": false,
   "server": {
-    "url": "https://kss-roadways-erp.vercel.app/driver",
+    "url": "https://kss-roadways-erp.vercel.app",
     "cleartext": true
+  },
+  "plugins": {
+    "CapacitorCookies": {
+      "enabled": true
+    }
   }
 }
