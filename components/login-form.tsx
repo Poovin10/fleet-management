@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -16,14 +16,15 @@ const KssLogo = ({ className }: { className?: string }) => (
 
 export function LoginForm() {
   const router = useRouter();
+  const [supabase, setSupabase] = useState<any>(null);
   
-  // Safely initialize client inside a try/catch or runtime check to prevent build crashes
-  let supabase: any;
-  try {
-    supabase = createClient();
-  } catch (err) {
-    console.warn("Supabase client failed to initialize during pre-render", err);
-  }
+  useEffect(() => {
+    try {
+      setSupabase(createClient());
+    } catch (err) {
+      console.warn("Supabase client failed to initialize", err);
+    }
+  }, []);
   
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
@@ -33,14 +34,13 @@ export function LoginForm() {
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) {
-      setErrorMsg("Configuration error. Please check environment variables.");
+      setErrorMsg("Client not ready. Please refresh.");
       return;
     }
     
     setIsLoading(true);
     setErrorMsg("");
 
-    // Secretly format the User ID into an email for Supabase
     const formattedEmail = `${userId.trim().toLowerCase()}@kssroadways.com`;
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -52,7 +52,6 @@ export function LoginForm() {
       setErrorMsg("Invalid User ID or Password.");
       setIsLoading(false);
     } else {
-      // Redirect to the main ERP dashboard upon success
       router.push("/");
       router.refresh(); 
     }
@@ -62,11 +61,8 @@ export function LoginForm() {
 
   return (
     <div className="relative animate-in fade-in zoom-in duration-500 w-full">
-      {/* Subtle background glow */}
       <div className="absolute -inset-1 bg-gradient-to-r from-[#FF5A00] to-orange-400 rounded-[24px] blur opacity-20"></div>
-      
       <div className="relative bg-slate-950 border border-slate-800 rounded-[24px] shadow-2xl p-8 overflow-hidden">
-        
         <div className="flex flex-col items-center mb-8 relative z-10">
           <div className="w-14 h-14 rounded-xl overflow-hidden shadow-lg bg-white mb-4">
             <KssLogo className="w-full h-full" />
