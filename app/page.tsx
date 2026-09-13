@@ -1,10 +1,17 @@
+
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import Dashboard from "@/components/dashboard";
 
-export const dynamic = "force-dynamic";
-
-export default async function Page() {
+async function DashboardWrapper() {
   const supabase = await createClient();
-
   return <Dashboard />;
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#050507]" />}>
+      <DashboardWrapper />
+    </Suspense>
+  );
 }
