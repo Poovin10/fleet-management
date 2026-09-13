@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+// We can keep useRouter imported just in case, but we are using window.location for the actual redirect now
+import { useRouter } from "next/navigation"; 
 import { createClient } from "@/lib/supabase/client";
 
 const KssLogo = ({ className }: { className?: string }) => (
@@ -72,10 +73,10 @@ export function LoginForm() {
         return;
       }
 
-      // Successful Auth! Push to dashboard and refresh to apply cookies
-      console.log("Login successful! Redirecting...");
-      router.push("/");
-      router.refresh();
+      // Successful Auth! 
+      // Using a HARD navigation instead of Next.js router to guarantee the cookie saves and transmits.
+      console.log("Login successful! Forcing hard redirect...");
+      window.location.href = "/";
       
     } catch (err: any) {
       console.error("Login catch error:", err);
