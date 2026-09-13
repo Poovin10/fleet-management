@@ -40,7 +40,6 @@ export function LoginForm() {
       console.warn("Supabase client failed to initialize", err);
     }
 
-    // Safety Shield: Only check hardware if running as an actual Android App
     if (Capacitor.isNativePlatform()) {
       setIsNative(true);
       checkBiometrics();
@@ -52,13 +51,9 @@ export function LoginForm() {
       const result = await NativeBiometric.isAvailable();
       if (result.isAvailable) {
         setIsBiometricAvailable(true);
-        // Check if admin credentials exist in the Android Keystore
-        try {
-          await NativeBiometric.getCredentials({ server: SERVER_KEY });
-          setHasStoredCredentials(true);
-        } catch (e) {
-          setHasStoredCredentials(false);
-        }
+        // Safely check if we saved credentials before WITHOUT waking up the scanner
+        const hasSaved = localStorage.getItem("kss_bio_saved") === "true";
+        setHasStoredCredentials(hasSaved);
       }
     } catch (err) {
       console.warn("Biometrics not supported on this device.");
@@ -93,11 +88,18 @@ export function LoginForm() {
       // Secure the credentials in the Android Keystore for future fingerprint logins
       if (saveToKeystore && isBiometricAvailable) {
         setStatusMsg("Securing biometric profile...");
-        await NativeBiometric.setCredentials({
-          username: email,
-          password: pass,
-          server: SERVER_KEY,
-        });
+        try {
+          await NativeBiometric.setCredentials({
+            username: email,
+            password: pass,
+            server: SERVER_KEY,
+          });
+          // Drop a safe flag so the app knows it can show the fingerprint button next time
+          localStorage.setItem("kss_bio_saved", "true");
+          setHasStoredCredentials(true);
+        } catch (bioError) {
+          console.warn("Could not save to Android Keystore", bioError);
+        }
       }
 
       setStatusMsg("Success! Redirecting...");
@@ -119,22 +121,29 @@ export function LoginForm() {
       ? userId.trim() 
       : `${userId.trim().toLowerCase()}@kss.com`;
 
-    // Only attempt to save to Keystore if running natively
+    // Try to save to Keystore if running natively
     await executeSupabaseLogin(formattedEmail, password, isNative);
   };
 
   const handleFingerprintLogin = async () => {
     setErrorMsg("");
+    setIsLoading(true);
+    setStatusMsg("Waiting for scan...");
+    
     try {
+      // THIS is what physically turns on the Android fingerprint UI
       const credentials = await NativeBiometric.getCredentials({
         server: SERVER_KEY,
       });
 
       if (credentials) {
+        setStatusMsg("Fingerprint accepted!");
         await executeSupabaseLogin(credentials.username, credentials.password, false);
       }
-    } catch (error) {
-      setErrorMsg("Fingerprint not recognized or canceled.");
+    } catch (error: any) {
+      setIsLoading(false);
+      setStatusMsg("Tap to Unlock");
+      setErrorMsg(`Scanner: ${error.message || "Canceled or not recognized."}`);
     }
   };
 
@@ -169,7 +178,10 @@ export function LoginForm() {
               <span className="text-xs font-black uppercase tracking-wider">{isLoading ? statusMsg : "Tap to Unlock"}</span>
             </button>
             <button 
-              onClick={() => setHasStoredCredentials(false)}
+              onClick={() => {
+                setHasStoredCredentials(false);
+                localStorage.removeItem("kss_bio_saved");
+              }}
               className="w-full text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider py-2 hover:text-white transition-colors"
             >
               Use Password Instead
@@ -212,12 +224,6 @@ export function LoginForm() {
             </button>
           </form>
         )}
-
-        <div className="mt-8 text-center border-t border-slate-800 pt-6">
-          <p className="text-[10px] text-slate-500 font-semibold flex items-center justify-center gap-1.5">
-            <span>🔒</span> Encrypted 256-bit Connection
-          </p>
-        </div>
       </div>
     </div>
   );
