@@ -217,18 +217,14 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
+  // Clean, proper dynamic import for the biometric plugin
   const handleManualFingerprint = async () => {
     if (!driverCode) {
       return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
     }
 
     try {
-      const bioModule = await eval('import("capacitor-native-biometric")');
-      const NativeBiometric = bioModule.NativeBiometric || bioModule.default?.NativeBiometric;
-
-      if (!NativeBiometric) {
-        throw new Error("Biometric plugin unavailable");
-      }
+      const { NativeBiometric } = await import("capacitor-native-biometric");
 
       const result = await NativeBiometric.verifyIdentity({
         reason: "Log in to KSS Roadways Driver Portal",
@@ -247,7 +243,7 @@ export function DriverPortal() {
       setAlertConfig({ 
         isOpen: true, 
         title: "Authentication Failed", 
-        message: "Fingerprint scanner not supported on this view or cancelled. Please use your 4-digit PIN.", 
+        message: "Fingerprint scanner not supported on this device or cancelled. Please use your 4-digit PIN.", 
         type: "error" 
       });
     }
