@@ -15,9 +15,8 @@ const KssLogo = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// Helper function to calculate distance in meters between two GPS points
 const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-  const R = 6371e3; // Earth radius in meters
+  const R = 6371e3; 
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a = 
@@ -87,9 +86,9 @@ export function DriverPortal() {
       supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status, trip_start_date, reached_at, unloaded_at, returning_at, start_km, destination_lat, destination_lng, origin_lat, origin_lng').neq('trip_status', 'COMPLETED')
     ]);
 
-    if (vRes.data) setVehicles(vRes.data);
-    if (dRes.data) setDrivers(vRes.data);
-    if (tRes.data) setActiveTrips(tRes.data);
+    setVehicles(vRes.data || []);
+    setDrivers(dRes.data || []);
+    setActiveTrips(tRes.data || []);
   };
 
   const fetchDriverCurrentMonthReports = async (drvCode: string, drvId: number) => {
@@ -218,7 +217,6 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
-  // Professional On-Demand Biometric Login Trigger
   const handleManualFingerprint = async () => {
     if (!driverCode) {
       return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
@@ -291,12 +289,11 @@ export function DriverPortal() {
 
     setIsSubmitting(true);
 
-    // =========================================================================
-    // SMART 1 KM GEOFENCE VERIFICATION & AUTO-LEARNING BLOCK
-    // =========================================================================
     if ((actionType === "REACHED" || actionType === "WAITING_FOR_LOAD") && currentTrip) {
       try {
-        const position = await BackgroundGeolocation.getCurrentPosition({ timeout: 10000 });
+        const position = (BackgroundGeolocation as any).getCurrentPosition 
+          ? await (BackgroundGeolocation as any).getCurrentPosition({ timeout: 10000 })
+          : null;
 
         if (position) {
           const isPlantArrival = actionType === "WAITING_FOR_LOAD";
@@ -305,16 +302,14 @@ export function DriverPortal() {
           const locationName = isPlantArrival ? currentTrip.origin : currentTrip.destination;
 
           if (!targetLat || !targetLng) {
-            // AUTO-LEARN: If coordinates don't exist yet, save them from the driver's current position!
             const updateFields = isPlantArrival 
               ? { origin_lat: position.latitude, origin_lng: position.longitude }
               : { destination_lat: position.latitude, destination_lng: position.longitude };
 
             await supabase.from('trips').update(updateFields).eq('trip_id', currentTrip.trip_id);
           } else {
-            // GEOFENCE CHECK: Verify driver is within 1 km (1000 meters)
             const distance = getDistanceInMeters(position.latitude, position.longitude, Number(targetLat), Number(targetLng));
-            const ALLOWED_RADIUS_METERS = 1000; // 1 km radius
+            const ALLOWED_RADIUS_METERS = 1000; 
 
             if (distance > ALLOWED_RADIUS_METERS) {
               setIsSubmitting(false);
@@ -324,16 +319,14 @@ export function DriverPortal() {
                 message: `You are ${(distance / 1000).toFixed(2)} km away from ${locationName || 'the target location'}. You must be within 1 km to mark this status.`,
                 type: "error"
               });
-              return; // BLOCKS SUBMISSION OUTSIDE GEOFENCE
+              return; 
             }
           }
         }
       } catch (geoError) {
         console.error("Geofence GPS verification failed:", geoError);
-        // Allows proceeding if GPS locks fail completely, or you can block based on your security needs
       }
     }
-    // =========================================================================
 
     const timestamp = new Date().toISOString();
     const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown";
