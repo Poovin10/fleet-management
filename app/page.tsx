@@ -36,6 +36,7 @@ export default function SaaS_ERPDashboard() {
 
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<string>("VIEWER"); // Updated to accept SUPERADMIN
   
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
@@ -75,16 +76,36 @@ export default function SaaS_ERPDashboard() {
     setIsCheckingRoute(false);
   }, []);
 
-  // SECURE AUTHENTICATION BARRIER
+  // SECURE AUTHENTICATION BARRIER & ROLE SYNC
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session) {
         setIsAuthenticated(true);
+        
+        // Extract the username (e.g., "superadmin" from "superadmin@kssroadways.com")
+        const sessionUsername = session.user.email?.split('@')[0];
+        
+        if (sessionUsername) {
+          // Re-link to your custom table to get the REAL enterprise role (like SUPERADMIN)
+          const { data: userData } = await supabase.from('app_users')
+            .select('role')
+            .eq('username', sessionUsername)
+            .single();
+            
+          if (userData && userData.role) {
+            setUserRole(userData.role); 
+          } else {
+            setUserRole("ADMIN"); // Fallback
+          }
+        }
         setIsAuthLoading(false);
       } else {
         // If not authenticated, force them to the login screen immediately
-        router.replace("/auth/login");
+        setIsAuthenticated(false);
+        setUserRole("VIEWER");
+        if (!isDriverRoute) router.replace("/auth/login");
       }
     };
 
@@ -97,6 +118,7 @@ export default function SaaS_ERPDashboard() {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         setIsAuthenticated(true);
+        if (event === 'SIGNED_IN') window.location.reload(); // Reload to fetch specific role on fresh login
       } else if (!isDriverRoute) {
         router.replace("/auth/login");
       }
@@ -242,8 +264,9 @@ export default function SaaS_ERPDashboard() {
   // Double check: if they somehow bypassed the redirect, don't render the secure UI
   if (!isAuthenticated) return null;
 
-  // All tabs available to authorized users
-  const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "Setup"];
+  // Determine allowed tabs based on userRole (SUPERADMIN gets everything ADMIN gets)
+  const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "Setup"];
+  const navItems = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? allNavItems : ["Dashboard", "Financials", "P&L Statement"];
 
   return (
     <div className="min-h-screen bg-[#050507] text-white font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
@@ -399,7 +422,7 @@ export default function SaaS_ERPDashboard() {
             </div>
           )}
 
-          {activeTab === "Operations" && (
+          {activeTab === "Operations" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
             <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6 min-h-[60vh] mt-6">
               <div className="flex flex-wrap gap-2 border-b border-[#222634] pb-4 mb-6">
                 {opTabs.map((sub) => (
@@ -442,11 +465,11 @@ export default function SaaS_ERPDashboard() {
             </div>
           )}
           
-          {activeTab === "Fuel & Adv" && <div className="p-4 sm:p-6 mt-6"><FuelAdvanceModule/></div>}
-          {activeTab === "Workshop & Tyres" && <div className="p-6 mt-6"><WorkshopModule/></div>}
+          {activeTab === "Fuel & Adv" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-4 sm:p-6 mt-6"><FuelAdvanceModule/></div>}
+          {activeTab === "Workshop & Tyres" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-6 mt-6"><WorkshopModule/></div>}
           {activeTab === "Financials" && <div className="p-6 mt-6"><FinancialsModule/></div>}
           {activeTab === "P&L Statement" && <div className="p-6 mt-6"><ProfitLossModule/></div>}
-          {activeTab === "Setup" && <div className="p-6 mt-6"><SetupModule/></div>}
+          {activeTab === "Setup" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-6 mt-6"><SetupModule/></div>}
         </div>
       </main>
     </div>
