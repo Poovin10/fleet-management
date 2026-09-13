@@ -15,6 +15,13 @@ const KssLogo = ({ className }: { className?: string }) => (
   </svg>
 );
 
+// Modern SVG Fingerprint Icon
+const FingerprintIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7.864 4.243A7.5 7.5 0 0 1 19.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 0 0 4.5 10.5a7.464 7.464 0 0 1-1.15 3.993m1.989 3.559A11.209 11.209 0 0 0 8.25 10.5a3.75 3.75 0 1 1 7.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 0 1-3.6 9.75m6.633-4.596a18.666 18.666 0 0 1-2.485 5.33" />
+  </svg>
+);
+
 const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371e3; 
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -36,7 +43,7 @@ export function DriverPortal() {
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
 
   const [savedDriverCode, setSavedDriverCode] = useState("");
-  const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState(""); // Tracks the authorized device owner
+  const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState(""); 
   const [isDriverLocked, setIsDriverLocked] = useState(false);
   const [activeTab, setActiveTab] = useState<"STATUS" | "LEDGER">("STATUS");
 
@@ -225,7 +232,6 @@ export function DriverPortal() {
   const handleManualFingerprint = async () => {
     if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
 
-    // Enterprise Security Lock: Prevent a different driver from using the phone owner's fingerprint
     if (driverCode !== enrolledBiometricDriver) {
       return setAlertConfig({ 
         isOpen: true, 
@@ -270,7 +276,6 @@ export function DriverPortal() {
       if (driverPin.trim() !== (selectedDrv.pin || "").toString().trim()) return setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "Incorrect PIN.", type: "error" });
     }
 
-    // SUCCESSFUL PIN LOGIN: Silently assign this device's biometric scanner to this driver
     localStorage.setItem("kss_biometric_enrolled_driver", driverCode.toUpperCase().trim());
     setEnrolledBiometricDriver(driverCode.toUpperCase().trim());
 
@@ -454,19 +459,35 @@ export function DriverPortal() {
               </select>
             </div>
             
-            {/* ONLY show Fingerprint button if this driver previously authenticated with PIN on THIS specific phone */}
+            {/* MODERN, ANIMATED TRANSPARENT FINGERPRINT UI */}
             {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
-              <button 
-                type="button" 
-                onClick={handleManualFingerprint}
-                className="w-full border border-slate-700 bg-slate-900/60 hover:bg-slate-900 text-slate-200 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm"
-              >
-                <span className="text-base">🔓</span> Tap to verify with Fingerprint
-              </button>
+              <div className="flex flex-col items-center justify-center py-2 animate-in fade-in zoom-in duration-300">
+                <button 
+                  type="button" 
+                  onClick={handleManualFingerprint}
+                  className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95"
+                >
+                  {/* Soft pulsing ring */}
+                  <div className="absolute inset-0 rounded-full bg-[#FF5A00]/30 animate-ping opacity-75" style={{ animationDuration: '2.5s' }}></div>
+                  {/* Inner hover effect */}
+                  <div className="absolute inset-1.5 rounded-full bg-[#FF5A00]/10 group-hover:bg-[#FF5A00]/20 border border-[#FF5A00]/20 transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)]"></div>
+                  {/* Sleek SVG Icon */}
+                  <FingerprintIcon className="w-8 h-8 text-[#FF5A00] relative z-10 drop-shadow-sm group-hover:scale-105 transition-transform" />
+                </button>
+                <span className="text-[10px] font-bold text-[#FF5A00] uppercase tracking-widest mt-3 opacity-90">Tap to Scan</span>
+              </div>
             )}
 
-            <div className="grid gap-1.5">
-              <label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Or Enter Security PIN"}</label>
+            <div className="grid gap-1.5 relative mt-2">
+              {/* Subtle OR divider line if fingerprint is active */}
+              {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
+                  <div className="absolute -top-5 left-0 right-0 flex items-center justify-center">
+                    <div className="h-px bg-border w-full absolute"></div>
+                    <span className="bg-surface px-2 text-[9px] text-fg-muted font-bold tracking-widest uppercase relative z-10">OR</span>
+                  </div>
+              )}
+              
+              <label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Security PIN"}</label>
               <input type="password" maxLength={4} value={driverPin} onChange={e => setDriverPin(e.target.value)} placeholder="••••" className={inputStyle} required={isFirstTimeSetup} />
             </div>
             {isFirstTimeSetup && (
