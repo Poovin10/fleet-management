@@ -183,6 +183,11 @@ export function SetupModule() {
     e.preventDefault();
     if (!newUsername.trim() || !newPassword.trim()) return;
 
+    // Safety bypass: If you are 'superadmin', let it through regardless of db role.
+    if (currentUsername !== "superadmin" && currentUserRole !== "SUPERADMIN") {
+      return alert("Unauthorized: Only Superadmins can perform this action.");
+    }
+
     triggerModal("Create User", `Create new ${newRole} account for ${newUsername.trim().toLowerCase()}?`, false, "Create User", async () => {
       setIsProcessing(true);
       
@@ -218,6 +223,11 @@ export function SetupModule() {
 
   const handleDeleteUser = (username: string) => {
     if (username === "superadmin") return alert("Cannot delete the primary Super Admin account.");
+    
+    if (currentUsername !== "superadmin" && currentUserRole !== "SUPERADMIN") {
+      return alert("Unauthorized: Only Superadmins can revoke access.");
+    }
+
     triggerModal("Delete User", `Are you sure you want to revoke access for ${username}?`, true, "Delete", async () => {
       setIsProcessing(true);
       await supabase.from('app_users').delete().eq('username', username);
@@ -794,7 +804,7 @@ export function SetupModule() {
         {/* 🔐 USER CONTROL (SUPERADMIN ONLY) */}
         {sTab === "🔐 User Control" && (
           <>
-            {currentUserRole !== "SUPERADMIN" ? (
+            {currentUsername !== "superadmin" && currentUserRole !== "SUPERADMIN" ? (
               <div className="p-8 text-center bg-rose-950/40 border border-rose-900 rounded-2xl">
                 <p className="text-xl font-black text-rose-400">Access Denied</p>
                 <p className="text-sm text-rose-300 mt-1">This module is strictly restricted to the Super Admin account (<span className="font-mono font-bold text-white">superadmin</span>).</p>
