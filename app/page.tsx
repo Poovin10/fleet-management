@@ -38,8 +38,8 @@ export default function SaaS_ERPDashboard() {
   const [showLoginScreen, setShowLoginScreen] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   
-  const [loginUser, setLoginUser] = useState("");
-  const [loginPass, setLoginPass] = useState("");
+  const [userId, setUserId] = useState("");
+  const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
@@ -79,36 +79,68 @@ export default function SaaS_ERPDashboard() {
     setIsCheckingRoute(false);
   }, []);
 
+  // Secure Supabase Session Initialization
   useEffect(() => {
-    const auth = sessionStorage.getItem("kss_auth");
-    const role = sessionStorage.getItem("kss_role");
-    if (auth === "true" && role === "ADMIN") {
-      setIsAuthenticated(true);
-      setUserRole("ADMIN");
-    } else {
-      setUserRole("VIEWER");
-    }
-    setIsAuthLoading(false);
-  }, []);
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsAuthenticated(true);
+        setUserRole("ADMIN");
+      } else {
+        setIsAuthenticated(false);
+        setUserRole("VIEWER");
+      }
+      setIsAuthLoading(false);
+    };
+    
+    checkSession();
 
+    // Listen for auth changes (like when the user logs in or out)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setIsAuthenticated(true);
+        setUserRole("ADMIN");
+      } else {
+        setIsAuthenticated(false);
+        setUserRole("VIEWER");
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [supabase.auth]);
+
+  // Secure Supabase Login Handler
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginUser.trim() || !loginPass.trim()) return;
-    setIsLoggingIn(true); setLoginError("");
-    try {
-      const { data, error } = await supabase.from('app_users').select('*').eq('username', loginUser.trim().toLowerCase()).eq('password', loginPass.trim()).single();
-      if (error || !data) setLoginError("Invalid username or password.");
-      else {
-        sessionStorage.setItem("kss_auth", "true"); sessionStorage.setItem("kss_role", data.role); sessionStorage.setItem("kss_username", data.username);
-        setIsAuthenticated(true); setUserRole(data.role as "ADMIN" | "VIEWER"); setShowLoginScreen(false); setLoginUser(""); setLoginPass("");
-      }
-    } catch (err) { setLoginError("Database authentication error. Please try again."); }
+    if (!userId.trim() || !password.trim()) return;
+    setIsLoggingIn(true); 
+    setLoginError("");
+
+    // Secretly format the User ID into an email for Supabase to accept it
+    const formattedEmail = `${userId.trim().toLowerCase()}@kssroadways.com`;
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: formattedEmail,
+      password,
+    });
+
+    if (error) {
+      setLoginError("Invalid User ID or Password. Please try again.");
+    } else {
+      setShowLoginScreen(false); 
+      setUserId(""); 
+      setPassword("");
+    }
     setIsLoggingIn(false);
   };
 
-  const executeLogout = () => {
-    sessionStorage.removeItem("kss_auth"); sessionStorage.removeItem("kss_role"); sessionStorage.removeItem("kss_username");
-    setIsAuthenticated(false); setUserRole("VIEWER"); setLoginUser(""); setLoginPass(""); setActiveTab("Dashboard"); setIsLogoutModalOpen(false);
+  // Secure Supabase Logout Handler
+  const executeLogout = async () => {
+    await supabase.auth.signOut();
+    setActiveTab("Dashboard"); 
+    setIsLogoutModalOpen(false);
   };
 
   const extractStatus = (v: any) => String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
@@ -235,26 +267,82 @@ export default function SaaS_ERPDashboard() {
 
   if (isAuthLoading) return null;
 
+  // Modern Elegant Login Screen Overlay
   if (showLoginScreen && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#050507] flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#FF5A00]/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-[#FF5A00]/10 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="relative bg-[#12141C]/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md p-6 sm:p-10 border border-[#222634]">
-          <div className="text-center mb-8 sm:mb-10">
-            <div className="mx-auto mb-6 w-20 h-20 sm:w-24 sm:h-24 shadow-md rounded-2xl overflow-hidden border border-[#222634] bg-[#050507] flex items-center justify-center"><KssLogo className="w-16 h-16 sm:w-20 sm:h-20"/></div>
-            <div className="inline-block bg-[#050507] px-4 py-2 rounded-xl shadow-sm mb-3 border border-[#222634]"><h1 className="text-2xl sm:text-3xl font-black text-[#FF5A00] tracking-tight leading-none">KSS Roadways</h1></div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Database Secure Login</p>
-          </div>
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div><label className="block text-[11px] font-bold text-slate-400 uppercase mb-2 ml-1">Username</label><input type="text" value={loginUser} onChange={e => setLoginUser(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-[#2B3142] outline-none focus:border-[#FF5A00] font-semibold bg-[#1A1F2C] text-white" required /></div>
-            <div><label className="block text-[11px] font-bold text-slate-400 uppercase mb-2 ml-1">Password</label><input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="w-full text-base p-4 rounded-2xl border border-[#2B3142] outline-none focus:border-[#FF5A00] font-semibold bg-[#1A1F2C] text-white" required /></div>
-            {loginError && <p className="text-sm font-bold text-rose-500 text-center bg-rose-950/40 border border-rose-900 p-3 rounded-xl">{loginError}</p>}
-            <div className="pt-2">
-              <button type="submit" disabled={isLoggingIn} className="w-full py-4 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-lg rounded-2xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:opacity-50">{isLoggingIn ? "Verifying..." : "Log In"}</button>
-              <button type="button" onClick={() => setShowLoginScreen(false)} className="w-full py-4 text-slate-400 hover:text-white font-bold text-sm transition-colors mt-2">&larr; Back to Public Dashboard</button>
+      <div className="min-h-screen w-full flex items-center justify-center bg-slate-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black p-4 z-50 fixed inset-0">
+        <div className="w-full max-w-md relative animate-in fade-in zoom-in duration-500">
+          
+          <div className="absolute -inset-1 bg-gradient-to-r from-[#FF5A00] to-orange-400 rounded-[24px] blur opacity-20"></div>
+          
+          <div className="relative bg-slate-900 border border-slate-800 rounded-[24px] shadow-2xl p-8 overflow-hidden">
+            
+            <div className="flex flex-col items-center mb-8 relative z-10">
+              <div className="w-14 h-14 rounded-xl overflow-hidden shadow-lg bg-white mb-4 flex items-center justify-center">
+                <KssLogo className="w-10 h-10" />
+              </div>
+              <h1 className="text-2xl font-black text-white tracking-tight">KSS Roadways</h1>
+              <p className="text-[10px] font-bold text-[#FF5A00] uppercase tracking-[0.2em] mt-1">Enterprise Portal</p>
             </div>
-          </form>
+
+            {loginError && (
+              <div className="mb-6 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-center animate-in slide-in-from-top-2">
+                <p className="text-xs font-bold text-rose-400">{loginError}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-5 relative z-10">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Admin User ID</label>
+                <input 
+                  type="text" 
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  placeholder="e.g. admin" 
+                  className="flex h-12 w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 text-sm text-slate-100 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] focus-visible:border-transparent placeholder:text-slate-600"
+                  required 
+                  autoComplete="off"
+                  autoCapitalize="none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Password</label>
+                <input 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" 
+                  className="flex h-12 w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 text-sm text-slate-100 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] focus-visible:border-transparent placeholder:text-slate-600"
+                  required 
+                />
+              </div>
+
+              <div className="pt-4 space-y-3">
+                <button 
+                  type="submit" 
+                  disabled={isLoggingIn}
+                  className="w-full h-12 bg-[#FF5A00] hover:bg-[#e04f00] text-white rounded-xl text-sm font-bold tracking-wide shadow-[0_0_20px_rgba(255,90,0,0.3)] hover:shadow-[0_0_25px_rgba(255,90,0,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isLoggingIn ? "Authenticating..." : "Secure Login"}
+                </button>
+                
+                <button 
+                  type="button" 
+                  onClick={() => setShowLoginScreen(false)} 
+                  className="w-full py-3 text-slate-400 hover:text-white font-semibold text-xs transition-colors"
+                >
+                  &larr; Back to Public Dashboard
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-8 text-center border-t border-slate-800 pt-6">
+              <p className="text-[10px] text-slate-500 font-semibold flex items-center justify-center gap-1.5">
+                <span>🔒</span> Encrypted 256-bit Connection
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
