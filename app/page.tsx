@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 import { TripForm } from "@/components/TripForm";
@@ -28,19 +29,14 @@ const KssLogo = ({ className }: { className?: string }) => (
 
 export default function SaaS_ERPDashboard() {
   const supabase = createClient();
+  const router = useRouter();
 
   const [isDriverRoute, setIsDriverRoute] = useState(false);
   const [isCheckingRoute, setIsCheckingRoute] = useState(true);
 
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<"ADMIN" | "VIEWER">("VIEWER");
-  const [showLoginScreen, setShowLoginScreen] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
-  const [userId, setUserId] = useState("");
-  const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -79,68 +75,42 @@ export default function SaaS_ERPDashboard() {
     setIsCheckingRoute(false);
   }, []);
 
-  // Secure Supabase Session Initialization
+  // SECURE AUTHENTICATION BARRIER
   useEffect(() => {
-    const checkSession = async () => {
+    const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        setUserRole("ADMIN");
+        setIsAuthLoading(false);
       } else {
-        setIsAuthenticated(false);
-        setUserRole("VIEWER");
+        // If not authenticated, force them to the login screen immediately
+        router.replace("/auth/login");
       }
-      setIsAuthLoading(false);
     };
-    
-    checkSession();
 
-    // Listen for auth changes (like when the user logs in or out)
+    if (!isDriverRoute) {
+      checkAuth();
+    } else {
+      setIsAuthLoading(false); // Driver portal handles its own auth
+    }
+
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         setIsAuthenticated(true);
-        setUserRole("ADMIN");
-      } else {
-        setIsAuthenticated(false);
-        setUserRole("VIEWER");
+      } else if (!isDriverRoute) {
+        router.replace("/auth/login");
       }
     });
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [supabase.auth]);
+  }, [router, supabase.auth, isDriverRoute]);
 
-  // Secure Supabase Login Handler
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId.trim() || !password.trim()) return;
-    setIsLoggingIn(true); 
-    setLoginError("");
-
-    // Secretly format the User ID into an email for Supabase to accept it
-    const formattedEmail = `${userId.trim().toLowerCase()}@kssroadways.com`;
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email: formattedEmail,
-      password,
-    });
-
-    if (error) {
-      setLoginError("Invalid User ID or Password. Please try again.");
-    } else {
-      setShowLoginScreen(false); 
-      setUserId(""); 
-      setPassword("");
-    }
-    setIsLoggingIn(false);
-  };
-
-  // Secure Supabase Logout Handler
   const executeLogout = async () => {
     await supabase.auth.signOut();
-    setActiveTab("Dashboard"); 
     setIsLogoutModalOpen(false);
+    router.replace("/auth/login");
   };
 
   const extractStatus = (v: any) => String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
@@ -231,9 +201,11 @@ export default function SaaS_ERPDashboard() {
   };
 
   useEffect(() => {
-    setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
-    fetchDashboardData();
-  }, [activeTab]);
+    if (isAuthenticated) {
+      setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
+      fetchDashboardData();
+    }
+  }, [activeTab, isAuthenticated]);
 
   const getDrillDownData = (statusLabel: string) => {
     const statusMap: Record<string, string[]> = {
@@ -252,7 +224,9 @@ export default function SaaS_ERPDashboard() {
     else { alert("Vehicle status updated successfully!"); setQsTruckId(""); setQsRemarks(""); fetchDashboardData(); }
   };
 
-  if (isCheckingRoute) return <div className="min-h-screen bg-[#050507]" />;
+  // Render a blank screen while verifying authentication to prevent flashing the dashboard
+  if (isCheckingRoute || isAuthLoading) return <div className="min-h-screen bg-[#050507]" />;
+
   if (isDriverRoute) {
     return (
       <div className="min-h-screen bg-[#050507] py-6 px-4" style={{ colorScheme: 'dark' }}>
@@ -265,91 +239,11 @@ export default function SaaS_ERPDashboard() {
     );
   }
 
-  if (isAuthLoading) return null;
+  // Double check: if they somehow bypassed the redirect, don't render the secure UI
+  if (!isAuthenticated) return null;
 
-  // Modern Elegant Login Screen Overlay
-  if (showLoginScreen && !isAuthenticated) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-slate-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black p-4 z-50 fixed inset-0">
-        <div className="w-full max-w-md relative animate-in fade-in zoom-in duration-500">
-          
-          <div className="absolute -inset-1 bg-gradient-to-r from-[#FF5A00] to-orange-400 rounded-[24px] blur opacity-20"></div>
-          
-          <div className="relative bg-slate-900 border border-slate-800 rounded-[24px] shadow-2xl p-8 overflow-hidden">
-            
-            <div className="flex flex-col items-center mb-8 relative z-10">
-              <div className="w-14 h-14 rounded-xl overflow-hidden shadow-lg bg-white mb-4 flex items-center justify-center">
-                <KssLogo className="w-10 h-10" />
-              </div>
-              <h1 className="text-2xl font-black text-white tracking-tight">KSS Roadways</h1>
-              <p className="text-[10px] font-bold text-[#FF5A00] uppercase tracking-[0.2em] mt-1">Enterprise Portal</p>
-            </div>
-
-            {loginError && (
-              <div className="mb-6 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-center animate-in slide-in-from-top-2">
-                <p className="text-xs font-bold text-rose-400">{loginError}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-5 relative z-10">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Admin User ID</label>
-                <input 
-                  type="text" 
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  placeholder="e.g. admin" 
-                  className="flex h-12 w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 text-sm text-slate-100 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] focus-visible:border-transparent placeholder:text-slate-600"
-                  required 
-                  autoComplete="off"
-                  autoCapitalize="none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Password</label>
-                <input 
-                  type="password" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••" 
-                  className="flex h-12 w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 text-sm text-slate-100 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A00] focus-visible:border-transparent placeholder:text-slate-600"
-                  required 
-                />
-              </div>
-
-              <div className="pt-4 space-y-3">
-                <button 
-                  type="submit" 
-                  disabled={isLoggingIn}
-                  className="w-full h-12 bg-[#FF5A00] hover:bg-[#e04f00] text-white rounded-xl text-sm font-bold tracking-wide shadow-[0_0_20px_rgba(255,90,0,0.3)] hover:shadow-[0_0_25px_rgba(255,90,0,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isLoggingIn ? "Authenticating..." : "Secure Login"}
-                </button>
-                
-                <button 
-                  type="button" 
-                  onClick={() => setShowLoginScreen(false)} 
-                  className="w-full py-3 text-slate-400 hover:text-white font-semibold text-xs transition-colors"
-                >
-                  &larr; Back to Public Dashboard
-                </button>
-              </div>
-            </form>
-
-            <div className="mt-8 text-center border-t border-slate-800 pt-6">
-              <p className="text-[10px] text-slate-500 font-semibold flex items-center justify-center gap-1.5">
-                <span>🔒</span> Encrypted 256-bit Connection
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "Setup"];
-  const navItems = userRole === "ADMIN" ? allNavItems : ["Dashboard", "Financials", "P&L Statement"];
+  // All tabs available to authorized users
+  const navItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "Setup"];
 
   return (
     <div className="min-h-screen bg-[#050507] text-white font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
@@ -369,11 +263,7 @@ export default function SaaS_ERPDashboard() {
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <span className="text-xs sm:text-sm font-bold text-slate-500 hidden md:block">Fleet: <span className="text-white">{liveVehicles.length}</span></span>
             <div className="h-5 w-px bg-[#222634] hidden md:block"></div>
-            {isAuthenticated ? (
-              <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center gap-2 text-xs sm:text-sm font-black text-slate-300 hover:text-rose-400 hover:bg-rose-950/50 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all border border-[#222634] hover:border-rose-900 shadow-sm"><span>Sign out</span></button>
-            ) : (
-              <button onClick={() => setShowLoginScreen(true)} className="flex items-center gap-2 text-xs sm:text-sm font-black text-white hover:bg-[#e04f00] bg-[#FF5A00] px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all shadow-sm active:scale-95"><span>Admin Login</span></button>
-            )}
+            <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center gap-2 text-xs sm:text-sm font-black text-slate-300 hover:text-rose-400 hover:bg-rose-950/50 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all border border-[#222634] hover:border-rose-900 shadow-sm"><span>Sign out</span></button>
           </div>
         </div>
       </header>
@@ -509,7 +399,7 @@ export default function SaaS_ERPDashboard() {
             </div>
           )}
 
-          {activeTab === "Operations" && userRole === "ADMIN" && (
+          {activeTab === "Operations" && (
             <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6 min-h-[60vh] mt-6">
               <div className="flex flex-wrap gap-2 border-b border-[#222634] pb-4 mb-6">
                 {opTabs.map((sub) => (
@@ -552,11 +442,11 @@ export default function SaaS_ERPDashboard() {
             </div>
           )}
           
-          {activeTab === "Fuel & Adv" && userRole === "ADMIN" && <div className="p-4 sm:p-6 mt-6"><FuelAdvanceModule/></div>}
-          {activeTab === "Workshop & Tyres" && userRole === "ADMIN" && <div className="p-6 mt-6"><WorkshopModule/></div>}
+          {activeTab === "Fuel & Adv" && <div className="p-4 sm:p-6 mt-6"><FuelAdvanceModule/></div>}
+          {activeTab === "Workshop & Tyres" && <div className="p-6 mt-6"><WorkshopModule/></div>}
           {activeTab === "Financials" && <div className="p-6 mt-6"><FinancialsModule/></div>}
           {activeTab === "P&L Statement" && <div className="p-6 mt-6"><ProfitLossModule/></div>}
-          {activeTab === "Setup" && userRole === "ADMIN" && <div className="p-6 mt-6"><SetupModule/></div>}
+          {activeTab === "Setup" && <div className="p-6 mt-6"><SetupModule/></div>}
         </div>
       </main>
     </div>
