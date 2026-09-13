@@ -89,7 +89,6 @@ export default function Dashboard() {
     if (!supabase) return;
 
     const checkAuth = async () => {
-      // Use getUser() instead of getSession() to force a true server validation
       const { data: { user }, error } = await supabase.auth.getUser();
 
       if (user && !error) {
@@ -110,7 +109,6 @@ export default function Dashboard() {
         }
         setIsAuthLoading(false);
       } else {
-        // Only redirect if it's explicitly not a driver route
         setIsAuthenticated(false);
         setUserRole("VIEWER");
         if (!isDriverRoute) {
@@ -125,11 +123,12 @@ export default function Dashboard() {
       setIsAuthLoading(false);
     }
 
+    // THE FIX: We removed the aggressive bounce from the listener.
+    // It will now ONLY kick you out if the event is specifically 'SIGNED_OUT'.
     const { data: authListener } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (session) {
         setIsAuthenticated(true);
-        if (event === 'SIGNED_IN') window.location.reload();
-      } else if (!isDriverRoute) {
+      } else if (event === 'SIGNED_OUT' && !isDriverRoute) {
         router.replace("/auth/login");
       }
     });
