@@ -217,7 +217,7 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
-  // Clean, proper dynamic import for the biometric plugin
+  // Clean, proper dynamic import for the biometric plugin (TypeScript strict mode fixed)
   const handleManualFingerprint = async () => {
     if (!driverCode) {
       return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
@@ -226,18 +226,19 @@ export function DriverPortal() {
     try {
       const { NativeBiometric } = await import("capacitor-native-biometric");
 
-      const result = await NativeBiometric.verifyIdentity({
+      // Await the scanner. If it fails, it throws an error and jumps to catch.
+      await NativeBiometric.verifyIdentity({
         reason: "Log in to KSS Roadways Driver Portal",
         title: "Driver Authentication",
         subtitle: "Touch fingerprint sensor",
         description: "Verify identity to access your portal",
       });
 
-      if (result) {
-        localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
-        setSavedDriverCode(driverCode.toUpperCase().trim());
-        setIsDriverLocked(true);
-      }
+      // If we reach this line, the fingerprint was verified successfully!
+      localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
+      setSavedDriverCode(driverCode.toUpperCase().trim());
+      setIsDriverLocked(true);
+      
     } catch (error) {
       console.error("Biometric error:", error);
       setAlertConfig({ 
