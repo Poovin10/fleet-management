@@ -16,7 +16,14 @@ const KssLogo = ({ className }: { className?: string }) => (
 
 export function LoginForm() {
   const router = useRouter();
-  const supabase = createClient();
+  
+  // Safely initialize client inside a try/catch or runtime check to prevent build crashes
+  let supabase: any;
+  try {
+    supabase = createClient();
+  } catch (err) {
+    console.warn("Supabase client failed to initialize during pre-render", err);
+  }
   
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +32,11 @@ export function LoginForm() {
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setErrorMsg("Configuration error. Please check environment variables.");
+      return;
+    }
+    
     setIsLoading(true);
     setErrorMsg("");
 
