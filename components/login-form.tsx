@@ -41,19 +41,27 @@ export function LoginForm() {
     setIsLoading(true);
     setErrorMsg("");
 
-    const formattedEmail = `${userId.trim().toLowerCase()}@kssroadways.com`;
+    try {
+      // Query your custom app_users table directly
+      const { data, error } = await supabase
+        .from("app_users")
+        .select("*")
+        .eq("username", userId.trim().toLowerCase())
+        .eq("password", password)
+        .single();
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: formattedEmail,
-      password,
-    });
+      if (error || !data) {
+        setErrorMsg("Invalid User ID or Password.");
+        setIsLoading(false);
+        return;
+      }
 
-    if (error) {
-      setErrorMsg("Invalid User ID or Password.");
-      setIsLoading(false);
-    } else {
+      // If login is successful, store session locally if needed and redirect
       router.push("/");
-      router.refresh(); 
+      router.refresh();
+    } catch (err) {
+      setErrorMsg("An error occurred during login.");
+      setIsLoading(false);
     }
   };
 
@@ -84,7 +92,7 @@ export function LoginForm() {
               type="text" 
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
-              placeholder="e.g. admin" 
+              placeholder="e.g. superadmin" 
               className={inputStyle}
               required 
               autoComplete="off"
