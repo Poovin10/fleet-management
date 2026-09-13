@@ -35,7 +35,16 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
 };
 
 export function DriverPortal() {
-  const supabase = createClient();
+  const [supabase, setSupabase] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      setSupabase(createClient());
+    } catch (err) {
+      console.warn("Supabase client failed to initialize during pre-render", err);
+    }
+  }, []);
+
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [activeTrips, setActiveTrips] = useState<any[]>([]);
@@ -88,6 +97,7 @@ export function DriverPortal() {
   };
 
   const fetchPortalData = async () => {
+    if (!supabase) return;
     const [vRes, dRes, tRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true),
       supabase.from('drivers').select('*').eq('is_active', true),
@@ -100,6 +110,7 @@ export function DriverPortal() {
   };
 
   const fetchDriverCurrentMonthReports = async (drvCode: string, drvId: number) => {
+    if (!supabase) return;
     const now = new Date();
     const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
@@ -115,6 +126,7 @@ export function DriverPortal() {
   };
 
   useEffect(() => {
+    if (!supabase) return;
     fetchPortalData();
     const storedDriver = localStorage.getItem("kss_device_driver");
     const enrolledBioDriver = localStorage.getItem("kss_biometric_enrolled_driver");
@@ -126,7 +138,7 @@ export function DriverPortal() {
       setDriverCode(storedDriver);
       setIsDriverLocked(true);
     }
-  }, []);
+  }, [supabase]);
 
   const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
   const selectedTruckObj = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
@@ -143,7 +155,7 @@ export function DriverPortal() {
   }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab, activeDriverObj]);
 
   useEffect(() => {
-    if (selectedTruckId) {
+    if (selectedTruckId && supabase) {
       const fetchLastOdo = async () => {
         const [tripData, fuelData, pendingData] = await Promise.all([
           supabase.from("trips").select("end_km, start_km").eq("vehicle_id", selectedTruckId).order("trip_id", { ascending: false }).limit(1),
@@ -162,7 +174,7 @@ export function DriverPortal() {
     } else {
       setLastOdometer("");
     }
-  }, [selectedTruckId, activeTrips, pendingRequests]);
+  }, [selectedTruckId, activeTrips, pendingRequests, supabase]);
 
   useEffect(() => {
     const isStartPending = pendingRequests.some(r => r.entry_type === "START_TRIP" && r.status === "PENDING" && String(r.vehicle_id) === String(selectedTruckId));
@@ -260,6 +272,7 @@ export function DriverPortal() {
 
   const handleLockDriver = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
     if (!driverCode) return setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Please select your profile.", type: "error" });
     const selectedDrv = drivers.find(d => d.driver_code === driverCode);
     if (!selectedDrv) return;
@@ -293,6 +306,7 @@ export function DriverPortal() {
 
   const handleDriverSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
     if (!selectedTruckId) return setAlertConfig({ isOpen: true, title: "Truck Required", message: "Select active Truck.", type: "error" });
 
     setIsSubmitting(true);
@@ -423,6 +437,7 @@ export function DriverPortal() {
   };
 
   const handleCancelRequest = async (id: number) => {
+    if (!supabase) return;
     if (!confirm("Delete this request?")) return;
     await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
     if (activeDriverObj) fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
@@ -459,7 +474,6 @@ export function DriverPortal() {
               </select>
             </div>
             
-            {/* MODERN, ANIMATED TRANSPARENT FINGERPRINT UI */}
             {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
               <div className="flex flex-col items-center justify-center py-2 animate-in fade-in zoom-in duration-300">
                 <button 
@@ -467,11 +481,8 @@ export function DriverPortal() {
                   onClick={handleManualFingerprint}
                   className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95"
                 >
-                  {/* Soft pulsing ring */}
                   <div className="absolute inset-0 rounded-full bg-[#FF5A00]/30 animate-ping opacity-75" style={{ animationDuration: '2.5s' }}></div>
-                  {/* Inner hover effect */}
                   <div className="absolute inset-1.5 rounded-full bg-[#FF5A00]/10 group-hover:bg-[#FF5A00]/20 border border-[#FF5A00]/20 transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)]"></div>
-                  {/* Sleek SVG Icon */}
                   <FingerprintIcon className="w-8 h-8 text-[#FF5A00] relative z-10 drop-shadow-sm group-hover:scale-105 transition-transform" />
                 </button>
                 <span className="text-[10px] font-bold text-[#FF5A00] uppercase tracking-widest mt-3 opacity-90">Tap to Scan</span>
@@ -479,7 +490,6 @@ export function DriverPortal() {
             )}
 
             <div className="grid gap-1.5 relative mt-2">
-              {/* Subtle OR divider line if fingerprint is active */}
               {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
                   <div className="absolute -top-5 left-0 right-0 flex items-center justify-center">
                     <div className="h-px bg-border w-full absolute"></div>
