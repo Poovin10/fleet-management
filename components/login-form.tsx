@@ -42,13 +42,20 @@ export function LoginForm() {
     setErrorMsg("");
 
     try {
-      // Query your custom app_users table directly
-      const { data, error } = await supabase
+      // Add a 6-second timeout promise to prevent indefinite hanging
+      const loginPromise = supabase
         .from("app_users")
         .select("*")
         .eq("username", userId.trim().toLowerCase())
         .eq("password", password)
         .single();
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Connection timed out. Check network.")), 6000)
+      );
+
+      const response: any = await Promise.race([loginPromise, timeoutPromise]);
+      const { data, error } = response;
 
       if (error || !data) {
         setErrorMsg("Invalid User ID or Password.");
@@ -56,11 +63,11 @@ export function LoginForm() {
         return;
       }
 
-      // If login is successful, store session locally if needed and redirect
+      // Successful login!
       router.push("/");
       router.refresh();
-    } catch (err) {
-      setErrorMsg("An error occurred during login.");
+    } catch (err: any) {
+      setErrorMsg(err.message || "An error occurred during login.");
       setIsLoading(false);
     }
   };
