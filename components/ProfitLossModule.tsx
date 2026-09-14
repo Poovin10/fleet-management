@@ -33,19 +33,18 @@ export function ProfitLossModule() {
     const lastDay = `${year}-${month}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
 
     try {
-      // Look how clean this is! One single call to the cloud.
       const { data, error } = await supabase.rpc('get_monthly_pl_summary', {
-        start_date: firstDay,
-        end_date: lastDay
+        p_start_date: firstDay,
+        p_end_date: lastDay
       });
 
       if (error) {
         console.error("RPC Error:", error);
+        alert(`Database Error: ${error.message}`); // Added alert to catch issues immediately
         setIsLoading(false);
         return;
       }
 
-      // The cloud hands us perfectly pre-calculated numbers
       setTotalFreight(Number(data.total_freight) || 0);
       setTotalBata(Number(data.total_bata) || 0);
       setTotalHaltBata(Number(data.total_halt_bata) || 0);
@@ -71,11 +70,11 @@ export function ProfitLossModule() {
 
   // Data for Recharts Visualization
   const chartData = [
-    { name: "Gross Rev", amount: totalFreight, color: "#10b981" }, // Emerald
-    { name: "Diesel", amount: totalDiesel, color: "#f43f5e" }, // Rose
+    { name: "Gross Rev", amount: totalFreight, color: "#10b981" },
+    { name: "Diesel", amount: totalDiesel, color: "#f43f5e" },
     { name: "Bata", amount: totalBata + totalHaltBata, color: "#f43f5e" },
     { name: "Repairs", amount: totalEnrouteRepairs + totalWorkshopBills, color: "#f43f5e" },
-    { name: "Net Profit", amount: netProfit, color: netProfit >= 0 ? "#FF5A00" : "#ef4444" } // Orange or Red
+    { name: "Net Profit", amount: netProfit, color: netProfit >= 0 ? "#FF5A00" : "#ef4444" }
   ];
 
   // CSV Export with Injection Protection
