@@ -27,6 +27,7 @@ export function LoginForm() {
 
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
+  const [showPlainPassword, setShowPlainPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("Secure Login");
@@ -40,7 +41,6 @@ export function LoginForm() {
       console.warn("Supabase client failed to initialize", err);
     }
 
-    // Safety Shield: Only check hardware if running as an actual Android App
     if (Capacitor.isNativePlatform()) {
       setIsNative(true);
       checkBiometrics();
@@ -52,13 +52,8 @@ export function LoginForm() {
       const result = await NativeBiometric.isAvailable();
       if (result.isAvailable) {
         setIsBiometricAvailable(true);
-        // Check if admin credentials exist in the Android Keystore
-        try {
-          await NativeBiometric.getCredentials({ server: SERVER_KEY });
-          setHasStoredCredentials(true);
-        } catch (e) {
-          setHasStoredCredentials(false);
-        }
+        const hasSaved = localStorage.getItem("kss_bio_saved") === "true";
+        setHasStoredCredentials(hasSaved);
       }
     } catch (err) {
       console.warn("Biometrics not supported on this device.");
@@ -90,19 +85,24 @@ export function LoginForm() {
         return;
       }
 
-      // Secure the credentials in the Android Keystore for future fingerprint logins
       if (saveToKeystore && isBiometricAvailable) {
         setStatusMsg("Securing biometric profile...");
-        await NativeBiometric.setCredentials({
-          username: email,
-          password: pass,
-          server: SERVER_KEY,
-        });
+        try {
+          await NativeBiometric.setCredentials({
+            username: email,
+            password: pass,
+            server: SERVER_KEY,
+          });
+          localStorage.setItem("kss_bio_saved", "true");
+          setHasStoredCredentials(true);
+        } catch (bioError) {
+          console.warn("Could not save to Android Keystore", bioError);
+        }
       }
 
       setStatusMsg("Success! Redirecting...");
       window.location.href = "/";
-      
+
     } catch (err: any) {
       console.error("Login catch error:", err);
       setErrorMsg(err.message || "An error occurred during login.");
@@ -119,22 +119,35 @@ export function LoginForm() {
       ? userId.trim() 
       : `${userId.trim().toLowerCase()}@kss.com`;
 
-    // Only attempt to save to Keystore if running natively
     await executeSupabaseLogin(formattedEmail, password, isNative);
   };
 
   const handleFingerprintLogin = async () => {
     setErrorMsg("");
+    setIsLoading(true);
+    setStatusMsg("Waiting for scan...");
+
     try {
+      await NativeBiometric.verifyIdentity({
+        reason: "Scan fingerprint to unlock KSS Roadways",
+        title: "Enterprise Authentication",
+        subtitle: "Verify your identity to proceed",
+      });
+
       const credentials = await NativeBiometric.getCredentials({
         server: SERVER_KEY,
       });
 
       if (credentials) {
+        setStatusMsg("Fingerprint accepted!");
         await executeSupabaseLogin(credentials.username, credentials.password, false);
       }
-    } catch (error) {
-      setErrorMsg("Fingerprint not recognized or canceled.");
+    } catch (error: any) {
+      setIsLoading(false);
+      setStatusMsg("Tap to Unlock");
+      if (error.code !== "user_canceled") {
+        setErrorMsg(`Scanner: ${error.message || "Not recognized."}`);
+      }
     }
   };
 
@@ -159,24 +172,42 @@ export function LoginForm() {
         )}
 
         {isNative && isBiometricAvailable && hasStoredCredentials ? (
-          <div className="space-y-4 relative z-10">
+          <div className="flex flex-col items-center justify-center space-y-6 relative z-10 py-4">
             <button 
               onClick={handleFingerprintLogin}
               disabled={isLoading}
-              className="w-full h-20 bg-[#161922] border border-[#2B3142] hover:border-[#FF5A00] text-[#FF5A00] rounded-xl flex flex-col items-center justify-center gap-1 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+              className="relative w-28 h-28 bg-transparent border border-[#FF5A00]/30 hover:border-[#FF5A00] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)] hover:shadow-[0_0_30px_rgba(255,90,0,0.3)] group active:scale-95 disabled:opacity-50"
             >
-              <span className="text-3xl">👆</span>
-              <span className="text-xs font-black uppercase tracking-wider">{isLoading ? statusMsg : "Tap to Unlock"}</span>
+              <div className="absolute inset-0 rounded-full border border-[#FF5A00] animate-ping opacity-20"></div>
+
+              <svg 
+                className={`w-12 h-12 text-[#FF5A00] ${isLoading ? 'animate-pulse' : 'group-hover:scale-110 transition-transform duration-300'}`} 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor" 
+                strokeWidth="1.2"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+              </svg>
             </button>
-            <button 
-              onClick={() => setHasStoredCredentials(false)}
-              className="w-full text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider py-2 hover:text-white transition-colors"
-            >
-              Use Password Instead
-            </button>
+
+            <div className="text-center space-y-1">
+              <p className="text-xs font-black text-[#FF5A00] uppercase tracking-widest">
+                {isLoading ? statusMsg : "Tap to Unlock"}
+              </p>
+              <button 
+                onClick={() => {
+                  setHasStoredCredentials(false);
+                  localStorage.removeItem("kss_bio_saved");
+                }}
+                className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-4 hover:text-white transition-colors"
+              >
+                Use Password Instead
+              </button>
+            </div>
           </div>
         ) : (
-          <form onSubmit={handleManualLogin} className="space-y-5 relative z-10">
+          <form onSubmit={handleManualLogin} className="space-y-5 relative z-10" autoComplete="off">
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Admin User ID</label>
               <input 
@@ -188,19 +219,36 @@ export function LoginForm() {
                 required 
                 autoComplete="off"
                 autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+                data-lpignore="true"
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" 
-                className={inputStyle}
-                required 
-              />
+              <div className="relative">
+                <input 
+                  type={showPlainPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" 
+                  className={`${inputStyle} pr-16`}
+                  required 
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  data-lpignore="true"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPlainPassword(!showPlainPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded"
+                >
+                  {showPlainPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
 
             <button 

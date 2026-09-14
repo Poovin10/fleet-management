@@ -9,6 +9,7 @@ export function SetupModule() {
   const [sTab, setSTab] = useState("Trucks");
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentUsername, setCurrentUsername] = useState("");
+  const [currentUserRole, setCurrentUserRole] = useState("");
 
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: "", message: "", isDanger: false, confirmText: "Confirm", action: async () => {} });
   const triggerModal = (title: string, message: string, isDanger: boolean, confirmText: string, action: () => Promise<void>) => setModalConfig({ isOpen: true, title, message, isDanger, confirmText, action });
@@ -45,20 +46,20 @@ export function SetupModule() {
   const [truckNo, setTruckNo] = useState("");
   const [variant, setVariant] = useState("Bulker (16-Wheel)");
   const [capacity, setCapacity] = useState("35.0 MT");
-  
+
   const [driverName, setDriverName] = useState("");
   const [mobileNo, setMobileNo] = useState("");
   const [licenseNo, setLicenseNo] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [isActiveDriver, setIsActiveDriver] = useState(true);
-  
+
   const STANDARD_SOURCES = ["COCHIN", "POTTANERI", "METTUR", "UDUPPI", "COCHIN-ACC", "TUTICORIN"];
-  
+
   const [src, setSrc] = useState("COCHIN");
   const [customSrc, setCustomSrc] = useState("");
   const [dest, setDest] = useState("");
   const [customDest, setCustomDest] = useState("");
-  
+
   const [cType, setCType] = useState("BULK");
   const [cap, setCap] = useState("35"); 
   const [bataCap, setBataCap] = useState("35"); 
@@ -67,8 +68,14 @@ export function SetupModule() {
   const [bataAmt, setBataAmt] = useState<number | "">("");
 
   const fetchData = async () => {
-    const loggedUser = sessionStorage.getItem("kss_username") || "superadmin";
-    setCurrentUsername(loggedUser);
+    // 1. Authenticate and get role securely
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      const sessionUsername = user.email.split('@')[0];
+      setCurrentUsername(sessionUsername);
+      const { data: roleData } = await supabase.from('app_users').select('role').eq('username', sessionUsername).single();
+      if (roleData) setCurrentUserRole(roleData.role);
+    }
 
     const [v, d, s, b, u] = await Promise.all([
       supabase.from('vehicles').select('*').order('vehicle_number'),
@@ -77,7 +84,7 @@ export function SetupModule() {
       supabase.from('driver_bata_master').select('*').order('destination_name'),
       supabase.from('app_users').select('*').order('username')
     ]);
-    
+
     if (v.data) setTrucksList(v.data);
     if (d.data) setDriversList(d.data);
     if (s.data) setSlabsList(s.data);
@@ -113,7 +120,6 @@ export function SetupModule() {
   };
 
   const handleEditSlab = (s: any) => {
-    // FIX: Exact DB Match
     setEditSlabId(s.destination_id);
     if (originOptions.includes(s.origin)) { setSrc(s.origin); setCustomSrc(""); } else { setSrc("CUSTOM"); setCustomSrc(s.origin); }
     if (destOptions.includes(s.destination_name)) { setDest(s.destination_name); setCustomDest(""); } else { setDest("CUSTOM"); setCustomDest(s.destination_name); }
@@ -125,7 +131,6 @@ export function SetupModule() {
   };
 
   const handleEditBata = (b: any) => {
-    // FIX: Exact DB Match
     setEditBataId(b.bata_rule_id);
     if (originOptions.includes(b.origin)) { setSrc(b.origin); setCustomSrc(""); } else { setSrc("CUSTOM"); setCustomSrc(b.origin); }
     if (destOptions.includes(b.destination_name)) { setDest(b.destination_name); setCustomDest(""); } else { setDest("CUSTOM"); setCustomDest(b.destination_name); }
@@ -173,24 +178,44 @@ export function SetupModule() {
     });
   };
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  // UPDATED SECURE USER CREATION HANDLER
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername.trim() || !newPassword.trim()) return;
 
+    // Safety bypass: If you are 'superadmin', let it through regardless of db role.
+    if (currentUsername !== "superadmin" && currentUserRole !== "SUPERADMIN") {
+      return alert("Unauthorized: Only Superadmins can perform this action.");
+    }
+
     triggerModal("Create User", `Create new ${newRole} account for ${newUsername.trim().toLowerCase()}?`, false, "Create User", async () => {
       setIsProcessing(true);
-      const { error } = await supabase.from('app_users').insert([{
-        username: newUsername.trim().toLowerCase(),
-        password: newPassword.trim(),
-        role: newRole
-      }]);
+      
+      try {
+        const res = await fetch("/api/create-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: newUsername,
+            password: newPassword,
+            role: newRole
+          })
+        });
 
-      if (error) alert("Error creating user: " + error.message);
-      else {
-        setNewUsername("");
-        setNewPassword("");
-        fetchData();
+        const data = await res.json();
+        
+        if (!res.ok) {
+          alert("Failed to create user: " + data.error);
+        } else {
+          setNewUsername("");
+          setNewPassword("");
+          setNewRole("VIEWER");
+          fetchData();
+        }
+      } catch (err) {
+        alert("Network error occurred while creating user.");
       }
+
       setIsProcessing(false);
       closeModal();
     });
@@ -198,6 +223,11 @@ export function SetupModule() {
 
   const handleDeleteUser = (username: string) => {
     if (username === "superadmin") return alert("Cannot delete the primary Super Admin account.");
+    
+    if (currentUsername !== "superadmin" && currentUserRole !== "SUPERADMIN") {
+      return alert("Unauthorized: Only Superadmins can revoke access.");
+    }
+
     triggerModal("Delete User", `Are you sure you want to revoke access for ${username}?`, true, "Delete", async () => {
       setIsProcessing(true);
       await supabase.from('app_users').delete().eq('username', username);
@@ -245,7 +275,7 @@ export function SetupModule() {
     triggerModal(isUpdate ? "Update Truck" : "Add Truck", isUpdate ? `Update details for ${truckNo.toUpperCase()}?` : `Register ${truckNo.toUpperCase()} to the fleet?`, false, "Save Truck", async () => {
       setIsProcessing(true);
       const payload = { vehicle_number: truckNo.toUpperCase().trim(), truck_type: variant, carrying_capacity_tons: parseFloat(capacity), is_active: true };
-      
+
       if (isUpdate) {
         await supabase.from('vehicles').update(payload).eq('vehicle_id', editTruckId);
       } else {
@@ -292,7 +322,7 @@ export function SetupModule() {
           const { error } = await supabase.from('drivers').insert([{ ...payload, driver_code: autoGenCode, pin: "1234" }]);
           if (error) alert("Error adding driver: " + error.message);
         }
-        
+
         clearDriverForm(); fetchData(); setIsProcessing(false); closeModal();
       });
     } catch (err: any) {
@@ -307,7 +337,7 @@ export function SetupModule() {
     const finalDest = dest === "CUSTOM" ? customDest : dest;
     if (!finalDest.trim() || !fRate || !avgKms) return;
     const isUpdate = editSlabId !== null;
-    
+
     triggerModal(isUpdate ? "Update Freight Slab" : "Add Freight Slab", isUpdate ? `Update rate for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?` : `Lock in ₹${fRate}/MT for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Slab", async () => {
       setIsProcessing(true);
       const payload = { 
@@ -322,7 +352,6 @@ export function SetupModule() {
 
       let error;
       if (isUpdate) {
-        // EXACT DB MATCH: destination_id
         const res = await supabase.from('destinations_freight_master').update(payload).eq('destination_id', editSlabId);
         error = res.error;
       } else {
@@ -342,7 +371,7 @@ export function SetupModule() {
     const finalDest = dest === "CUSTOM" ? customDest : dest;
     if (!finalDest.trim() || !bataAmt) return;
     const isUpdate = editBataId !== null;
-    
+
     triggerModal(isUpdate ? "Update Bata Master" : "Add Bata Master", isUpdate ? `Update Bata for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?` : `Set ₹${bataAmt} default Bata for ${finalSrc.toUpperCase()} to ${finalDest.toUpperCase()}?`, false, "Save Bata", async () => {
       setIsProcessing(true);
       const payload = { 
@@ -355,7 +384,6 @@ export function SetupModule() {
 
       let error;
       if (isUpdate) {
-        // EXACT DB MATCH: bata_rule_id
         const res = await supabase.from('driver_bata_master').update(payload).eq('bata_rule_id', editBataId);
         error = res.error;
       } else {
@@ -392,7 +420,7 @@ export function SetupModule() {
       </div>
 
       <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl max-w-5xl mx-auto">
-        
+
         {/* TRUCKS */}
         {sTab === "Trucks" && (
           <>
@@ -402,18 +430,18 @@ export function SetupModule() {
               </h3>
               {editTruckId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg uppercase tracking-widest animate-pulse">Editing Mode</span>}
             </div>
-            
+
             <form onSubmit={handleSaveTruck} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Truck No *</label><input type="text" value={truckNo} onChange={e=>setTruckNo(e.target.value)} placeholder="E.G. TN 56 F 0452" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold uppercase bg-[#0F1117] text-white focus:border-[#FF5A00]" required /></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Variant</label><select value={variant} onChange={e=>setVariant(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white"><option>Bulker (16-Wheel)</option><option>Bulker (14-Wheel)</option><option>Open Body (10-Wheel)</option><option>Trailer</option></select></div>
               <div className="md:col-span-1"><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Capacity</label><select value={capacity} onChange={e=>setCapacity(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#0F1117] text-white"><option>35.0 MT</option><option>30.0 MT</option><option>25.0 MT</option></select></div>
-              
+
               <div className="md:col-span-2 flex gap-2 w-full">
                 {editTruckId && <button type="button" onClick={clearTruckForm} className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl hover:bg-[#272B36] transition-colors border border-[#272B36]">Cancel</button>}
                 <button type="submit" disabled={isProcessing} className="flex-[2] py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">{editTruckId ? "Update Truck" : "Save Truck"}</button>
               </div>
             </form>
-            
+
             <div className="mt-8 border-t border-[#272B36] pt-6">
               <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Registered Fleet (Click to Edit)</h4>
               <div className="flex flex-wrap gap-2">
@@ -449,7 +477,7 @@ export function SetupModule() {
                 <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mobile Number</label><input type="tel" value={mobileNo} onChange={e=>setMobileNo(e.target.value)} placeholder="e.g. 9876543210" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#1A1F2C] text-white focus:border-[#FF5A00]" /></div>
                 <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">License Number</label><input type="text" value={licenseNo} onChange={e=>setLicenseNo(e.target.value)} placeholder="e.g. KL123456789" className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold uppercase bg-[#1A1F2C] text-white focus:border-[#FF5A00]" /></div>
                 <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">License Expiry Date</label><input type="date" value={expiryDate} onChange={e=>setExpiryDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-semibold bg-[#1A1F2C] text-white focus:border-[#FF5A00]" /></div>
-                
+
                 <div className="flex flex-col justify-end h-full pt-4">
                   <label className="flex items-center gap-3 cursor-pointer select-none bg-[#0F1117] p-3 rounded-xl border border-[#272B36] w-full">
                     <input type="checkbox" checked={isActiveDriver} onChange={(e) => setIsActiveDriver(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] bg-[#1A1F2C] border-[#272B36]" />
@@ -463,7 +491,7 @@ export function SetupModule() {
                 <button type="submit" disabled={isProcessing} className="flex-[2] md:flex-none px-8 py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">{editDriverId ? "Update Driver" : "Save Driver"}</button>
               </div>
             </form>
-            
+
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
               <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Registered Drivers (Click to Edit)</h4>
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
@@ -508,7 +536,7 @@ export function SetupModule() {
                 </select>
                 {src === "CUSTOM" && <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />}
               </div>
-              
+
               <div className="md:col-span-2">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destination *</label>
                 <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white uppercase" required>
@@ -518,7 +546,7 @@ export function SetupModule() {
                 </select>
                 {dest === "CUSTOM" && <input type="text" value={customDest} onChange={e=>setCustomDest(e.target.value)} placeholder="New Destination" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />}
               </div>
-              
+
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label>
                 <select value={cType} onChange={e => { setCType(e.target.value); if (e.target.value === "BAG") { setCap("25/30"); } if (e.target.value === "BULK" && cap !== "35") setCap("25/30"); }} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
@@ -526,7 +554,7 @@ export function SetupModule() {
                   <option value="BAG">BAG</option>
                 </select>
               </div>
-              
+
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label>
                 <select value={cap} onChange={e=>setCap(e.target.value)} disabled={cType === "BAG"} className={`w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] ${cType === "BAG" ? "text-slate-500 cursor-not-allowed" : "text-white"}`}>
@@ -543,13 +571,13 @@ export function SetupModule() {
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Avg KMs</label>
                 <input type="number" value={avgKms} onChange={e=>setAvgKms(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-sky-400 bg-[#0F1117]" required />
               </div>
-              
+
               <div className="md:col-span-7 flex gap-3 mt-2">
                 {editSlabId && <button type="button" onClick={clearSlabForm} className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button>}
                 <button type="submit" disabled={isProcessing} className="flex-[4] py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">{editSlabId ? "Update Slab" : "Save Freight Rule"}</button>
               </div>
             </form>
-            
+
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
               <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Freight Slabs List (Click to Edit)</h4>
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
@@ -587,7 +615,7 @@ export function SetupModule() {
             </div>
 
             <form onSubmit={handleSaveBata} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
-              
+
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label>
                 <select value={src} onChange={e=>setSrc(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-bold bg-[#0F1117] text-white">
@@ -596,7 +624,7 @@ export function SetupModule() {
                 </select>
                 {src === "CUSTOM" && <input type="text" value={customSrc} onChange={e=>setCustomSrc(e.target.value)} placeholder="New Source" className="w-full text-sm p-3 mt-2 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required />}
               </div>
-              
+
               <div className="md:col-span-2">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destination *</label>
                 <select value={dest} onChange={e=>setDest(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none uppercase font-bold bg-[#0F1117] text-white" required>
@@ -614,7 +642,7 @@ export function SetupModule() {
                   <option value="BAG">BAG</option>
                 </select>
               </div>
-              
+
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cap (MT)</label>
                 <select value={bataCap} onChange={e=>setBataCap(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none bg-[#0F1117] text-white">
@@ -626,13 +654,13 @@ export function SetupModule() {
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bata(₹)</label>
                 <input type="number" value={bataAmt} onChange={e=>setBataAmt(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] outline-none font-black text-[#FF5A00] bg-[#0F1117]" required />
               </div>
-              
+
               <div className="md:col-span-6 flex gap-3 mt-2">
                 {editBataId && <button type="button" onClick={clearBataForm} className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button>}
                 <button type="submit" disabled={isProcessing} className="flex-[4] py-3 bg-[#FF5A00] text-white font-black rounded-xl hover:bg-[#e04f00] transition-colors shadow-lg shadow-[#FF5A00]/20 active:scale-95">{editBataId ? "Update Bata Rule" : "Save Bata Rule"}</button>
               </div>
             </form>
-            
+
             <div className="mt-8 border-t border-[#272B36] pt-6 w-full">
               <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Bata Master List (Click to Edit)</h4>
               <div className="overflow-x-auto border border-[#272B36] rounded-xl w-full max-h-80">
@@ -660,7 +688,7 @@ export function SetupModule() {
         {sTab === "🚚 Truck Compliance" && (
           <div>
             <h3 className="text-sm font-black text-white uppercase border-b border-[#272B36] pb-3 mb-6 tracking-wide">Truck Document & Permit Expiries</h3>
-            
+
             <div className="mb-6">
               <label className="block text-xs font-bold text-slate-300 uppercase mb-2">Select Truck to Manage Permits</label>
               <select 
@@ -776,7 +804,7 @@ export function SetupModule() {
         {/* 🔐 USER CONTROL (SUPERADMIN ONLY) */}
         {sTab === "🔐 User Control" && (
           <>
-            {currentUsername.toLowerCase() !== "superadmin" && currentUsername !== "" ? (
+            {currentUsername !== "superadmin" && currentUserRole !== "SUPERADMIN" ? (
               <div className="p-8 text-center bg-rose-950/40 border border-rose-900 rounded-2xl">
                 <p className="text-xl font-black text-rose-400">Access Denied</p>
                 <p className="text-sm text-rose-300 mt-1">This module is strictly restricted to the Super Admin account (<span className="font-mono font-bold text-white">superadmin</span>).</p>
