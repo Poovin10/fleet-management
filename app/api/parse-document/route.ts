@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         break;
     }
 
-    // We use 'gemini-1.5-flash' as it is the official, supported model for Structured Outputs.
+    // Connect to the active Gemini 2.5 Flash endpoint
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
