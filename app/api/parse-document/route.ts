@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
     switch (documentType) {
       case "TRIP_INVOICE":
-        prompt = "Extract the transport details from this invoice or bilty.";
+        prompt = "Extract the transport details from this invoice or bilty. If a field is unreadable, omit it.";
         schema = {
           type: SchemaType.OBJECT,
           properties: {
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
         break;
       
       case "FUEL_SLIP":
-        prompt = "Extract the diesel fuel receipt details.";
+        prompt = "Extract the diesel fuel receipt details. If a field is unreadable, omit it.";
         schema = {
           type: SchemaType.OBJECT,
           properties: {
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         break;
 
       case "POD_CLOSURE":
-        prompt = "Extract the weighment slip and POD details.";
+        prompt = "Extract the weighment slip and POD details. If a field is unreadable, omit it.";
         schema = {
           type: SchemaType.OBJECT,
           properties: {
@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         break;
     }
 
-    // Call the Gemini 1.5 Flash Latest Model to avoid the 404 error
+    // We use 'gemini-1.5-flash' as it is the official, supported model for Structured Outputs.
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash-latest",
+      model: "gemini-1.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
