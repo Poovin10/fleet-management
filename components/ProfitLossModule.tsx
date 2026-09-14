@@ -233,18 +233,20 @@ export function ProfitLossModule() {
             <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider mb-6">Financial Breakdown Visualized</h4>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 15, bottom: 25 }}>
                   <XAxis 
                     dataKey="name" 
-                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
+                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }} 
                     axisLine={false} 
                     tickLine={false} 
-                    dy={10}
+                    dy={12}
+                    interval={0}
                   />
                   <YAxis 
                     tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
                     axisLine={false} 
                     tickLine={false} 
+                    width={45}
                     tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
                   />
                   <Tooltip 
@@ -252,7 +254,7 @@ export function ProfitLossModule() {
                     contentStyle={{ backgroundColor: '#0F1117', border: '1px solid #272B36', borderRadius: '12px', fontWeight: 'bold', color: '#fff' }}
                     formatter={(value: any) => [`₹ ${formatAmt(Number(value))}`, 'Amount']}
                   />
-                  <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
+                  <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={45}>
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
