@@ -250,7 +250,7 @@ export function ProfitLossModule() {
                   <Tooltip 
                     cursor={{ fill: '#272B36', opacity: 0.4 }}
                     contentStyle={{ backgroundColor: '#0F1117', border: '1px solid #272B36', borderRadius: '12px', fontWeight: 'bold', color: '#fff' }}
-                    formatter={(value: number) => [`₹ ${formatAmt(value)}`, 'Amount']}
+                    formatter={(value: any) => [`₹ ${formatAmt(Number(value))}`, 'Amount']}
                   />
                   <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
                     {chartData.map((entry, index) => (
