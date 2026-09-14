@@ -254,7 +254,7 @@ export function ProfitLossModule() {
                     contentStyle={{ backgroundColor: '#0F1117', border: '1px solid #272B36', borderRadius: '12px', fontWeight: 'bold', color: '#fff' }}
                     formatter={(value: any) => [`₹ ${formatAmt(Number(value))}`, 'Amount']}
                   />
-                  <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={45}>
+                  <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={45} minPointSize={4}>
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
