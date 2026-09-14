@@ -161,13 +161,12 @@ export function TripForm({ onSuccess }: TripFormProps) {
     if (selectedTruckId) {
       const truck = vehicles.find((v) => String(v.vehicle_id) === String(selectedTruckId));
       if (truck && truck.carrying_capacity_tons) setLoadedMt(Number(truck.carrying_capacity_tons));
-      
+
       const fetchTruckHistory = async () => {
         const { data: lastTrip } = await supabase.from("trips").select("primary_driver_id").eq("vehicle_id", selectedTruckId).not("primary_driver_id", "is", null).order("trip_id", { ascending: false }).limit(1);
         if (lastTrip && lastTrip.length > 0 && lastTrip[0].primary_driver_id) setSelectedDriverId(String(lastTrip[0].primary_driver_id));
         else setSelectedDriverId("");
 
-        // Check if there is an unapproved START_TRIP in the queue
         const { data: pendingStart } = await supabase.from("driver_pending_entries")
            .select("odometer_km")
            .eq("vehicle_id", selectedTruckId)
@@ -224,6 +223,18 @@ export function TripForm({ onSuccess }: TripFormProps) {
       return setAlertConfig({ isOpen: true, title: "Invalid Input", message: "Please ensure all mandatory fields have valid positive values (> 0) before dispatching.", type: "error" });
     }
 
+    // 🚨 Smart Missing Input Validation Checks
+    const missingFields: string[] = [];
+    if (dieselL === "" || Number(dieselL) <= 0) missingFields.push("Truck Diesel Quantity (L)");
+    if (loadedMt === "" || Number(loadedMt) <= 0) missingFields.push("Tonnage Loaded (MT)");
+    if (driverBata === "" || Number(driverBata) <= 0) missingFields.push("Driver Bata (₹)");
+    if (advance === "" || Number(advance) <= 0) missingFields.push("Cash Advance (₹)");
+
+    if (missingFields.length > 0) {
+      const confirmProceed = window.confirm(`⚠️ Warning: You have not entered the following field(s):\n• ${missingFields.join('\n• ')}\n\nShould we continue dispatching this trip anyway?`);
+      if (!confirmProceed) return;
+    }
+
     setIsSubmitting(true);
     const finalDest = isManualRoute ? customDest.toUpperCase() : destinationLabel;
     const finalStartKm = Number(startKm) || 0;
@@ -254,7 +265,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
     if (fuelErrorMessage) setAlertConfig({ isOpen: true, title: "Trip Created (Fuel Error)", message: `Trip dispatched, BUT diesel log failed (${fuelErrorMessage}). Add it manually.`, type: "error" });
     else setAlertConfig({ isOpen: true, title: "Trip Dispatched!", message: `LR No. ${lrNo.toUpperCase()} registered and truck is In Transit.`, type: "success" });
-    
+
     setIsSubmitting(false); handleClear(); if (onSuccess) onSuccess();
   };
 
@@ -279,7 +290,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">1. Start Date *</label><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white font-bold" required /></div>
           <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">2. LR Number *</label><input type="text" value={lrNo} onChange={e => setLrNo(e.target.value)} placeholder="E.G. 40080069852" className="w-full text-sm p-3 rounded-xl border border-[#2B3142] uppercase outline-none focus:border-[#FF5A00] font-bold bg-[#1A1F2C] text-white" required /></div>
-          
+
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">3. Cargo Type *</label>
             <div className="flex bg-[#0F1117] p-1 rounded-xl border border-[#2B3142]">
