@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         break;
     }
 
-    // Call the Gemini 1.5 Flash Model
+    // Call the Gemini 1.5 Flash Latest Model to avoid the 404 error
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro",
+      model: "gemini-1.5-flash-latest",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
