@@ -223,12 +223,12 @@ export function TripForm({ onSuccess }: TripFormProps) {
       return setAlertConfig({ isOpen: true, title: "Invalid Input", message: "Please ensure all mandatory fields have valid positive values (> 0) before dispatching.", type: "error" });
     }
 
-    // 🚨 Smart Missing Input Validation Checks
+        // 🚨 Smart Missing Input Validation Checks
     const missingFields: string[] = [];
-    if (dieselL === "" || Number(dieselL) <= 0) missingFields.push("Truck Diesel Quantity (L)");
-    if (loadedMt === "" || Number(loadedMt) <= 0) missingFields.push("Tonnage Loaded (MT)");
-    if (driverBata === "" || Number(driverBata) <= 0) missingFields.push("Driver Bata (₹)");
-    if (advance === "" || Number(advance) <= 0) missingFields.push("Cash Advance (₹)");
+    if (String(dieselL) === "" || Number(dieselL) <= 0) missingFields.push("Truck Diesel Quantity (L)");
+    if (String(loadedMt) === "" || Number(loadedMt) <= 0) missingFields.push("Tonnage Loaded (MT)");
+    if (String(driverBata) === "" || Number(driverBata) <= 0) missingFields.push("Driver Bata (₹)");
+    if (String(advance) === "" || Number(advance) <= 0) missingFields.push("Cash Advance (₹)");
 
     if (missingFields.length > 0) {
       const confirmProceed = window.confirm(`⚠️ Warning: You have not entered the following field(s):\n• ${missingFields.join('\n• ')}\n\nShould we continue dispatching this trip anyway?`);
