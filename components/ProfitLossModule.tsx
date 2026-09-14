@@ -32,39 +32,32 @@ export function ProfitLossModule() {
     const lastDayObj = new Date(parseInt(year), parseInt(month), 0);
     const lastDay = `${year}-${month}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
 
-    const [tripsRes, fuelsRes, billsRes] = await Promise.all([
-      supabase.from('trips').select('freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance').gte('trip_start_date', firstDay).lte('trip_start_date', lastDay),
-      supabase.from('diesel_fuel_logs').select('total_fuel_cost').gte('fuel_date', firstDay).lte('fuel_date', lastDay),
-      supabase.from('workshop_spares_bills').select('bill_amount').gte('bill_date', firstDay).lte('bill_date', lastDay)
-    ]);
-
-    let freight = 0; let bata = 0; let halt = 0; let enroute = 0;
-    if (tripsRes.data) {
-      setTripCount(tripsRes.data.length);
-      tripsRes.data.forEach(t => {
-        freight += Number(t.freight_revenue) || 0;
-        bata += Number(t.driver_bata) || 0;
-        halt += Number(t.halt_bata) || 0;
-        enroute += Number(t.enroute_repairs_maintenance) || 0;
+    try {
+      // Look how clean this is! One single call to the cloud.
+      const { data, error } = await supabase.rpc('get_monthly_pl_summary', {
+        start_date: firstDay,
+        end_date: lastDay
       });
+
+      if (error) {
+        console.error("RPC Error:", error);
+        setIsLoading(false);
+        return;
+      }
+
+      // The cloud hands us perfectly pre-calculated numbers
+      setTotalFreight(Number(data.total_freight) || 0);
+      setTotalBata(Number(data.total_bata) || 0);
+      setTotalHaltBata(Number(data.total_halt_bata) || 0);
+      setTotalEnrouteRepairs(Number(data.total_enroute_repairs) || 0);
+      setTotalDiesel(Number(data.total_diesel) || 0);
+      setTotalWorkshopBills(Number(data.total_workshop_bills) || 0);
+      setTripCount(Number(data.trip_count) || 0);
+
+    } catch (err) {
+      console.error("Network error fetching P&L:", err);
     }
 
-    let diesel = 0;
-    if (fuelsRes.data) {
-      fuelsRes.data.forEach(f => { diesel += Number(f.total_fuel_cost) || 0; });
-    }
-
-    let workshop = 0;
-    if (billsRes.data) {
-      billsRes.data.forEach(b => { workshop += Number(b.bill_amount) || 0; });
-    }
-
-    setTotalFreight(freight);
-    setTotalDiesel(diesel);
-    setTotalBata(bata);
-    setTotalHaltBata(halt);
-    setTotalEnrouteRepairs(enroute);
-    setTotalWorkshopBills(workshop);
     setIsLoading(false);
   };
 
