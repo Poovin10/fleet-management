@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'; // 📸 Added Capacitor Camera
 
 // --- CUSTOM SEARCHABLE SELECT COMPONENT ---
 function SearchableSelect({ options, value, onChange, placeholder, disabled }: { options: {label: string, value: string}[], value: string, onChange: (val: string) => void, placeholder: string, disabled?: boolean }) {
@@ -54,6 +55,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const supabase = createClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isScanningAI, setIsScanningAI] = useState(false); // 🤖 AI Loading State
 
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
 
@@ -157,6 +159,66 @@ export function TripForm({ onSuccess }: TripFormProps) {
     return r.origin?.trim().toUpperCase() === finalSource.trim().toUpperCase() && r.cargo_type?.toUpperCase() === cargoType.toUpperCase() && isCapMatch;
   });
 
+  // 🤖 --- AI DOCUMENT SCANNER FUNCTION ---
+  const handleScanDocument = async () => {
+    try {
+      // 1. Open the smartphone camera or gallery
+      const image = await Camera.getPhoto({
+        quality: 50, // Compress to save bandwidth
+        allowEditing: true,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Prompt 
+      });
+
+      if (!image.base64String) return;
+      setIsScanningAI(true);
+      
+      // 2. Send image payload to our Next.js API Route
+      const response = await fetch('/api/parse-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: image.base64String,
+          documentType: "TRIP_INVOICE" 
+        })
+      });
+
+      const { data, error } = await response.json();
+      if (error) throw new Error(error);
+
+      // 3. Auto-fill the form fields
+      if (data.lrNo) setLrNo(String(data.lrNo).toUpperCase());
+      if (data.tonnage) setLoadedMt(Number(data.tonnage));
+      
+      // Smart Destination Matching
+      if (data.destination) {
+        const aiDest = String(data.destination).toUpperCase().trim();
+        // Check if the AI's destination matches any of our known valid routes
+        const matchedRoute = validRoutes.find(r => 
+          r.destination_name?.toUpperCase().includes(aiDest) || aiDest.includes(r.destination_name?.toUpperCase() || "")
+        );
+        
+        if (matchedRoute) {
+          setDestinationLabel(matchedRoute.destination_name);
+          setIsManualRoute(false);
+        } else {
+          // If the city isn't in the dropdown, auto-flip to manual mode
+          setDestinationLabel("MANUAL_SPOT_ROUTE");
+          setCustomDest(aiDest);
+          setIsManualRoute(true);
+        }
+      }
+      
+      setAlertConfig({ isOpen: true, title: "AI Scan Complete ✨", message: "Invoice details extracted and filled successfully.", type: "success" });
+
+    } catch (err: any) {
+      console.error(err);
+      setAlertConfig({ isOpen: true, title: "Scan Failed", message: err.message || "Failed to process image.", type: "error" });
+    } finally {
+      setIsScanningAI(false);
+    }
+  };
+
   useEffect(() => {
     if (selectedTruckId) {
       const truck = vehicles.find((v) => String(v.vehicle_id) === String(selectedTruckId));
@@ -223,7 +285,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
       return setAlertConfig({ isOpen: true, title: "Invalid Input", message: "Please ensure all mandatory fields have valid positive values (> 0) before dispatching.", type: "error" });
     }
 
-        // 🚨 Smart Missing Input Validation Checks
     const missingFields: string[] = [];
     if (String(dieselL) === "" || Number(dieselL) <= 0) missingFields.push("Truck Diesel Quantity (L)");
     if (String(loadedMt) === "" || Number(loadedMt) <= 0) missingFields.push("Tonnage Loaded (MT)");
@@ -281,9 +342,20 @@ export function TripForm({ onSuccess }: TripFormProps) {
     <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 sm:p-8 shadow-xl max-w-4xl mx-auto animate-in fade-in duration-300 relative">
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
-      <div className="border-b border-[#222634] pb-4 mb-6">
-        <h3 className="text-base font-black text-white uppercase tracking-tight">Initiate Trip Dispatch</h3>
-        <p className="text-xs text-slate-400 mt-1">Fill out the fields below in sequence to compute freight rules.</p>
+      {/* 🤖 UPDATED HEADER WITH AI SCAN BUTTON */}
+      <div className="border-b border-[#222634] pb-4 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h3 className="text-base font-black text-white uppercase tracking-tight">Initiate Trip Dispatch</h3>
+          <p className="text-xs text-slate-400 mt-1">Fill out manually or scan invoice to auto-fill.</p>
+        </div>
+        <button 
+          type="button" 
+          onClick={handleScanDocument}
+          disabled={isScanningAI}
+          className="bg-[#FF5A00]/10 hover:bg-[#FF5A00]/20 text-[#FF5A00] border border-[#FF5A00]/50 text-xs font-black py-2 px-4 rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+        >
+          {isScanningAI ? "🤖 PARSING AI..." : "📸 SCAN INVOICE"}
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
