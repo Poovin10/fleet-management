@@ -8,8 +8,8 @@ export async function POST(req: Request) {
   try {
     const { imageBase64, documentType } = await req.json();
 
-    // 1. Define the Expected JSON Schema based on Document Type
-    let schema;
+    // The ': any' bypasses TypeScript's overly strict checks for the SDK
+    let schema: any; 
     let prompt = "";
 
     switch (documentType) {
@@ -49,8 +49,7 @@ export async function POST(req: Request) {
         break;
     }
 
-    // 2. Call the Gemini 1.5 Flash Model
-    // We strictly enforce the JSON schema so it never breaks our frontend app
+    // Call the Gemini 1.5 Flash Model
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       generationConfig: {
@@ -69,7 +68,6 @@ export async function POST(req: Request) {
       }
     ]);
 
-    // 3. Return the clean, parsed data to the mobile app
     const parsedData = JSON.parse(result.response.text());
     return NextResponse.json({ data: parsedData });
 
