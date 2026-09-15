@@ -52,7 +52,7 @@ export function AiInsightsDashboard() {
   if (isLoading) return <div className="p-12 text-center text-slate-400 font-bold animate-pulse">Loading AI Operations Center...</div>;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 max-w-6xl mx-auto">
+    <div className="space-y-6 animate-in fade-in duration-300 max-w-6xl mx-auto px-2">
       <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
         <div>
           <div className="flex items-center gap-2">
@@ -82,16 +82,16 @@ export function AiInsightsDashboard() {
             <div className="border-b border-[#222634] pb-4 mb-4">
               <h3 className="text-xs font-black text-rose-400 uppercase tracking-wider">🚨 Fleet Anomalies ({latestAudit.anomalies?.length || 0})</h3>
             </div>
-            <div className="space-y-4 flex-1 overflow-y-auto max-h-[550px] pr-1">
+            <div className="space-y-4 flex-1">
               {latestAudit.anomalies?.map((item: any, idx: number) => (
-                <div key={idx} className="p-4 bg-[#161922] border border-[#272B36] rounded-xl space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-black text-white truncate max-w-[140px]">Truck: {item.truckNo || "General"}</span>
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30">{item.severity || 'MEDIUM'}</span>
+                <div key={idx} className="p-4 bg-[#161922] border border-[#272B36] rounded-xl space-y-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="text-xs font-black text-white whitespace-normal break-words">Truck: {item.truckNo || "General"}</span>
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 shrink-0">{item.severity || 'MEDIUM'}</span>
                   </div>
-                  <p className="text-xs text-slate-300 font-medium leading-relaxed break-words">{item.issueDescription}</p>
+                  <p className="text-xs text-slate-300 font-medium leading-relaxed whitespace-normal break-words">{item.issueDescription}</p>
                   {item.actionItem && (
-                    <p className="text-[11px] text-emerald-400 font-bold bg-emerald-950/20 p-2.5 rounded-lg border border-emerald-900/40 break-words">💡 Recommended Action: {item.actionItem}</p>
+                    <p className="text-[11px] text-emerald-400 font-bold bg-emerald-950/20 p-2.5 rounded-lg border border-emerald-900/40 whitespace-normal break-words">💡 Recommended Action: {item.actionItem}</p>
                   )}
                 </div>
               ))}
@@ -106,13 +106,13 @@ export function AiInsightsDashboard() {
             <div className="border-b border-[#222634] pb-4 mb-4">
               <h3 className="text-xs font-black text-amber-400 uppercase tracking-wider">⚠️ Efficiency Leaks ({latestAudit.efficiency_leaks?.length || 0})</h3>
             </div>
-            <div className="space-y-4 flex-1 overflow-y-auto max-h-[550px] pr-1">
+            <div className="space-y-4 flex-1">
               {latestAudit.efficiency_leaks?.map((item: any, idx: number) => (
-                <div key={idx} className="p-4 bg-[#161922] border border-[#272B36] rounded-xl space-y-2">
-                  <h4 className="text-xs font-black text-white">{item.area}</h4>
-                  <p className="text-xs text-slate-300 font-medium leading-relaxed break-words">{item.details}</p>
+                <div key={idx} className="p-4 bg-[#161922] border border-[#272B36] rounded-xl space-y-3">
+                  <h4 className="text-xs font-black text-white whitespace-normal break-words">{item.area}</h4>
+                  <p className="text-xs text-slate-300 font-medium leading-relaxed whitespace-normal break-words">{item.details}</p>
                   {item.estimatedLoss && (
-                    <p className="text-[11px] text-amber-400 font-bold bg-amber-950/20 p-2.5 rounded-lg border border-amber-900/40 break-words">💰 Estimated Impact: {item.estimatedLoss}</p>
+                    <p className="text-[11px] text-amber-400 font-bold bg-amber-950/20 p-2.5 rounded-lg border border-amber-900/40 whitespace-normal break-words">💰 Estimated Impact: {item.estimatedLoss}</p>
                   )}
                 </div>
               ))}
@@ -127,11 +127,11 @@ export function AiInsightsDashboard() {
             <div className="border-b border-[#222634] pb-4 mb-4">
               <h3 className="text-xs font-black text-sky-400 uppercase tracking-wider">🧠 Driver Retention & Strategy ({latestAudit.retention_suggestions?.length || 0})</h3>
             </div>
-            <div className="space-y-4 flex-1 overflow-y-auto max-h-[550px] pr-1">
+            <div className="space-y-4 flex-1">
               {latestAudit.retention_suggestions?.map((item: any, idx: number) => (
-                <div key={idx} className="p-4 bg-[#161922] border border-[#272B36] rounded-xl space-y-2">
+                <div key={idx} className="p-4 bg-[#161922] border border-[#272B36] rounded-xl space-y-3">
                   <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 inline-block">{item.category}</span>
-                  <p className="text-xs text-slate-300 font-medium leading-relaxed break-words mt-1">{item.suggestion}</p>
+                  <p className="text-xs text-slate-300 font-medium leading-relaxed whitespace-normal break-words mt-1">{item.suggestion}</p>
                 </div>
               ))}
               {(!latestAudit.retention_suggestions || latestAudit.retention_suggestions.length === 0) && (
