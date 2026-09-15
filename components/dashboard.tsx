@@ -16,7 +16,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { DriverPortal } from "@/components/DriverPortal";
 import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
-import { UploadHub } from "@/components/UploadHub"; // 📥 Imported the new Upload Hub
+import { UploadHub } from "@/components/UploadHub";
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -50,7 +50,7 @@ export default function Dashboard() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("Dashboard");
-  const [opSubTab, setOpSubTab] = useState("Document Uploads"); // 📥 Set this as default so they see it first
+  const [opSubTab, setOpSubTab] = useState("Document Uploads");
 
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
@@ -63,6 +63,9 @@ export default function Dashboard() {
   const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
   const [activeTripCount, setActiveTripCount] = useState<number>(0); 
   const [pendingDriverCount, setPendingDriverCount] = useState<number>(0);
+  
+  // 📥 Notification state for pending scans
+  const [pendingScanCount, setPendingScanCount] = useState<number>(0);
 
   const [expiringDocs, setExpiringDocs] = useState<Record<string, any[]>>({});
 
@@ -74,7 +77,6 @@ export default function Dashboard() {
   const [qsStatus, setQsStatus] = useState("WAITING_FOR_LOAD");
   const [qsRemarks, setQsRemarks] = useState("");
 
-  // 📥 Added "Document Uploads" to your existing Operations Sub-Tabs
   const opTabs = ["Document Uploads", "Trips", "POD Closure", "Modify Trips", "Quick Status", "Driver Approvals"];
 
   const formatAmt = (amt: number) => (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -86,7 +88,6 @@ export default function Dashboard() {
     setIsCheckingRoute(false);
   }, []);
 
-  // SECURE AUTHENTICATION BARRIER & ROLE SYNC
   useEffect(() => {
     if (!supabase) return;
 
@@ -166,6 +167,10 @@ export default function Dashboard() {
     const { count: driverPendingCount } = await supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
     setPendingDriverCount(driverPendingCount || 0);
 
+    // 📥 Fetch Notification Count for Pending Scans
+    const { count: scanCount } = await supabase.from('pending_scans').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
+    setPendingScanCount(scanCount || 0);
+
     const today = new Date();
     today.setHours(0,0,0,0);
     const tomorrow = new Date(today);
@@ -236,7 +241,7 @@ export default function Dashboard() {
       setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
       fetchDashboardData();
     }
-  }, [activeTab, isAuthenticated, supabase]);
+  }, [activeTab, opSubTab, isAuthenticated, supabase]);
 
   const getDrillDownData = (statusLabel: string) => {
     const statusMap: Record<string, string[]> = {
@@ -301,8 +306,17 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         <nav className="flex flex-wrap gap-1.5 bg-[#12141C] p-1.5 rounded-2xl border border-[#222634] shadow-sm">
           {navItems.map((item) => (
-            <button key={item} onClick={() => setActiveTab(item)} className={`px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 ease-out whitespace-nowrap ${activeTab === item ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" : "text-slate-400 hover:text-white hover:bg-[#1A1F2C]"}`}>
+            <button key={item} onClick={() => setActiveTab(item)} className={`relative px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 ease-out whitespace-nowrap ${activeTab === item ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" : "text-slate-400 hover:text-white hover:bg-[#1A1F2C]"}`}>
               {item}
+              {/* 📥 NOTIFICATION BADGE ON MAIN OPERATIONS TAB */}
+              {item === "Operations" && pendingScanCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white items-center justify-center font-black">
+                    {pendingScanCount}
+                  </span>
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -433,13 +447,18 @@ export default function Dashboard() {
             <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6 min-h-[60vh] mt-6">
               <div className="flex flex-wrap gap-2 border-b border-[#222634] pb-4 mb-6">
                 {opTabs.map((sub) => (
-                  <button key={sub} onClick={() => setOpSubTab(sub)} className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${opSubTab === sub ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" : "bg-[#161922] text-slate-400 hover:text-white hover:bg-[#1A1F2C] border border-[#222634]"}`}>
+                  <button key={sub} onClick={() => setOpSubTab(sub)} className={`relative px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${opSubTab === sub ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" : "bg-[#161922] text-slate-400 hover:text-white hover:bg-[#1A1F2C] border border-[#222634]"}`}>
                     {sub}
+                    {/* 📥 NOTIFICATION BADGE ON SUB-TAB */}
+                    {sub === "Document Uploads" && pendingScanCount > 0 && (
+                      <span className="ml-2 px-1.5 py-0.5 bg-rose-500 text-white rounded-full text-[10px]">
+                        {pendingScanCount}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
 
-              {/* 📥 Render the Document Upload Hub here */}
               {opSubTab === "Document Uploads" && <UploadHub />}
               
               {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
