@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 import { BackgroundGeolocation } from "@capgo/background-geolocation";
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'; 
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -15,7 +16,6 @@ const KssLogo = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// Modern SVG Fingerprint Icon
 const FingerprintIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M7.864 4.243A7.5 7.5 0 0 1 19.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 0 0 4.5 10.5a7.464 7.464 0 0 1-1.15 3.993m1.989 3.559A11.209 11.209 0 0 0 8.25 10.5a3.75 3.75 0 1 1 7.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 0 1-3.6 9.75m6.633-4.596a18.666 18.666 0 0 1-2.485 5.33" />
@@ -54,7 +54,8 @@ export function DriverPortal() {
   const [savedDriverCode, setSavedDriverCode] = useState("");
   const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState(""); 
   const [isDriverLocked, setIsDriverLocked] = useState(false);
-  const [activeTab, setActiveTab] = useState<"STATUS" | "LEDGER">("STATUS");
+  
+  const [activeTab, setActiveTab] = useState<"STATUS" | "SCAN" | "LEDGER">("STATUS");
 
   const [selectedTruckId, setSelectedTruckId] = useState("");
   const [driverCode, setDriverCode] = useState("");
@@ -78,6 +79,17 @@ export function DriverPortal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [complianceWarnings, setComplianceWarnings] = useState<any[]>([]);
+
+  const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null);
+  const [selectionModalFor, setSelectionModalFor] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      setIsMobile(/android|iphone|ipad|ipod/.test(userAgent));
+    }
+  }, []);
 
   const formatDateTime = (dateStr: string) => {
     if (!dateStr) return 'N/A';
@@ -304,6 +316,90 @@ export function DriverPortal() {
     }
   };
 
+  const handleWebUpload = (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/png, image/jpeg, image/jpg";
+      input.onchange = (e: any) => {
+        const file = e.target.files[0];
+        if (!file) return resolve("");
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64 = result.split(",")[1];
+          resolve(base64);
+        };
+        reader.onerror = (err) => reject(err);
+      };
+      input.click();
+    });
+  };
+
+  const triggerScanner = async (docType: string, sourceSelection: any) => {
+    setSelectionModalFor(null);
+    let finalBase64 = "";
+
+    try {
+      if (sourceSelection === "WEB") {
+        finalBase64 = await handleWebUpload();
+      } else {
+        const image = await Camera.getPhoto({
+          quality: 50,
+          allowEditing: true,
+          resultType: CameraResultType.Base64,
+          source: sourceSelection 
+        });
+        finalBase64 = image.base64String || "";
+      }
+
+      if (!finalBase64) return;
+      setActiveWorkflow(docType);
+
+      const response = await fetch('/api/parse-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: finalBase64,
+          documentType: docType === "INVOICE" ? "TRIP_INVOICE" : docType 
+        })
+      });
+
+      const { data, error } = await response.json();
+      if (error) throw new Error(error);
+
+      const payload: any = {
+        document_type: docType === "INVOICE" ? 'TRIP_INVOICE' : docType,
+        raw_json_result: data,
+        status: 'PENDING'
+      };
+
+      if (docType === "INVOICE") {
+        payload.lr_number = data.lrNo ? String(data.lrNo).toUpperCase() : null;
+        payload.tonnage_extracted = data.tonnage ? Number(data.tonnage) : null;
+        payload.destination = data.destination ? String(data.destination).toUpperCase() : null;
+        payload.source = data.source ? String(data.source).toUpperCase() : null;
+        payload.truck_number = data.truckNo ? String(data.truckNo).toUpperCase() : null;
+        payload.cargo_type = data.cargoType ? String(data.cargoType).toUpperCase() : null;
+      }
+
+      const { error: dbError } = await supabase.from('pending_scans').insert([payload]);
+      if (dbError) throw new Error(dbError.message);
+      
+      setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType === "INVOICE" ? "Invoice" : docType === "FUEL" ? "Diesel Slip" : "POD"} sent to office successfully.`, type: "success" });
+
+    } catch (err: any) {
+      console.error("Scanner Error:", err);
+      const errMsg = err.message || String(err);
+      if (!errMsg.toLowerCase().includes("cancel") && !errMsg.toLowerCase().includes("dismissed")) {
+        setAlertConfig({ isOpen: true, title: "Scan Failed", message: errMsg, type: "error" });
+      }
+    } finally {
+      setActiveWorkflow(null);
+    }
+  };
+
   const handleDriverSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
@@ -422,12 +518,19 @@ export function DriverPortal() {
           vehicleStatusUpdate = "WORKSHOP_MAINTENANCE"; statusRemarksText = `Enroute Breakdown`;
         }
 
-        if (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) updatePayload.status_remarks = finalRemarks;
-        else updatePayload.status_remarks = statusRemarksText;
+        // FIXED: Stop injecting status_remarks into the trips table payload
+        const finalVehicleRemarks = (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) 
+          ? finalRemarks 
+          : statusRemarksText;
 
         const { error: rpcError } = await supabase.rpc('update_trip_status_atomic', {
-          p_trip_id: currentTrip.trip_id, p_vehicle_id: selectedTruckId, p_payload: updatePayload, p_vehicle_status: vehicleStatusUpdate, p_vehicle_remarks: statusRemarksText
+          p_trip_id: currentTrip.trip_id, 
+          p_vehicle_id: selectedTruckId, 
+          p_payload: updatePayload, 
+          p_vehicle_status: vehicleStatusUpdate, 
+          p_vehicle_remarks: finalVehicleRemarks
         });
+
         if (rpcError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Failed", message: rpcError.message, type: "error" }); }
         
         setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
@@ -450,6 +553,34 @@ export function DriverPortal() {
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-border bg-surface text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: 'light' }}>
+      
+      {selectionModalFor && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-surface border border-border rounded-2xl w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-base font-black text-fg mb-4 text-center uppercase tracking-wide">Upload Source</h3>
+            <div className="space-y-3">
+              {isMobile ? (
+                <>
+                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Camera)} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors">
+                    <span className="text-xl">📸</span> Take New Photo
+                  </button>
+                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Photos)} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors">
+                    <span className="text-xl">🖼️</span> Select from Gallery
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => triggerScanner(selectionModalFor, "WEB")} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors">
+                  <span className="text-xl">📂</span> Browse Files
+                </button>
+              )}
+              <button onClick={() => setSelectionModalFor(null)} className="w-full p-3 mt-2 text-sm text-fg-muted font-bold transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm bg-surface"><KssLogo className="w-full h-full" /></div>
@@ -517,9 +648,34 @@ export function DriverPortal() {
           </div>
 
           <div className="flex border-b border-border">
-            <button onClick={() => setActiveTab("STATUS")} className={`flex-1 py-3 text-sm font-bold ${activeTab === "STATUS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>🚀 Trip Status</button>
-            <button onClick={() => setActiveTab("LEDGER")} className={`flex-1 py-3 text-sm font-bold ${activeTab === "LEDGER" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>📊 Month Ledger</button>
+            <button onClick={() => setActiveTab("STATUS")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "STATUS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>🚀 Status</button>
+            <button onClick={() => setActiveTab("SCAN")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "SCAN" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>📸 Scan</button>
+            <button onClick={() => setActiveTab("LEDGER")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "LEDGER" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>📊 Ledger</button>
           </div>
+
+          {activeTab === "SCAN" && (
+            <div className="p-6 grid gap-4 bg-app min-h-[400px] animate-in fade-in">
+              <div className="mb-2">
+                 <h3 className="font-bold text-lg text-fg tracking-tight">Send to Office</h3>
+                 <p className="text-xs text-fg-secondary">Scan a document. It will be sent instantly to the Dispatch Inbox.</p>
+              </div>
+
+              <button onClick={() => setSelectionModalFor("INVOICE")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
+                <span className="text-3xl">{activeWorkflow === "INVOICE" ? "⏳" : "📄"}</span>
+                <span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "INVOICE" ? "Uploading..." : "Trip Invoice / Bilty"}</span>
+              </button>
+
+              <button onClick={() => setSelectionModalFor("FUEL")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
+                <span className="text-3xl">{activeWorkflow === "FUEL" ? "⏳" : "⛽"}</span>
+                <span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "FUEL" ? "Uploading..." : "Diesel Slip"}</span>
+              </button>
+
+              <button onClick={() => setSelectionModalFor("POD")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
+                <span className="text-3xl">{activeWorkflow === "POD" ? "⏳" : "⚖️"}</span>
+                <span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "POD" ? "Uploading..." : "POD / Weighment"}</span>
+              </button>
+            </div>
+          )}
 
           {activeTab === "STATUS" && (
             <form onSubmit={handleDriverSubmit} className="p-6 grid gap-5 animate-in fade-in">
