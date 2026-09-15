@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
@@ -8,35 +8,70 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 export function UploadHub() {
   const supabase = createClient();
   const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null);
-  const [cameraStartingFor, setCameraStartingFor] = useState<string | null>(null);
+  const [selectionModalFor, setSelectionModalFor] = useState<string | null>(null);
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
+  const [isMobile, setIsMobile] = useState(true);
 
-  const triggerScanner = async (docType: string) => {
-    // 1. Instantly show "Opening Camera..." so the user knows the app is responding
-    setCameraStartingFor(docType); 
-    
+  // Detect if the user is on a mobile device or a desktop computer
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      setIsMobile(/android|iphone|ipad|ipod/.test(userAgent));
+    }
+  }, []);
+
+  // --- HTML5 WEB FILE PICKER FALLBACK ---
+  const handleWebUpload = (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/png, image/jpeg, image/jpg";
+      input.onchange = (e: any) => {
+        const file = e.target.files[0];
+        if (!file) return resolve(""); // User cancelled
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64 = result.split(",")[1]; // Strip out the "data:image/jpeg;base64," prefix
+          resolve(base64);
+        };
+        reader.onerror = (err) => reject(err);
+      };
+      input.click();
+    });
+  };
+
+  const triggerScanner = async (docType: string, sourceSelection: any) => {
+    setSelectionModalFor(null);
+    let finalBase64 = "";
+
     try {
-      const image = await Camera.getPhoto({
-        quality: 50,
-        allowEditing: true,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Prompt 
-      });
+      // 1. Get the image base64 string depending on the device
+      if (sourceSelection === "WEB") {
+        finalBase64 = await handleWebUpload();
+      } else {
+        const image = await Camera.getPhoto({
+          quality: 50,
+          allowEditing: true,
+          resultType: CameraResultType.Base64,
+          source: sourceSelection 
+        });
+        finalBase64 = image.base64String || "";
+      }
 
-      // 2. Camera closes. Clear the "Opening" state.
-      setCameraStartingFor(null);
+      // If user cancelled the picker/camera, stop here
+      if (!finalBase64) return;
 
-      // If they closed the camera without taking a photo, just stop.
-      if (!image.base64String) return;
-
-      // 3. Photo confirmed! Now lock the UI and show "Parsing AI..."
+      // 2. Photo obtained! Lock UI and show "Parsing AI..."
       setActiveWorkflow(docType);
 
+      // 3. Send image payload to our Next.js API Route
       const response = await fetch('/api/parse-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageBase64: image.base64String,
+          imageBase64: finalBase64,
           documentType: docType === "INVOICE" ? "TRIP_INVOICE" : docType 
         })
       });
@@ -44,7 +79,7 @@ export function UploadHub() {
       const { data, error } = await response.json();
       if (error) throw new Error(error);
 
-      // Route the AI output to the correct database table
+      // 4. Route the AI output to the correct database table
       if (docType === "INVOICE") {
         const { error: dbError } = await supabase.from('pending_scans').insert([{
           document_type: 'TRIP_INVOICE',
@@ -65,26 +100,52 @@ export function UploadHub() {
 
     } catch (err: any) {
       console.error("Scanner Error:", err);
-      setCameraStartingFor(null);
-      
       const errMsg = err.message || String(err);
-      // Capacitor throws "cancel" if a web browser doesn't have PWA camera elements installed
-      if (!errMsg.toLowerCase().includes("cancel")) {
-        setAlertConfig({ isOpen: true, title: "Camera / Scan Failed", message: errMsg, type: "error" });
-      } else if (typeof window !== "undefined" && !window.navigator.userAgent.includes("Android")) {
-        // Helpful warning if you are testing on a computer instead of your Android phone
-        setAlertConfig({ isOpen: true, title: "Web Camera Not Supported", message: "You are testing on a web browser. Please test this on your Android app to open the native camera.", type: "info" });
+      if (!errMsg.toLowerCase().includes("cancel") && !errMsg.toLowerCase().includes("dismissed")) {
+        setAlertConfig({ isOpen: true, title: "Scan Failed", message: errMsg, type: "error" });
       }
     } finally {
       setActiveWorkflow(null);
     }
   };
 
-  const isBusy = activeWorkflow !== null || cameraStartingFor !== null;
+  const isBusy = activeWorkflow !== null || selectionModalFor !== null;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300 relative bg-[#12141C] border border-[#222634] rounded-2xl p-6 sm:p-8 shadow-xl">
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
+
+      {/* --- SMART OS SELECTION MODAL --- */}
+      {selectionModalFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-[#12141C] border border-[#2B3142] rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-base font-black text-white mb-4 text-center uppercase tracking-wide">Upload Source</h3>
+            <div className="space-y-3">
+              
+              {/* MOBILE ONLY BUTTONS */}
+              {isMobile ? (
+                <>
+                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Camera)} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-[#FF5A00]/20 border border-[#2B3142] hover:border-[#FF5A00] rounded-xl transition-all group text-white font-bold">
+                    <span className="text-2xl group-hover:scale-110 transition-transform">📸</span> Take New Photo
+                  </button>
+                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Photos)} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-[#FF5A00]/20 border border-[#2B3142] hover:border-[#FF5A00] rounded-xl transition-all group text-white font-bold">
+                    <span className="text-2xl group-hover:scale-110 transition-transform">🖼️</span> Select from Gallery
+                  </button>
+                </>
+              ) : (
+                /* WEB ONLY BUTTON */
+                <button onClick={() => triggerScanner(selectionModalFor, "WEB")} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-sky-500/20 border border-[#2B3142] hover:border-sky-500 rounded-xl transition-all group text-white font-bold">
+                  <span className="text-2xl group-hover:scale-110 transition-transform">📂</span> Choose File from Computer
+                </button>
+              )}
+
+              <button onClick={() => setSelectionModalFor(null)} className="w-full p-3 mt-2 text-sm text-slate-500 font-bold hover:text-white transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="border-b border-[#222634] pb-4">
         <h2 className="text-xl font-black text-white uppercase tracking-tight">Document Processing Hub</h2>
@@ -93,34 +154,34 @@ export function UploadHub() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* INVOICE BUTTON */}
-        <button onClick={() => triggerScanner("INVOICE")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-[#FF5A00] disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
+        <button onClick={() => setSelectionModalFor("INVOICE")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-[#FF5A00] disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
           <div className="h-12 w-12 bg-[#FF5A00]/10 text-[#FF5A00] rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-            {activeWorkflow === "INVOICE" ? "⏳" : cameraStartingFor === "INVOICE" ? "📸" : "📄"}
+            {activeWorkflow === "INVOICE" ? "⏳" : "📄"}
           </div>
           <h3 className="text-sm font-black text-white uppercase">
-            {activeWorkflow === "INVOICE" ? "Parsing AI..." : cameraStartingFor === "INVOICE" ? "Opening Camera..." : "Trip Invoice"}
+            {activeWorkflow === "INVOICE" ? "Parsing AI..." : "Trip Invoice"}
           </h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Scans to Pending Inbox for Trip Creation</p>
         </button>
 
         {/* FUEL BUTTON */}
-        <button onClick={() => triggerScanner("FUEL")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-sky-500 disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
+        <button onClick={() => setSelectionModalFor("FUEL")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-sky-500 disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
           <div className="h-12 w-12 bg-sky-500/10 text-sky-400 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-            {activeWorkflow === "FUEL" ? "⏳" : cameraStartingFor === "FUEL" ? "📸" : "⛽"}
+            {activeWorkflow === "FUEL" ? "⏳" : "⛽"}
           </div>
           <h3 className="text-sm font-black text-white uppercase">
-            {activeWorkflow === "FUEL" ? "Parsing AI..." : cameraStartingFor === "FUEL" ? "Opening Camera..." : "Diesel Slip"}
+            {activeWorkflow === "FUEL" ? "Parsing AI..." : "Diesel Slip"}
           </h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Attach fuel & manual KM to an active trip</p>
         </button>
 
         {/* POD BUTTON */}
-        <button onClick={() => triggerScanner("POD")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
+        <button onClick={() => setSelectionModalFor("POD")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
           <div className="h-12 w-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-            {activeWorkflow === "POD" ? "⏳" : cameraStartingFor === "POD" ? "📸" : "⚖️"}
+            {activeWorkflow === "POD" ? "⏳" : "⚖️"}
           </div>
           <h3 className="text-sm font-black text-white uppercase">
-            {activeWorkflow === "POD" ? "Parsing AI..." : cameraStartingFor === "POD" ? "Opening Camera..." : "POD / Weighment"}
+            {activeWorkflow === "POD" ? "Parsing AI..." : "POD / Weighment"}
           </h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Auto-calculate shortage & close trip</p>
         </button>
