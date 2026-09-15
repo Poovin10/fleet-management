@@ -107,7 +107,7 @@ export function DriverSettlementModule() {
     }
   }
 
-  // PDF Generation function using the universal helper
+  // PDF Generation function using the universal PDF helper
   const handleDownloadDriverPdf = (driver: any) => {
     const dTrips = rawTrips.filter(t => t.primary_driver_id === driver.driver_id);
     const headers = ["LR Number", "Date", "Route", "Bata (₹)", "Halt (₹)", "Trip Adv (₹)"];
