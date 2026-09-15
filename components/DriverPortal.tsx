@@ -48,36 +48,28 @@ export function DriverPortal() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [activeTrips, setActiveTrips] = useState<any[]>([]);
-  
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
-
   const [savedDriverCode, setSavedDriverCode] = useState("");
   const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState(""); 
   const [isDriverLocked, setIsDriverLocked] = useState(false);
-  
   const [activeTab, setActiveTab] = useState<"STATUS" | "SCAN" | "LEDGER">("STATUS");
-
   const [selectedTruckId, setSelectedTruckId] = useState("");
   const [driverCode, setDriverCode] = useState("");
   const [driverPin, setDriverPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
   const [actionType, setActionType] = useState("START_TRIP"); 
-  
   const [odometer, setOdometer] = useState<number | "">("");
   const [lastOdometer, setLastOdometer] = useState<number | "">("");
   const [fuelLitres, setFuelLitres] = useState<number | "">("");
   const [remarks, setRemarks] = useState("");
-  
   const [unloadedMt, setUnloadedMt] = useState<number | "">("");
   const [damagedBags, setDamagedBags] = useState<number | "">("");
   const [noWeighment, setNoWeighment] = useState(false);
-
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [currentMonthTrips, setCurrentMonthTrips] = useState<any[]>([]);
   const [currentMonthAdvances, setCurrentMonthAdvances] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [complianceWarnings, setComplianceWarnings] = useState<any[]>([]);
 
   const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null);
@@ -303,7 +295,6 @@ export function DriverPortal() {
 
     localStorage.setItem("kss_biometric_enrolled_driver", driverCode.toUpperCase().trim());
     setEnrolledBiometricDriver(driverCode.toUpperCase().trim());
-
     localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
     setSavedDriverCode(driverCode.toUpperCase().trim());
     setIsDriverLocked(true); setDriverPin(""); setConfirmPin("");
@@ -369,23 +360,55 @@ export function DriverPortal() {
       const { data, error } = await response.json();
       if (error) throw new Error(error);
 
-      const payload: any = {
-        document_type: docType === "INVOICE" ? 'TRIP_INVOICE' : docType,
-        raw_json_result: data,
-        status: 'PENDING'
-      };
-
       if (docType === "INVOICE") {
-        payload.lr_number = data.lrNo ? String(data.lrNo).toUpperCase() : null;
-        payload.tonnage_extracted = data.tonnage ? Number(data.tonnage) : null;
-        payload.destination = data.destination ? String(data.destination).toUpperCase() : null;
-        payload.source = data.source ? String(data.source).toUpperCase() : null;
-        payload.truck_number = data.truckNo ? String(data.truckNo).toUpperCase() : null;
-        payload.cargo_type = data.cargoType ? String(data.cargoType).toUpperCase() : null;
-      }
+        const extractedLr = data.lrNo ? String(data.lrNo).toUpperCase().trim() : null;
+        let shouldInsert = true;
 
-      const { error: dbError } = await supabase.from('pending_scans').insert([payload]);
-      if (dbError) throw new Error(dbError.message);
+        // Anti-Duplication Check
+        if (extractedLr) {
+          const { data: existingScan } = await supabase
+            .from('pending_scans')
+            .select('scan_id')
+            .eq('lr_number', extractedLr)
+            .eq('status', 'PENDING')
+            .single();
+
+          if (existingScan) {
+            shouldInsert = false;
+            const { error: updateError } = await supabase.from('pending_scans').update({
+              tonnage_extracted: data.tonnage ? Number(data.tonnage) : null,
+              destination: data.destination ? String(data.destination).toUpperCase() : null,
+              source: data.source ? String(data.source).toUpperCase() : null,
+              truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null,
+              cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null,
+              raw_json_result: data,
+            }).eq('scan_id', existingScan.scan_id);
+            if (updateError) throw new Error(updateError.message);
+          }
+        }
+
+        if (shouldInsert) {
+          const { error: dbError } = await supabase.from('pending_scans').insert([{
+            document_type: 'TRIP_INVOICE',
+            lr_number: extractedLr,
+            tonnage_extracted: data.tonnage ? Number(data.tonnage) : null,
+            destination: data.destination ? String(data.destination).toUpperCase() : null,
+            source: data.source ? String(data.source).toUpperCase() : null,
+            truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null,
+            cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null,
+            raw_json_result: data,
+            status: 'PENDING'
+          }]);
+          if (dbError) throw new Error(dbError.message);
+        }
+      } else {
+        const { error: dbError } = await supabase.from('pending_scans').insert([{
+          document_type: docType,
+          raw_json_result: data,
+          status: 'PENDING'
+        }]);
+        if (dbError) throw new Error(dbError.message);
+      }
       
       setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType === "INVOICE" ? "Invoice" : docType === "FUEL" ? "Diesel Slip" : "POD"} sent to office successfully.`, type: "success" });
 
@@ -451,11 +474,7 @@ export function DriverPortal() {
 
     if (!currentTrip && actionType !== "FUEL" && actionType !== "START_TRIP") {
       setIsSubmitting(false);
-      return setAlertConfig({ 
-        isOpen: true, title: "No Active Trip", 
-        message: "The office has not dispatched a trip for this truck yet. You can only log Fuel or Start Trip.", 
-        type: "error" 
-      });
+      return setAlertConfig({ isOpen: true, title: "No Active Trip", message: "The office has not dispatched a trip for this truck yet.", type: "error" });
     }
 
     if (actionType === "FUEL" || (!currentTrip && actionType === "START_TRIP")) {
@@ -519,10 +538,9 @@ export function DriverPortal() {
         }
 
         const finalVehicleRemarks = (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) 
-          ? finalRemarks 
-          : statusRemarksText;
+          ? finalRemarks : statusRemarksText;
 
-        // 1. Bypass the buggy RPC and update the Trips table directly
+        // Bypassing RPC for safety
         const { error: tripError } = await supabase.from('trips')
           .update(updatePayload)
           .eq('trip_id', currentTrip.trip_id);
@@ -532,7 +550,6 @@ export function DriverPortal() {
           return setAlertConfig({ isOpen: true, title: "Trip Update Failed", message: tripError.message, type: "error" }); 
         }
 
-        // 2. Update the Vehicles table directly
         const { error: vehicleError } = await supabase.from('vehicles')
           .update({
              current_status: vehicleStatusUpdate,
@@ -620,11 +637,7 @@ export function DriverPortal() {
             
             {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
               <div className="flex flex-col items-center justify-center py-2 animate-in fade-in zoom-in duration-300">
-                <button 
-                  type="button" 
-                  onClick={handleManualFingerprint}
-                  className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95"
-                >
+                <button type="button" onClick={handleManualFingerprint} className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95">
                   <div className="absolute inset-0 rounded-full bg-[#FF5A00]/30 animate-ping opacity-75" style={{ animationDuration: '2.5s' }}></div>
                   <div className="absolute inset-1.5 rounded-full bg-[#FF5A00]/10 group-hover:bg-[#FF5A00]/20 border border-[#FF5A00]/20 transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)]"></div>
                   <FingerprintIcon className="w-8 h-8 text-[#FF5A00] relative z-10 drop-shadow-sm group-hover:scale-105 transition-transform" />
@@ -640,14 +653,12 @@ export function DriverPortal() {
                     <span className="bg-surface px-2 text-[9px] text-fg-muted font-bold tracking-widest uppercase relative z-10">OR</span>
                   </div>
               )}
-              
               <label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Security PIN"}</label>
               <input type="password" maxLength={4} value={driverPin} onChange={e => setDriverPin(e.target.value)} placeholder="••••" className={inputStyle} required={isFirstTimeSetup} />
             </div>
             {isFirstTimeSetup && (
               <div className="grid gap-1.5"><label className={labelStyle}>Confirm 4-Digit PIN</label><input type="password" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value)} placeholder="••••" className={inputStyle} required /></div>
             )}
-            {!isFirstTimeSetup && driverCode && <p className="text-[11px] text-fg-muted italic">Forgot your PIN? Contact office Admin to reset it.</p>}
             <button type="submit" className="inline-flex items-center justify-center rounded-lg text-sm font-bold bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-10 px-4 py-2 w-full mt-2">
               {isFirstTimeSetup ? "Save & Lock Device" : "Verify & Login with PIN"}
             </button>
