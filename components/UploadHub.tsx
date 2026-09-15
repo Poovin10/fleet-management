@@ -12,7 +12,6 @@ export function UploadHub() {
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
   const [isMobile, setIsMobile] = useState(true);
 
-  // Detect if the user is on a mobile device or a desktop computer
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userAgent = window.navigator.userAgent.toLowerCase();
@@ -20,7 +19,6 @@ export function UploadHub() {
     }
   }, []);
 
-  // --- HTML5 WEB FILE PICKER FALLBACK ---
   const handleWebUpload = (): Promise<string> => {
     return new Promise((resolve, reject) => {
       const input = document.createElement("input");
@@ -28,12 +26,12 @@ export function UploadHub() {
       input.accept = "image/png, image/jpeg, image/jpg";
       input.onchange = (e: any) => {
         const file = e.target.files[0];
-        if (!file) return resolve(""); // User cancelled
+        if (!file) return resolve("");
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = () => {
           const result = reader.result as string;
-          const base64 = result.split(",")[1]; // Strip out the "data:image/jpeg;base64," prefix
+          const base64 = result.split(",")[1];
           resolve(base64);
         };
         reader.onerror = (err) => reject(err);
@@ -47,7 +45,6 @@ export function UploadHub() {
     let finalBase64 = "";
 
     try {
-      // 1. Get the image base64 string depending on the device
       if (sourceSelection === "WEB") {
         finalBase64 = await handleWebUpload();
       } else {
@@ -60,13 +57,9 @@ export function UploadHub() {
         finalBase64 = image.base64String || "";
       }
 
-      // If user cancelled the picker/camera, stop here
       if (!finalBase64) return;
-
-      // 2. Photo obtained! Lock UI and show "Parsing AI..."
       setActiveWorkflow(docType);
 
-      // 3. Send image payload to our Next.js API Route
       const response = await fetch('/api/parse-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -79,24 +72,61 @@ export function UploadHub() {
       const { data, error } = await response.json();
       if (error) throw new Error(error);
 
-      // 4. Route the AI output to the correct database table
       if (docType === "INVOICE") {
+        const extractedLr = data.lrNo ? String(data.lrNo).toUpperCase().trim() : null;
+        let shouldInsert = true;
+
+        // Anti-Duplication UPSERT Check
+        if (extractedLr) {
+          const { data: existingScan } = await supabase
+            .from('pending_scans')
+            .select('scan_id')
+            .eq('lr_number', extractedLr)
+            .eq('status', 'PENDING')
+            .single();
+
+          if (existingScan) {
+            shouldInsert = false;
+            const { error: updateError } = await supabase.from('pending_scans').update({
+              tonnage_extracted: data.tonnage ? Number(data.tonnage) : null,
+              destination: data.destination ? String(data.destination).toUpperCase() : null,
+              source: data.source ? String(data.source).toUpperCase() : null,
+              truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null,
+              cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null,
+              raw_json_result: data,
+            }).eq('scan_id', existingScan.scan_id);
+            
+            if (updateError) throw new Error(updateError.message);
+          }
+        }
+
+        if (shouldInsert) {
+          const { error: dbError } = await supabase.from('pending_scans').insert([{
+            document_type: 'TRIP_INVOICE',
+            lr_number: extractedLr,
+            tonnage_extracted: data.tonnage ? Number(data.tonnage) : null,
+            destination: data.destination ? String(data.destination).toUpperCase() : null,
+            source: data.source ? String(data.source).toUpperCase() : null,
+            truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null,
+            cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null,
+            raw_json_result: data,
+            status: 'PENDING'
+          }]);
+
+          if (dbError) throw new Error(dbError.message);
+        }
+        
+        setAlertConfig({ isOpen: true, title: "Inbox Updated ✨", message: "Invoice digitized and sent to Trip Creation Inbox.", type: "success" });
+      } else {
+        // Handle FUEL and POD generic inserts for now
         const { error: dbError } = await supabase.from('pending_scans').insert([{
-          document_type: 'TRIP_INVOICE',
-          lr_number: data.lrNo ? String(data.lrNo).toUpperCase() : null,
-          tonnage_extracted: data.tonnage ? Number(data.tonnage) : null,
-          destination: data.destination ? String(data.destination).toUpperCase() : null,
-          source: data.source ? String(data.source).toUpperCase() : null,
-          truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null,
-          cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null,
+          document_type: docType,
           raw_json_result: data,
           status: 'PENDING'
         }]);
-
         if (dbError) throw new Error(dbError.message);
-        
-        setAlertConfig({ isOpen: true, title: "Inbox Updated ✨", message: "Invoice digitized and sent to Trip Creation Inbox.", type: "success" });
-      } 
+        setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType} sent to office successfully.`, type: "success" });
+      }
 
     } catch (err: any) {
       console.error("Scanner Error:", err);
@@ -115,14 +145,11 @@ export function UploadHub() {
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300 relative bg-[#12141C] border border-[#222634] rounded-2xl p-6 sm:p-8 shadow-xl">
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
-      {/* --- SMART OS SELECTION MODAL --- */}
       {selectionModalFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-[#12141C] border border-[#2B3142] rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95 duration-200">
             <h3 className="text-base font-black text-white mb-4 text-center uppercase tracking-wide">Upload Source</h3>
             <div className="space-y-3">
-              
-              {/* MOBILE ONLY BUTTONS */}
               {isMobile ? (
                 <>
                   <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Camera)} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-[#FF5A00]/20 border border-[#2B3142] hover:border-[#FF5A00] rounded-xl transition-all group text-white font-bold">
@@ -133,12 +160,10 @@ export function UploadHub() {
                   </button>
                 </>
               ) : (
-                /* WEB ONLY BUTTON */
                 <button onClick={() => triggerScanner(selectionModalFor, "WEB")} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-sky-500/20 border border-[#2B3142] hover:border-sky-500 rounded-xl transition-all group text-white font-bold">
                   <span className="text-2xl group-hover:scale-110 transition-transform">📂</span> Choose File from Computer
                 </button>
               )}
-
               <button onClick={() => setSelectionModalFor(null)} className="w-full p-3 mt-2 text-sm text-slate-500 font-bold hover:text-white transition-colors">
                 Cancel
               </button>
@@ -153,40 +178,31 @@ export function UploadHub() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* INVOICE BUTTON */}
         <button onClick={() => setSelectionModalFor("INVOICE")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-[#FF5A00] disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
           <div className="h-12 w-12 bg-[#FF5A00]/10 text-[#FF5A00] rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
             {activeWorkflow === "INVOICE" ? "⏳" : "📄"}
           </div>
-          <h3 className="text-sm font-black text-white uppercase">
-            {activeWorkflow === "INVOICE" ? "Parsing AI..." : "Trip Invoice"}
-          </h3>
+          <h3 className="text-sm font-black text-white uppercase">{activeWorkflow === "INVOICE" ? "Parsing AI..." : "Trip Invoice"}</h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Scans to Pending Inbox for Trip Creation</p>
         </button>
 
-        {/* FUEL BUTTON */}
         <button onClick={() => setSelectionModalFor("FUEL")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-sky-500 disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
           <div className="h-12 w-12 bg-sky-500/10 text-sky-400 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
             {activeWorkflow === "FUEL" ? "⏳" : "⛽"}
           </div>
-          <h3 className="text-sm font-black text-white uppercase">
-            {activeWorkflow === "FUEL" ? "Parsing AI..." : "Diesel Slip"}
-          </h3>
+          <h3 className="text-sm font-black text-white uppercase">{activeWorkflow === "FUEL" ? "Parsing AI..." : "Diesel Slip"}</h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Attach fuel & manual KM to an active trip</p>
         </button>
 
-        {/* POD BUTTON */}
         <button onClick={() => setSelectionModalFor("POD")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
           <div className="h-12 w-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
             {activeWorkflow === "POD" ? "⏳" : "⚖️"}
           </div>
-          <h3 className="text-sm font-black text-white uppercase">
-            {activeWorkflow === "POD" ? "Parsing AI..." : "POD / Weighment"}
-          </h3>
+          <h3 className="text-sm font-black text-white uppercase">{activeWorkflow === "POD" ? "Parsing AI..." : "POD / Weighment"}</h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Auto-calculate shortage & close trip</p>
         </button>
       </div>
-
+      
       <div className="pt-8">
         <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider mb-4">Future Modules</h4>
         <div className="grid grid-cols-2 gap-4 opacity-50 grayscale pointer-events-none">
