@@ -120,20 +120,48 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
   useEffect(() => { fetchActiveTrips(); }, []);
 
-  // 🤖 AI SCAN AUTO-FILL FUNCTION
+  // 🗑️ DELETE JUNK SCANS FROM INBOX
+  const handleDeleteScan = async (e: React.MouseEvent, scanId: string) => {
+    e.stopPropagation();
+    if (!confirm("Delete this bad scan permanently from the inbox?")) return;
+    await supabase.from("pending_scans").delete().eq("scan_id", scanId);
+    setPendingScans(prev => prev.filter(s => s.scan_id !== scanId));
+    if (activeScanId === scanId) setActiveScanId(null);
+  };
+
+  // 🤖 AI SCAN AUTO-FILL FUNCTION WITH SMART UX
   const applyScanData = (scan: any) => {
     setActiveScanId(scan.scan_id);
     const data = scan.raw_json_result || {};
 
-    if (data.lrNo) {
-      const cleanLr = String(data.lrNo).toUpperCase().trim();
-      const matchedLr = activeTrips.find(t => t.trip_number.toUpperCase() === cleanLr || t.trip_number.toUpperCase().includes(cleanLr));
-      if (matchedLr) setSelectedLr(matchedLr.trip_number);
+    let matched = false;
+    
+    // 🚀 Improved Fuzzy Match Logic
+    if (data.lrNo && data.lrNo !== "UNKNOWN") {
+      const cleanLr = String(data.lrNo).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const matchedLr = activeTrips.find(t => {
+         const dbLr = String(t.trip_number).toUpperCase().replace(/[^A-Z0-9]/g, '');
+         return dbLr === cleanLr || dbLr.includes(cleanLr) || cleanLr.includes(dbLr);
+      });
+      if (matchedLr) {
+         setSelectedLr(matchedLr.trip_number);
+         matched = true;
+      }
     }
     
     if (data.deliveryDate) setClosingDate(data.deliveryDate);
     if (data.shortageKg) setScannedShortageKg(Number(data.shortageKg));
     else setScannedShortageKg(null);
+
+    // Prompt user if AI couldn't read the image
+    if (!matched) {
+      setAlertConfig({
+        isOpen: true,
+        title: "Manual Selection Required ⚠️",
+        message: `The AI could not clearly read the LR number from this photo (Detected: ${data.lrNo || "None"}). Please manually select the Active LR from the dropdown below to apply this scan.`,
+        type: "info"
+      });
+    }
   };
 
   useEffect(() => {
@@ -261,9 +289,14 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
               {pendingScans.map(scan => {
                 const data = scan.raw_json_result || {};
                 return (
-                  <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[180px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500' : 'border-[#2B3142] hover:border-slate-500 bg-[#12141C]'}`}>
-                    <p className="text-[10px] text-slate-400 font-bold mb-1">LR: <span className="text-white">{data.lrNo || "UNKNOWN"}</span></p>
-                    <p className="text-xs font-black text-white truncate">Shortage: <span className={data.shortageKg > 0 ? "text-rose-400" : "text-emerald-400"}>{data.shortageKg || 0} kg</span></p>
+                  <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500' : 'border-[#2B3142] hover:border-slate-500 bg-[#12141C]'}`}>
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <p className="text-[10px] text-slate-400 font-bold mb-1">LR: <span className="text-white">{data.lrNo || "UNKNOWN"}</span></p>
+                        <p className="text-xs font-black text-white truncate">Shortage: <span className={data.shortageKg > 0 ? "text-rose-400" : "text-emerald-400"}>{data.shortageKg || 0} kg</span></p>
+                      </div>
+                      <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete bad scan">🗑️</div>
+                    </div>
                   </button>
                 );
               })}
