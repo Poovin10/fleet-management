@@ -162,9 +162,8 @@ export function TripForm({ onSuccess }: TripFormProps) {
   // 🤖 --- AI DOCUMENT SCANNER FUNCTION ---
   const handleScanDocument = async () => {
     try {
-      // 1. Open the smartphone camera or gallery
       const image = await Camera.getPhoto({
-        quality: 50, // Compress to save bandwidth
+        quality: 50,
         allowEditing: true,
         resultType: CameraResultType.Base64,
         source: CameraSource.Prompt 
@@ -173,7 +172,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (!image.base64String) return;
       setIsScanningAI(true);
       
-      // 2. Send image payload to our Next.js API Route
       const response = await fetch('/api/parse-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -186,14 +184,45 @@ export function TripForm({ onSuccess }: TripFormProps) {
       const { data, error } = await response.json();
       if (error) throw new Error(error);
 
-      // 3. Auto-fill the form fields
+      // --- NEW SMART MATCHING BLOCK ---
       if (data.lrNo) setLrNo(String(data.lrNo).toUpperCase());
       if (data.tonnage) setLoadedMt(Number(data.tonnage));
+      if (data.date) setStartDate(data.date);
+
+      // Smart Cargo Type Matching
+      if (data.cargoType) {
+        const cType = String(data.cargoType).toUpperCase();
+        if (cType.includes("BULK")) setCargoType("BULK");
+        if (cType.includes("BAG")) setCargoType("BAG");
+      }
+
+      // Smart Truck Matching (strips spaces to match "TN33AB1234" with "TN 33 AB 1234")
+      if (data.truckNo) {
+        const aiTruck = String(data.truckNo).replace(/\s+/g, '').toUpperCase();
+        const matchedTruck = vehicles.find(v => 
+          String(v.vehicle_number).replace(/\s+/g, '').toUpperCase().includes(aiTruck) || 
+          aiTruck.includes(String(v.vehicle_number).replace(/\s+/g, '').toUpperCase())
+        );
+        if (matchedTruck) setSelectedTruckId(String(matchedTruck.vehicle_id));
+      }
+
+      // Smart Source Matching
+      if (data.source) {
+        const aiSource = String(data.source).toUpperCase().trim();
+        const matchedSource = dynamicSources.find(s => 
+          s.toUpperCase() === aiSource || aiSource.includes(s.toUpperCase())
+        );
+        if (matchedSource) {
+          setSource(matchedSource);
+        } else {
+          setSource("CUSTOM");
+          setCustomSource(aiSource);
+        }
+      }
       
       // Smart Destination Matching
       if (data.destination) {
         const aiDest = String(data.destination).toUpperCase().trim();
-        // Check if the AI's destination matches any of our known valid routes
         const matchedRoute = validRoutes.find(r => 
           r.destination_name?.toUpperCase().includes(aiDest) || aiDest.includes(r.destination_name?.toUpperCase() || "")
         );
@@ -202,12 +231,12 @@ export function TripForm({ onSuccess }: TripFormProps) {
           setDestinationLabel(matchedRoute.destination_name);
           setIsManualRoute(false);
         } else {
-          // If the city isn't in the dropdown, auto-flip to manual mode
           setDestinationLabel("MANUAL_SPOT_ROUTE");
           setCustomDest(aiDest);
           setIsManualRoute(true);
         }
       }
+      // --- END SMART MATCHING BLOCK ---
       
       setAlertConfig({ isOpen: true, title: "AI Scan Complete ✨", message: "Invoice details extracted and filled successfully.", type: "success" });
 
@@ -342,7 +371,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
     <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 sm:p-8 shadow-xl max-w-4xl mx-auto animate-in fade-in duration-300 relative">
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
-      {/* 🤖 UPDATED HEADER WITH AI SCAN BUTTON */}
       <div className="border-b border-[#222634] pb-4 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="text-base font-black text-white uppercase tracking-tight">Initiate Trip Dispatch</h3>
