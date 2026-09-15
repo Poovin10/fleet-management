@@ -28,6 +28,8 @@ export async function POST(req: Request) {
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
+        thinkingConfig: { thinkingBudget: 0 }
+
       }
     });
 
