@@ -125,7 +125,6 @@ export function DriverPortal() {
   const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
   const selectedTruckObj = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
   
-  // 🚀 FIX: Ignore trips that are WAITING_FOR_LOAD, they are done from the driver's perspective!
   const sortedTrips = [...activeTrips].sort((a, b) => b.trip_id - a.trip_id);
   const latestAssignedTrip = sortedTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
   const currentTrip = latestAssignedTrip?.trip_status === 'WAITING_FOR_LOAD' ? null : latestAssignedTrip;
@@ -133,7 +132,6 @@ export function DriverPortal() {
   useEffect(() => {
     if (isDriverLocked && drivers.length > 0 && activeDriverObj) {
       if (activeTrips.length > 0) {
-        // Auto-select truck only if they have an active trip that isn't waiting for load
         const activeTrip = activeTrips.find(t => String(t.primary_driver_id) === String(activeDriverObj.driver_id) && t.trip_status !== 'WAITING_FOR_LOAD');
         if (activeTrip) setSelectedTruckId(String(activeTrip.vehicle_id));
       }
@@ -252,7 +250,9 @@ export function DriverPortal() {
       if (!finalBase64) return;
       setActiveWorkflow(docType);
 
-      const response = await fetch('/api/parse-document', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: finalBase64, documentType: docType === "INVOICE" ? "TRIP_INVOICE" : docType }) });
+      const apiDocType = docType === "INVOICE" ? "TRIP_INVOICE" : docType === "FUEL" ? "FUEL_SLIP" : "POD_CLOSURE";
+
+      const response = await fetch('/api/parse-document', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: finalBase64, documentType: apiDocType }) });
       const { data, error } = await response.json();
       if (error) throw new Error(error);
 
@@ -267,10 +267,10 @@ export function DriverPortal() {
           }
         }
         if (shouldInsert) {
-          await supabase.from('pending_scans').insert([{ document_type: 'TRIP_INVOICE', lr_number: extractedLr, tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data, status: 'PENDING' }]);
+          await supabase.from('pending_scans').insert([{ document_type: apiDocType, lr_number: extractedLr, tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data, status: 'PENDING' }]);
         }
       } else {
-        await supabase.from('pending_scans').insert([{ document_type: docType, raw_json_result: data, status: 'PENDING' }]);
+        await supabase.from('pending_scans').insert([{ document_type: apiDocType, raw_json_result: data, status: 'PENDING' }]);
       }
       setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType} sent to office successfully.`, type: "success" });
     } catch (err: any) {
@@ -293,7 +293,7 @@ export function DriverPortal() {
         trip_start_date: timestamp.split('T')[0], origin: "PENDING OFFICE", destination: "PENDING OFFICE",
         start_km: Number(odometer) || 0, end_km: 0, total_km_run: 0, tonnage_loaded: 0, loaded_weight_mt: 0,
         freight_revenue: 0, fuel_litres: 0, fuel_expense: 0, driver_bata: 0, cash_advance_issued: 0, 
-        trip_status: "IN_TRANSIT", status_remarks: `Started draft trip at ${formatDateTime(timestamp)}`
+        trip_status: "IN_TRANSIT"
       };
 
       const { error: tripError } = await supabase.from('trips').insert([updatePayload]);
@@ -511,6 +511,19 @@ export function DriverPortal() {
                 </button>
               </div>
             </form>
+          )}
+
+          {activeTab === "LEDGER" && (
+            <div className="p-6 grid gap-6 bg-app min-h-[400px] animate-in fade-in">
+              <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-fg-muted">Current Month Net Balance</p>
+                <div className="flex justify-between items-baseline mt-1"><span className={`text-2xl font-bold ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>₹{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span><span className="text-[10px] text-fg-muted">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span></div>
+                <div className="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 text-[11px] text-slate-300">
+                  <div>Earned Bata: <strong className="text-white">₹{monthEarnedBata}</strong></div><div>Halt Bata (Exp): <strong className="text-amber-400">₹{monthHaltBata}</strong></div>
+                  <div className="col-span-2 mt-1">Total Deductions (Advances): <strong className="text-rose-400">₹{totalMonthDeductions}</strong></div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}
