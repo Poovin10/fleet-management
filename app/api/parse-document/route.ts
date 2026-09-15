@@ -30,7 +30,7 @@ export async function POST(req: Request) {
         responseSchema: schema,
         thinkingConfig: { thinkingBudget: 0 }
 
-      }
+      } as any
     });
 
     const result = await model.generateContent([
