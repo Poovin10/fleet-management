@@ -185,9 +185,12 @@ export function TripForm({ onSuccess }: TripFormProps) {
     const selTruck = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
     if (selTruck) {
       const tName = `Truck ${selTruck.vehicle_number}`;
-      checkWarning(tName, "FC", selTruck.fc_expiry_date); checkWarning(tName, "Insurance", list => checkWarning(tName, "Insurance", selTruck.insurance_expiry_date));
-      checkWarning(tName, "Q-Tax", selTruck.qtax_expiry_date); checkWarning(tName, "PUC", selTruck.puc_expiry_date);
-      checkWarning(tName, "NP", selTruck.np_expiry_date); checkWarning(tName, "State Permit", selTruck.state_permit_expiry_date);
+      checkWarning(tName, "FC", selTruck.fc_expiry_date); 
+      checkWarning(tName, "Insurance", selTruck.insurance_expiry_date);
+      checkWarning(tName, "Q-Tax", selTruck.qtax_expiry_date); 
+      checkWarning(tName, "PUC", selTruck.puc_expiry_date);
+      checkWarning(tName, "NP", selTruck.np_expiry_date); 
+      checkWarning(tName, "State Permit", selTruck.state_permit_expiry_date);
       if (String(selTruck.truck_type).toUpperCase().includes("BULK")) checkWarning(tName, "Tank Cert", selTruck.tank_cert_expiry_date);
     }
     setComplianceWarnings(warnings);
@@ -310,7 +313,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
     // 📥 Mark the inbox item as processed!
     if (activeScanId) {
       await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
-      setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId)); // Remove from UI
+      setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId)); 
     }
 
     if (fuelErrorMessage) setAlertConfig({ isOpen: true, title: "Trip Created (Fuel Error)", message: `Trip dispatched, BUT diesel log failed (${fuelErrorMessage}). Add it manually.`, type: "error" });
