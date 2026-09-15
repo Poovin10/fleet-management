@@ -46,7 +46,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const [bataMaster, setBataMaster] = useState<any[]>([]);
   const [pendingScans, setPendingScans] = useState<any[]>([]); 
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
-  const [draftTrips, setDraftTrips] = useState<any[]>([]); // Tracks drivers' ghost trips
+  const [draftTrips, setDraftTrips] = useState<any[]>([]); 
 
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [lrNo, setLrNo] = useState("");
@@ -85,7 +85,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
         supabase.from("driver_bata_master").select("*"),
         supabase.from("diesel_fuel_logs").select("diesel_rate_per_litre").order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false }).limit(1),
         supabase.from("pending_scans").select("*").eq("document_type", "TRIP_INVOICE").eq("status", "PENDING").order("created_at", { ascending: false }),
-        supabase.from("trips").select("vehicle_id, trip_number").neq("trip_status", "COMPLETED") // Fetch all running trips
+        supabase.from("trips").select("vehicle_id, trip_number").neq("trip_status", "COMPLETED") 
       ]);
 
       if (vehRes.data) setVehicles(vehRes.data);
@@ -95,7 +95,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (dieselRes.data && dieselRes.data.length > 0 && dieselRes.data[0].diesel_rate_per_litre) setDieselRate(Number(dieselRes.data[0].diesel_rate_per_litre));
       if (scansRes.data) setPendingScans(scansRes.data);
       
-      // Identify trucks that have a "Ghost Trip" running so they appear in the truck dropdown
       if (activeTripsRes.data) {
         setDraftTrips(activeTripsRes.data.filter(t => t.trip_number.startsWith("DRAFT-")).map(t => String(t.vehicle_id)));
       }
@@ -171,7 +170,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
     setComplianceWarnings(warnings);
   }, [selectedDriverId, selectedTruckId, drivers, vehicles]);
 
-  // 🔥 IMPORTANT: We now allow trucks that are WAITING_FOR_LOAD *OR* have an active DRAFT Ghost Trip
   const availableTrucks = vehicles.filter((v) => {
     const isBulkTruck = String(v.truck_type).toUpperCase().includes("BULK");
     const isAvailable = v.current_status === "AVAILABLE_FOR_LOAD" || v.current_status === "WAITING_FOR_LOAD" || draftTrips.includes(String(v.vehicle_id));
@@ -197,6 +195,31 @@ export function TripForm({ onSuccess }: TripFormProps) {
   useEffect(() => {
     if (selectedTruckId) {
       const fetchTruckHistory = async () => {
+        // 👻 --- GHOST TRIP / DRAFT DETECTION ---
+        const { data: drafts } = await supabase.from('trips')
+          .select('*')
+          .eq('vehicle_id', selectedTruckId)
+          .like('trip_number', 'DRAFT-%')
+          .neq('trip_status', 'COMPLETED')
+          .order('trip_id', { ascending: false })
+          .limit(1);
+
+        if (drafts && drafts.length > 0) {
+          const draft = drafts[0];
+          setStartKm(draft.start_km || "");
+          setStartDate(draft.trip_start_date || new Date().toISOString().split("T")[0]);
+          setSelectedDriverId(String(draft.primary_driver_id || ""));
+          
+          setAlertConfig({
+            isOpen: true,
+            title: "Ghost Trip Detected 👻",
+            message: `The driver already started this trip on the highway at ${draft.start_km} KM. Please attach the official invoice details below to finalize it.`,
+            type: "info"
+          });
+          return; 
+        }
+
+        // --- NORMAL HISTORY FETCH ---
         const { data: lastTrip } = await supabase.from("trips").select("primary_driver_id").eq("vehicle_id", selectedTruckId).not("primary_driver_id", "is", null).order("trip_id", { ascending: false }).limit(1);
         if (lastTrip && lastTrip.length > 0 && lastTrip[0].primary_driver_id) setSelectedDriverId(String(lastTrip[0].primary_driver_id));
         else setSelectedDriverId("");
@@ -264,13 +287,18 @@ export function TripForm({ onSuccess }: TripFormProps) {
     const grossFreight = Math.round(Number(loadedMt) * Number(freightRate) * 100) / 100;
     const fuelCost = Math.round((Number(dieselL) || 0) * dieselRate * 100) / 100;
 
-    // 🚀 NEW LOGIC: Check if the driver already created a ghost trip!
-    const { data: existingDraftTrips } = await supabase.from("trips").select("*").eq("vehicle_id", Number(selectedTruckId)).neq("trip_status", "COMPLETED").order("trip_id", { ascending: false }).limit(1);
+    // 🚀 CRITICAL FIX: Only grab existing trips that specifically start with "DRAFT-"
+    const { data: existingDraftTrips } = await supabase.from("trips")
+      .select("*")
+      .eq("vehicle_id", Number(selectedTruckId))
+      .like("trip_number", "DRAFT-%")
+      .neq("trip_status", "COMPLETED")
+      .order("trip_id", { ascending: false })
+      .limit(1);
+      
     const activeDraftTrip = existingDraftTrips && existingDraftTrips.length > 0 ? existingDraftTrips[0] : null;
-
     let activeTripId = null;
 
-    // The shared payload for both INSERT and UPDATE
     const tripPayload: any = {
       trip_number: lrNo.toUpperCase().trim(),
       origin: finalSource.toUpperCase(),
@@ -284,7 +312,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
     };
 
     if (activeDraftTrip) {
-      // 🟢 The driver already hit "Start Trip". We UPDATE the existing DB row!
       activeTripId = activeDraftTrip.trip_id;
       tripPayload.fuel_litres = (Number(activeDraftTrip.fuel_litres) || 0) + (Number(dieselL) || 0);
       tripPayload.fuel_expense = (Number(activeDraftTrip.fuel_expense) || 0) + fuelCost;
@@ -292,14 +319,12 @@ export function TripForm({ onSuccess }: TripFormProps) {
       const { error: updateError } = await supabase.from("trips").update(tripPayload).eq("trip_id", activeTripId);
       if (updateError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Draft Update Failed", message: updateError.message, type: "error" }); }
 
-      // Also update Vehicle remarks to show the new real LR number, but preserve the driver's current operational status
       await supabase.from("vehicles").update({ 
           status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSource.toUpperCase()} ➔ ${finalDest} (${activeDraftTrip.trip_status})`, 
           status_updated_at: new Date().toISOString() 
       }).eq("vehicle_id", Number(selectedTruckId));
 
     } else {
-      // 🔵 Normal Flow: Admin creates the trip before the driver
       tripPayload.branch_id = 1;
       tripPayload.trip_start_date = startDate;
       tripPayload.trip_end_date = startDate;
@@ -323,7 +348,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
       }).eq("vehicle_id", Number(selectedTruckId));
     }
 
-    // Fuel Log Handling
     let fuelErrorMessage = null;
     if (Number(dieselL) > 0 && activeTripId) {
       const { error: fuelError } = await supabase.from("diesel_fuel_logs").insert([{
@@ -334,7 +358,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (fuelError) fuelErrorMessage = fuelError.message;
     }
 
-    // Mark the scan as processed so it vanishes from the UI!
     if (activeScanId) {
       await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
       setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId)); 
