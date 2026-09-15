@@ -16,6 +16,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { DriverPortal } from "@/components/DriverPortal";
 import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
+import { UploadHub } from "@/components/UploadHub"; // 📥 Imported the new Upload Hub
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -49,7 +50,7 @@ export default function Dashboard() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("Dashboard");
-  const [opSubTab, setOpSubTab] = useState("Trips");
+  const [opSubTab, setOpSubTab] = useState("Document Uploads"); // 📥 Set this as default so they see it first
 
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
@@ -73,7 +74,8 @@ export default function Dashboard() {
   const [qsStatus, setQsStatus] = useState("WAITING_FOR_LOAD");
   const [qsRemarks, setQsRemarks] = useState("");
 
-  const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Driver Approvals"];
+  // 📥 Added "Document Uploads" to your existing Operations Sub-Tabs
+  const opTabs = ["Document Uploads", "Trips", "POD Closure", "Modify Trips", "Quick Status", "Driver Approvals"];
 
   const formatAmt = (amt: number) => (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -123,8 +125,6 @@ export default function Dashboard() {
       setIsAuthLoading(false);
     }
 
-    // THE FIX: We removed the aggressive bounce from the listener.
-    // It will now ONLY kick you out if the event is specifically 'SIGNED_OUT'.
     const { data: authListener } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (session) {
         setIsAuthenticated(true);
@@ -439,6 +439,9 @@ export default function Dashboard() {
                 ))}
               </div>
 
+              {/* 📥 Render the Document Upload Hub here */}
+              {opSubTab === "Document Uploads" && <UploadHub />}
+              
               {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
               {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
               {opSubTab === "Modify Trips" && <ModifyTrips />}
