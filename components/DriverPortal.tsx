@@ -31,7 +31,7 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
   return R * c; 
 };
 
-const compressImageBase64 = (base64Str: string, maxWidth = 1000, quality = 0.6): Promise<string> => {
+const compressImageBase64 = (base64Str: string, maxWidth = 1600, quality = 0.8): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = "data:image/jpeg;base64," + base64Str;
@@ -52,7 +52,7 @@ const compressImageBase64 = (base64Str: string, maxWidth = 1000, quality = 0.6):
       ctx?.drawImage(img, 0, 0, width, height);
       resolve(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
     };
-    img.onerror = () => resolve(base64Str);
+    img.onerror = () => resolve(base64Str); 
   });
 };
 
@@ -263,7 +263,7 @@ export function DriverPortal() {
           img.src = event.target?.result as string;
           img.onload = () => {
             const canvas = document.createElement("canvas");
-            const MAX_DIM = 1200; 
+            const MAX_DIM = 1600; 
             let width = img.width;
             let height = img.height;
             if (width > height && width > MAX_DIM) {
@@ -274,7 +274,7 @@ export function DriverPortal() {
             canvas.width = width; canvas.height = height;
             const ctx = canvas.getContext("2d");
             ctx?.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
+            resolve(canvas.toDataURL("image/jpeg", 0.8).split(",")[1]);
           };
         };
         reader.onerror = (err) => reject(err);
@@ -292,11 +292,7 @@ export function DriverPortal() {
         rawBase64 = await handleWebUpload();
       } else {
         const image = await Camera.getPhoto({ 
-            quality: 50, 
-            width: 1000, 
-            allowEditing: true, 
-            resultType: CameraResultType.Base64, 
-            source: sourceSelection 
+            quality: 80, width: 1600, allowEditing: true, resultType: CameraResultType.Base64, source: sourceSelection 
         });
         rawBase64 = image.base64String || "";
       }
@@ -304,27 +300,24 @@ export function DriverPortal() {
       if (!rawBase64) return;
       setActiveWorkflow(docType);
 
-      const finalBase64 = await compressImageBase64(rawBase64, 1000, 0.6);
+      const finalBase64 = await compressImageBase64(rawBase64, 1600, 0.8);
       const apiDocType = docType === "INVOICE" ? "TRIP_INVOICE" : docType === "FUEL" ? "FUEL_SLIP" : "POD_CLOSURE";
 
       const response = await fetch('/api/parse-document', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ imageBase64: finalBase64, documentType: apiDocType }) 
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: finalBase64, documentType: apiDocType }) 
       });
       
-      // 🚀 FIX: Beautifully parse backend JSON errors so they don't break the UI
       const responseText = await response.text();
       if (!response.ok) {
-        if (response.status === 413 || responseText.includes("Request Entity Too Large")) {
-          throw new Error("The photo is too large to process. Please try taking a slightly lower quality photo.");
-        }
-        let serverErrMsg = responseText;
+        if (response.status === 413 || responseText.includes("Request Entity Too Large")) throw new Error("Image too large. Step back slightly.");
+        if (response.status === 504) throw new Error("Server Timeout. The AI took too long. Try again.");
+        
+        let serverErrMsg = responseText || `Unknown Error (Status ${response.status})`;
         try {
           const parsed = JSON.parse(responseText);
           if (parsed.error) serverErrMsg = parsed.error;
-        } catch (e) { /* Ignore non-JSON text */ }
-        throw new Error(`API Error: ${serverErrMsg}`);
+        } catch (e) {}
+        throw new Error(serverErrMsg);
       }
 
       const { data, error } = JSON.parse(responseText);
@@ -343,10 +336,11 @@ export function DriverPortal() {
         if (shouldInsert) {
           await supabase.from('pending_scans').insert([{ document_type: apiDocType, lr_number: extractedLr, tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data, status: 'PENDING' }]);
         }
+        setAlertConfig({ isOpen: true, title: "Inbox Updated ✨", message: "Invoice digitized and sent to Trip Creation Inbox.", type: "success" });
       } else {
         await supabase.from('pending_scans').insert([{ document_type: apiDocType, raw_json_result: data, status: 'PENDING' }]);
+        setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType} sent to office successfully.`, type: "success" });
       }
-      setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType} sent to office successfully.`, type: "success" });
     } catch (err: any) {
       if (!String(err).toLowerCase().includes("cancel")) setAlertConfig({ isOpen: true, title: "Scan Failed", message: String(err), type: "error" });
     } finally { setActiveWorkflow(null); }
