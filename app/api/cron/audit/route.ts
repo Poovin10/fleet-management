@@ -12,8 +12,8 @@ export async function GET(req: Request) {
 
     const [vehiclesRes, tripsRes, fuelRes, repairsRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true),
-      supabase.from('trips').select('*, vehicles(vehicle_number), drivers(full_name)').order('trip_id', { ascending: false }).limit(40),
-      supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).limit(40),
+      supabase.from('trips').select('*, vehicles(vehicle_number), drivers(full_name)').order('trip_id', { ascending: false }).limit(30),
+      supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).limit(30),
       supabase.from('workshop_repairs').select('*, vehicles(vehicle_number)').order('repair_date', { ascending: false }).limit(20)
     ]);
 
@@ -67,20 +67,17 @@ export async function GET(req: Request) {
             }
           }
         },
-        temperature: 0.2, // Low temperature keeps it professional, factual, and prevents repetition loops
+        temperature: 0.1,
+        // 🚀 CRITICAL FIX: Disable internal thinking loop so it doesn't dump tokens into text output
         thinkingConfig: { thinkingBudget: 0 }
       } as any
     });
 
     const prompt = `You are a professional Fleet Operations Director for KSS Roadways managing 26 commercial heavy trucks in South India. 
-    Review the provided fleet database JSON and write a clean, executive-level audit report. 
-    
-    Strict Rules:
-    - Write in clear, professional English. NO repetitive technical jargon or looping words.
-    - Keep issue descriptions short, direct, and focused on business impact (fuel drops, maintenance spikes, delayed PODs).
-    
+    Analyze the provided fleet database JSON and output a short, precise JSON response. Do not repeat words or write long essays. Keep issue descriptions under 2 sentences.
+
     Database JSON:
-    ${JSON.stringify(fleetData)}`.slice(0, 25000);
+    ${JSON.stringify(fleetData)}`.slice(0, 15000);
 
     const result = await model.generateContent([prompt]);
     const textResponse = result.response.text();
