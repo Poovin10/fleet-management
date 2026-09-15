@@ -60,12 +60,15 @@ export function UploadHub() {
       if (!finalBase64) return;
       setActiveWorkflow(docType);
 
+      // 1. Properly map the docType to the exact string the API expects
+      const apiDocType = docType === "INVOICE" ? "TRIP_INVOICE" : docType === "FUEL" ? "FUEL_SLIP" : "POD_CLOSURE";
+
       const response = await fetch('/api/parse-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageBase64: finalBase64,
-          documentType: docType === "INVOICE" ? "TRIP_INVOICE" : docType 
+          documentType: apiDocType 
         })
       });
 
@@ -102,7 +105,7 @@ export function UploadHub() {
 
         if (shouldInsert) {
           const { error: dbError } = await supabase.from('pending_scans').insert([{
-            document_type: 'TRIP_INVOICE',
+            document_type: apiDocType,
             lr_number: extractedLr,
             tonnage_extracted: data.tonnage ? Number(data.tonnage) : null,
             destination: data.destination ? String(data.destination).toUpperCase() : null,
@@ -118,9 +121,9 @@ export function UploadHub() {
         
         setAlertConfig({ isOpen: true, title: "Inbox Updated ✨", message: "Invoice digitized and sent to Trip Creation Inbox.", type: "success" });
       } else {
-        // Handle FUEL and POD generic inserts for now
+        // Handle FUEL and POD generic inserts with correct string mapping
         const { error: dbError } = await supabase.from('pending_scans').insert([{
-          document_type: docType,
+          document_type: apiDocType,
           raw_json_result: data,
           status: 'PENDING'
         }]);
