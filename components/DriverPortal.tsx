@@ -26,10 +26,7 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
   const R = 6371e3; 
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; 
 };
@@ -38,11 +35,7 @@ export function DriverPortal() {
   const [supabase, setSupabase] = useState<any>(null);
 
   useEffect(() => {
-    try {
-      setSupabase(createClient());
-    } catch (err) {
-      console.warn("Supabase client failed to initialize during pre-render", err);
-    }
+    try { setSupabase(createClient()); } catch (err) { console.warn("Supabase init failed", err); }
   }, []);
 
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -71,16 +64,12 @@ export function DriverPortal() {
   const [currentMonthAdvances, setCurrentMonthAdvances] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [complianceWarnings, setComplianceWarnings] = useState<any[]>([]);
-
   const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null);
   const [selectionModalFor, setSelectionModalFor] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const userAgent = window.navigator.userAgent.toLowerCase();
-      setIsMobile(/android|iphone|ipad|ipod/.test(userAgent));
-    }
+    if (typeof window !== 'undefined') setIsMobile(/android|iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()));
   }, []);
 
   const formatDateTime = (dateStr: string) => {
@@ -107,23 +96,18 @@ export function DriverPortal() {
       supabase.from('drivers').select('*').eq('is_active', true),
       supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status, trip_start_date, reached_at, unloaded_at, returning_at, start_km, destination_lat, destination_lng, origin_lat, origin_lng').neq('trip_status', 'COMPLETED')
     ]);
-
-    setVehicles(vRes.data || []);
-    setDrivers(dRes.data || []);
-    setActiveTrips(tRes.data || []);
+    setVehicles(vRes.data || []); setDrivers(dRes.data || []); setActiveTrips(tRes.data || []);
   };
 
   const fetchDriverCurrentMonthReports = async (drvCode: string, drvId: number) => {
     if (!supabase) return;
     const now = new Date();
     const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-
     const [reqRes, tripRes, advRes] = await Promise.all([
       supabase.from('driver_pending_entries').select('*').eq('driver_code', drvCode).order('submitted_at', { ascending: false }).limit(10),
       supabase.from('trips').select('*').eq('primary_driver_id', drvId).gte('trip_start_date', firstDay).order('trip_start_date', { ascending: false }),
       supabase.from('driver_direct_advances').select('*').eq('driver_id', drvId).gte('advance_date', firstDay).order('advance_date', { ascending: false })
     ]);
-
     if (reqRes.data) setPendingRequests(reqRes.data);
     if (tripRes.data) setCurrentMonthTrips(tripRes.data);
     if (advRes.data) setCurrentMonthAdvances(advRes.data);
@@ -134,14 +118,8 @@ export function DriverPortal() {
     fetchPortalData();
     const storedDriver = localStorage.getItem("kss_device_driver");
     const enrolledBioDriver = localStorage.getItem("kss_biometric_enrolled_driver");
-    
     if (enrolledBioDriver) setEnrolledBiometricDriver(enrolledBioDriver);
-
-    if (storedDriver) {
-      setSavedDriverCode(storedDriver);
-      setDriverCode(storedDriver);
-      setIsDriverLocked(true);
-    }
+    if (storedDriver) { setSavedDriverCode(storedDriver); setDriverCode(storedDriver); setIsDriverLocked(true); }
   }, [supabase]);
 
   const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
@@ -166,24 +144,18 @@ export function DriverPortal() {
           supabase.from("diesel_fuel_logs").select("filling_odometer_km").eq("vehicle_id", selectedTruckId).order("fuel_log_id", { ascending: false }).limit(1),
           supabase.from("driver_pending_entries").select("odometer_km").eq("vehicle_id", selectedTruckId).order("submitted_at", { ascending: false }).limit(1)
         ]);
-        
         let maxOdo = 0;
         if (tripData.data && tripData.data.length > 0) maxOdo = Math.max(maxOdo, Number(tripData.data[0].end_km || 0), Number(tripData.data[0].start_km || 0));
         if (fuelData.data && fuelData.data.length > 0) maxOdo = Math.max(maxOdo, Number(fuelData.data[0].filling_odometer_km || 0));
         if (pendingData.data && pendingData.data.length > 0) maxOdo = Math.max(maxOdo, Number(pendingData.data[0].odometer_km || 0));
-        
         setLastOdometer(maxOdo > 0 ? maxOdo : "");
       };
       fetchLastOdo();
-    } else {
-      setLastOdometer("");
-    }
+    } else setLastOdometer("");
   }, [selectedTruckId, activeTrips, pendingRequests, supabase]);
 
   useEffect(() => {
-    const isStartPending = pendingRequests.some(r => r.entry_type === "START_TRIP" && r.status === "PENDING" && String(r.vehicle_id) === String(selectedTruckId));
-    const isStarted = (currentTrip && currentTrip.start_km > 0) || isStartPending;
-    
+    const isStarted = currentTrip && currentTrip.start_km > 0;
     if (isStarted && actionType === "START_TRIP") {
        if (currentTrip?.trip_status === "IN_TRANSIT") setActionType("REACHED");
        else if (currentTrip?.trip_status === "REACHED_DESTINATION") setActionType("UNLOADED");
@@ -193,44 +165,12 @@ export function DriverPortal() {
     } else if (!isStarted && !currentTrip) {
        setActionType("START_TRIP");
     }
-  }, [currentTrip, pendingRequests, selectedTruckId, actionType]);
-
-  useEffect(() => {
-    const warnings: any[] = [];
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const tenDaysFromNow = new Date(today); tenDaysFromNow.setDate(today.getDate() + 10);
-
-    const checkWarning = (name: string, docName: string, dateVal: string) => {
-      if (!dateVal) return;
-      const expDate = new Date(dateVal); expDate.setHours(0, 0, 0, 0);
-      if (expDate <= tenDaysFromNow) warnings.push({ name, docName, date: dateVal, isUrgent: expDate <= today });
-    };
-
-    if (activeDriverObj) checkWarning("Your", "Driving License", activeDriverObj.license_expiry_date);
-    if (selectedTruckObj) {
-      const tName = `Truck ${selectedTruckObj.vehicle_number}`;
-      checkWarning(tName, "FC", selectedTruckObj.fc_expiry_date);
-      checkWarning(tName, "Insurance", selectedTruckObj.insurance_expiry_date);
-      checkWarning(tName, "Q-Tax", selectedTruckObj.qtax_expiry_date);
-      checkWarning(tName, "PUC", selectedTruckObj.puc_expiry_date);
-      checkWarning(tName, "NP", selectedTruckObj.np_expiry_date);
-      checkWarning(tName, "State Permit", selectedTruckObj.state_permit_expiry_date);
-      if (String(selectedTruckObj.truck_type).toUpperCase().includes("BULK")) checkWarning(tName, "Tank Cert", selectedTruckObj.tank_cert_expiry_date);
-    }
-    setComplianceWarnings(warnings);
-  }, [activeDriverObj, selectedTruckObj]);
+  }, [currentTrip, selectedTruckId, actionType]);
 
   const handleDriverChange = (code: string) => {
-    setDriverCode(code); 
-    setDriverPin(""); 
-    setConfirmPin("");
-    
-    if (code) {
-      const drv = drivers.find(d => d.driver_code === code);
-      setIsFirstTimeSetup(!drv || !drv.pin || drv.pin.trim() === "");
-    } else {
-      setIsFirstTimeSetup(false);
-    }
+    setDriverCode(code); setDriverPin(""); setConfirmPin("");
+    if (code) { const drv = drivers.find(d => d.driver_code === code); setIsFirstTimeSetup(!drv || !drv.pin || drv.pin.trim() === ""); } 
+    else setIsFirstTimeSetup(false);
   };
 
   const displayDriverName = activeDriverObj ? `${activeDriverObj.full_name} (${activeDriverObj.driver_code})` : savedDriverCode;
@@ -240,88 +180,55 @@ export function DriverPortal() {
   const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
   const monthTripAdvances = currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
   const monthDirectAdvances = currentMonthAdvances.reduce((sum, a) => sum + (Number(a.amount_inr) || 0), 0);
-  
-  const totalMonthEarnings = monthEarnedBata + monthHaltBata;
-  const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
-  const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
+  const currentMonthNetBalance = (monthEarnedBata + monthHaltBata) - (monthTripAdvances + monthDirectAdvances);
 
   const handleManualFingerprint = async () => {
-    if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Please select your profile first.", type: "error" });
-
-    if (driverCode !== enrolledBiometricDriver) {
-      return setAlertConfig({ 
-        isOpen: true, 
-        title: "Security Lock 🔒", 
-        message: "Biometrics are tied to another driver on this device. Please log in with your PIN to link your fingerprint to this phone.", 
-        type: "error" 
-      });
-    }
-
+    if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Select your profile first.", type: "error" });
+    if (driverCode !== enrolledBiometricDriver) return setAlertConfig({ isOpen: true, title: "Security Lock 🔒", message: "Log in with PIN to link fingerprint.", type: "error" });
     try {
       const { NativeBiometric } = await import("capacitor-native-biometric");
-      await NativeBiometric.verifyIdentity({
-        reason: "Log in to KSS Roadways Driver Portal",
-        title: "Driver Authentication",
-        subtitle: "Touch fingerprint sensor",
-        description: "Verify identity to access your portal",
-      });
-
+      await NativeBiometric.verifyIdentity({ reason: "Log in to KSS Roadways Driver Portal", title: "Driver Authentication" });
       localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
-      setSavedDriverCode(driverCode.toUpperCase().trim());
-      setIsDriverLocked(true);
-    } catch (error) {
-      console.error("Biometric error:", error);
-    }
+      setSavedDriverCode(driverCode.toUpperCase().trim()); setIsDriverLocked(true);
+    } catch (error) { console.error("Biometric error:", error); }
   };
 
   const handleLockDriver = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase) return;
-    if (!driverCode) return setAlertConfig({ isOpen: true, title: "Missing Detail", message: "Please select your profile.", type: "error" });
+    if (!supabase || !driverCode) return;
     const selectedDrv = drivers.find(d => d.driver_code === driverCode);
     if (!selectedDrv) return;
 
     if (isFirstTimeSetup) {
-      if (driverPin.length !== 4) return setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "PIN must be exactly 4 digits.", type: "error" });
+      if (driverPin.length !== 4) return setAlertConfig({ isOpen: true, title: "Invalid", message: "PIN must be 4 digits.", type: "error" });
       if (driverPin !== confirmPin) return setAlertConfig({ isOpen: true, title: "Mismatch", message: "PINs do not match.", type: "error" });
-
       const { error } = await supabase.from('drivers').update({ pin: driverPin }).eq('driver_id', selectedDrv.driver_id);
       if (error) return setAlertConfig({ isOpen: true, title: "Setup Failed", message: error.message, type: "error" });
-      setAlertConfig({ isOpen: true, title: "PIN Saved!", message: "Your security PIN has been successfully set.", type: "success" });
+      setAlertConfig({ isOpen: true, title: "PIN Saved!", message: "PIN set successfully.", type: "success" });
       await fetchPortalData();
     } else {
       if (driverPin.trim() !== (selectedDrv.pin || "").toString().trim()) return setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "Incorrect PIN.", type: "error" });
     }
-
     localStorage.setItem("kss_biometric_enrolled_driver", driverCode.toUpperCase().trim());
     setEnrolledBiometricDriver(driverCode.toUpperCase().trim());
     localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
-    setSavedDriverCode(driverCode.toUpperCase().trim());
-    setIsDriverLocked(true); setDriverPin(""); setConfirmPin("");
+    setSavedDriverCode(driverCode.toUpperCase().trim()); setIsDriverLocked(true); setDriverPin(""); setConfirmPin("");
   };
 
   const handleResetDriver = () => {
     if (confirm("Switch driver profile on this device?")) {
-      localStorage.removeItem("kss_device_driver");
-      setIsDriverLocked(false); setSavedDriverCode(""); setSelectedTruckId(""); setDriverPin(""); setConfirmPin("");
+      localStorage.removeItem("kss_device_driver"); setIsDriverLocked(false); setSavedDriverCode(""); setSelectedTruckId(""); setDriverPin(""); setConfirmPin("");
     }
   };
 
   const handleWebUpload = (): Promise<string> => {
     return new Promise((resolve, reject) => {
       const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/png, image/jpeg, image/jpg";
+      input.type = "file"; input.accept = "image/png, image/jpeg, image/jpg";
       input.onchange = (e: any) => {
-        const file = e.target.files[0];
-        if (!file) return resolve("");
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => {
-          const result = reader.result as string;
-          const base64 = result.split(",")[1];
-          resolve(base64);
-        };
+        const file = e.target.files[0]; if (!file) return resolve("");
+        const reader = new FileReader(); reader.readAsDataURL(file);
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
         reader.onerror = (err) => reject(err);
       };
       input.click();
@@ -331,96 +238,39 @@ export function DriverPortal() {
   const triggerScanner = async (docType: string, sourceSelection: any) => {
     setSelectionModalFor(null);
     let finalBase64 = "";
-
     try {
-      if (sourceSelection === "WEB") {
-        finalBase64 = await handleWebUpload();
-      } else {
-        const image = await Camera.getPhoto({
-          quality: 50,
-          allowEditing: true,
-          resultType: CameraResultType.Base64,
-          source: sourceSelection 
-        });
+      if (sourceSelection === "WEB") finalBase64 = await handleWebUpload();
+      else {
+        const image = await Camera.getPhoto({ quality: 50, allowEditing: true, resultType: CameraResultType.Base64, source: sourceSelection });
         finalBase64 = image.base64String || "";
       }
-
       if (!finalBase64) return;
       setActiveWorkflow(docType);
 
-      const response = await fetch('/api/parse-document', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: finalBase64,
-          documentType: docType === "INVOICE" ? "TRIP_INVOICE" : docType 
-        })
-      });
-
+      const response = await fetch('/api/parse-document', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: finalBase64, documentType: docType === "INVOICE" ? "TRIP_INVOICE" : docType }) });
       const { data, error } = await response.json();
       if (error) throw new Error(error);
 
       if (docType === "INVOICE") {
         const extractedLr = data.lrNo ? String(data.lrNo).toUpperCase().trim() : null;
         let shouldInsert = true;
-
-        // Anti-Duplication Check
         if (extractedLr) {
-          const { data: existingScan } = await supabase
-            .from('pending_scans')
-            .select('scan_id')
-            .eq('lr_number', extractedLr)
-            .eq('status', 'PENDING')
-            .single();
-
+          const { data: existingScan } = await supabase.from('pending_scans').select('scan_id').eq('lr_number', extractedLr).eq('status', 'PENDING').single();
           if (existingScan) {
             shouldInsert = false;
-            const { error: updateError } = await supabase.from('pending_scans').update({
-              tonnage_extracted: data.tonnage ? Number(data.tonnage) : null,
-              destination: data.destination ? String(data.destination).toUpperCase() : null,
-              source: data.source ? String(data.source).toUpperCase() : null,
-              truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null,
-              cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null,
-              raw_json_result: data,
-            }).eq('scan_id', existingScan.scan_id);
-            if (updateError) throw new Error(updateError.message);
+            await supabase.from('pending_scans').update({ tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data }).eq('scan_id', existingScan.scan_id);
           }
         }
-
         if (shouldInsert) {
-          const { error: dbError } = await supabase.from('pending_scans').insert([{
-            document_type: 'TRIP_INVOICE',
-            lr_number: extractedLr,
-            tonnage_extracted: data.tonnage ? Number(data.tonnage) : null,
-            destination: data.destination ? String(data.destination).toUpperCase() : null,
-            source: data.source ? String(data.source).toUpperCase() : null,
-            truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null,
-            cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null,
-            raw_json_result: data,
-            status: 'PENDING'
-          }]);
-          if (dbError) throw new Error(dbError.message);
+          await supabase.from('pending_scans').insert([{ document_type: 'TRIP_INVOICE', lr_number: extractedLr, tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data, status: 'PENDING' }]);
         }
       } else {
-        const { error: dbError } = await supabase.from('pending_scans').insert([{
-          document_type: docType,
-          raw_json_result: data,
-          status: 'PENDING'
-        }]);
-        if (dbError) throw new Error(dbError.message);
+        await supabase.from('pending_scans').insert([{ document_type: docType, raw_json_result: data, status: 'PENDING' }]);
       }
-      
-      setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType === "INVOICE" ? "Invoice" : docType === "FUEL" ? "Diesel Slip" : "POD"} sent to office successfully.`, type: "success" });
-
+      setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType} sent to office successfully.`, type: "success" });
     } catch (err: any) {
-      console.error("Scanner Error:", err);
-      const errMsg = err.message || String(err);
-      if (!errMsg.toLowerCase().includes("cancel") && !errMsg.toLowerCase().includes("dismissed")) {
-        setAlertConfig({ isOpen: true, title: "Scan Failed", message: errMsg, type: "error" });
-      }
-    } finally {
-      setActiveWorkflow(null);
-    }
+      if (!String(err).toLowerCase().includes("cancel")) setAlertConfig({ isOpen: true, title: "Scan Failed", message: String(err), type: "error" });
+    } finally { setActiveWorkflow(null); }
   };
 
   const handleDriverSubmit = async (e: React.FormEvent) => {
@@ -429,84 +279,63 @@ export function DriverPortal() {
     if (!selectedTruckId) return setAlertConfig({ isOpen: true, title: "Truck Required", message: "Select active Truck.", type: "error" });
 
     setIsSubmitting(true);
-
-    if ((actionType === "REACHED" || actionType === "WAITING_FOR_LOAD") && currentTrip) {
-      try {
-        const position = (BackgroundGeolocation as any).getCurrentPosition 
-          ? await (BackgroundGeolocation as any).getCurrentPosition({ timeout: 10000 })
-          : null;
-
-        if (position) {
-          const isPlantArrival = actionType === "WAITING_FOR_LOAD";
-          const targetLat = isPlantArrival ? currentTrip.origin_lat : currentTrip.destination_lat;
-          const targetLng = isPlantArrival ? currentTrip.origin_lng : currentTrip.destination_lng;
-          const locationName = isPlantArrival ? currentTrip.origin : currentTrip.destination;
-
-          if (!targetLat || !targetLng) {
-            const updateFields = isPlantArrival 
-              ? { origin_lat: position.latitude, origin_lng: position.longitude }
-              : { destination_lat: position.latitude, destination_lng: position.longitude };
-
-            await supabase.from('trips').update(updateFields).eq('trip_id', currentTrip.trip_id);
-          } else {
-            const distance = getDistanceInMeters(position.latitude, position.longitude, Number(targetLat), Number(targetLng));
-            const ALLOWED_RADIUS_METERS = 1000; 
-
-            if (distance > ALLOWED_RADIUS_METERS) {
-              setIsSubmitting(false);
-              setAlertConfig({
-                isOpen: true,
-                title: "Geofence Restriction 🚫",
-                message: `You are ${(distance / 1000).toFixed(2)} km away from ${locationName || 'the target location'}. You must be within 1 km to mark this status.`,
-                type: "error"
-              });
-              return; 
-            }
-          }
-        }
-      } catch (geoError) {
-        console.error("Geofence GPS verification failed:", geoError);
-      }
-    }
-
     const timestamp = new Date().toISOString();
-    const truckNumberText = selectedTruckObj ? selectedTruckObj.vehicle_number : "Unknown";
 
-    if (!currentTrip && actionType !== "FUEL" && actionType !== "START_TRIP") {
-      setIsSubmitting(false);
-      return setAlertConfig({ isOpen: true, title: "No Active Trip", message: "The office has not dispatched a trip for this truck yet.", type: "error" });
-    }
-
-    if (actionType === "FUEL" || (!currentTrip && actionType === "START_TRIP")) {
-      const activeLr = currentTrip ? currentTrip.trip_number : "PRE-DISPATCH";
-      
-      const payloadObj = {
-        vehicle_id: Number(selectedTruckId),
-        driver_code: savedDriverCode || "DRV-MOBILE",
-        entry_type: actionType,
-        litres: actionType === "FUEL" ? Number(fuelLitres) : null,
-        amount_inr: 0,
-        odometer_km: Number(odometer) || 0,
-        receipt_remarks: `[LR: ${activeLr}] ${remarks} [Truck: ${truckNumberText}]`.trim(),
-        status: 'PENDING'
+    // 🚀 NEW FEATURE: GHOST TRIPS (DRIVER-INITIATED DRAFTS)
+    if (!currentTrip && actionType === "START_TRIP") {
+      const draftLr = `DRAFT-${Math.floor(Date.now() / 1000)}`;
+      const updatePayload = {
+        trip_number: draftLr, branch_id: 1, vehicle_id: Number(selectedTruckId), primary_driver_id: Number(activeDriverObj.driver_id),
+        trip_start_date: timestamp.split('T')[0], origin: "PENDING OFFICE", destination: "PENDING OFFICE",
+        start_km: Number(odometer) || 0, end_km: 0, total_km_run: 0, tonnage_loaded: 0, loaded_weight_mt: 0,
+        freight_revenue: 0, fuel_litres: 0, fuel_expense: 0, driver_bata: 0, cash_advance_issued: 0, 
+        trip_status: "IN_TRANSIT", status_remarks: `Started draft trip at ${formatDateTime(timestamp)}`
       };
 
-      const { error } = await supabase.from('driver_pending_entries').insert([payloadObj]);
+      const { error: tripError } = await supabase.from('trips').insert([updatePayload]);
+      if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Trip Error", message: tripError.message, type: "error" }); }
 
-      if (error) {
-        setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
-      } else {
-        const msg = actionType === "FUEL" ? "Fuel fill request sent to dispatch!" : "Start Odometer logged! Waiting for office dispatch.";
-        setAlertConfig({ isOpen: true, title: "Success", message: msg, type: "success" });
-      }
+      const { error: vehicleError } = await supabase.from('vehicles').update({
+          current_status: "IN_TRANSIT", status_remarks: `Started draft trip [${draftLr}]`, status_updated_at: timestamp
+      }).eq('vehicle_id', selectedTruckId);
+
+      if (vehicleError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Vehicle Error", message: vehicleError.message, type: "error" }); }
+      
+      setAlertConfig({ isOpen: true, title: "Trip Started", message: "Draft trip created! The office will attach paperwork later.", type: "success" });
+      setOdometer(""); setRemarks(""); setIsSubmitting(false); await fetchPortalData(); 
+      return;
+    }
+
+    // FUEL WITHOUT TRIP
+    if (!currentTrip && actionType === "FUEL") {
+      const { error } = await supabase.from('driver_pending_entries').insert([{
+        vehicle_id: Number(selectedTruckId), driver_code: savedDriverCode || "DRV-MOBILE", entry_type: "FUEL",
+        litres: Number(fuelLitres), amount_inr: 0, odometer_km: Number(odometer) || 0,
+        receipt_remarks: `[LR: PRE-DISPATCH] ${remarks} [Truck: ${selectedTruckObj?.vehicle_number}]`.trim(), status: 'PENDING'
+      }]);
+      if (error) setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
+      else setAlertConfig({ isOpen: true, title: "Success", message: "Fuel request sent to dispatch!", type: "success" });
+      setOdometer(""); setFuelLitres(""); setRemarks(""); setIsSubmitting(false); return;
+    }
+
+    if (!currentTrip) {
+      setIsSubmitting(false);
+      return setAlertConfig({ isOpen: true, title: "Action Not Allowed", message: "No active trip. You can only Start Trip or Log Fuel.", type: "error" });
+    }
+
+    if (actionType === "FUEL") {
+      const { error } = await supabase.from('driver_pending_entries').insert([{
+        vehicle_id: Number(selectedTruckId), driver_code: savedDriverCode || "DRV-MOBILE", entry_type: "FUEL",
+        litres: Number(fuelLitres), amount_inr: 0, odometer_km: Number(odometer) || 0,
+        receipt_remarks: `[LR: ${currentTrip.trip_number}] ${remarks} [Truck: ${selectedTruckObj?.vehicle_number}]`.trim(), status: 'PENDING'
+      }]);
+      if (error) setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
+      else setAlertConfig({ isOpen: true, title: "Success", message: "Fuel request sent to dispatch!", type: "success" });
     } 
-    else if (currentTrip) {
+    else {
         let updatePayload: any = {}; let finalRemarks = remarks; let vehicleStatusUpdate = "IN_TRANSIT"; let statusRemarksText = "";
 
-        if (actionType === "START_TRIP") { 
-          updatePayload.trip_status = "IN_TRANSIT"; updatePayload.start_km = Number(odometer) || 0; statusRemarksText = `Started trip from ${currentTrip.origin} at ${formatDateTime(timestamp)}`;
-        }
-        else if (actionType === "REACHED") { 
+        if (actionType === "REACHED") { 
           updatePayload.reached_at = timestamp; updatePayload.trip_status = "REACHED_DESTINATION"; statusRemarksText = `Reached ${currentTrip.destination} at ${formatDateTime(timestamp)}`;
         }
         else if (actionType === "UNLOADED") { 
@@ -537,31 +366,13 @@ export function DriverPortal() {
           vehicleStatusUpdate = "WORKSHOP_MAINTENANCE"; statusRemarksText = `Enroute Breakdown`;
         }
 
-        const finalVehicleRemarks = (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) 
-          ? finalRemarks : statusRemarksText;
+        const finalVehicleRemarks = (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) ? finalRemarks : statusRemarksText;
 
-        // Bypassing RPC for safety
-        const { error: tripError } = await supabase.from('trips')
-          .update(updatePayload)
-          .eq('trip_id', currentTrip.trip_id);
+        const { error: tripError } = await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
+        if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Trip Update Failed", message: tripError.message, type: "error" }); }
 
-        if (tripError) { 
-          setIsSubmitting(false); 
-          return setAlertConfig({ isOpen: true, title: "Trip Update Failed", message: tripError.message, type: "error" }); 
-        }
-
-        const { error: vehicleError } = await supabase.from('vehicles')
-          .update({
-             current_status: vehicleStatusUpdate,
-             status_remarks: finalVehicleRemarks,
-             status_updated_at: timestamp
-          })
-          .eq('vehicle_id', selectedTruckId);
-
-        if (vehicleError) { 
-          setIsSubmitting(false); 
-          return setAlertConfig({ isOpen: true, title: "Vehicle Update Failed", message: vehicleError.message, type: "error" }); 
-        }
+        const { error: vehicleError } = await supabase.from('vehicles').update({ current_status: vehicleStatusUpdate, status_remarks: finalVehicleRemarks, status_updated_at: timestamp }).eq('vehicle_id', selectedTruckId);
+        if (vehicleError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Vehicle Update Failed", message: vehicleError.message, type: "error" }); }
         
         setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
     }
@@ -570,11 +381,9 @@ export function DriverPortal() {
   };
 
   const handleCancelRequest = async (id: number) => {
-    if (!supabase) return;
-    if (!confirm("Delete this request?")) return;
+    if (!supabase || !confirm("Delete this request?")) return;
     await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
     if (activeDriverObj) fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
-    setAlertConfig({ isOpen: true, title: "Deleted", message: "Request cancelled.", type: "success" });
   };
 
   const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5A00] focus-visible:border-[#FF5A00]";
@@ -591,21 +400,13 @@ export function DriverPortal() {
             <div className="space-y-3">
               {isMobile ? (
                 <>
-                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Camera)} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors">
-                    <span className="text-xl">📸</span> Take New Photo
-                  </button>
-                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Photos)} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors">
-                    <span className="text-xl">🖼️</span> Select from Gallery
-                  </button>
+                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Camera)} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors"><span className="text-xl">📸</span> Take New Photo</button>
+                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Photos)} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors"><span className="text-xl">🖼️</span> Select from Gallery</button>
                 </>
               ) : (
-                <button onClick={() => triggerScanner(selectionModalFor, "WEB")} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors">
-                  <span className="text-xl">📂</span> Browse Files
-                </button>
+                <button onClick={() => triggerScanner(selectionModalFor, "WEB")} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors"><span className="text-xl">📂</span> Browse Files</button>
               )}
-              <button onClick={() => setSelectionModalFor(null)} className="w-full p-3 mt-2 text-sm text-fg-muted font-bold transition-colors">
-                Cancel
-              </button>
+              <button onClick={() => setSelectionModalFor(null)} className="w-full p-3 mt-2 text-sm text-fg-muted font-bold transition-colors">Cancel</button>
             </div>
           </div>
         </div>
@@ -624,7 +425,7 @@ export function DriverPortal() {
         <form onSubmit={handleLockDriver} className="flex flex-col">
           <div className="flex flex-col p-6 space-y-1">
             <h3 className="font-bold tracking-tight text-xl">{isFirstTimeSetup ? "First-Time PIN Setup" : "Secure Login"}</h3>
-            <p className="text-sm text-fg-secondary">{isFirstTimeSetup ? "Create a 4-digit security PIN for your account. Keep it safe!" : "Select your profile to authenticate."}</p>
+            <p className="text-sm text-fg-secondary">{isFirstTimeSetup ? "Create a 4-digit PIN." : "Select your profile."}</p>
           </div>
           <div className="p-6 pt-0 grid gap-5">
             <div className="grid gap-1.5">
@@ -636,29 +437,20 @@ export function DriverPortal() {
             </div>
             
             {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
-              <div className="flex flex-col items-center justify-center py-2 animate-in fade-in zoom-in duration-300">
+              <div className="flex flex-col items-center justify-center py-2">
                 <button type="button" onClick={handleManualFingerprint} className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95">
                   <div className="absolute inset-0 rounded-full bg-[#FF5A00]/30 animate-ping opacity-75" style={{ animationDuration: '2.5s' }}></div>
                   <div className="absolute inset-1.5 rounded-full bg-[#FF5A00]/10 group-hover:bg-[#FF5A00]/20 border border-[#FF5A00]/20 transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)]"></div>
                   <FingerprintIcon className="w-8 h-8 text-[#FF5A00] relative z-10 drop-shadow-sm group-hover:scale-105 transition-transform" />
                 </button>
-                <span className="text-[10px] font-bold text-[#FF5A00] uppercase tracking-widest mt-3 opacity-90">Tap to Scan</span>
               </div>
             )}
 
             <div className="grid gap-1.5 relative mt-2">
-              {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
-                  <div className="absolute -top-5 left-0 right-0 flex items-center justify-center">
-                    <div className="h-px bg-border w-full absolute"></div>
-                    <span className="bg-surface px-2 text-[9px] text-fg-muted font-bold tracking-widest uppercase relative z-10">OR</span>
-                  </div>
-              )}
               <label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Security PIN"}</label>
               <input type="password" maxLength={4} value={driverPin} onChange={e => setDriverPin(e.target.value)} placeholder="••••" className={inputStyle} required={isFirstTimeSetup} />
             </div>
-            {isFirstTimeSetup && (
-              <div className="grid gap-1.5"><label className={labelStyle}>Confirm 4-Digit PIN</label><input type="password" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value)} placeholder="••••" className={inputStyle} required /></div>
-            )}
+            {isFirstTimeSetup && <div className="grid gap-1.5"><label className={labelStyle}>Confirm 4-Digit PIN</label><input type="password" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value)} placeholder="••••" className={inputStyle} required /></div>}
             <button type="submit" className="inline-flex items-center justify-center rounded-lg text-sm font-bold bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-10 px-4 py-2 w-full mt-2">
               {isFirstTimeSetup ? "Save & Lock Device" : "Verify & Login with PIN"}
             </button>
@@ -679,25 +471,10 @@ export function DriverPortal() {
 
           {activeTab === "SCAN" && (
             <div className="p-6 grid gap-4 bg-app min-h-[400px] animate-in fade-in">
-              <div className="mb-2">
-                 <h3 className="font-bold text-lg text-fg tracking-tight">Send to Office</h3>
-                 <p className="text-xs text-fg-secondary">Scan a document. It will be sent instantly to the Dispatch Inbox.</p>
-              </div>
-
-              <button onClick={() => setSelectionModalFor("INVOICE")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
-                <span className="text-3xl">{activeWorkflow === "INVOICE" ? "⏳" : "📄"}</span>
-                <span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "INVOICE" ? "Uploading..." : "Trip Invoice / Bilty"}</span>
-              </button>
-
-              <button onClick={() => setSelectionModalFor("FUEL")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
-                <span className="text-3xl">{activeWorkflow === "FUEL" ? "⏳" : "⛽"}</span>
-                <span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "FUEL" ? "Uploading..." : "Diesel Slip"}</span>
-              </button>
-
-              <button onClick={() => setSelectionModalFor("POD")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
-                <span className="text-3xl">{activeWorkflow === "POD" ? "⏳" : "⚖️"}</span>
-                <span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "POD" ? "Uploading..." : "POD / Weighment"}</span>
-              </button>
+              <div className="mb-2"><h3 className="font-bold text-lg text-fg tracking-tight">Send to Office</h3><p className="text-xs text-fg-secondary">Scan a document to instantly notify Dispatch.</p></div>
+              <button onClick={() => setSelectionModalFor("INVOICE")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"><span className="text-3xl">{activeWorkflow === "INVOICE" ? "⏳" : "📄"}</span><span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "INVOICE" ? "Uploading..." : "Trip Invoice / Bilty"}</span></button>
+              <button onClick={() => setSelectionModalFor("FUEL")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"><span className="text-3xl">{activeWorkflow === "FUEL" ? "⏳" : "⛽"}</span><span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "FUEL" ? "Uploading..." : "Diesel Slip"}</span></button>
+              <button onClick={() => setSelectionModalFor("POD")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"><span className="text-3xl">{activeWorkflow === "POD" ? "⏳" : "⚖️"}</span><span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "POD" ? "Uploading..." : "POD / Weighment"}</span></button>
             </div>
           )}
 
@@ -711,49 +488,29 @@ export function DriverPortal() {
                 </select>
               </div>
 
-              {complianceWarnings.length > 0 && (
-                <div className="p-3 bg-rose-950/40 border border-rose-900/50 rounded-xl space-y-1 mb-2 animate-in slide-in-from-top-2">
-                  <h4 className="text-[10px] font-black text-rose-500 uppercase flex items-center gap-1">⚠️ Compliance Warnings</h4>
-                  {complianceWarnings.map((w, i) => (
-                    <p key={i} className={`text-[11px] font-bold ${w.isUrgent ? 'text-rose-400' : 'text-amber-400'}`}>
-                      • {w.name} {w.docName} expiring on {w.date}
-                    </p>
-                  ))}
-                </div>
-              )}
-
               {currentTrip ? (
                 <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-2">
                   <div className="flex justify-between items-center"><span className="text-xs font-bold text-orange-900">Active LR: {currentTrip.trip_number}</span><span className="text-[10px] font-bold px-2 py-0.5 bg-orange-200 text-orange-900 rounded-full">{currentTrip.trip_status}</span></div>
                   <p className="text-xs font-bold text-fg">{currentTrip.origin} ➔ {currentTrip.destination}</p>
-                  <p className="text-[11px] text-fg-secondary pt-1 border-t border-orange-200/60">Started: {formatDateTime(currentTrip.trip_start_date)}</p>
                 </div>
               ) : (
-                <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl">
-                  <p className="text-xs font-bold text-slate-500 text-center">No active trip dispatched for this truck yet.</p>
+                <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl text-center">
+                  <p className="text-xs font-bold text-slate-500">No active trip dispatched by office.</p>
+                  <p className="text-[11px] font-bold text-[#FF5A00] mt-1">Hit 'Start Trip' to create a Draft Trip.</p>
                 </div>
               )}
 
               <div className="grid gap-1.5">
                 <label className={labelStyle}>Update Lifecycle Status</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {[ { id: "START_TRIP", label: "🚀 Start Trip" }, { id: "REACHED", label: "📍 Reached Dest." }, { id: "UNLOADED", label: "📦 Unloaded" }, { id: "RETURNING", label: "🔄 Returning" }, { id: "WAITING_FOR_LOAD", label: "🏭 Reached Plant" }, { id: "BREAKDOWN", label: "⚠️ Breakdown" }, { id: "FUEL", label: "⛽ Fuel Fill Request" } ].map((item, idx, arr) => {
-                    
-                    const isStartPending = pendingRequests.some(r => r.entry_type === "START_TRIP" && r.status === "PENDING" && String(r.vehicle_id) === String(selectedTruckId));
-                    const alreadyStarted = item.id === "START_TRIP" && ((currentTrip && currentTrip.start_km > 0) || isStartPending);
-
+                  {[ { id: "START_TRIP", label: "🚀 Start Trip" }, { id: "REACHED", label: "📍 Reached Dest." }, { id: "UNLOADED", label: "📦 Unloaded" }, { id: "RETURNING", label: "🔄 Returning" }, { id: "WAITING_FOR_LOAD", label: "🏭 Reached Plant" }, { id: "BREAKDOWN", label: "⚠️ Breakdown" }, { id: "FUEL", label: "⛽ Fuel Log" } ].map((item, idx, arr) => {
+                    const isStarted = item.id === "START_TRIP" && currentTrip && currentTrip.start_km > 0;
                     return (
                       <button 
-                        type="button" 
-                        key={item.id} 
-                        onClick={() => !alreadyStarted && setActionType(item.id)} 
-                        disabled={alreadyStarted}
-                        className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border 
-                          ${alreadyStarted ? 'opacity-40 cursor-not-allowed bg-surface text-fg-muted border-border' : 
-                            actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-fg border-border hover:bg-app'} 
-                          ${idx === arr.length - 1 ? 'col-span-2' : ''}`}
+                        type="button" key={item.id} onClick={() => !isStarted && setActionType(item.id)} disabled={isStarted}
+                        className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${isStarted ? 'opacity-40 cursor-not-allowed bg-surface text-fg-muted border-border' : actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-fg border-border hover:bg-app'} ${idx === arr.length - 1 ? 'col-span-2' : ''}`}
                       >
-                        {alreadyStarted ? "✅ Started" : item.label}
+                        {isStarted ? "✅ Started" : item.label}
                       </button>
                     );
                   })}
@@ -762,38 +519,18 @@ export function DriverPortal() {
 
               <div className="space-y-4">
                 {(actionType === "START_TRIP" || actionType === "WAITING_FOR_LOAD" || actionType === "FUEL" || actionType === "BREAKDOWN") && (
-                  <div className="grid gap-1.5">
-                    <label className={labelStyle}>Odometer (KM)</label>
-                    <input 
-                      type="number" 
-                      min={lastOdometer ? lastOdometer : 0} 
-                      value={odometer} 
-                      onChange={e => setOdometer(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-                      placeholder={lastOdometer ? `Previous KM: ${lastOdometer}` : "e.g. 145230"} 
-                      className={inputStyle} 
-                      required 
-                      {...numProps}
-                    />
-                  </div>
+                  <div className="grid gap-1.5"><label className={labelStyle}>Odometer (KM)</label><input type="number" min={lastOdometer ? lastOdometer : 0} value={odometer} onChange={e => setOdometer(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder={lastOdometer ? `Previous: ${lastOdometer}` : "e.g. 145230"} className={inputStyle} required {...numProps}/></div>
                 )}
-                {actionType === "FUEL" && (
-                  <div className="grid gap-1.5"><label className={labelStyle}>Litres Filled</label><input type="number" step="any" min="0.1" value={fuelLitres} onChange={e => setFuelLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={inputStyle} required {...numProps}/></div>
-                )}
+                {actionType === "FUEL" && <div className="grid gap-1.5"><label className={labelStyle}>Litres Filled</label><input type="number" step="any" min="0.1" value={fuelLitres} onChange={e => setFuelLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={inputStyle} required {...numProps}/></div>}
                 {actionType === "UNLOADED" && (
                   <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl space-y-3">
                     {isBulk ? (
-                      <>
-                        <div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 uppercase">Unloaded Weight (MT)</label><input type="number" step="any" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} {...numProps}/></div>
-                        <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={noWeighment} onChange={(e) => setNoWeighment(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-orange-300" /><span className="text-xs font-bold text-orange-800">No weighment facility</span></label>
-                      </>
-                    ) : (
-                      <div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 uppercase">Damaged Bags Count</label><input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required {...numProps}/></div>
-                    )}
+                      <><div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 uppercase">Unloaded Weight (MT)</label><input type="number" step="any" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} {...numProps}/></div>
+                      <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={noWeighment} onChange={(e) => setNoWeighment(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-orange-300" /><span className="text-xs font-bold text-orange-800">No weighment facility</span></label></>
+                    ) : ( <div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 uppercase">Damaged Bags Count</label><input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required {...numProps}/></div> )}
                   </div>
                 )}
-                {(actionType === "BREAKDOWN" || actionType === "UNLOADED") && (
-                  <div className="grid gap-1.5"><label className={labelStyle}>{actionType === "BREAKDOWN" ? "Breakdown Details" : "Additional Remarks"}</label><input type="text" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder={actionType === "BREAKDOWN" ? "Describe issue & location" : "Any damages or notes?"} className={inputStyle} required={actionType === "BREAKDOWN"} /></div>
-                )}
+                {(actionType === "BREAKDOWN" || actionType === "UNLOADED") && <div className="grid gap-1.5"><label className={labelStyle}>Remarks</label><input type="text" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Optional details..." className={inputStyle} required={actionType === "BREAKDOWN"} /></div>}
                 <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-lg text-sm font-bold transition-colors bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-12 px-4 py-2 w-full mt-2 disabled:opacity-50">
                   {isSubmitting ? "Updating..." : `Confirm Status Update`}
                 </button>
@@ -805,55 +542,7 @@ export function DriverPortal() {
             <div className="p-6 grid gap-6 bg-app min-h-[400px] animate-in fade-in">
               <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-fg-muted">Current Month Net Balance</p>
-                <div className="flex justify-between items-baseline mt-1">
-                  <span className={`text-2xl font-bold ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>₹{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-                  <span className="text-[10px] text-fg-muted">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span>
-                </div>
-                <div className="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 text-[11px] text-slate-300">
-                  <div>Earned Bata: <strong className="text-white">₹{monthEarnedBata}</strong></div><div>Halt Bata (Exp): <strong className="text-amber-400">₹{monthHaltBata}</strong></div>
-                  <div className="col-span-2 mt-1">Total Deductions (Advances): <strong className="text-rose-400">₹{totalMonthDeductions}</strong></div>
-                </div>
-              </div>
-
-              {pendingRequests.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-bold text-fg uppercase mb-3">Pending Requests</h4>
-                  <div className="space-y-3">
-                    {pendingRequests.map(r => (
-                      <div key={r.entry_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="text-xs font-bold text-fg">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : r.entry_type === 'START_TRIP' ? `${r.odometer_km} KM` : `₹${r.amount_inr}`}</span>
-                          <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
-                        </div>
-                        <div className="flex justify-end mt-2"><button onClick={() => handleCancelRequest(r.entry_id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-surface border border-rose-200 rounded-lg">Cancel Request ❌</button></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <h4 className="text-xs font-bold text-fg uppercase mb-3">Current Month Tripwise Ledger</h4>
-                {currentMonthTrips.length === 0 ? (
-                  <p className="text-xs text-fg-secondary italic">No trips logged this month yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {currentMonthTrips.map(t => {
-                      const tripBata = Number(t.driver_bata) || 0; const halt = Number(t.halt_bata) || 0; const adv = Number(t.cash_advance_issued) || 0;
-                      return (
-                        <div key={t.trip_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm space-y-2">
-                          <div className="flex justify-between items-start border-b border-border pb-2">
-                            <div><p className="text-sm font-bold text-fg">{t.trip_number}</p><p className="text-[10px] font-bold text-fg-secondary truncate max-w-[150px]">{t.origin} ➔ {t.destination}</p></div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-surface-raised text-fg rounded">{formatDate(t.trip_start_date)}</span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 text-[11px] text-fg-secondary">
-                            <div>Bata: <strong className="text-emerald-600">₹{tripBata}</strong></div><div>Halt: <strong className="text-amber-600">₹{halt}</strong></div><div>Adv: <strong className="text-rose-600">₹{adv}</strong></div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <div className="flex justify-between items-baseline mt-1"><span className={`text-2xl font-bold ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>₹{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span><span className="text-[10px] text-fg-muted">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span></div>
               </div>
             </div>
           )}
