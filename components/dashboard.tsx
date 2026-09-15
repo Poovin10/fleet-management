@@ -17,6 +17,7 @@ import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { DriverPortal } from "@/components/DriverPortal";
 import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
 import { UploadHub } from "@/components/UploadHub";
+import { AiInsightsDashboard } from "@/components/AiInsightsDashboard";
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -277,8 +278,9 @@ export default function Dashboard() {
 
   if (!isAuthenticated) return null;
 
-  const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "Setup"];
-  const navItems = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? allNavItems : ["Dashboard", "Financials", "P&L Statement"];
+  // 🧠 Cleaned up tab label to "AI Insights"
+  const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "AI Insights", "Setup"];
+  const navItems = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? allNavItems : ["Dashboard", "Financials", "P&L Statement", "AI Insights"];
 
   return (
     <div className="min-h-screen bg-[#050507] text-white font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
@@ -498,6 +500,10 @@ export default function Dashboard() {
           {activeTab === "Workshop & Tyres" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-6 mt-6"><WorkshopModule/></div>}
           {activeTab === "Financials" && <div className="p-6 mt-6"><FinancialsModule/></div>}
           {activeTab === "P&L Statement" && <div className="p-6 mt-6"><ProfitLossModule/></div>}
+          
+          {/* Render the AI Insights Operations Hub */}
+          {activeTab === "AI Insights" && <div className="p-6 mt-6"><AiInsightsDashboard/></div>}
+
           {activeTab === "Setup" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-6 mt-6"><SetupModule/></div>}
         </div>
       </main>
