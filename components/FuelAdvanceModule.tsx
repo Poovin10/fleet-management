@@ -25,8 +25,6 @@ export function FuelAdvanceModule() {
 
   const [recentFuelLogs, setRecentFuelLogs] = useState<any[]>([]);
   const [recentAdvances, setRecentAdvances] = useState<any[]>([]);
-
-  // 📥 INBOX STATES
   const [pendingScans, setPendingScans] = useState<any[]>([]); 
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
 
@@ -55,6 +53,11 @@ export function FuelAdvanceModule() {
   const [auditCategory, setAuditCategory] = useState("All Categories");
   const [auditSearchLr, setAuditSearchLr] = useState("");
   const [auditResults, setAuditResults] = useState<any[]>([]);
+
+  // 📈 KMPL TRACKER STATES
+  const [kmplTruckId, setKmplTruckId] = useState("");
+  const [kmplSpans, setKmplSpans] = useState<any[]>([]);
+  const [ongoingKmplSpan, setOngoingKmplSpan] = useState<any>(null);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
@@ -94,13 +97,19 @@ export function FuelAdvanceModule() {
     if (faNav === "📊 Fuel Audit") handleRunAudit();
   }, [faNav]);
 
+  // 📈 RUN FULL-TO-FULL ALGORITHM WHEN TRUCK SELECTED
+  useEffect(() => {
+    if (faNav === "📈 Mileage Tracker" && kmplTruckId) {
+      calculateKMPLHistory(kmplTruckId);
+    }
+  }, [faNav, kmplTruckId]);
+
   const clearFuelForm = () => {
     setEditLogId(null); setEditTripId(null); setFDate(new Date().toISOString().split('T')[0]);
     setFVehicleId(""); setFCategory("TRIP_DIESEL"); setFLrNo(""); setFFillingKm("");
     setFLitres(""); setFDieselRate(dieselRate); setFIsTankFull(false); setActiveScanId(null);
   };
 
-  // 🤖 AI SCAN AUTO-FILL FUNCTION
   const applyScanData = (scan: any) => {
     setActiveScanId(scan.scan_id);
     const data = scan.raw_json_result || {};
@@ -144,7 +153,6 @@ export function FuelAdvanceModule() {
       isUpdate ? "Update Record" : "Record Diesel", 
       async () => {
         setIsProcessing(true);
-
         if (isUpdate) {
           await supabase.from('diesel_fuel_logs').update(payload).eq('fuel_log_id', editLogId);
           if (editTripId) {
@@ -155,13 +163,8 @@ export function FuelAdvanceModule() {
           }
         } else {
           await supabase.from('diesel_fuel_logs').insert([payload]);
-          
-          // 📥 Clear Inbox Scan
-          if (activeScanId) {
-             await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
-          }
+          if (activeScanId) await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
         }
-
         clearFuelForm(); fetchData(); setIsProcessing(false); closeModal();
       }
     );
@@ -208,19 +211,80 @@ export function FuelAdvanceModule() {
     setIsProcessing(false);
   };
 
-  const exportAuditToCSV = () => {
-    if (auditResults.length === 0) return alert("No audit data to export.");
-    const headers = ["Log ID", "Date", "Truck No", "Category", "LR Number", "Odometer KM", "Litres Filled", "Total Cost (INR)", "Tank Full"];
-    const rows = auditResults.map(l => [
-      l.fuel_log_id, l.fuel_date, l.vehicles?.vehicle_number || "Unknown", l.diesel_category,
-      l.lr_number || "-", l.filling_odometer_km || 0, l.litres_filled || 0, l.total_fuel_cost || 0, l.is_tank_full ? "Yes" : "No"
-    ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
+  // 📈 THE SMART FULL-TO-FULL CALCULATION ENGINE
+  const calculateKMPLHistory = async (truckId: string) => {
+    setIsProcessing(true);
+    // Fetch all logs for this truck, ordered by odometer ASC
+    const { data: logs } = await supabase
+      .from('diesel_fuel_logs')
+      .select('*')
+      .eq('vehicle_id', truckId)
+      .gt('filling_odometer_km', 0) // Only valid readings
+      .order('filling_odometer_km', { ascending: true });
 
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob); link.setAttribute("download", `Fuel_Audit_Export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    if (!logs || logs.length === 0) {
+      setKmplSpans([]);
+      setOngoingKmplSpan(null);
+      setIsProcessing(false);
+      return;
+    }
+
+    const spans: any[] = [];
+    let currentSpan: any = null;
+
+    for (const log of logs) {
+      if (!currentSpan) {
+        // We need a Tank Full to start a span
+        if (log.is_tank_full) {
+          currentSpan = {
+            start_date: log.fuel_date,
+            start_odo: Number(log.filling_odometer_km),
+            accumulated_litres: 0,
+            accumulated_cost: 0,
+            logs_count: 0
+          };
+        }
+      } else {
+        // Accumulate fuel used AFTER the previous Tank Full
+        currentSpan.accumulated_litres += Number(log.litres_filled);
+        currentSpan.accumulated_cost += Number(log.total_fuel_cost);
+        currentSpan.logs_count += 1;
+
+        if (log.is_tank_full) {
+          // Span closes on the next Tank Full! Calculate distance.
+          const end_odo = Number(log.filling_odometer_km);
+          const distance = end_odo - currentSpan.start_odo;
+          
+          if (distance > 0 && currentSpan.accumulated_litres > 0) {
+            spans.push({
+              start_date: currentSpan.start_date,
+              end_date: log.fuel_date,
+              start_odo: currentSpan.start_odo,
+              end_odo: end_odo,
+              distance: distance,
+              consumed_litres: currentSpan.accumulated_litres,
+              total_cost: currentSpan.accumulated_cost,
+              kmpl: (distance / currentSpan.accumulated_litres).toFixed(2),
+              cost_per_km: (currentSpan.accumulated_cost / distance).toFixed(2),
+              logs_count: currentSpan.logs_count
+            });
+          }
+
+          // This full tank now becomes the start of the NEXT span
+          currentSpan = {
+            start_date: log.fuel_date,
+            start_odo: end_odo,
+            accumulated_litres: 0,
+            accumulated_cost: 0,
+            logs_count: 0
+          };
+        }
+      }
+    }
+
+    setKmplSpans(spans.reverse()); // Show newest first
+    setOngoingKmplSpan(currentSpan); // Remaining fuel added that hasn't seen a 'Tank Full' yet
+    setIsProcessing(false);
   };
 
   return (
@@ -233,7 +297,7 @@ export function FuelAdvanceModule() {
       />
       
       <div className="flex flex-wrap gap-2 border-b border-[#272B36] pb-4">
-        {["⛽ Issue Diesel", "💵 Driver Advances", "📊 Fuel Audit"].map((tab) => (
+        {["⛽ Issue Diesel", "💵 Driver Advances", "📊 Fuel Audit", "📈 Mileage Tracker"].map((tab) => (
           <button
             key={tab} onClick={() => setFaNav(tab)}
             className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
@@ -247,10 +311,8 @@ export function FuelAdvanceModule() {
 
       {faNav === "⛽ Issue Diesel" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
-          
           <div className="lg:col-span-5 bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl h-fit">
             
-            {/* 📥 INBOX UI */}
             {!editLogId && pendingScans.length > 0 && (
               <div className="mb-6 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
                 <h4 className="text-xs font-black text-sky-400 uppercase tracking-wider flex items-center gap-2 mb-3">
@@ -467,7 +529,6 @@ export function FuelAdvanceModule() {
       {faNav === "📊 Fuel Audit" && (
         <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom-4">
           <h3 className="text-sm font-black text-white uppercase tracking-wide border-b border-[#272B36] pb-3 mb-5">Fuel Audit & Search</h3>
-          
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date Mode</label>
@@ -477,28 +538,19 @@ export function FuelAdvanceModule() {
                 <option value="Date Range">Date Range</option>
               </select>
             </div>
-            
             {auditDateMode === "Specific Date" && (
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date</label>
                 <input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
               </div>
             )}
-            
             {auditDateMode === "Date Range" && (
               <>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">From</label>
-                  <input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">To</label>
-                  <input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
-                </div>
+                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">From</label><input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" /></div>
+                <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">To</label><input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" /></div>
               </>
             )}
             {auditDateMode === "All Time" && <div className="hidden md:block md:col-span-2"></div>}
-
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Truck No</label>
               <select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold">
@@ -522,12 +574,8 @@ export function FuelAdvanceModule() {
               <input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white uppercase outline-none focus:border-[#FF5A00] font-semibold" />
             </div>
             <div className="flex items-end gap-3">
-              <button onClick={handleRunAudit} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">
-                Search Logs
-              </button>
-              <button onClick={exportAuditToCSV} className="px-6 py-3 bg-[#0F1117] hover:bg-[#1A1F2C] border border-[#272B36] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95">
-                <span className="text-lg leading-none">📊</span> Export CSV
-              </button>
+              <button onClick={handleRunAudit} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">Search Logs</button>
+              <button onClick={exportAuditToCSV} className="px-6 py-3 bg-[#0F1117] hover:bg-[#1A1F2C] border border-[#272B36] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95"><span className="text-lg leading-none">📊</span> Export CSV</button>
             </div>
           </div>
 
@@ -535,15 +583,9 @@ export function FuelAdvanceModule() {
             <table className="min-w-full divide-y divide-[#272B36] text-xs whitespace-nowrap">
               <thead className="bg-[#0F1117]">
                 <tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[10px]">
-                  <th className="px-5 py-4">Log ID</th>
-                  <th className="px-5 py-4">Date</th>
-                  <th className="px-5 py-4">Truck</th>
-                  <th className="px-5 py-4">Category</th>
-                  <th className="px-5 py-4">LR No</th>
-                  <th className="px-5 py-4 text-right">Odometer</th>
-                  <th className="px-5 py-4 text-right">Litres</th>
-                  <th className="px-5 py-4 text-right">Cost (₹)</th>
-                  <th className="px-5 py-4 text-center">Action</th>
+                  <th className="px-5 py-4">Log ID</th><th className="px-5 py-4">Date</th><th className="px-5 py-4">Truck</th>
+                  <th className="px-5 py-4">Category</th><th className="px-5 py-4">LR No</th><th className="px-5 py-4 text-right">Odometer</th>
+                  <th className="px-5 py-4 text-right">Litres</th><th className="px-5 py-4 text-right">Cost (₹)</th><th className="px-5 py-4 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-[#161922] divide-y divide-[#272B36]">
@@ -555,19 +597,88 @@ export function FuelAdvanceModule() {
                     <td className="px-5 py-3 text-slate-300">{l.diesel_category}</td>
                     <td className="px-5 py-3 font-bold text-[#FF5A00]">{l.lr_number}</td>
                     <td className="px-5 py-3 text-right text-slate-300">{l.filling_odometer_km}</td>
-                    <td className="px-5 py-3 text-right font-black text-[#FF5A00]">
-                      {l.litres_filled} L {l.is_tank_full && <span title="Tank Full" className="ml-1 text-sm">⛽</span>}
-                    </td>
+                    <td className="px-5 py-3 text-right font-black text-[#FF5A00]">{l.litres_filled} L {l.is_tank_full && <span title="Tank Full" className="ml-1 text-sm">⛽</span>}</td>
                     <td className="px-5 py-3 text-right font-bold text-rose-500">₹{(l.total_fuel_cost || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                    <td className="px-5 py-3 text-center">
-                      <button onClick={(e) => { e.stopPropagation(); handleDeleteFuel(l.fuel_log_id); }} className="text-rose-500 hover:text-white hover:bg-rose-600 bg-rose-950/40 border border-rose-900/50 p-2 rounded-lg transition-all" title="Delete Log">🗑️</button>
-                    </td>
+                    <td className="px-5 py-3 text-center"><button onClick={(e) => { e.stopPropagation(); handleDeleteFuel(l.fuel_log_id); }} className="text-rose-500 hover:text-white hover:bg-rose-600 bg-rose-950/40 border border-rose-900/50 p-2 rounded-lg transition-all" title="Delete Log">🗑️</button></td>
                   </tr>
                 ))}
                 {auditResults.length === 0 && <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-500 font-medium">No logs match your search criteria.</td></tr>}
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* 📈 NEW: KMPL MILEAGE TRACKER TAB */}
+      {faNav === "📈 Mileage Tracker" && (
+        <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#272B36] pb-4 mb-6 gap-4">
+             <div>
+               <h3 className="text-sm font-black text-white uppercase tracking-wide">Vehicle Mileage (KMPL) Tracker</h3>
+               <p className="text-xs text-slate-400 mt-1">Calculates true mileage using the "Full-to-Full" standard formula.</p>
+             </div>
+             <div className="w-full md:w-64">
+               <select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white">
+                 <option value="">-- SELECT TRUCK --</option>
+                 {vehicles.map(v => (<option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>))}
+               </select>
+             </div>
+          </div>
+
+          {!kmplTruckId ? (
+            <div className="p-8 text-center bg-[#0F1117] border border-[#272B36] rounded-xl">
+              <p className="text-sm font-bold text-slate-500">Select a truck above to view its mileage history.</p>
+            </div>
+          ) : isProcessing ? (
+            <div className="p-8 text-center"><p className="text-sm font-bold text-[#FF5A00] animate-pulse">Calculating algorithms...</p></div>
+          ) : (
+            <div className="space-y-6">
+              
+              {ongoingKmplSpan && (
+                <div className="bg-sky-950/20 border border-sky-900/50 p-5 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div>
+                    <h4 className="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-1">Current Ongoing Span (Awaiting Next Tank Full)</h4>
+                    <p className="text-sm font-semibold text-slate-300">Started at Odo <span className="font-black text-white">{ongoingKmplSpan.start_odo} KM</span> on {formatDate(ongoingKmplSpan.start_date)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-black text-sky-400">{ongoingKmplSpan.accumulated_litres.toFixed(1)} L</p>
+                    <p className="text-[10px] font-bold text-sky-500 uppercase">Accumulated so far</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-x-auto rounded-xl border border-[#272B36] w-full">
+                <table className="min-w-full divide-y divide-[#272B36] text-xs whitespace-nowrap">
+                  <thead className="bg-[#0F1117]">
+                    <tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[10px]">
+                      <th className="px-5 py-4">Time Span (Full to Full)</th>
+                      <th className="px-5 py-4 text-right">Distance</th>
+                      <th className="px-5 py-4 text-right">Consumed</th>
+                      <th className="px-5 py-4 text-right border-l border-[#272B36]">KMPL (Mileage)</th>
+                      <th className="px-5 py-4 text-right">Cost / KM</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-[#161922] divide-y divide-[#272B36]">
+                    {kmplSpans.map((span, idx) => (
+                      <tr key={idx} className="hover:bg-[#1E222D] transition-colors">
+                        <td className="px-5 py-3">
+                          <p className="font-semibold text-slate-300">{formatDate(span.start_date)} <span className="text-slate-600">➔</span> {formatDate(span.end_date)}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Odo: {span.start_odo} ➔ {span.end_odo} <span className="text-[#FF5A00] ml-2 font-bold">({span.logs_count} fill-ups)</span></p>
+                        </td>
+                        <td className="px-5 py-3 text-right font-black text-white">{span.distance} KM</td>
+                        <td className="px-5 py-3 text-right font-bold text-sky-400">{span.consumed_litres.toFixed(1)} L</td>
+                        <td className="px-5 py-3 text-right font-black text-emerald-400 text-base border-l border-[#272B36] bg-emerald-950/10">
+                          {span.kmpl}
+                        </td>
+                        <td className="px-5 py-3 text-right font-bold text-rose-400">₹{span.cost_per_km}</td>
+                      </tr>
+                    ))}
+                    {kmplSpans.length === 0 && <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-500 font-medium">Not enough "Tank Full" records to calculate a full-to-full span.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
