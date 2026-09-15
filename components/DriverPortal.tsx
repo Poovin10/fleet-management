@@ -179,11 +179,15 @@ export function DriverPortal() {
   const displayDriverName = activeDriverObj ? `${activeDriverObj.full_name} (${activeDriverObj.driver_code})` : savedDriverCode;
   const isBulk = selectedTruckObj ? String(selectedTruckObj.truck_type).toUpperCase().includes("BULK") : true;
 
+  // LEDGER CALCULATION FIX
   const monthEarnedBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
   const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
   const monthTripAdvances = currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
   const monthDirectAdvances = currentMonthAdvances.reduce((sum, a) => sum + (Number(a.amount_inr) || 0), 0);
-  const currentMonthNetBalance = (monthEarnedBata + monthHaltBata) - (monthTripAdvances + monthDirectAdvances);
+  
+  const totalMonthEarnings = monthEarnedBata + monthHaltBata;
+  const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
+  const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
   const handleManualFingerprint = async () => {
     if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Select your profile first.", type: "error" });
@@ -383,6 +387,12 @@ export function DriverPortal() {
     setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData(); 
   };
 
+  const handleCancelRequest = async (id: number) => {
+    if (!supabase || !confirm("Delete this request?")) return;
+    await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
+    if (activeDriverObj) fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
+  };
+
   const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5A00] focus-visible:border-[#FF5A00]";
   const labelStyle = "text-xs font-bold text-fg-secondary uppercase tracking-wide leading-none mb-1";
   const numProps = { onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur() };
@@ -522,6 +532,47 @@ export function DriverPortal() {
                   <div>Earned Bata: <strong className="text-white">₹{monthEarnedBata}</strong></div><div>Halt Bata (Exp): <strong className="text-amber-400">₹{monthHaltBata}</strong></div>
                   <div className="col-span-2 mt-1">Total Deductions (Advances): <strong className="text-rose-400">₹{totalMonthDeductions}</strong></div>
                 </div>
+              </div>
+
+              {pendingRequests.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-fg uppercase mb-3">Pending Requests</h4>
+                  <div className="space-y-3">
+                    {pendingRequests.map(r => (
+                      <div key={r.entry_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-xs font-bold text-fg">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : r.entry_type === 'START_TRIP' ? `${r.odometer_km} KM` : `₹${r.amount_inr}`}</span>
+                          <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
+                        </div>
+                        <div className="flex justify-end mt-2"><button onClick={() => handleCancelRequest(r.entry_id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-surface border border-rose-200 rounded-lg">Cancel Request ❌</button></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-xs font-bold text-fg uppercase mb-3">Current Month Tripwise Ledger</h4>
+                {currentMonthTrips.length === 0 ? (
+                  <p className="text-xs text-fg-secondary italic">No trips logged this month yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {currentMonthTrips.map(t => {
+                      const tripBata = Number(t.driver_bata) || 0; const halt = Number(t.halt_bata) || 0; const adv = Number(t.cash_advance_issued) || 0;
+                      return (
+                        <div key={t.trip_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm space-y-2">
+                          <div className="flex justify-between items-start border-b border-border pb-2">
+                            <div><p className="text-sm font-bold text-fg">{t.trip_number}</p><p className="text-[10px] font-bold text-fg-secondary truncate max-w-[150px]">{t.origin} ➔ {t.destination}</p></div>
+                            <span className="text-[10px] font-bold px-2 py-0.5 bg-surface-raised text-fg rounded">{formatDate(t.trip_start_date)}</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 text-[11px] text-fg-secondary">
+                            <div>Bata: <strong className="text-emerald-600">₹{tripBata}</strong></div><div>Halt: <strong className="text-amber-600">₹{halt}</strong></div><div>Adv: <strong className="text-rose-600">₹{adv}</strong></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
