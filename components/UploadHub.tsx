@@ -11,8 +11,8 @@ export function UploadHub() {
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
 
   const triggerScanner = async (docType: string) => {
-    setActiveWorkflow(docType);
     try {
+      // 1. Open the camera/gallery FIRST (UI stays normal)
       const image = await Camera.getPhoto({
         quality: 50,
         allowEditing: true,
@@ -20,9 +20,13 @@ export function UploadHub() {
         source: CameraSource.Prompt 
       });
 
-      if (!image.base64String) return setActiveWorkflow(null);
+      // If user cancels the camera, just stop here
+      if (!image.base64String) return;
 
-      // 1. Send image payload to our Next.js API Route
+      // 2. Picture taken! NOW lock the UI and show "Parsing AI..."
+      setActiveWorkflow(docType);
+
+      // 3. Send image payload to our Next.js API Route
       const response = await fetch('/api/parse-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -35,7 +39,7 @@ export function UploadHub() {
       const { data, error } = await response.json();
       if (error) throw new Error(error);
 
-      // 2. Route the AI output to the correct database table
+      // 4. Route the AI output to the correct database table
       if (docType === "INVOICE") {
         const { error: dbError } = await supabase.from('pending_scans').insert([{
           document_type: 'TRIP_INVOICE',
@@ -53,12 +57,15 @@ export function UploadHub() {
         
         setAlertConfig({ isOpen: true, title: "Inbox Updated ✨", message: "Invoice digitized and sent to Trip Creation Inbox.", type: "success" });
       } 
-      // Add FUEL and POD logic here later...
 
     } catch (err: any) {
       console.error(err);
-      setAlertConfig({ isOpen: true, title: "Scan Failed", message: err.message || "Failed to process document.", type: "error" });
+      // Only show error alert if it wasn't just the user cancelling the camera
+      if (err.message && !err.message.includes("User cancelled")) {
+         setAlertConfig({ isOpen: true, title: "Scan Failed", message: err.message || "Failed to process document.", type: "error" });
+      }
     } finally {
+      // 5. Unlock the UI when completely finished
       setActiveWorkflow(null);
     }
   };
