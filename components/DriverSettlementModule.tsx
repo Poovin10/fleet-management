@@ -232,7 +232,7 @@ export function DriverSettlementModule() {
                         onClick={() => handleDownloadDriverPdf(fullDriverObj || s)}
                         className="bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold h-8 px-3 text-xs rounded-lg shadow-sm"
                       >
-                        📥 PDF
+                        EXPORT PDF
                       </Button>
                     </td>
                   </tr>

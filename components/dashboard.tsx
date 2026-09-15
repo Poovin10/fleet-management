@@ -315,7 +315,7 @@ export default function Dashboard() {
                 {pendingDriverCount > 0 && (
                   <div className="bg-amber-950/30 border-l-4 border-amber-500 rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-xl">📥</span>
+                      
                       <div>
                         <h3 className="text-xs sm:text-sm font-black text-amber-400 uppercase tracking-wide">Pending Driver Approvals</h3>
                         <p className="text-xs text-amber-200 mt-0.5">There are <span className="font-black">{pendingDriverCount}</span> fuel bills waiting for manager review in Operations.</p>
@@ -330,7 +330,7 @@ export default function Dashboard() {
                 {Object.keys(expiringDocs).length > 0 && (
                   <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6 animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3 mb-5">
-                      <span className="text-xl">🚨</span>
+                      
                       <h3 className="text-xs sm:text-sm font-black text-rose-400 uppercase tracking-wide">Compliance Alerts (10 Days)</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

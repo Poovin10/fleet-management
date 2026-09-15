@@ -6,6 +6,16 @@ import { AlertModal } from "@/components/AlertModal";
 import { BackgroundGeolocation } from "@capgo/background-geolocation";
 import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
 
+const TRIP_ACTIONS = [ 
+  { id: "START_TRIP", label: "Start Trip" }, 
+  { id: "REACHED", label: "Reached Dest." }, 
+  { id: "UNLOADED", label: "Unloaded" }, 
+  { id: "RETURNING", label: "Returning" }, 
+  { id: "WAITING_FOR_LOAD", label: "Reached Plant" }, 
+  { id: "BREAKDOWN", label: "Breakdown" }, 
+  { id: "FUEL", label: "Fuel Log" } 
+];
+
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
     <rect width="200" height="200" fill="#FF5A00" />
@@ -157,7 +167,6 @@ export function DriverPortal() {
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
-  // PDF Export Handler for Driver Portal Ledger
   const handleDownloadPortalLedger = () => {
     const headers = ["LR Number", "Date", "Route", "Bata (₹)", "Halt (₹)", "Trip Adv (₹)"];
     
@@ -184,7 +193,7 @@ export function DriverPortal() {
 
   const handleManualFingerprint = async () => {
     if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Select your profile first.", type: "error" });
-    if (driverCode !== enrolledBiometricDriver) return setAlertConfig({ isOpen: true, title: "Security Lock 🔒", message: "Log in with PIN to link fingerprint.", type: "error" });
+    if (driverCode !== enrolledBiometricDriver) return setAlertConfig({ isOpen: true, title: "Security Lock", message: "Log in with PIN to link fingerprint.", type: "error" });
     try {
       const { NativeBiometric } = await import("capacitor-native-biometric");
       await NativeBiometric.verifyIdentity({ reason: "Log in to KSS Roadways Driver Portal", title: "Driver Authentication" });
@@ -370,8 +379,8 @@ export function DriverPortal() {
           </div>
 
           <div className="flex border-b border-border">
-            <button onClick={() => setActiveTab("STATUS")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "STATUS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>🚀 Status</button>
-            <button onClick={() => setActiveTab("LEDGER")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "LEDGER" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>📊 Ledger</button>
+            <button onClick={() => setActiveTab("STATUS")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "STATUS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>Status</button>
+            <button onClick={() => setActiveTab("LEDGER")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "LEDGER" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>Ledger</button>
           </div>
 
           {activeTab === "STATUS" && (
@@ -399,14 +408,14 @@ export function DriverPortal() {
               <div className="grid gap-1.5">
                 <label className={labelStyle}>Update Lifecycle Status</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {[ { id: "START_TRIP", label: "🚀 Start Trip" }, { id: "REACHED", label: "📍 Reached Dest." }, { id: "UNLOADED", label: "📦 Unloaded" }, { id: "RETURNING", label: "🔄 Returning" }, { id: "WAITING_FOR_LOAD", label: "🏭 Reached Plant" }, { id: "BREAKDOWN", label: "⚠️ Breakdown" }, { id: "FUEL", label: "⛽ Fuel Log" } ].map((item, idx, arr) => {
+                  {TRIP_ACTIONS.map((item, idx, arr) => {
                     const isStarted = item.id === "START_TRIP" && currentTrip && currentTrip.start_km > 0;
                     return (
                       <button
                         type="button" key={item.id} onClick={() => !isStarted && setActionType(item.id)} disabled={isStarted}
                         className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${isStarted ? 'opacity-40 cursor-not-allowed bg-surface text-fg-muted border-border' : actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-fg border-border hover:bg-app'} ${idx === arr.length - 1 ? 'col-span-2' : ''}`}
                       >
-                        {isStarted ? "✅ Started" : item.label}
+                        {isStarted ? "Started" : item.label}
                       </button>
                     );
                   })}
@@ -446,13 +455,12 @@ export function DriverPortal() {
                   <div className="col-span-2 mt-1">Total Deductions (Advances): <strong className="text-rose-400">₹{totalMonthDeductions}</strong></div>
                 </div>
 
-                {/* 📥 PDF Statement Download Button */}
                 <button
                   type="button"
                   onClick={handleDownloadPortalLedger}
                   className="w-full mt-2 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 uppercase tracking-wide"
                 >
-                  <span>📥</span> Download Statement PDF
+                  Download Statement PDF
                 </button>
               </div>
 
@@ -466,7 +474,7 @@ export function DriverPortal() {
                           <span className="text-xs font-bold text-fg">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : r.entry_type === 'START_TRIP' ? `${r.odometer_km} KM` : `₹${r.amount_inr}`}</span>
                           <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
                         </div>
-                        <div className="flex justify-end mt-2"><button onClick={() => handleCancelRequest(r.entry_id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-surface border border-rose-200 rounded-lg">Cancel Request ❌</button></div>
+                        <div className="flex justify-end mt-2"><button onClick={() => handleCancelRequest(r.entry_id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-surface border border-rose-200 rounded-lg transition-colors">Cancel Request</button></div>
                       </div>
                     ))}
                   </div>

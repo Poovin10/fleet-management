@@ -171,7 +171,7 @@ export function ApprovalQueue() {
               </tr>
             ))}
             {queue.length === 0 && !isLoading && (
-              <tr><td colSpan={5} className="p-8 text-center text-slate-500 font-medium">✨ All driver requests have been processed! The queue is currently empty.</td></tr>
+              <tr><td colSpan={5} className="p-8 text-center text-slate-500 font-medium">All driver requests have been processed. The queue is currently empty.</td></tr>
             )}
           </tbody>
         </table>

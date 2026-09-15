@@ -25,7 +25,6 @@ export function ConfirmModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
         
-        {/* Modal Header & Body */}
         <div className="p-6">
           <div className="flex items-center gap-3 mb-3">
             <div className={`p-2 rounded-full ${isDanger ? 'bg-rose-100 text-rose-600' : 'bg-orange-100 text-orange-600'}`}>
@@ -42,7 +41,6 @@ export function ConfirmModal({
           </p>
         </div>
 
-        {/* Modal Footer (Actions) */}
         <div className="p-4 bg-app border-t border-border flex justify-end gap-3">
           <button 
             onClick={onCancel}
@@ -54,14 +52,20 @@ export function ConfirmModal({
           <button 
             onClick={onConfirm}
             disabled={isProcessing}
-            className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl transition-colors shadow-sm flex items-center gap-2 ${
+            className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 min-w-[120px] ${
               isDanger 
                 ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800" 
                 : "bg-orange-600 hover:bg-orange-700 active:bg-orange-800"
             } disabled:opacity-70`}
           >
             {isProcessing ? (
-               <><span className="animate-spin text-lg leading-none">⚙️</span> Processing...</>
+               <>
+                 <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                 </svg> 
+                 Processing...
+               </>
             ) : (
                confirmText
             )}
