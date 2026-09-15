@@ -22,7 +22,9 @@ export function AiInsightsDashboard() {
     setIsLoading(false);
   };
 
-  useEffect(() => { fetchLatestAudit(); }, []);
+  useEffect(() => {
+    fetchLatestAudit();
+  }, []);
 
   const handleManualAuditTrigger = async () => {
     setIsTriggering(true);
@@ -30,7 +32,7 @@ export function AiInsightsDashboard() {
       const res = await fetch("/api/cron/audit");
       const json = await res.json();
       if (json.success) {
-        alert("AI Fleet Audit executed successfully!");
+        alert("Fleet Operations Audit completed successfully!");
         fetchLatestAudit();
       } else {
         alert("Audit failed: " + (json.error || "Unknown error"));
@@ -49,7 +51,7 @@ export function AiInsightsDashboard() {
     return dateStr;
   };
 
-  if (isLoading) return <div className="p-12 text-center text-slate-400 font-bold animate-pulse">Loading AI Operations Center...</div>;
+  if (isLoading) return <div className="p-12 text-center text-slate-400 font-bold animate-pulse">Loading Operations Hub...</div>;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 max-w-6xl mx-auto px-2">
@@ -60,27 +62,26 @@ export function AiInsightsDashboard() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF5A00] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-[#FF5A00]"></span>
             </span>
-            <h2 className="text-lg font-black text-white uppercase tracking-tight">AI Fleet Operations Hub</h2>
+            <h2 className="text-lg font-black text-white uppercase tracking-tight">Fleet Operations & Audit Hub</h2>
           </div>
           <p className="text-xs text-slate-400 mt-1">Audit Report Date: <span className="text-white font-bold">{latestAudit ? formatDate(latestAudit.audit_date) : "No Audits Found"}</span></p>
         </div>
         <button onClick={handleManualAuditTrigger} disabled={isTriggering} className="px-6 py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-[#FF5A00]/25 active:scale-95 flex items-center gap-2">
-          {isTriggering ? "🧠 Running Analysis..." : "⚡ Run Professional Audit"}
+          {isTriggering ? "⚙️ Running Audit..." : "⚡ Run Fleet Audit"}
         </button>
       </div>
 
       {!latestAudit ? (
         <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-12 text-center shadow-xl">
-          <p className="text-sm font-bold text-slate-400 mb-2">No AI audit reports generated yet.</p>
-          <p className="text-xs text-slate-500">Click the button above to generate your professional fleet review.</p>
+          <p className="text-sm font-bold text-slate-400 mb-2">No audit reports generated yet.</p>
+          <p className="text-xs text-slate-500">Click the button above to run an instant fleet audit.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
           {/* ANOMALIES */}
           <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-xl flex flex-col">
             <div className="border-b border-[#222634] pb-4 mb-4">
-              <h3 className="text-xs font-black text-rose-400 uppercase tracking-wider">🚨 Fleet Anomalies ({latestAudit.anomalies?.length || 0})</h3>
+              <h3 className="text-xs font-black text-rose-400 uppercase tracking-wider">🚨 Fuel & Maintenance Flags ({latestAudit.anomalies?.length || 0})</h3>
             </div>
             <div className="space-y-4 flex-1">
               {latestAudit.anomalies?.map((item: any, idx: number) => (
@@ -91,12 +92,12 @@ export function AiInsightsDashboard() {
                   </div>
                   <p className="text-xs text-slate-300 font-medium leading-relaxed whitespace-normal break-words">{item.issueDescription}</p>
                   {item.actionItem && (
-                    <p className="text-[11px] text-emerald-400 font-bold bg-emerald-950/20 p-2.5 rounded-lg border border-emerald-900/40 whitespace-normal break-words">💡 Recommended Action: {item.actionItem}</p>
+                    <p className="text-[11px] text-emerald-400 font-bold bg-emerald-950/20 p-2.5 rounded-lg border border-emerald-900/40 whitespace-normal break-words">💡 Action: {item.actionItem}</p>
                   )}
                 </div>
               ))}
               {(!latestAudit.anomalies || latestAudit.anomalies.length === 0) && (
-                <p className="text-xs text-slate-500 text-center py-10 font-medium">No operational anomalies detected.</p>
+                <p className="text-xs text-slate-500 text-center py-10 font-medium">All vehicle fuel and maintenance metrics are within normal parameters.</p>
               )}
             </div>
           </div>
@@ -104,7 +105,7 @@ export function AiInsightsDashboard() {
           {/* EFFICIENCY LEAKS */}
           <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-xl flex flex-col">
             <div className="border-b border-[#222634] pb-4 mb-4">
-              <h3 className="text-xs font-black text-amber-400 uppercase tracking-wider">⚠️ Efficiency Leaks ({latestAudit.efficiency_leaks?.length || 0})</h3>
+              <h3 className="text-xs font-black text-amber-400 uppercase tracking-wider">⚠️ Cash Flow & Transit Bottlenecks ({latestAudit.efficiency_leaks?.length || 0})</h3>
             </div>
             <div className="space-y-4 flex-1">
               {latestAudit.efficiency_leaks?.map((item: any, idx: number) => (
@@ -112,7 +113,7 @@ export function AiInsightsDashboard() {
                   <h4 className="text-xs font-black text-white whitespace-normal break-words">{item.area}</h4>
                   <p className="text-xs text-slate-300 font-medium leading-relaxed whitespace-normal break-words">{item.details}</p>
                   {item.estimatedLoss && (
-                    <p className="text-[11px] text-amber-400 font-bold bg-amber-950/20 p-2.5 rounded-lg border border-amber-900/40 whitespace-normal break-words">💰 Estimated Impact: {item.estimatedLoss}</p>
+                    <p className="text-[11px] text-amber-400 font-bold bg-amber-950/20 p-2.5 rounded-lg border border-amber-900/40 whitespace-normal break-words">💰 {item.estimatedLoss}</p>
                   )}
                 </div>
               ))}
@@ -122,10 +123,10 @@ export function AiInsightsDashboard() {
             </div>
           </div>
 
-          {/* RETENTION & DATA SCIENCE */}
+          {/* STRATEGIC INSIGHTS */}
           <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-xl flex flex-col">
             <div className="border-b border-[#222634] pb-4 mb-4">
-              <h3 className="text-xs font-black text-sky-400 uppercase tracking-wider">🧠 Driver Retention & Strategy ({latestAudit.retention_suggestions?.length || 0})</h3>
+              <h3 className="text-xs font-black text-sky-400 uppercase tracking-wider">📋 Operational Recommendations ({latestAudit.retention_suggestions?.length || 0})</h3>
             </div>
             <div className="space-y-4 flex-1">
               {latestAudit.retention_suggestions?.map((item: any, idx: number) => (
@@ -135,11 +136,10 @@ export function AiInsightsDashboard() {
                 </div>
               ))}
               {(!latestAudit.retention_suggestions || latestAudit.retention_suggestions.length === 0) && (
-                <p className="text-xs text-slate-500 text-center py-10 font-medium">No recommendations generated.</p>
+                <p className="text-xs text-slate-500 text-center py-10 font-medium">No strategic actions required.</p>
               )}
             </div>
           </div>
-
         </div>
       )}
     </div>
