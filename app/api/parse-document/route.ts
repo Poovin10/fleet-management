@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         break;
     }
 
-    // Connect to the active Gemini 2.5 Flash endpoint
+    // Connect to the required Gemini 3.6 Flash endpoint
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
