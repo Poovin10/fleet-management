@@ -110,25 +110,22 @@ export function TripForm({ onSuccess }: TripFormProps) {
     fetchMasterData();
   }, [supabase]);
 
-  // 🗑️ DELETE JUNK SCANS FROM INBOX
+  // 🗑️ DELETE INBOX ENTRIES
   const handleDeleteScan = async (e: React.MouseEvent, scanId: string) => {
     e.stopPropagation();
-    if (!confirm("Delete this bad scan permanently from the inbox?")) return;
+    if (!confirm("Delete this entry permanently from the inbox?")) return;
     await supabase.from("pending_scans").delete().eq("scan_id", scanId);
     setPendingScans(prev => prev.filter(s => s.scan_id !== scanId));
     if (activeScanId === scanId) handleClear();
   };
 
-  // 🤖 AI SCAN AUTO-FILL FUNCTION WITH SMART UX ALERTS
+  // ⚡ LOCAL PATTERN AUTO-FILL FUNCTION
   const applyScanData = (scan: any) => {
     setActiveScanId(scan.scan_id);
     const data = scan.raw_json_result || {};
-    let warningMsg = "";
 
     if (data.lrNo && String(data.lrNo).toUpperCase() !== "UNKNOWN") {
       setLrNo(String(data.lrNo).toUpperCase().trim());
-    } else {
-      warningMsg += "• Could not read the LR Number.\n";
     }
 
     if (data.tonnage) setLoadedMt(Number(data.tonnage));
@@ -140,43 +137,28 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (cType.includes("BAG")) setCargoType("BAG");
     }
 
-    let truckFound = false;
     if (data.truckNo && String(data.truckNo).toUpperCase() !== "UNKNOWN") {
-      const aiTruck = String(data.truckNo).replace(/[^A-Z0-9]/g, '').toUpperCase();
-      const matchedTruck = vehicles.find(v => {
+      const matchTruck = String(data.truckNo).replace(/[^A-Z0-9]/g, '').toUpperCase();
+      const matched = vehicles.find(v => {
          const dbTruck = String(v.vehicle_number).replace(/[^A-Z0-9]/g, '').toUpperCase();
-         return dbTruck === aiTruck || dbTruck.includes(aiTruck) || aiTruck.includes(dbTruck);
+         return dbTruck === matchTruck || dbTruck.includes(matchTruck);
       });
-      if (matchedTruck) {
-        setSelectedTruckId(String(matchedTruck.vehicle_id));
-        truckFound = true;
-        if (!data.tonnage && matchedTruck.carrying_capacity_tons) setLoadedMt(Number(matchedTruck.carrying_capacity_tons));
+      if (matched) {
+        setSelectedTruckId(String(matched.vehicle_id));
+        if (!data.tonnage && matched.carrying_capacity_tons) setLoadedMt(Number(matched.carrying_capacity_tons));
       }
     }
-    if (!truckFound) warningMsg += `• Could not auto-match the Truck Number (Detected: ${data.truckNo || "None"}).\n`;
 
     if (data.source) {
-      const aiSource = String(data.source).toUpperCase().trim();
-      const matchedSource = dynamicSources.find(s => s.toUpperCase() === aiSource || aiSource.includes(s.toUpperCase()));
-      if (matchedSource) setSource(matchedSource); else { setSource("CUSTOM"); setCustomSource(aiSource); }
+      const src = String(data.source).toUpperCase().trim();
+      const matchedSource = dynamicSources.find(s => s.toUpperCase() === src);
+      if (matchedSource) setSource(matchedSource); else { setSource("CUSTOM"); setCustomSource(src); }
     }
     
     if (data.destination) {
-      const aiDest = String(data.destination).toUpperCase().trim();
-      // Wait for validRoutes to populate before matching destination (handled dynamically by user usually, but we try)
       setDestinationLabel("MANUAL_SPOT_ROUTE"); 
-      setCustomDest(aiDest); 
+      setCustomDest(String(data.destination).toUpperCase().trim()); 
       setIsManualRoute(true);
-    }
-
-    // Prompt user if AI couldn't read crucial fields
-    if (warningMsg) {
-      setAlertConfig({
-        isOpen: true,
-        title: "Manual Verification Needed ⚠️",
-        message: `The AI couldn't clearly read some details from this invoice:\n\n${warningMsg}\nPlease fill in the missing fields manually.`,
-        type: "info"
-      });
     }
   };
 
@@ -235,7 +217,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
   useEffect(() => {
     if (selectedTruckId) {
       const fetchTruckHistory = async () => {
-        // 👻 --- GHOST TRIP / DRAFT DETECTION ---
         const { data: drafts } = await supabase.from('trips')
           .select('*')
           .eq('vehicle_id', selectedTruckId)
@@ -249,17 +230,9 @@ export function TripForm({ onSuccess }: TripFormProps) {
           setStartKm(draft.start_km || "");
           setStartDate(draft.trip_start_date || new Date().toISOString().split("T")[0]);
           setSelectedDriverId(String(draft.primary_driver_id || ""));
-          
-          setAlertConfig({
-            isOpen: true,
-            title: "Ghost Trip Detected 👻",
-            message: `The driver already started this trip on the highway at ${draft.start_km} KM. Please attach the official invoice details below to finalize it.`,
-            type: "info"
-          });
           return; 
         }
 
-        // --- NORMAL HISTORY FETCH ---
         const { data: lastTrip } = await supabase.from("trips").select("primary_driver_id").eq("vehicle_id", selectedTruckId).not("primary_driver_id", "is", null).order("trip_id", { ascending: false }).limit(1);
         if (lastTrip && lastTrip.length > 0 && lastTrip[0].primary_driver_id) setSelectedDriverId(String(lastTrip[0].primary_driver_id));
         else setSelectedDriverId("");
@@ -308,17 +281,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
     e.preventDefault();
     if (!selectedTruckId || !selectedDriverId || !lrNo.trim() || freightRate === "" || Number(freightRate) <= 0 || loadedMt === "" || Number(loadedMt) <= 0) {
       return setAlertConfig({ isOpen: true, title: "Invalid Input", message: "Please ensure all mandatory fields have valid positive values (> 0) before dispatching.", type: "error" });
-    }
-
-    const missingFields: string[] = [];
-    if (String(dieselL) === "" || Number(dieselL) <= 0) missingFields.push("Truck Diesel Quantity (L)");
-    if (String(loadedMt) === "" || Number(loadedMt) <= 0) missingFields.push("Tonnage Loaded (MT)");
-    if (String(driverBata) === "" || Number(driverBata) <= 0) missingFields.push("Driver Bata (₹)");
-    if (String(advance) === "" || Number(advance) <= 0) missingFields.push("Cash Advance (₹)");
-
-    if (missingFields.length > 0) {
-      const confirmProceed = window.confirm(`⚠️ Warning: You have not entered the following field(s):\n• ${missingFields.join('\n• ')}\n\nShould we continue dispatching this trip anyway?`);
-      if (!confirmProceed) return;
     }
 
     setIsSubmitting(true);
@@ -397,7 +359,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (fuelError) fuelErrorMessage = fuelError.message;
     }
 
-    // 📥 CLEAR THE INBOX SCAN
     if (activeScanId) {
       await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
       setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId)); 
@@ -420,13 +381,12 @@ export function TripForm({ onSuccess }: TripFormProps) {
     <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 sm:p-8 shadow-xl max-w-4xl mx-auto animate-in fade-in duration-300 relative">
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
-      {/* 📥 INBOX UI FOR INVOICES */}
       {pendingScans.length > 0 && (
         <div className="mb-8 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
           <div className="flex justify-between items-center mb-3">
              <h4 className="text-xs font-black text-[#FF5A00] uppercase tracking-wider flex items-center gap-2">
                <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF5A00] opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF5A00]"></span></span>
-               Pending Scanned Invoices ({pendingScans.length})
+               Pending Local Invoices Inbox ({pendingScans.length})
              </h4>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
@@ -440,7 +400,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
                       <p className="text-xs font-black text-white truncate">{scan.source || data.source || "?"} ➔ {scan.destination || data.destination || "?"}</p>
                       <p className="text-[10px] text-slate-500 mt-1">Truck: {scan.truck_number || data.truckNo || "Manual select"}</p>
                     </div>
-                    <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete bad scan">🗑️</div>
+                    <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete entry">🗑️</div>
                   </div>
                 </button>
               );
