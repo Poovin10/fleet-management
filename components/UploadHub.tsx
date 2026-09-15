@@ -5,6 +5,32 @@ import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
+// 🚀 ULTIMATE FIX: Force compress ANY image to < 300KB before sending to Vercel
+const compressImageBase64 = (base64Str: string, maxWidth = 1000, quality = 0.6): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = "data:image/jpeg;base64," + base64Str;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
+      if (width > height && width > maxWidth) {
+        height *= maxWidth / width;
+        width = maxWidth;
+      } else if (height > maxWidth) {
+        width *= maxWidth / height;
+        height = maxWidth;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx?.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
+    };
+    img.onerror = () => resolve(base64Str); // Fallback to original if compression fails
+  });
+};
+
 export function UploadHub() {
   const supabase = createClient();
   const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null);
@@ -19,7 +45,6 @@ export function UploadHub() {
     }
   }, []);
 
-  // 🚀 FIX: HTML5 Canvas Image Compression for Web Uploads
   const handleWebUpload = (): Promise<string> => {
     return new Promise((resolve, reject) => {
       const input = document.createElement("input");
@@ -30,24 +55,9 @@ export function UploadHub() {
         if (!file) return resolve("");
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = (event) => {
-          const img = new Image();
-          img.src = event.target?.result as string;
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            const MAX_DIM = 1200; // Compress to max 1200px width/height
-            let width = img.width;
-            let height = img.height;
-            if (width > height && width > MAX_DIM) {
-              height *= MAX_DIM / width; width = MAX_DIM;
-            } else if (height > MAX_DIM) {
-              width *= MAX_DIM / height; height = MAX_DIM;
-            }
-            canvas.width = width; canvas.height = height;
-            const ctx = canvas.getContext("2d");
-            ctx?.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
-          };
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]);
         };
         reader.onerror = (err) => reject(err);
       };
@@ -57,25 +67,27 @@ export function UploadHub() {
 
   const triggerScanner = async (docType: string, sourceSelection: any) => {
     setSelectionModalFor(null);
-    let finalBase64 = "";
+    let rawBase64 = "";
 
     try {
       if (sourceSelection === "WEB") {
-        finalBase64 = await handleWebUpload();
+        rawBase64 = await handleWebUpload();
       } else {
-        // 🚀 FIX: Force Android camera to compress the image
         const image = await Camera.getPhoto({
-          quality: 60,
-          width: 1200, // <--- This prevents Vercel "Payload Too Large" errors
+          quality: 50,
+          width: 1000, 
           allowEditing: true,
           resultType: CameraResultType.Base64,
           source: sourceSelection 
         });
-        finalBase64 = image.base64String || "";
+        rawBase64 = image.base64String || "";
       }
 
-      if (!finalBase64) return;
+      if (!rawBase64) return;
       setActiveWorkflow(docType);
+
+      // 🔥 COMPRESS THE IMAGE BEFORE SENDING
+      const finalBase64 = await compressImageBase64(rawBase64, 1000, 0.6);
 
       const apiDocType = docType === "INVOICE" ? "TRIP_INVOICE" : docType === "FUEL" ? "FUEL_SLIP" : "POD_CLOSURE";
 
@@ -88,14 +100,23 @@ export function UploadHub() {
         })
       });
 
-      // 🚀 FIX: Safely catch HTTP errors before parsing JSON
+      // 🛡️ SAFE ERROR HANDLING (Prevents the "SyntaxError: Unexpected Token R" crash)
+      const responseText = await response.text();
       if (!response.ok) {
-        if (response.status === 413) throw new Error("Image file is too large. Please use a smaller photo or step further back.");
-        const errText = await response.text();
-        throw new Error(`Server Error: ${errText.substring(0, 40)}...`);
+        if (response.status === 413 || responseText.includes("Request Entity Too Large")) {
+          throw new Error("The photo is too large to process. Please try taking a slightly lower quality photo.");
+        }
+        throw new Error(`Server Error: ${responseText.substring(0, 40)}...`);
       }
 
-      const { data, error } = await response.json();
+      let parsedJson;
+      try {
+        parsedJson = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error("Received an invalid response from the server. The file might still be too large.");
+      }
+
+      const { data, error } = parsedJson;
       if (error) throw new Error(error);
 
       if (docType === "INVOICE") {
