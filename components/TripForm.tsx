@@ -4,41 +4,26 @@ import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 
-// --- CUSTOM SEARCHABLE SELECT COMPONENT ---
 function SearchableSelect({ options, value, onChange, placeholder, disabled }: { options: {label: string, value: string}[], value: string, onChange: (val: string) => void, placeholder: string, disabled?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    const handleClickOutside = (e: MouseEvent) => { if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false); };
+    document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
   const selectedOption = options.find(o => String(o.value) === String(value));
-
   return (
     <div ref={containerRef} className="relative w-full">
-      <div 
-        className={`w-full text-sm p-3 rounded-xl border ${isOpen ? 'border-[#FF5A00] ring-1 ring-[#FF5A00]' : 'border-[#2B3142]'} bg-[#1A1F2C] text-white flex justify-between items-center cursor-pointer font-bold ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-      >
-        <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
-        <span className="text-[10px] text-slate-400">▼</span>
+      <div className={`w-full text-sm p-3 rounded-xl border ${isOpen ? 'border-[#FF5A00] ring-1 ring-[#FF5A00]' : 'border-[#2B3142]'} bg-[#1A1F2C] text-white flex justify-between items-center cursor-pointer font-bold ${disabled ? "opacity-50 cursor-not-allowed" : ""}`} onClick={() => !disabled && setIsOpen(!isOpen)}>
+        <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span><span className="text-[10px] text-slate-400">▼</span>
       </div>
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-[#12141C] border border-[#2B3142] rounded-xl shadow-2xl max-h-60 overflow-y-auto">
-          <div className="p-2 sticky top-0 bg-[#12141C]">
-            <input type="text" className="w-full text-xs p-2.5 rounded-lg bg-[#1A1F2C] border border-[#2B3142] text-white outline-none focus:border-[#FF5A00]" placeholder="Type to search..." value={search} onChange={(e) => setSearch(e.target.value)} onClick={(e) => e.stopPropagation()} autoFocus/>
-          </div>
+          <div className="p-2 sticky top-0 bg-[#12141C]"><input type="text" className="w-full text-xs p-2.5 rounded-lg bg-[#1A1F2C] border border-[#2B3142] text-white outline-none focus:border-[#FF5A00]" placeholder="Type to search..." value={search} onChange={(e) => setSearch(e.target.value)} onClick={(e) => e.stopPropagation()} autoFocus/></div>
           <div className="pb-2 px-2">
             {options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())).map(o => (
-              <div key={o.value} className="p-2.5 text-xs font-bold text-slate-300 hover:bg-[#FF5A00]/20 hover:text-white rounded-lg cursor-pointer truncate" onClick={() => { onChange(o.value); setIsOpen(false); setSearch(""); }}>
-                {o.label}
-              </div>
+              <div key={o.value} className="p-2.5 text-xs font-bold text-slate-300 hover:bg-[#FF5A00]/20 hover:text-white rounded-lg cursor-pointer truncate" onClick={() => { onChange(o.value); setIsOpen(false); setSearch(""); }}>{o.label}</div>
             ))}
             {options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())).length === 0 && <div className="p-3 text-xs text-slate-500 text-center font-bold">No matches found</div>}
           </div>
@@ -54,15 +39,14 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const supabase = createClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
-
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [freightMaster, setFreightMaster] = useState<any[]>([]);
   const [bataMaster, setBataMaster] = useState<any[]>([]);
-  const [pendingScans, setPendingScans] = useState<any[]>([]); // 📥 Inbox State
+  const [pendingScans, setPendingScans] = useState<any[]>([]); 
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
+  const [draftTrips, setDraftTrips] = useState<any[]>([]); // Tracks drivers' ghost trips
 
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [lrNo, setLrNo] = useState("");
@@ -94,13 +78,14 @@ export function TripForm({ onSuccess }: TripFormProps) {
   useEffect(() => {
     async function fetchMasterData() {
       setIsLoading(true);
-      const [vehRes, drvRes, frRes, btRes, dieselRes, scansRes] = await Promise.all([
+      const [vehRes, drvRes, frRes, btRes, dieselRes, scansRes, activeTripsRes] = await Promise.all([
         supabase.from("vehicles").select("*").eq("is_active", true).order("vehicle_number"),
         supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
         supabase.from("destinations_freight_master").select("*").eq("is_active", true),
         supabase.from("driver_bata_master").select("*"),
         supabase.from("diesel_fuel_logs").select("diesel_rate_per_litre").order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false }).limit(1),
-        supabase.from("pending_scans").select("*").eq("document_type", "TRIP_INVOICE").eq("status", "PENDING").order("created_at", { ascending: false })
+        supabase.from("pending_scans").select("*").eq("document_type", "TRIP_INVOICE").eq("status", "PENDING").order("created_at", { ascending: false }),
+        supabase.from("trips").select("vehicle_id, trip_number").neq("trip_status", "COMPLETED") // Fetch all running trips
       ]);
 
       if (vehRes.data) setVehicles(vehRes.data);
@@ -109,12 +94,16 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (btRes.data) setBataMaster(btRes.data);
       if (dieselRes.data && dieselRes.data.length > 0 && dieselRes.data[0].diesel_rate_per_litre) setDieselRate(Number(dieselRes.data[0].diesel_rate_per_litre));
       if (scansRes.data) setPendingScans(scansRes.data);
+      
+      // Identify trucks that have a "Ghost Trip" running so they appear in the truck dropdown
+      if (activeTripsRes.data) {
+        setDraftTrips(activeTripsRes.data.filter(t => t.trip_number.startsWith("DRAFT-")).map(t => String(t.vehicle_id)));
+      }
       setIsLoading(false);
     }
     fetchMasterData();
   }, [supabase]);
 
-  // --- SMART AUTO-FILL FROM INBOX ---
   const applyScanData = (scan: any) => {
     setActiveScanId(scan.scan_id);
     const data = scan.raw_json_result || {};
@@ -131,32 +120,22 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
     if (data.truckNo) {
       const aiTruck = String(data.truckNo).replace(/\s+/g, '').toUpperCase();
-      const matchedTruck = vehicles.find(v => 
-        String(v.vehicle_number).replace(/\s+/g, '').toUpperCase().includes(aiTruck) || 
-        aiTruck.includes(String(v.vehicle_number).replace(/\s+/g, '').toUpperCase())
-      );
+      const matchedTruck = vehicles.find(v => String(v.vehicle_number).replace(/\s+/g, '').toUpperCase().includes(aiTruck) || aiTruck.includes(String(v.vehicle_number).replace(/\s+/g, '').toUpperCase()));
       if (matchedTruck) {
         setSelectedTruckId(String(matchedTruck.vehicle_id));
-        if (!data.tonnage && matchedTruck.carrying_capacity_tons) {
-          setLoadedMt(Number(matchedTruck.carrying_capacity_tons));
-        }
+        if (!data.tonnage && matchedTruck.carrying_capacity_tons) setLoadedMt(Number(matchedTruck.carrying_capacity_tons));
       }
     }
 
     if (data.source) {
       const aiSource = String(data.source).toUpperCase().trim();
-      const matchedSource = dynamicSources.find(s => 
-        s.toUpperCase() === aiSource || aiSource.includes(s.toUpperCase())
-      );
-      if (matchedSource) setSource(matchedSource);
-      else { setSource("CUSTOM"); setCustomSource(aiSource); }
+      const matchedSource = dynamicSources.find(s => s.toUpperCase() === aiSource || aiSource.includes(s.toUpperCase()));
+      if (matchedSource) setSource(matchedSource); else { setSource("CUSTOM"); setCustomSource(aiSource); }
     }
     
     if (data.destination) {
       const aiDest = String(data.destination).toUpperCase().trim();
-      const matchedRoute = validRoutes.find(r => 
-        r.destination_name?.toUpperCase().includes(aiDest) || aiDest.includes(r.destination_name?.toUpperCase() || "")
-      );
+      const matchedRoute = validRoutes.find(r => r.destination_name?.toUpperCase().includes(aiDest) || aiDest.includes(r.destination_name?.toUpperCase() || ""));
       if (matchedRoute) { setDestinationLabel(matchedRoute.destination_name); setIsManualRoute(false); } 
       else { setDestinationLabel("MANUAL_SPOT_ROUTE"); setCustomDest(aiDest); setIsManualRoute(true); }
     }
@@ -172,7 +151,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
     const warnings: any[] = [];
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const tenDaysFromNow = new Date(today); tenDaysFromNow.setDate(today.getDate() + 10);
-
     const checkWarning = (name: string, docName: string, dateVal: string) => {
       if (!dateVal) return;
       const expDate = new Date(dateVal); expDate.setHours(0, 0, 0, 0);
@@ -185,20 +163,18 @@ export function TripForm({ onSuccess }: TripFormProps) {
     const selTruck = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
     if (selTruck) {
       const tName = `Truck ${selTruck.vehicle_number}`;
-      checkWarning(tName, "FC", selTruck.fc_expiry_date); 
-      checkWarning(tName, "Insurance", selTruck.insurance_expiry_date);
-      checkWarning(tName, "Q-Tax", selTruck.qtax_expiry_date); 
-      checkWarning(tName, "PUC", selTruck.puc_expiry_date);
-      checkWarning(tName, "NP", selTruck.np_expiry_date); 
-      checkWarning(tName, "State Permit", selTruck.state_permit_expiry_date);
+      checkWarning(tName, "FC", selTruck.fc_expiry_date); checkWarning(tName, "Insurance", selTruck.insurance_expiry_date);
+      checkWarning(tName, "Q-Tax", selTruck.qtax_expiry_date); checkWarning(tName, "PUC", selTruck.puc_expiry_date);
+      checkWarning(tName, "NP", selTruck.np_expiry_date); checkWarning(tName, "State Permit", selTruck.state_permit_expiry_date);
       if (String(selTruck.truck_type).toUpperCase().includes("BULK")) checkWarning(tName, "Tank Cert", selTruck.tank_cert_expiry_date);
     }
     setComplianceWarnings(warnings);
   }, [selectedDriverId, selectedTruckId, drivers, vehicles]);
 
+  // 🔥 IMPORTANT: We now allow trucks that are WAITING_FOR_LOAD *OR* have an active DRAFT Ghost Trip
   const availableTrucks = vehicles.filter((v) => {
     const isBulkTruck = String(v.truck_type).toUpperCase().includes("BULK");
-    const isAvailable = v.current_status === "AVAILABLE_FOR_LOAD" || v.current_status === "WAITING_FOR_LOAD";
+    const isAvailable = v.current_status === "AVAILABLE_FOR_LOAD" || v.current_status === "WAITING_FOR_LOAD" || draftTrips.includes(String(v.vehicle_id));
     if (!isAvailable) return false;
     return cargoType === "BULK" ? isBulkTruck : !isBulkTruck;
   });
@@ -288,36 +264,84 @@ export function TripForm({ onSuccess }: TripFormProps) {
     const grossFreight = Math.round(Number(loadedMt) * Number(freightRate) * 100) / 100;
     const fuelCost = Math.round((Number(dieselL) || 0) * dieselRate * 100) / 100;
 
-    const { data: newTrip, error: tripError } = await supabase.from("trips").insert([{
-      trip_number: lrNo.toUpperCase().trim(), branch_id: 1, vehicle_id: Number(selectedTruckId), primary_driver_id: Number(selectedDriverId),
-      trip_start_date: startDate, trip_end_date: startDate, origin: finalSource.toUpperCase(), destination: finalDest,
-      start_km: finalStartKm, end_km: 0, total_km_run: 0, tonnage_loaded: Number(loadedMt), loaded_weight_mt: Number(loadedMt),
-      freight_revenue: grossFreight, fuel_litres: Number(dieselL) || 0, fuel_expense: fuelCost, driver_bata: Number(driverBata) || 0,
-      cash_advance_issued: Number(advance) || 0, trip_status: "IN_TRANSIT", is_tank_full: isTankFull
-    }]).select().single();
+    // 🚀 NEW LOGIC: Check if the driver already created a ghost trip!
+    const { data: existingDraftTrips } = await supabase.from("trips").select("*").eq("vehicle_id", Number(selectedTruckId)).neq("trip_status", "COMPLETED").order("trip_id", { ascending: false }).limit(1);
+    const activeDraftTrip = existingDraftTrips && existingDraftTrips.length > 0 ? existingDraftTrips[0] : null;
 
-    if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Dispatch Failed", message: "Error: " + tripError.message, type: "error" }); }
+    let activeTripId = null;
 
+    // The shared payload for both INSERT and UPDATE
+    const tripPayload: any = {
+      trip_number: lrNo.toUpperCase().trim(),
+      origin: finalSource.toUpperCase(),
+      destination: finalDest,
+      primary_driver_id: Number(selectedDriverId),
+      tonnage_loaded: Number(loadedMt),
+      loaded_weight_mt: Number(loadedMt),
+      freight_revenue: grossFreight,
+      driver_bata: Number(driverBata) || 0,
+      cash_advance_issued: Number(advance) || 0,
+    };
+
+    if (activeDraftTrip) {
+      // 🟢 The driver already hit "Start Trip". We UPDATE the existing DB row!
+      activeTripId = activeDraftTrip.trip_id;
+      tripPayload.fuel_litres = (Number(activeDraftTrip.fuel_litres) || 0) + (Number(dieselL) || 0);
+      tripPayload.fuel_expense = (Number(activeDraftTrip.fuel_expense) || 0) + fuelCost;
+
+      const { error: updateError } = await supabase.from("trips").update(tripPayload).eq("trip_id", activeTripId);
+      if (updateError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Draft Update Failed", message: updateError.message, type: "error" }); }
+
+      // Also update Vehicle remarks to show the new real LR number, but preserve the driver's current operational status
+      await supabase.from("vehicles").update({ 
+          status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSource.toUpperCase()} ➔ ${finalDest} (${activeDraftTrip.trip_status})`, 
+          status_updated_at: new Date().toISOString() 
+      }).eq("vehicle_id", Number(selectedTruckId));
+
+    } else {
+      // 🔵 Normal Flow: Admin creates the trip before the driver
+      tripPayload.branch_id = 1;
+      tripPayload.trip_start_date = startDate;
+      tripPayload.trip_end_date = startDate;
+      tripPayload.start_km = finalStartKm;
+      tripPayload.end_km = 0;
+      tripPayload.total_km_run = 0;
+      tripPayload.trip_status = "IN_TRANSIT";
+      tripPayload.is_tank_full = isTankFull;
+      tripPayload.fuel_litres = Number(dieselL) || 0;
+      tripPayload.fuel_expense = fuelCost;
+
+      const { data: newTrip, error: insertError } = await supabase.from("trips").insert([tripPayload]).select().single();
+      if (insertError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Dispatch Failed", message: insertError.message, type: "error" }); }
+      
+      activeTripId = newTrip.trip_id;
+
+      await supabase.from("vehicles").update({ 
+        current_status: "IN_TRANSIT", 
+        status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSource.toUpperCase()} ➔ ${finalDest}`, 
+        status_updated_at: new Date().toISOString() 
+      }).eq("vehicle_id", Number(selectedTruckId));
+    }
+
+    // Fuel Log Handling
     let fuelErrorMessage = null;
-    if (Number(dieselL) > 0) {
+    if (Number(dieselL) > 0 && activeTripId) {
       const { error: fuelError } = await supabase.from("diesel_fuel_logs").insert([{
-        fuel_date: startDate, vehicle_id: Number(selectedTruckId), trip_id: newTrip.trip_id, lr_number: lrNo.toUpperCase().trim(),
+        fuel_date: startDate, vehicle_id: Number(selectedTruckId), trip_id: activeTripId, lr_number: lrNo.toUpperCase().trim(),
         diesel_category: "TRIP_DIESEL", litres_filled: Number(dieselL), diesel_rate_per_litre: dieselRate, total_fuel_cost: fuelCost,
         filling_odometer_km: finalStartKm, is_tank_full: isTankFull
       }]);
       if (fuelError) fuelErrorMessage = fuelError.message;
     }
 
-    await supabase.from("vehicles").update({ current_status: "IN_TRANSIT", status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSource.toUpperCase()} ➔ ${finalDest}`, status_updated_at: new Date().toISOString() }).eq("vehicle_id", Number(selectedTruckId));
-
-    // 📥 Mark the inbox item as processed!
+    // Mark the scan as processed so it vanishes from the UI!
     if (activeScanId) {
       await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
       setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId)); 
     }
 
-    if (fuelErrorMessage) setAlertConfig({ isOpen: true, title: "Trip Created (Fuel Error)", message: `Trip dispatched, BUT diesel log failed (${fuelErrorMessage}). Add it manually.`, type: "error" });
-    else setAlertConfig({ isOpen: true, title: "Trip Dispatched!", message: `LR No. ${lrNo.toUpperCase()} registered and truck is In Transit.`, type: "success" });
+    if (fuelErrorMessage) setAlertConfig({ isOpen: true, title: "Trip Updated (Fuel Error)", message: `Trip dispatched, BUT diesel log failed (${fuelErrorMessage}). Add it manually.`, type: "error" });
+    else setAlertConfig({ isOpen: true, title: "Trip Dispatched!", message: `LR No. ${lrNo.toUpperCase()} fully registered and merged with Truck!`, type: "success" });
 
     setIsSubmitting(false); handleClear(); if (onSuccess) onSuccess();
   };
@@ -333,7 +357,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
     <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 sm:p-8 shadow-xl max-w-4xl mx-auto animate-in fade-in duration-300 relative">
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
-      {/* 📥 NEW PENDING SCANS INBOX */}
       {pendingScans.length > 0 && (
         <div className="mb-8 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
           <div className="flex justify-between items-center mb-3">
@@ -396,7 +419,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
         {complianceWarnings.length > 0 && (
           <div className="bg-rose-950/20 border border-rose-900/50 p-4 rounded-xl mt-4 mb-2 animate-in slide-in-from-top-2">
-            <h4 className="text-[10px] font-black text-rose-500 uppercase mb-2 flex items-center gap-2">⚠️ Compliance Warnings (Dispatching Allowed)</h4>
+            <h4 className="text-[10px] font-black text-rose-500 uppercase mb-2 flex items-center gap-2">⚠️ Compliance Warnings</h4>
             {complianceWarnings.map((w, i) => (
               <p key={i} className={`text-xs font-bold ${w.isUrgent ? 'text-rose-500' : 'text-amber-500'}`}>• {w.name} {w.docName} expiring on {w.date}</p>
             ))}
@@ -410,7 +433,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
           </div>
           <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0">
             <button type="button" onClick={handleClear} className="flex-1 md:flex-none px-6 py-4 bg-[#1A1F2C] hover:bg-[#222634] text-slate-300 border border-[#2B3142] font-bold text-sm rounded-xl transition-all active:scale-95">Clear Form</button>
-            <button type="submit" disabled={isSubmitting} className="flex-[2] md:flex-none px-10 py-4 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">{isSubmitting ? "Dispatching..." : "🚀 Dispatch"}</button>
+            <button type="submit" disabled={isSubmitting} className="flex-[2] md:flex-none px-10 py-4 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">{isSubmitting ? "Dispatching..." : "🚀 Dispatch Trip"}</button>
           </div>
         </div>
       </form>
