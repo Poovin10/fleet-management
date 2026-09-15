@@ -76,6 +76,11 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
   const [selectedLr, setSelectedLr] = useState<string>("");
   const [currentTrip, setCurrentTrip] = useState<any>(null);
 
+  // 📥 INBOX STATES
+  const [pendingScans, setPendingScans] = useState<any[]>([]); 
+  const [activeScanId, setActiveScanId] = useState<string | null>(null);
+  const [scannedShortageKg, setScannedShortageKg] = useState<number | null>(null);
+
   const [podNo, setPodNo] = useState("");
   const [closingDate, setClosingDate] = useState(new Date().toISOString().split("T")[0]);
   const [unloadedMt, setUnloadedMt] = useState<number | "">("");
@@ -97,32 +102,59 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
   const fetchActiveTrips = async () => {
     setIsLoading(true);
-    const [tripsRes, dieselRes] = await Promise.all([
+    const [tripsRes, dieselRes, scansRes] = await Promise.all([
       supabase.from("trips").select(`
           trip_id, trip_number, trip_start_date, origin, destination, loaded_weight_mt, start_km, fuel_litres, vehicle_id, primary_driver_id,
           vehicles ( vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date ),
           drivers ( full_name, phone_number, driver_code, license_expiry_date )
         `).neq("trip_status", "COMPLETED").order("trip_start_date", { ascending: true }),
-      supabase.from("diesel_fuel_logs").select("diesel_rate_per_litre").order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false }).limit(1)
+      supabase.from("diesel_fuel_logs").select("diesel_rate_per_litre").order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false }).limit(1),
+      supabase.from("pending_scans").select("*").eq("document_type", "POD_CLOSURE").eq("status", "PENDING").order("created_at", { ascending: false })
     ]);
 
     if (tripsRes.data) setActiveTrips(tripsRes.data);
     if (dieselRes.data && dieselRes.data.length > 0 && dieselRes.data[0].diesel_rate_per_litre) setDieselRate(Number(dieselRes.data[0].diesel_rate_per_litre));
+    if (scansRes.data) setPendingScans(scansRes.data);
     setIsLoading(false);
   };
 
   useEffect(() => { fetchActiveTrips(); }, []);
+
+  // 🤖 AI SCAN AUTO-FILL FUNCTION
+  const applyScanData = (scan: any) => {
+    setActiveScanId(scan.scan_id);
+    const data = scan.raw_json_result || {};
+
+    if (data.lrNo) {
+      const cleanLr = String(data.lrNo).toUpperCase().trim();
+      const matchedLr = activeTrips.find(t => t.trip_number.toUpperCase() === cleanLr || t.trip_number.toUpperCase().includes(cleanLr));
+      if (matchedLr) setSelectedLr(matchedLr.trip_number);
+    }
+    
+    if (data.deliveryDate) setClosingDate(data.deliveryDate);
+    if (data.shortageKg) setScannedShortageKg(Number(data.shortageKg));
+    else setScannedShortageKg(null);
+  };
 
   useEffect(() => {
     if (selectedLr) {
       const trip = activeTrips.find((t) => t.trip_number === selectedLr);
       if (trip) {
         setCurrentTrip(trip);
-        setUnloadedMt(trip.loaded_weight_mt || 0);
+        // Smart Shortage Calculation
+        if (scannedShortageKg !== null && trip.loaded_weight_mt) {
+           const finalWeight = Number(trip.loaded_weight_mt) - (scannedShortageKg / 1000);
+           setUnloadedMt(Number(finalWeight.toFixed(3)));
+        } else {
+           setUnloadedMt(trip.loaded_weight_mt || 0);
+        }
         setClosingKm(""); setHaltBata(""); setClaims(""); setClosingDiesel(""); setIsTankFull(false);
       }
-    } else setCurrentTrip(null);
-  }, [selectedLr, activeTrips]);
+    } else {
+      setCurrentTrip(null);
+      setScannedShortageKg(null);
+    }
+  }, [selectedLr, activeTrips, scannedShortageKg]);
 
   useEffect(() => {
     if (!currentTrip) { setComplianceWarnings([]); return; }
@@ -196,8 +228,15 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
     await supabase.from("vehicles").update({ current_status: "AVAILABLE_FOR_LOAD", status_remarks: "Available (Auto-Closed on POD)" }).eq("vehicle_id", currentTrip.vehicle_id);
 
+    // 📥 Clear Inbox Scan
+    if (activeScanId) {
+      await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
+      setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId)); 
+      setActiveScanId(null);
+    }
+
     setAlertConfig({ isOpen: true, title: "POD Settled!", message: `Trip ${currentTrip.trip_number} successfully closed and settled!`, type: "success" });
-    setIsSubmitting(false); setSelectedLr(""); setPodNo(""); setCurrentTrip(null); fetchActiveTrips(); if (onSuccess) onSuccess();
+    setIsSubmitting(false); setSelectedLr(""); setPodNo(""); setCurrentTrip(null); setScannedShortageKg(null); fetchActiveTrips(); if (onSuccess) onSuccess();
   };
 
   const lrOptions = activeTrips.map((t) => ({ value: t.trip_number, label: `LR: ${t.trip_number} | Date: ${formatDate(t.trip_start_date)} | Truck: ${t.vehicles?.vehicle_number || "Unknown"}` }));
@@ -210,9 +249,31 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
       {/* LEFT PANEL: Settle POD Form */}
       <div className="lg:col-span-7 bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-sm">
+        
+        {/* 📥 INBOX UI */}
+        {pendingScans.length > 0 && (
+          <div className="mb-6 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
+            <h4 className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+               <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+               Pending Scanned PODs ({pendingScans.length})
+            </h4>
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+              {pendingScans.map(scan => {
+                const data = scan.raw_json_result || {};
+                return (
+                  <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[180px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500' : 'border-[#2B3142] hover:border-slate-500 bg-[#12141C]'}`}>
+                    <p className="text-[10px] text-slate-400 font-bold mb-1">LR: <span className="text-white">{data.lrNo || "UNKNOWN"}</span></p>
+                    <p className="text-xs font-black text-white truncate">Shortage: <span className={data.shortageKg > 0 ? "text-rose-400" : "text-emerald-400"}>{data.shortageKg || 0} kg</span></p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="border-b border-[#222634] pb-4 mb-6">
           <h3 className="text-base font-black text-white uppercase tracking-tight">Record POD & Settle Trip</h3>
-          <p className="text-xs text-slate-400 mt-1">Finalize transit records, calculate shortages, and record closing top-ups.</p>
+          <p className="text-xs text-slate-400 mt-1">Select an active LR or pick a scanned POD from the inbox to autofill.</p>
         </div>
 
         {activeTrips.length === 0 && !isLoading ? (
