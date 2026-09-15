@@ -1,11 +1,22 @@
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Force Vercel to allow up to 60 seconds so Gemini doesn't timeout!
+export const maxDuration = 60; 
 
 export async function POST(req: Request) {
   try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+    
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: "GEMINI_API_KEY is missing on the server." }, { status: 500 });
+    }
+
     const { imageBase64, documentType } = await req.json();
+
+    if (!imageBase64) {
+      return NextResponse.json({ error: "No image data received from the app." }, { status: 400 });
+    }
 
     let schema: any; 
     let prompt = "";
@@ -53,9 +64,9 @@ export async function POST(req: Request) {
         break;
     }
 
-    // 🚀 FIX: Updated to the correct official Google Model Name
+    // 🚀 FIX: Use "gemini-1.5-flash-latest" which is the safest global fallback
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-flash-latest",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
@@ -64,19 +75,19 @@ export async function POST(req: Request) {
 
     const result = await model.generateContent([
       prompt,
-      {
-        inlineData: {
-          data: imageBase64,
-          mimeType: "image/jpeg"
-        }
-      }
+      { inlineData: { data: imageBase64, mimeType: "image/jpeg" } }
     ]);
 
-    const parsedData = JSON.parse(result.response.text());
+    const textResponse = result.response.text();
+    
+    // Clean markdown if Gemini accidentally wraps the JSON response
+    const cleanText = textResponse.replace(/```json/gi, "").replace(/```/gi, "").trim();
+    const parsedData = JSON.parse(cleanText);
+    
     return NextResponse.json({ data: parsedData });
 
   } catch (error: any) {
     console.error("AI Parsing Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error?.message || "Unknown internal server crash." }, { status: 500 });
   }
 }
