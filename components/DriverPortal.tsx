@@ -205,15 +205,12 @@ export function DriverPortal() {
   const displayDriverName = activeDriverObj ? `${activeDriverObj.full_name} (${activeDriverObj.driver_code})` : savedDriverCode;
   const isBulk = selectedTruckObj ? String(selectedTruckObj.truck_type).toUpperCase().includes("BULK") : true;
 
-  // RE-ADDED THE LEDGER VARS
+  // LEDGER CALCULATION FIX
   const monthEarnedBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
   const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
   const monthTripAdvances = currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
   const monthDirectAdvances = currentMonthAdvances.reduce((sum, a) => sum + (Number(a.amount_inr) || 0), 0);
-  
-  const totalMonthEarnings = monthEarnedBata + monthHaltBata;
-  const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
-  const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
+  const currentMonthNetBalance = (monthEarnedBata + monthHaltBata) - (monthTripAdvances + monthDirectAdvances);
 
   const handleManualFingerprint = async () => {
     if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Select your profile first.", type: "error" });
@@ -266,7 +263,7 @@ export function DriverPortal() {
           img.src = event.target?.result as string;
           img.onload = () => {
             const canvas = document.createElement("canvas");
-            const MAX_DIM = 1200; // Shrink to 1200px max
+            const MAX_DIM = 1200; 
             let width = img.width;
             let height = img.height;
             if (width > height && width > MAX_DIM) {
@@ -308,7 +305,6 @@ export function DriverPortal() {
       setActiveWorkflow(docType);
 
       const finalBase64 = await compressImageBase64(rawBase64, 1000, 0.6);
-
       const apiDocType = docType === "INVOICE" ? "TRIP_INVOICE" : docType === "FUEL" ? "FUEL_SLIP" : "POD_CLOSURE";
 
       const response = await fetch('/api/parse-document', { 
@@ -460,6 +456,14 @@ export function DriverPortal() {
     }
 
     setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData(); 
+  };
+
+  // 🚀 RESTORED MISSING FUNCTION
+  const handleCancelRequest = async (id: number) => {
+    if (!supabase || !confirm("Delete this request?")) return;
+    await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
+    if (activeDriverObj) fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
+    setAlertConfig({ isOpen: true, title: "Deleted", message: "Request cancelled.", type: "success" });
   };
 
   const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5A00] focus-visible:border-[#FF5A00]";
