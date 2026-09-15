@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
 
+// Helper function to create a delay between retries
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
 export async function POST(req: Request) {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
@@ -76,8 +79,7 @@ export async function POST(req: Request) {
         break;
     }
 
-    // 1️⃣ Setup Primary Model (3.6-flash)
-    let model = genAI.getGenerativeModel({
+    const model = genAI.getGenerativeModel({
       model: "gemini-3.6-flash",
       generationConfig: {
         responseMimeType: "application/json",
@@ -86,42 +88,33 @@ export async function POST(req: Request) {
       } as any
     });
 
+    // 🚀 Pure Retry Engine on 3.6-Flash
     let result;
-
-    try {
-      // Attempt to generate with the primary model
-      result = await model.generateContent([
-        prompt,
-        { inlineData: { data: imageBase64, mimeType: "image/jpeg" } }
-      ]);
-    } catch (err: any) {
-      const errorMsg = String(err?.message || err);
-      
-      // 2️⃣ SMART FALLBACK: If 3.6 is overloaded/down, instantly switch to 2.5
-      if (errorMsg.includes("503") || errorMsg.includes("high demand") || errorMsg.includes("overloaded")) {
-        console.warn("Primary model (3.6) overloaded. Instantly falling back to stable gemini-2.5-flash...");
-        
-        model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash",
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: schema,
-            temperature: 0.1
-          }
-        });
-
-        // Retry the exact same image and prompt on the backup model
+    let retries = 3; 
+    
+    while (retries > 0) {
+      try {
         result = await model.generateContent([
           prompt,
           { inlineData: { data: imageBase64, mimeType: "image/jpeg" } }
         ]);
-      } else {
-        // If it's an API Key error or something else, throw it normally
-        throw err;
+        break; // If successful, break out of the retry loop
+      } catch (err: any) {
+        const errorMsg = String(err?.message || err);
+        // If Google is temporarily overloaded, wait 2.5 seconds and try again
+        if ((errorMsg.includes("503") || errorMsg.includes("high demand") || errorMsg.includes("overloaded")) && retries > 1) {
+          console.warn(`Google server busy. Retrying in 2.5 seconds... (${retries - 1} attempts left)`);
+          retries--;
+          await delay(2500); 
+        } else {
+          // If it's a real error (not a traffic spike), throw it
+          throw err;
+        }
       }
     }
 
-    // Process the final successful result
+    if (!result) throw new Error("Failed to generate content after retries.");
+
     const textResponse = result.response.text();
     const cleanText = textResponse.replace(/```json/gi, "").replace(/```/gi, "").trim();
     const parsedData = JSON.parse(cleanText);
