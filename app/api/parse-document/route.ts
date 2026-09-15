@@ -33,6 +33,7 @@ export async function POST(req: Request) {
         schema = {
           type: SchemaType.OBJECT,
           properties: {
+            truckNo: { type: SchemaType.STRING, description: "The vehicle or truck registration number" },
             litres: { type: SchemaType.NUMBER, description: "Total diesel volume in litres" },
             rate: { type: SchemaType.NUMBER, description: "Price per litre" },
             totalAmount: { type: SchemaType.NUMBER, description: "Total bill amount" },
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
         schema = {
           type: SchemaType.OBJECT,
           properties: {
+            lrNo: { type: SchemaType.STRING, description: "The LR, Consignment, or Bilty number" },
             shortageKg: { type: SchemaType.NUMBER, description: "Any weight shortage in KG" },
             deliveryDate: { type: SchemaType.STRING, description: "Date of delivery in YYYY-MM-DD format" },
           }
