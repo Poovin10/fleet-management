@@ -19,6 +19,7 @@ export function UploadHub() {
     }
   }, []);
 
+  // 🚀 FIX: HTML5 Canvas Image Compression for Web Uploads
   const handleWebUpload = (): Promise<string> => {
     return new Promise((resolve, reject) => {
       const input = document.createElement("input");
@@ -29,10 +30,24 @@ export function UploadHub() {
         if (!file) return resolve("");
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = () => {
-          const result = reader.result as string;
-          const base64 = result.split(",")[1];
-          resolve(base64);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target?.result as string;
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            const MAX_DIM = 1200; // Compress to max 1200px width/height
+            let width = img.width;
+            let height = img.height;
+            if (width > height && width > MAX_DIM) {
+              height *= MAX_DIM / width; width = MAX_DIM;
+            } else if (height > MAX_DIM) {
+              width *= MAX_DIM / height; height = MAX_DIM;
+            }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx?.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
+          };
         };
         reader.onerror = (err) => reject(err);
       };
@@ -48,8 +63,10 @@ export function UploadHub() {
       if (sourceSelection === "WEB") {
         finalBase64 = await handleWebUpload();
       } else {
+        // 🚀 FIX: Force Android camera to compress the image
         const image = await Camera.getPhoto({
-          quality: 50,
+          quality: 60,
+          width: 1200, // <--- This prevents Vercel "Payload Too Large" errors
           allowEditing: true,
           resultType: CameraResultType.Base64,
           source: sourceSelection 
@@ -60,7 +77,6 @@ export function UploadHub() {
       if (!finalBase64) return;
       setActiveWorkflow(docType);
 
-      // 1. Properly map the docType to the exact string the API expects
       const apiDocType = docType === "INVOICE" ? "TRIP_INVOICE" : docType === "FUEL" ? "FUEL_SLIP" : "POD_CLOSURE";
 
       const response = await fetch('/api/parse-document', {
@@ -72,6 +88,13 @@ export function UploadHub() {
         })
       });
 
+      // 🚀 FIX: Safely catch HTTP errors before parsing JSON
+      if (!response.ok) {
+        if (response.status === 413) throw new Error("Image file is too large. Please use a smaller photo or step further back.");
+        const errText = await response.text();
+        throw new Error(`Server Error: ${errText.substring(0, 40)}...`);
+      }
+
       const { data, error } = await response.json();
       if (error) throw new Error(error);
 
@@ -79,14 +102,8 @@ export function UploadHub() {
         const extractedLr = data.lrNo ? String(data.lrNo).toUpperCase().trim() : null;
         let shouldInsert = true;
 
-        // Anti-Duplication UPSERT Check
         if (extractedLr) {
-          const { data: existingScan } = await supabase
-            .from('pending_scans')
-            .select('scan_id')
-            .eq('lr_number', extractedLr)
-            .eq('status', 'PENDING')
-            .single();
+          const { data: existingScan } = await supabase.from('pending_scans').select('scan_id').eq('lr_number', extractedLr).eq('status', 'PENDING').single();
 
           if (existingScan) {
             shouldInsert = false;
@@ -98,35 +115,19 @@ export function UploadHub() {
               cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null,
               raw_json_result: data,
             }).eq('scan_id', existingScan.scan_id);
-            
             if (updateError) throw new Error(updateError.message);
           }
         }
 
         if (shouldInsert) {
           const { error: dbError } = await supabase.from('pending_scans').insert([{
-            document_type: apiDocType,
-            lr_number: extractedLr,
-            tonnage_extracted: data.tonnage ? Number(data.tonnage) : null,
-            destination: data.destination ? String(data.destination).toUpperCase() : null,
-            source: data.source ? String(data.source).toUpperCase() : null,
-            truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null,
-            cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null,
-            raw_json_result: data,
-            status: 'PENDING'
+            document_type: apiDocType, lr_number: extractedLr, tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data, status: 'PENDING'
           }]);
-
           if (dbError) throw new Error(dbError.message);
         }
-        
         setAlertConfig({ isOpen: true, title: "Inbox Updated ✨", message: "Invoice digitized and sent to Trip Creation Inbox.", type: "success" });
       } else {
-        // Handle FUEL and POD generic inserts with correct string mapping
-        const { error: dbError } = await supabase.from('pending_scans').insert([{
-          document_type: apiDocType,
-          raw_json_result: data,
-          status: 'PENDING'
-        }]);
+        const { error: dbError } = await supabase.from('pending_scans').insert([{ document_type: apiDocType, raw_json_result: data, status: 'PENDING' }]);
         if (dbError) throw new Error(dbError.message);
         setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType} sent to office successfully.`, type: "success" });
       }
@@ -204,18 +205,6 @@ export function UploadHub() {
           <h3 className="text-sm font-black text-white uppercase">{activeWorkflow === "POD" ? "Parsing AI..." : "POD / Weighment"}</h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Auto-calculate shortage & close trip</p>
         </button>
-      </div>
-      
-      <div className="pt-8">
-        <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider mb-4">Future Modules</h4>
-        <div className="grid grid-cols-2 gap-4 opacity-50 grayscale pointer-events-none">
-           <div className="bg-[#1A1F2C] border border-[#2B3142] p-4 rounded-xl flex items-center gap-4">
-              <span className="text-xl">🔧</span><span className="text-xs font-bold text-slate-300">Service Bills</span>
-           </div>
-           <div className="bg-[#1A1F2C] border border-[#2B3142] p-4 rounded-xl flex items-center gap-4">
-              <span className="text-xl">🛞</span><span className="text-xs font-bold text-slate-300">Tyre & Retread Bills</span>
-           </div>
-        </div>
       </div>
     </div>
   );
