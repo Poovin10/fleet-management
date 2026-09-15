@@ -64,7 +64,7 @@ export function UploadHub() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300 relative">
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300 relative bg-[#12141C] border border-[#222634] rounded-2xl p-6 sm:p-8 shadow-xl">
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
       <div className="border-b border-[#222634] pb-4">
@@ -90,6 +90,18 @@ export function UploadHub() {
           <h3 className="text-sm font-black text-white uppercase">POD / Weighment</h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Auto-calculate shortage & close trip</p>
         </button>
+      </div>
+
+      <div className="pt-8">
+        <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider mb-4">Future Modules</h4>
+        <div className="grid grid-cols-2 gap-4 opacity-50 grayscale pointer-events-none">
+           <div className="bg-[#1A1F2C] border border-[#2B3142] p-4 rounded-xl flex items-center gap-4">
+              <span className="text-xl">🔧</span><span className="text-xs font-bold text-slate-300">Service Bills</span>
+           </div>
+           <div className="bg-[#1A1F2C] border border-[#2B3142] p-4 rounded-xl flex items-center gap-4">
+              <span className="text-xl">🛞</span><span className="text-xs font-bold text-slate-300">Tyre & Retread Bills</span>
+           </div>
+        </div>
       </div>
     </div>
   );
