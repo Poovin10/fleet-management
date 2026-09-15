@@ -518,20 +518,33 @@ export function DriverPortal() {
           vehicleStatusUpdate = "WORKSHOP_MAINTENANCE"; statusRemarksText = `Enroute Breakdown`;
         }
 
-        // FIXED: Stop injecting status_remarks into the trips table payload
         const finalVehicleRemarks = (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) 
           ? finalRemarks 
           : statusRemarksText;
 
-        const { error: rpcError } = await supabase.rpc('update_trip_status_atomic', {
-          p_trip_id: currentTrip.trip_id, 
-          p_vehicle_id: selectedTruckId, 
-          p_payload: updatePayload, 
-          p_vehicle_status: vehicleStatusUpdate, 
-          p_vehicle_remarks: finalVehicleRemarks
-        });
+        // 1. Bypass the buggy RPC and update the Trips table directly
+        const { error: tripError } = await supabase.from('trips')
+          .update(updatePayload)
+          .eq('trip_id', currentTrip.trip_id);
 
-        if (rpcError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Failed", message: rpcError.message, type: "error" }); }
+        if (tripError) { 
+          setIsSubmitting(false); 
+          return setAlertConfig({ isOpen: true, title: "Trip Update Failed", message: tripError.message, type: "error" }); 
+        }
+
+        // 2. Update the Vehicles table directly
+        const { error: vehicleError } = await supabase.from('vehicles')
+          .update({
+             current_status: vehicleStatusUpdate,
+             status_remarks: finalVehicleRemarks,
+             status_updated_at: timestamp
+          })
+          .eq('vehicle_id', selectedTruckId);
+
+        if (vehicleError) { 
+          setIsSubmitting(false); 
+          return setAlertConfig({ isOpen: true, title: "Vehicle Update Failed", message: vehicleError.message, type: "error" }); 
+        }
         
         setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
     }
