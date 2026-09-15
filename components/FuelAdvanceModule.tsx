@@ -25,6 +25,8 @@ export function FuelAdvanceModule() {
 
   const [recentFuelLogs, setRecentFuelLogs] = useState<any[]>([]);
   const [recentAdvances, setRecentAdvances] = useState<any[]>([]);
+  
+  // 📥 INBOX STATES
   const [pendingScans, setPendingScans] = useState<any[]>([]); 
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
 
@@ -109,19 +111,43 @@ export function FuelAdvanceModule() {
     setFLitres(""); setFDieselRate(dieselRate); setFIsTankFull(false); setActiveScanId(null);
   };
 
+  // 🗑️ DELETE JUNK SCANS FROM INBOX
+  const handleDeleteScan = async (e: React.MouseEvent, scanId: string) => {
+    e.stopPropagation();
+    if (!confirm("Delete this bad scan permanently from the inbox?")) return;
+    await supabase.from("pending_scans").delete().eq("scan_id", scanId);
+    setPendingScans(prev => prev.filter(s => s.scan_id !== scanId));
+    if (activeScanId === scanId) setActiveScanId(null);
+  };
+
+  // 🤖 AI SCAN AUTO-FILL FUNCTION WITH SMART UX
   const applyScanData = (scan: any) => {
     setActiveScanId(scan.scan_id);
     const data = scan.raw_json_result || {};
 
-    if (data.truckNo) {
-      const aiTruck = String(data.truckNo).replace(/\s+/g, '').toUpperCase();
-      const matchedTruck = vehicles.find(v => String(v.vehicle_number).replace(/\s+/g, '').toUpperCase().includes(aiTruck) || aiTruck.includes(String(v.vehicle_number).replace(/\s+/g, '').toUpperCase()));
-      if (matchedTruck) setFVehicleId(String(matchedTruck.vehicle_id));
+    let matched = false;
+
+    // 🚀 Improved Fuzzy Match Logic
+    if (data.truckNo && data.truckNo !== "UNKNOWN") {
+      const aiTruck = String(data.truckNo).replace(/[^A-Z0-9]/g, '').toUpperCase();
+      const matchedTruck = vehicles.find(v => {
+          const dbTruck = String(v.vehicle_number).replace(/[^A-Z0-9]/g, '').toUpperCase();
+          return dbTruck === aiTruck || dbTruck.includes(aiTruck) || aiTruck.includes(dbTruck);
+      });
+      if (matchedTruck) {
+          setFVehicleId(String(matchedTruck.vehicle_id));
+          matched = true;
+      }
     }
     
     if (data.litres) setFLitres(Number(data.litres));
     if (data.rate) setFDieselRate(Number(data.rate));
     else setFDieselRate(dieselRate);
+
+    // Prompt user if AI couldn't read the image
+    if (!matched) {
+      alert(`⚠️ The AI could not clearly match the Truck Number from the image (Detected: ${data.truckNo || "None"}). Please select the Truck from the dropdown below to apply this fuel log.`);
+    }
   };
 
   const handleEditClick = (log: any) => {
@@ -162,7 +188,10 @@ export function FuelAdvanceModule() {
           }
         } else {
           await supabase.from('diesel_fuel_logs').insert([payload]);
-          if (activeScanId) await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
+          if (activeScanId) {
+            await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
+            setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId)); 
+          }
         }
         clearFuelForm(); fetchData(); setIsProcessing(false); closeModal();
       }
@@ -210,7 +239,6 @@ export function FuelAdvanceModule() {
     setIsProcessing(false);
   };
 
-  // 🚀 RE-ADDED THE EXPORT FUNCTION
   const exportAuditToCSV = () => {
     if (auditResults.length === 0) return alert("No audit data to export.");
     const headers = ["Log ID", "Date", "Truck No", "Category", "LR Number", "Odometer KM", "Litres Filled", "Total Cost (INR)", "Tank Full"];
@@ -300,6 +328,7 @@ export function FuelAdvanceModule() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
           <div className="lg:col-span-5 bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl h-fit">
             
+            {/* 📥 INBOX UI */}
             {!editLogId && pendingScans.length > 0 && (
               <div className="mb-6 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
                 <h4 className="text-xs font-black text-sky-400 uppercase tracking-wider flex items-center gap-2 mb-3">
@@ -310,9 +339,14 @@ export function FuelAdvanceModule() {
                   {pendingScans.map(scan => {
                     const data = scan.raw_json_result || {};
                     return (
-                      <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[150px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-sky-500 bg-sky-500/10 ring-1 ring-sky-500' : 'border-[#2B3142] hover:border-slate-500 bg-[#12141C]'}`}>
-                        <p className="text-[10px] text-slate-400 font-bold mb-1">Truck: <span className="text-white">{data.truckNo || "UNKNOWN"}</span></p>
-                        <p className="text-xs font-black text-white truncate">{data.litres || 0} L <span className="text-slate-500 font-medium">@ ₹{data.rate || '?'}</span></p>
+                      <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-sky-500 bg-sky-500/10 ring-1 ring-sky-500' : 'border-[#2B3142] hover:border-slate-500 bg-[#12141C]'}`}>
+                        <div className="flex justify-between items-start gap-4">
+                          <div>
+                            <p className="text-[10px] text-slate-400 font-bold mb-1">Truck: <span className="text-white">{data.truckNo || "UNKNOWN"}</span></p>
+                            <p className="text-xs font-black text-white truncate">{data.litres || 0} L <span className="text-slate-500 font-medium">@ ₹{data.rate || '?'}</span></p>
+                          </div>
+                          <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete bad scan">🗑️</div>
+                        </div>
                       </button>
                     );
                   })}
