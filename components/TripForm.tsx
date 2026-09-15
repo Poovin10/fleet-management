@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'; 
 
 // --- CUSTOM SEARCHABLE SELECT COMPONENT ---
 function SearchableSelect({ options, value, onChange, placeholder, disabled }: { options: {label: string, value: string}[], value: string, onChange: (val: string) => void, placeholder: string, disabled?: boolean }) {
@@ -55,7 +54,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const supabase = createClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isScanningAI, setIsScanningAI] = useState(false); 
 
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
 
@@ -63,6 +61,8 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [freightMaster, setFreightMaster] = useState<any[]>([]);
   const [bataMaster, setBataMaster] = useState<any[]>([]);
+  const [pendingScans, setPendingScans] = useState<any[]>([]); // 📥 Inbox State
+  const [activeScanId, setActiveScanId] = useState<string | null>(null);
 
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [lrNo, setLrNo] = useState("");
@@ -88,18 +88,19 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
   const handleClear = () => {
     setStartDate(new Date().toISOString().split("T")[0]); setLrNo(""); setCargoType("BULK"); setSelectedTruckId(""); setSource("COCHIN"); setCustomSource("");
-    setDestinationLabel(""); setCustomDest(""); setFreightRate(""); setLoadedMt(""); setSelectedDriverId(""); setDriverBata(""); setAdvance(""); setDieselL(""); setStartKm(""); setIsManualRoute(false);
+    setDestinationLabel(""); setCustomDest(""); setFreightRate(""); setLoadedMt(""); setSelectedDriverId(""); setDriverBata(""); setAdvance(""); setDieselL(""); setStartKm(""); setIsManualRoute(false); setActiveScanId(null);
   };
 
   useEffect(() => {
     async function fetchMasterData() {
       setIsLoading(true);
-      const [vehRes, drvRes, frRes, btRes, dieselRes] = await Promise.all([
+      const [vehRes, drvRes, frRes, btRes, dieselRes, scansRes] = await Promise.all([
         supabase.from("vehicles").select("*").eq("is_active", true).order("vehicle_number"),
         supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
         supabase.from("destinations_freight_master").select("*").eq("is_active", true),
         supabase.from("driver_bata_master").select("*"),
-        supabase.from("diesel_fuel_logs").select("diesel_rate_per_litre").order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false }).limit(1)
+        supabase.from("diesel_fuel_logs").select("diesel_rate_per_litre").order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false }).limit(1),
+        supabase.from("pending_scans").select("*").eq("document_type", "TRIP_INVOICE").eq("status", "PENDING").order("created_at", { ascending: false })
       ]);
 
       if (vehRes.data) setVehicles(vehRes.data);
@@ -107,10 +108,65 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (frRes.data) setFreightMaster(frRes.data);
       if (btRes.data) setBataMaster(btRes.data);
       if (dieselRes.data && dieselRes.data.length > 0 && dieselRes.data[0].diesel_rate_per_litre) setDieselRate(Number(dieselRes.data[0].diesel_rate_per_litre));
+      if (scansRes.data) setPendingScans(scansRes.data);
       setIsLoading(false);
     }
     fetchMasterData();
   }, [supabase]);
+
+  // --- SMART AUTO-FILL FROM INBOX ---
+  const applyScanData = (scan: any) => {
+    setActiveScanId(scan.scan_id);
+    const data = scan.raw_json_result || {};
+
+    if (data.lrNo) setLrNo(String(data.lrNo).toUpperCase());
+    if (data.tonnage) setLoadedMt(Number(data.tonnage));
+    if (data.date) setStartDate(data.date);
+
+    if (data.cargoType) {
+      const cType = String(data.cargoType).toUpperCase();
+      if (cType.includes("BULK")) setCargoType("BULK");
+      if (cType.includes("BAG")) setCargoType("BAG");
+    }
+
+    if (data.truckNo) {
+      const aiTruck = String(data.truckNo).replace(/\s+/g, '').toUpperCase();
+      const matchedTruck = vehicles.find(v => 
+        String(v.vehicle_number).replace(/\s+/g, '').toUpperCase().includes(aiTruck) || 
+        aiTruck.includes(String(v.vehicle_number).replace(/\s+/g, '').toUpperCase())
+      );
+      if (matchedTruck) {
+        setSelectedTruckId(String(matchedTruck.vehicle_id));
+        if (!data.tonnage && matchedTruck.carrying_capacity_tons) {
+          setLoadedMt(Number(matchedTruck.carrying_capacity_tons));
+        }
+      }
+    }
+
+    if (data.source) {
+      const aiSource = String(data.source).toUpperCase().trim();
+      const matchedSource = dynamicSources.find(s => 
+        s.toUpperCase() === aiSource || aiSource.includes(s.toUpperCase())
+      );
+      if (matchedSource) setSource(matchedSource);
+      else { setSource("CUSTOM"); setCustomSource(aiSource); }
+    }
+    
+    if (data.destination) {
+      const aiDest = String(data.destination).toUpperCase().trim();
+      const matchedRoute = validRoutes.find(r => 
+        r.destination_name?.toUpperCase().includes(aiDest) || aiDest.includes(r.destination_name?.toUpperCase() || "")
+      );
+      if (matchedRoute) { setDestinationLabel(matchedRoute.destination_name); setIsManualRoute(false); } 
+      else { setDestinationLabel("MANUAL_SPOT_ROUTE"); setCustomDest(aiDest); setIsManualRoute(true); }
+    }
+  };
+
+  const handleManualTruckSelect = (val: string) => {
+    setSelectedTruckId(val);
+    const truck = vehicles.find((v) => String(v.vehicle_id) === String(val));
+    if (truck && truck.carrying_capacity_tons) setLoadedMt(Number(truck.carrying_capacity_tons));
+  };
 
   useEffect(() => {
     const warnings: any[] = [];
@@ -159,124 +215,16 @@ export function TripForm({ onSuccess }: TripFormProps) {
     return r.origin?.trim().toUpperCase() === finalSource.trim().toUpperCase() && r.cargo_type?.toUpperCase() === cargoType.toUpperCase() && isCapMatch;
   });
 
-  // --- MANUAL TRUCK SELECTION FIX ---
-  // We decouple this so it only runs when a human clicks the dropdown, preventing AI overwrites.
-  const handleManualTruckSelect = (val: string) => {
-    setSelectedTruckId(val);
-    const truck = vehicles.find((v) => String(v.vehicle_id) === String(val));
-    if (truck && truck.carrying_capacity_tons) {
-      setLoadedMt(Number(truck.carrying_capacity_tons));
-    }
-  };
-
-  // 🤖 --- AI DOCUMENT SCANNER FUNCTION ---
-  const handleScanDocument = async () => {
-    try {
-      const image = await Camera.getPhoto({
-        quality: 50,
-        allowEditing: true,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Prompt 
-      });
-
-      if (!image.base64String) return;
-      setIsScanningAI(true);
-      
-      const response = await fetch('/api/parse-document', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: image.base64String,
-          documentType: "TRIP_INVOICE" 
-        })
-      });
-
-      const { data, error } = await response.json();
-      if (error) throw new Error(error);
-
-      if (data.lrNo) setLrNo(String(data.lrNo).toUpperCase());
-      if (data.tonnage) setLoadedMt(Number(data.tonnage)); // The AI sets the exact tonnage here
-      if (data.date) setStartDate(data.date);
-
-      if (data.cargoType) {
-        const cType = String(data.cargoType).toUpperCase();
-        if (cType.includes("BULK")) setCargoType("BULK");
-        if (cType.includes("BAG")) setCargoType("BAG");
-      }
-
-      if (data.truckNo) {
-        const aiTruck = String(data.truckNo).replace(/\s+/g, '').toUpperCase();
-        const matchedTruck = vehicles.find(v => 
-          String(v.vehicle_number).replace(/\s+/g, '').toUpperCase().includes(aiTruck) || 
-          aiTruck.includes(String(v.vehicle_number).replace(/\s+/g, '').toUpperCase())
-        );
-        if (matchedTruck) {
-          setSelectedTruckId(String(matchedTruck.vehicle_id));
-          // Smart Fallback: Only use the truck's default capacity if the AI couldn't find a weight on the paper
-          if (!data.tonnage && matchedTruck.carrying_capacity_tons) {
-            setLoadedMt(Number(matchedTruck.carrying_capacity_tons));
-          }
-        }
-      }
-
-      if (data.source) {
-        const aiSource = String(data.source).toUpperCase().trim();
-        const matchedSource = dynamicSources.find(s => 
-          s.toUpperCase() === aiSource || aiSource.includes(s.toUpperCase())
-        );
-        if (matchedSource) {
-          setSource(matchedSource);
-        } else {
-          setSource("CUSTOM");
-          setCustomSource(aiSource);
-        }
-      }
-      
-      if (data.destination) {
-        const aiDest = String(data.destination).toUpperCase().trim();
-        const matchedRoute = validRoutes.find(r => 
-          r.destination_name?.toUpperCase().includes(aiDest) || aiDest.includes(r.destination_name?.toUpperCase() || "")
-        );
-        
-        if (matchedRoute) {
-          setDestinationLabel(matchedRoute.destination_name);
-          setIsManualRoute(false);
-        } else {
-          setDestinationLabel("MANUAL_SPOT_ROUTE");
-          setCustomDest(aiDest);
-          setIsManualRoute(true);
-        }
-      }
-      
-      setAlertConfig({ isOpen: true, title: "AI Scan Complete ✨", message: "Invoice details extracted and matched successfully.", type: "success" });
-
-    } catch (err: any) {
-      console.error(err);
-      setAlertConfig({ isOpen: true, title: "Scan Failed", message: err.message || "Failed to process image.", type: "error" });
-    } finally {
-      setIsScanningAI(false);
-    }
-  };
-
   useEffect(() => {
-    // 🚨 Notice we REMOVED the setLoadedMt() overwrite rule from here!
     if (selectedTruckId) {
       const fetchTruckHistory = async () => {
         const { data: lastTrip } = await supabase.from("trips").select("primary_driver_id").eq("vehicle_id", selectedTruckId).not("primary_driver_id", "is", null).order("trip_id", { ascending: false }).limit(1);
         if (lastTrip && lastTrip.length > 0 && lastTrip[0].primary_driver_id) setSelectedDriverId(String(lastTrip[0].primary_driver_id));
         else setSelectedDriverId("");
 
-        const { data: pendingStart } = await supabase.from("driver_pending_entries")
-           .select("odometer_km")
-           .eq("vehicle_id", selectedTruckId)
-           .eq("entry_type", "START_TRIP")
-           .eq("status", "PENDING")
-           .order("submitted_at", { ascending: false })
-           .limit(1);
-
-        if (pendingStart && pendingStart.length > 0 && pendingStart[0].odometer_km) {
-           setStartKm(Number(pendingStart[0].odometer_km));
-        } else {
+        const { data: pendingStart } = await supabase.from("driver_pending_entries").select("odometer_km").eq("vehicle_id", selectedTruckId).eq("entry_type", "START_TRIP").eq("status", "PENDING").order("submitted_at", { ascending: false }).limit(1);
+        if (pendingStart && pendingStart.length > 0 && pendingStart[0].odometer_km) setStartKm(Number(pendingStart[0].odometer_km));
+        else {
            const { data: lastOdoTrip } = await supabase.from("trips").select("end_km, start_km").eq("vehicle_id", selectedTruckId).order("trip_id", { ascending: false }).limit(1);
            const { data: lastOdoFuel } = await supabase.from("diesel_fuel_logs").select("filling_odometer_km").eq("vehicle_id", selectedTruckId).order("fuel_log_id", { ascending: false }).limit(1);
            let odo = 0;
@@ -286,11 +234,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
         }
       };
       fetchTruckHistory();
-    } else { 
-      setLoadedMt(""); 
-      setSelectedDriverId(""); 
-      setStartKm(""); 
-    }
+    } else { setLoadedMt(""); setSelectedDriverId(""); setStartKm(""); }
   }, [selectedTruckId, supabase]);
 
   useEffect(() => {
@@ -300,9 +244,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
       setIsManualRoute(false);
       const matchedRoute = validRoutes.find(r => String(r.destination_name) === String(destinationLabel));
       if (matchedRoute) setFreightRate(Number(matchedRoute.freight_rate_per_ton));
-    } else {
-      setIsManualRoute(false); setFreightRate("");
-    }
+    } else { setIsManualRoute(false); setFreightRate(""); }
   }, [destinationLabel, validRoutes]);
 
   useEffect(() => {
@@ -365,6 +307,12 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
     await supabase.from("vehicles").update({ current_status: "IN_TRANSIT", status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSource.toUpperCase()} ➔ ${finalDest}`, status_updated_at: new Date().toISOString() }).eq("vehicle_id", Number(selectedTruckId));
 
+    // 📥 Mark the inbox item as processed!
+    if (activeScanId) {
+      await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
+      setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId)); // Remove from UI
+    }
+
     if (fuelErrorMessage) setAlertConfig({ isOpen: true, title: "Trip Created (Fuel Error)", message: `Trip dispatched, BUT diesel log failed (${fuelErrorMessage}). Add it manually.`, type: "error" });
     else setAlertConfig({ isOpen: true, title: "Trip Dispatched!", message: `LR No. ${lrNo.toUpperCase()} registered and truck is In Transit.`, type: "success" });
 
@@ -375,7 +323,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const sourceOptions = dynamicSources.map(s => ({ value: s, label: s })).concat([{ value: "CUSTOM", label: "CUSTOM (MANUAL)" }]);
   const destOptions = validRoutes.map(r => ({ value: r.destination_name, label: `${r.destination_name} (₹${r.freight_rate_per_ton}/MT)` })).concat([{ value: "MANUAL_SPOT_ROUTE", label: "-- MANUAL / SPOT ROUTE --" }]);
   const driverOptions = drivers.map(d => ({ value: String(d.driver_id), label: `${d.driver_code} - ${d.full_name}` }));
-
   const noSpinClass = "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
   const numProps = { step: "any", onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur() };
 
@@ -383,19 +330,32 @@ export function TripForm({ onSuccess }: TripFormProps) {
     <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 sm:p-8 shadow-xl max-w-4xl mx-auto animate-in fade-in duration-300 relative">
       <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
+      {/* 📥 NEW PENDING SCANS INBOX */}
+      {pendingScans.length > 0 && (
+        <div className="mb-8 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
+          <div className="flex justify-between items-center mb-3">
+             <h4 className="text-xs font-black text-[#FF5A00] uppercase tracking-wider flex items-center gap-2">
+               <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF5A00] opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF5A00]"></span></span>
+               Pending Scanned Invoices ({pendingScans.length})
+             </h4>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+            {pendingScans.map(scan => (
+              <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-[#FF5A00] bg-[#FF5A00]/10 ring-1 ring-[#FF5A00]' : 'border-[#2B3142] hover:border-slate-500 bg-[#12141C]'}`}>
+                <p className="text-[10px] text-slate-400 font-bold mb-1">LR: <span className="text-white">{scan.lr_number || "UNKNOWN"}</span></p>
+                <p className="text-xs font-black text-white truncate">{scan.source || "?"} ➔ {scan.destination || "?"}</p>
+                <p className="text-[10px] text-slate-500 mt-1">Truck: {scan.truck_number || "Manual select"}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="border-b border-[#222634] pb-4 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="text-base font-black text-white uppercase tracking-tight">Initiate Trip Dispatch</h3>
-          <p className="text-xs text-slate-400 mt-1">Fill out manually or scan invoice to auto-fill.</p>
+          <p className="text-xs text-slate-400 mt-1">Select an invoice from the inbox above, or fill out manually.</p>
         </div>
-        <button 
-          type="button" 
-          onClick={handleScanDocument}
-          disabled={isScanningAI}
-          className="bg-[#FF5A00]/10 hover:bg-[#FF5A00]/20 text-[#FF5A00] border border-[#FF5A00]/50 text-xs font-black py-2 px-4 rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-        >
-          {isScanningAI ? "🤖 PARSING AI..." : "📸 SCAN INVOICE"}
-        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -410,7 +370,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
               <button type="button" onClick={() => { setCargoType("BAG"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BAG" ? "bg-[#FF5A00] text-white shadow-sm" : "text-slate-400 hover:text-white"}`}>BAGS</button>
             </div>
           </div>
-          {/* 👇 Using the new handleManualTruckSelect here to stop the race condition */}
           <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">4. Assigned Truck ({cargoType}) *</label><SearchableSelect options={truckOptions} value={selectedTruckId} onChange={handleManualTruckSelect} placeholder="-- SELECT TRUCK --" disabled={isLoading} /></div>
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">5. Source (Origin) *</label><SearchableSelect options={sourceOptions} value={source} onChange={setSource} placeholder="-- SELECT SOURCE --" />
