@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 import { BackgroundGeolocation } from "@capgo/background-geolocation";
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'; 
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -31,31 +30,6 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
   return R * c; 
 };
 
-const compressImageBase64 = (base64Str: string, maxWidth = 1600, quality = 0.8): Promise<string> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.src = "data:image/jpeg;base64," + base64Str;
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      let width = img.width;
-      let height = img.height;
-      if (width > height && width > maxWidth) {
-        height *= maxWidth / width;
-        width = maxWidth;
-      } else if (height > maxWidth) {
-        width *= maxWidth / height;
-        height = maxWidth;
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      ctx?.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
-    };
-    img.onerror = () => resolve(base64Str); 
-  });
-};
-
 export function DriverPortal() {
   const [supabase, setSupabase] = useState<any>(null);
 
@@ -70,7 +44,8 @@ export function DriverPortal() {
   const [savedDriverCode, setSavedDriverCode] = useState("");
   const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState(""); 
   const [isDriverLocked, setIsDriverLocked] = useState(false);
-  const [activeTab, setActiveTab] = useState<"STATUS" | "SCAN" | "LEDGER">("STATUS");
+  // 🚫 Scanning tab removed from options
+  const [activeTab, setActiveTab] = useState<"STATUS" | "LEDGER">("STATUS");
   const [selectedTruckId, setSelectedTruckId] = useState("");
   const [driverCode, setDriverCode] = useState("");
   const [driverPin, setDriverPin] = useState("");
@@ -88,14 +63,6 @@ export function DriverPortal() {
   const [currentMonthTrips, setCurrentMonthTrips] = useState<any[]>([]);
   const [currentMonthAdvances, setCurrentMonthAdvances] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [complianceWarnings, setComplianceWarnings] = useState<any[]>([]);
-  const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null);
-  const [selectionModalFor, setSelectionModalFor] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(true);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') setIsMobile(/android|iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()));
-  }, []);
 
   const formatDateTime = (dateStr: string) => {
     if (!dateStr) return 'N/A';
@@ -251,101 +218,6 @@ export function DriverPortal() {
     }
   };
 
-  const handleWebUpload = (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const input = document.createElement("input");
-      input.type = "file"; input.accept = "image/png, image/jpeg, image/jpg";
-      input.onchange = (e: any) => {
-        const file = e.target.files[0]; if (!file) return resolve("");
-        const reader = new FileReader(); reader.readAsDataURL(file);
-        reader.onload = (event) => {
-          const img = new Image();
-          img.src = event.target?.result as string;
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            const MAX_DIM = 1600; 
-            let width = img.width;
-            let height = img.height;
-            if (width > height && width > MAX_DIM) {
-              height *= MAX_DIM / width; width = MAX_DIM;
-            } else if (height > MAX_DIM) {
-              width *= MAX_DIM / height; height = MAX_DIM;
-            }
-            canvas.width = width; canvas.height = height;
-            const ctx = canvas.getContext("2d");
-            ctx?.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL("image/jpeg", 0.8).split(",")[1]);
-          };
-        };
-        reader.onerror = (err) => reject(err);
-      };
-      input.click();
-    });
-  };
-
-  const triggerScanner = async (docType: string, sourceSelection: any) => {
-    setSelectionModalFor(null);
-    let rawBase64 = "";
-
-    try {
-      if (sourceSelection === "WEB") {
-        rawBase64 = await handleWebUpload();
-      } else {
-        const image = await Camera.getPhoto({ 
-            quality: 80, width: 1600, allowEditing: true, resultType: CameraResultType.Base64, source: sourceSelection 
-        });
-        rawBase64 = image.base64String || "";
-      }
-      
-      if (!rawBase64) return;
-      setActiveWorkflow(docType);
-
-      const finalBase64 = await compressImageBase64(rawBase64, 1600, 0.8);
-      const apiDocType = docType === "INVOICE" ? "TRIP_INVOICE" : docType === "FUEL" ? "FUEL_SLIP" : "POD_CLOSURE";
-
-      const response = await fetch('/api/parse-document', { 
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: finalBase64, documentType: apiDocType }) 
-      });
-      
-      const responseText = await response.text();
-      if (!response.ok) {
-        if (response.status === 413 || responseText.includes("Request Entity Too Large")) throw new Error("Image too large. Step back slightly.");
-        if (response.status === 504) throw new Error("Server Timeout. The AI took too long. Try again.");
-        
-        let serverErrMsg = responseText || `Unknown Error (Status ${response.status})`;
-        try {
-          const parsed = JSON.parse(responseText);
-          if (parsed.error) serverErrMsg = parsed.error;
-        } catch (e) {}
-        throw new Error(serverErrMsg);
-      }
-
-      const { data, error } = JSON.parse(responseText);
-      if (error) throw new Error(error);
-
-      if (docType === "INVOICE") {
-        const extractedLr = data.lrNo ? String(data.lrNo).toUpperCase().trim() : null;
-        let shouldInsert = true;
-        if (extractedLr) {
-          const { data: existingScan } = await supabase.from('pending_scans').select('scan_id').eq('lr_number', extractedLr).eq('status', 'PENDING').single();
-          if (existingScan) {
-            shouldInsert = false;
-            await supabase.from('pending_scans').update({ tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data }).eq('scan_id', existingScan.scan_id);
-          }
-        }
-        if (shouldInsert) {
-          await supabase.from('pending_scans').insert([{ document_type: apiDocType, lr_number: extractedLr, tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data, status: 'PENDING' }]);
-        }
-        setAlertConfig({ isOpen: true, title: "Inbox Updated ✨", message: "Invoice digitized and sent to Trip Creation Inbox.", type: "success" });
-      } else {
-        await supabase.from('pending_scans').insert([{ document_type: apiDocType, raw_json_result: data, status: 'PENDING' }]);
-        setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType} sent to office successfully.`, type: "success" });
-      }
-    } catch (err: any) {
-      if (!String(err).toLowerCase().includes("cancel")) setAlertConfig({ isOpen: true, title: "Scan Failed", message: String(err), type: "error" });
-    } finally { setActiveWorkflow(null); }
-  };
-
   const handleDriverSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
@@ -465,25 +337,6 @@ export function DriverPortal() {
   return (
     <div className="w-full max-w-sm rounded-2xl border border-border bg-surface text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: 'light' }}>
       
-      {selectionModalFor && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-surface border border-border rounded-2xl w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-            <h3 className="text-base font-black text-fg mb-4 text-center uppercase tracking-wide">Upload Source</h3>
-            <div className="space-y-3">
-              {isMobile ? (
-                <>
-                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Camera)} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors"><span className="text-xl">📸</span> Take New Photo</button>
-                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Photos)} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors"><span className="text-xl">🖼️</span> Select from Gallery</button>
-                </>
-              ) : (
-                <button onClick={() => triggerScanner(selectionModalFor, "WEB")} className="w-full flex items-center justify-center gap-3 p-4 bg-app hover:bg-[#FF5A00]/10 border border-border rounded-xl font-bold text-fg transition-colors"><span className="text-xl">📂</span> Browse Files</button>
-              )}
-              <button onClick={() => setSelectionModalFor(null)} className="w-full p-3 mt-2 text-sm text-fg-muted font-bold transition-colors">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm bg-surface"><KssLogo className="w-full h-full" /></div>
@@ -515,18 +368,8 @@ export function DriverPortal() {
 
           <div className="flex border-b border-border">
             <button onClick={() => setActiveTab("STATUS")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "STATUS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>🚀 Status</button>
-            <button onClick={() => setActiveTab("SCAN")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "SCAN" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>📸 Scan</button>
             <button onClick={() => setActiveTab("LEDGER")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "LEDGER" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>📊 Ledger</button>
           </div>
-
-          {activeTab === "SCAN" && (
-            <div className="p-6 grid gap-4 bg-app min-h-[400px] animate-in fade-in">
-              <div className="mb-2"><h3 className="font-bold text-lg text-fg tracking-tight">Send to Office</h3><p className="text-xs text-fg-secondary">Scan a document to instantly notify Dispatch.</p></div>
-              <button onClick={() => setSelectionModalFor("INVOICE")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"><span className="text-3xl">{activeWorkflow === "INVOICE" ? "⏳" : "📄"}</span><span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "INVOICE" ? "Uploading..." : "Trip Invoice / Bilty"}</span></button>
-              <button onClick={() => setSelectionModalFor("FUEL")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"><span className="text-3xl">{activeWorkflow === "FUEL" ? "⏳" : "⛽"}</span><span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "FUEL" ? "Uploading..." : "Diesel Slip"}</span></button>
-              <button onClick={() => setSelectionModalFor("POD")} disabled={activeWorkflow !== null} className="bg-surface border border-border p-5 rounded-xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"><span className="text-3xl">{activeWorkflow === "POD" ? "⏳" : "⚖️"}</span><span className="text-sm font-bold text-fg uppercase">{activeWorkflow === "POD" ? "Uploading..." : "POD / Weighment"}</span></button>
-            </div>
-          )}
 
           {activeTab === "STATUS" && (
             <form onSubmit={handleDriverSubmit} className="p-6 grid gap-5 animate-in fade-in">
