@@ -4,11 +4,15 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AlertModal } from "@/components/AlertModal";
+import { generateDriverSettlementPdf } from "@/lib/exportDriverPdf";
 
 export function DriverSettlementModule() {
   const [loading, setLoading] = useState(false);
   const [settlements, setSettlements] = useState<any[]>([]);
   const [rates, setRates] = useState<any[]>([]);
+  const [rawTrips, setRawTrips] = useState<any[]>([]);
+  const [rawAdvances, setRawAdvances] = useState<any[]>([]);
+  const [driversList, setDriversList] = useState<any[]>([]);
   
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
@@ -38,6 +42,8 @@ export function DriverSettlementModule() {
     if (rateData) setRates(rateData);
 
     const { data: driversData } = await supabase.from('drivers').select('*').eq('is_active', true);
+    if (driversData) setDriversList(driversData);
+
     const [year, month] = selectedMonth.split('-');
     const firstDay = `${year}-${month}-01`;
     const lastDayObj = new Date(parseInt(year), parseInt(month), 0);
@@ -45,7 +51,7 @@ export function DriverSettlementModule() {
 
     const { data: tripData } = await supabase
       .from('trips')
-      .select('trip_id, trip_number, trip_start_date, trip_status, driver_bata, halt_bata, cash_advance_issued, primary_driver_id, drivers(full_name, driver_code)')
+      .select('trip_id, trip_number, trip_start_date, trip_status, origin, destination, driver_bata, halt_bata, cash_advance_issued, primary_driver_id, drivers(full_name, driver_code)')
       .gte('trip_start_date', firstDay)
       .lte('trip_start_date', lastDay);
 
@@ -54,6 +60,9 @@ export function DriverSettlementModule() {
       .select('*')
       .gte('advance_date', firstDay)
       .lte('advance_date', lastDay);
+
+    if (tripData) setRawTrips(tripData);
+    if (advData) setRawAdvances(advData);
 
     if (driversData && tripData && advData) {
       const driverLedgers = driversData.map(d => {
@@ -157,6 +166,67 @@ export function DriverSettlementModule() {
         onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
       />
 
+      {/* Driver Settlements Period Review & PDF Download */}
+      <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#222634] pb-3">
+          <h3 className="text-base font-black uppercase text-white">Monthly Driver Settlements & Statements</h3>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-slate-400 uppercase">Select Month:</label>
+            <input 
+              type="month" 
+              value={selectedMonth} 
+              onChange={(e) => setSelectedMonth(e.target.value)} 
+              className="border border-[#2B3142] rounded-lg p-2 text-sm bg-[#1A1F2C] text-white font-bold"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto pt-2 max-h-[450px] overflow-y-auto">
+          <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
+            <thead className="bg-[#161922] sticky top-0">
+              <tr className="text-slate-400 uppercase">
+                <th className="p-3 border-b border-[#222634]">Driver Code & Name</th>
+                <th className="p-3 border-b border-[#222634] text-center">Trips</th>
+                <th className="p-3 border-b border-[#222634] text-right">Earnings (Bata)</th>
+                <th className="p-3 border-b border-[#222634] text-right">Deductions (Advances)</th>
+                <th className="p-3 border-b border-[#222634] text-right">Net Payable (₹)</th>
+                <th className="p-3 border-b border-[#222634] text-center">PDF Statement</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#222634]">
+              {settlements.map((s) => {
+                const fullDriverObj = driversList.find(d => d.driver_id === s.driver_id);
+                return (
+                  <tr key={s.driver_id} className="hover:bg-[#1A1F2C]">
+                    <td className="p-3 font-bold text-white">
+                      {s.full_name} <span className="text-[#FF5A00] font-normal">({s.driver_code})</span>
+                    </td>
+                    <td className="p-3 text-center font-semibold text-slate-300">{s.tripCount}</td>
+                    <td className="p-3 text-right font-bold text-emerald-400">₹{s.totalEarnings.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                    <td className="p-3 text-right font-bold text-rose-400">₹{s.totalDeductions.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                    <td className="p-3 text-right font-black text-white text-sm">₹{s.netPayable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                    <td className="p-3 text-center">
+                      <Button 
+                        onClick={() => generateDriverSettlementPdf(fullDriverObj || s, rawTrips, rawAdvances, selectedMonth)}
+                        className="bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold h-8 px-3 text-xs rounded-lg shadow-sm"
+                      >
+                        📥 PDF
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {settlements.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-slate-500 font-medium">No driver records found for this period.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Route Rate Slabs Master */}
       <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-sm space-y-4">
         <h3 className="text-base font-black uppercase text-white border-b border-[#222634] pb-2">Route Rate Slabs Master</h3>
         
