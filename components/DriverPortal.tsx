@@ -205,12 +205,15 @@ export function DriverPortal() {
   const displayDriverName = activeDriverObj ? `${activeDriverObj.full_name} (${activeDriverObj.driver_code})` : savedDriverCode;
   const isBulk = selectedTruckObj ? String(selectedTruckObj.truck_type).toUpperCase().includes("BULK") : true;
 
-  // LEDGER CALCULATION FIX
+  // LEDGER CALCULATION FIX: Restoring the missing math variables!
   const monthEarnedBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
   const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
   const monthTripAdvances = currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
   const monthDirectAdvances = currentMonthAdvances.reduce((sum, a) => sum + (Number(a.amount_inr) || 0), 0);
-  const currentMonthNetBalance = (monthEarnedBata + monthHaltBata) - (monthTripAdvances + monthDirectAdvances);
+  
+  const totalMonthEarnings = monthEarnedBata + monthHaltBata;
+  const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
+  const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
 
   const handleManualFingerprint = async () => {
     if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Select your profile first.", type: "error" });
@@ -458,7 +461,7 @@ export function DriverPortal() {
     setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData(); 
   };
 
-  // 🚀 RESTORED MISSING FUNCTION
+  // RESTORED THE MISSING FUNCTION
   const handleCancelRequest = async (id: number) => {
     if (!supabase || !confirm("Delete this request?")) return;
     await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
