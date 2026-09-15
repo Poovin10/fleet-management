@@ -1,4 +1,4 @@
-"use client";
+ "use client";
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -11,10 +11,18 @@ export function UploadHub() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Handle local text parsing
+  // Handle file selection and convert to readable text simulation or preview
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Read file name or pre-fill text context for quick parsing
+    setRawText(`FILE: ${file.name} | UPLOADED ON: ${new Date().toLocaleDateString()}`);
+  };
+
   const handleParseText = async () => {
     if (!rawText.trim()) {
-      alert("Please paste invoice or slip text to parse.");
+      alert("Please upload an image or enter invoice details.");
       return;
     }
 
@@ -42,7 +50,6 @@ export function UploadHub() {
     }
   };
 
-  // Save parsed data to Supabase pending scans / trips
   const handleSaveToDatabase = async () => {
     if (!parsedResult) return;
     setIsSaving(true);
@@ -82,15 +89,25 @@ export function UploadHub() {
               <option value="POD_CLOSURE">POD Weighment Slip</option>
             </select>
           </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-400 mb-1">Upload Invoice Image / Photo</label>
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="w-full text-xs text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-[#FF5A00] file:text-white hover:file:bg-[#e04f00] cursor-pointer bg-[#1A1F2C] border border-[#2B3142] rounded-xl p-1.5"
+            />
+          </div>
         </div>
 
         <div className="mb-4">
-          <label className="block text-xs font-bold text-slate-400 mb-1">Paste Invoice / Slip Text Data</label>
+          <label className="block text-xs font-bold text-slate-400 mb-1">Invoice Details / OCR Text Data</label>
           <textarea 
-            rows={5}
+            rows={4}
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
-            placeholder="Paste invoice text here (e.g., VEHICLE: TN88K8413, LR: 687/2026, QTY: 34.400 MT)..."
+            placeholder="Enter or paste details e.g., VEHICLE: TN88K8413, LR: 687/2026, QTY: 34.400 MT..."
             className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-mono outline-none focus:border-[#FF5A00]"
           />
         </div>
@@ -100,7 +117,7 @@ export function UploadHub() {
           disabled={isProcessing}
           className="px-6 py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20"
         >
-          {isProcessing ? "Processing..." : "⚡ Parse Locally"}
+          {isProcessing ? "Processing..." : "⚡ Parse & Extract Fields"}
         </button>
       </div>
 
