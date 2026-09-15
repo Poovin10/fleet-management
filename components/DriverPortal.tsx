@@ -31,7 +31,6 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
   return R * c; 
 };
 
-// Force compress ANY image to < 300KB before sending to Vercel
 const compressImageBase64 = (base64Str: string, maxWidth = 1000, quality = 0.6): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -53,7 +52,7 @@ const compressImageBase64 = (base64Str: string, maxWidth = 1000, quality = 0.6):
       ctx?.drawImage(img, 0, 0, width, height);
       resolve(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
     };
-    img.onerror = () => resolve(base64Str); // Fallback to original
+    img.onerror = () => resolve(base64Str);
   });
 };
 
@@ -205,12 +204,10 @@ export function DriverPortal() {
   const displayDriverName = activeDriverObj ? `${activeDriverObj.full_name} (${activeDriverObj.driver_code})` : savedDriverCode;
   const isBulk = selectedTruckObj ? String(selectedTruckObj.truck_type).toUpperCase().includes("BULK") : true;
 
-  // LEDGER CALCULATION FIX: Restoring the missing math variables!
   const monthEarnedBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
   const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
   const monthTripAdvances = currentMonthTrips.reduce((sum, t) => sum + (Number(t.cash_advance_issued) || 0), 0);
   const monthDirectAdvances = currentMonthAdvances.reduce((sum, a) => sum + (Number(a.amount_inr) || 0), 0);
-  
   const totalMonthEarnings = monthEarnedBata + monthHaltBata;
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
@@ -316,22 +313,21 @@ export function DriverPortal() {
         body: JSON.stringify({ imageBase64: finalBase64, documentType: apiDocType }) 
       });
       
+      // 🚀 FIX: Beautifully parse backend JSON errors so they don't break the UI
       const responseText = await response.text();
       if (!response.ok) {
         if (response.status === 413 || responseText.includes("Request Entity Too Large")) {
-          throw new Error("The photo is too large to process. Please step back slightly or use a lower resolution.");
+          throw new Error("The photo is too large to process. Please try taking a slightly lower quality photo.");
         }
-        throw new Error(`Server Error: ${responseText.substring(0, 40)}...`);
+        let serverErrMsg = responseText;
+        try {
+          const parsed = JSON.parse(responseText);
+          if (parsed.error) serverErrMsg = parsed.error;
+        } catch (e) { /* Ignore non-JSON text */ }
+        throw new Error(`API Error: ${serverErrMsg}`);
       }
 
-      let parsedJson;
-      try {
-        parsedJson = JSON.parse(responseText);
-      } catch (e) {
-        throw new Error("Received an invalid response from the server. The file might still be too large.");
-      }
-
-      const { data, error } = parsedJson;
+      const { data, error } = JSON.parse(responseText);
       if (error) throw new Error(error);
 
       if (docType === "INVOICE") {
@@ -461,7 +457,6 @@ export function DriverPortal() {
     setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData(); 
   };
 
-  // RESTORED THE MISSING FUNCTION
   const handleCancelRequest = async (id: number) => {
     if (!supabase || !confirm("Delete this request?")) return;
     await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
