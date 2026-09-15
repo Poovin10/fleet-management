@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
-const compressImageBase64 = (base64Str: string, maxWidth = 1000, quality = 0.6): Promise<string> => {
+// 🚀 FIX: Increased to 1600px / 80% Quality. Crystal clear for AI, but still small enough for Vercel!
+const compressImageBase64 = (base64Str: string, maxWidth = 1600, quality = 0.8): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = "data:image/jpeg;base64," + base64Str;
@@ -38,26 +39,17 @@ export function UploadHub() {
   const [isMobile, setIsMobile] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const userAgent = window.navigator.userAgent.toLowerCase();
-      setIsMobile(/android|iphone|ipad|ipod/.test(userAgent));
-    }
+    if (typeof window !== 'undefined') setIsMobile(/android|iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()));
   }, []);
 
   const handleWebUpload = (): Promise<string> => {
     return new Promise((resolve, reject) => {
       const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/png, image/jpeg, image/jpg";
+      input.type = "file"; input.accept = "image/png, image/jpeg, image/jpg";
       input.onchange = (e: any) => {
-        const file = e.target.files[0];
-        if (!file) return resolve("");
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(",")[1]);
-        };
+        const file = e.target.files[0]; if (!file) return resolve("");
+        const reader = new FileReader(); reader.readAsDataURL(file);
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
         reader.onerror = (err) => reject(err);
       };
       input.click();
@@ -72,12 +64,9 @@ export function UploadHub() {
       if (sourceSelection === "WEB") {
         rawBase64 = await handleWebUpload();
       } else {
+        // 🚀 FIX: Capacitor camera bumped to high-res mode
         const image = await Camera.getPhoto({
-          quality: 50,
-          width: 1000, 
-          allowEditing: true,
-          resultType: CameraResultType.Base64,
-          source: sourceSelection 
+          quality: 80, width: 1600, allowEditing: true, resultType: CameraResultType.Base64, source: sourceSelection 
         });
         rawBase64 = image.base64String || "";
       }
@@ -85,31 +74,24 @@ export function UploadHub() {
       if (!rawBase64) return;
       setActiveWorkflow(docType);
 
-      const finalBase64 = await compressImageBase64(rawBase64, 1000, 0.6);
-
+      const finalBase64 = await compressImageBase64(rawBase64, 1600, 0.8);
       const apiDocType = docType === "INVOICE" ? "TRIP_INVOICE" : docType === "FUEL" ? "FUEL_SLIP" : "POD_CLOSURE";
 
       const response = await fetch('/api/parse-document', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: finalBase64,
-          documentType: apiDocType 
-        })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: finalBase64, documentType: apiDocType }) 
       });
 
-      // 🚀 FIX: Beautifully parse backend JSON errors so they don't break the UI
       const responseText = await response.text();
       if (!response.ok) {
-        if (response.status === 413 || responseText.includes("Request Entity Too Large")) {
-          throw new Error("The photo is too large to process. Please try taking a slightly lower quality photo.");
-        }
-        let serverErrMsg = responseText;
+        if (response.status === 413 || responseText.includes("Request Entity Too Large")) throw new Error("Image too large. Step back slightly.");
+        if (response.status === 504) throw new Error("Server Timeout. The AI took too long. Try again.");
+        
+        let serverErrMsg = responseText || `Unknown Error (Status ${response.status})`;
         try {
           const parsed = JSON.parse(responseText);
           if (parsed.error) serverErrMsg = parsed.error;
-        } catch (e) { /* Ignore non-JSON text */ }
-        throw new Error(`API Error: ${serverErrMsg}`);
+        } catch (e) {}
+        throw new Error(serverErrMsg);
       }
 
       const { data, error } = JSON.parse(responseText);
@@ -118,37 +100,21 @@ export function UploadHub() {
       if (docType === "INVOICE") {
         const extractedLr = data.lrNo ? String(data.lrNo).toUpperCase().trim() : null;
         let shouldInsert = true;
-
         if (extractedLr) {
           const { data: existingScan } = await supabase.from('pending_scans').select('scan_id').eq('lr_number', extractedLr).eq('status', 'PENDING').single();
-
           if (existingScan) {
             shouldInsert = false;
-            const { error: updateError } = await supabase.from('pending_scans').update({
-              tonnage_extracted: data.tonnage ? Number(data.tonnage) : null,
-              destination: data.destination ? String(data.destination).toUpperCase() : null,
-              source: data.source ? String(data.source).toUpperCase() : null,
-              truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null,
-              cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null,
-              raw_json_result: data,
-            }).eq('scan_id', existingScan.scan_id);
-            if (updateError) throw new Error(updateError.message);
+            await supabase.from('pending_scans').update({ tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data }).eq('scan_id', existingScan.scan_id);
           }
         }
-
         if (shouldInsert) {
-          const { error: dbError } = await supabase.from('pending_scans').insert([{
-            document_type: apiDocType, lr_number: extractedLr, tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data, status: 'PENDING'
-          }]);
-          if (dbError) throw new Error(dbError.message);
+          await supabase.from('pending_scans').insert([{ document_type: apiDocType, lr_number: extractedLr, tonnage_extracted: data.tonnage ? Number(data.tonnage) : null, destination: data.destination ? String(data.destination).toUpperCase() : null, source: data.source ? String(data.source).toUpperCase() : null, truck_number: data.truckNo ? String(data.truckNo).toUpperCase() : null, cargo_type: data.cargoType ? String(data.cargoType).toUpperCase() : null, raw_json_result: data, status: 'PENDING' }]);
         }
         setAlertConfig({ isOpen: true, title: "Inbox Updated ✨", message: "Invoice digitized and sent to Trip Creation Inbox.", type: "success" });
       } else {
-        const { error: dbError } = await supabase.from('pending_scans').insert([{ document_type: apiDocType, raw_json_result: data, status: 'PENDING' }]);
-        if (dbError) throw new Error(dbError.message);
+        await supabase.from('pending_scans').insert([{ document_type: apiDocType, raw_json_result: data, status: 'PENDING' }]);
         setAlertConfig({ isOpen: true, title: "Uploaded ✨", message: `${docType} sent to office successfully.`, type: "success" });
       }
-
     } catch (err: any) {
       console.error("Scanner Error:", err);
       const errMsg = err.message || String(err);
@@ -173,21 +139,13 @@ export function UploadHub() {
             <div className="space-y-3">
               {isMobile ? (
                 <>
-                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Camera)} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-[#FF5A00]/20 border border-[#2B3142] hover:border-[#FF5A00] rounded-xl transition-all group text-white font-bold">
-                    <span className="text-2xl group-hover:scale-110 transition-transform">📸</span> Take New Photo
-                  </button>
-                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Photos)} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-[#FF5A00]/20 border border-[#2B3142] hover:border-[#FF5A00] rounded-xl transition-all group text-white font-bold">
-                    <span className="text-2xl group-hover:scale-110 transition-transform">🖼️</span> Select from Gallery
-                  </button>
+                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Camera)} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-[#FF5A00]/20 border border-[#2B3142] hover:border-[#FF5A00] rounded-xl transition-all group text-white font-bold"><span className="text-2xl group-hover:scale-110 transition-transform">📸</span> Take New Photo</button>
+                  <button onClick={() => triggerScanner(selectionModalFor, CameraSource.Photos)} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-[#FF5A00]/20 border border-[#2B3142] hover:border-[#FF5A00] rounded-xl transition-all group text-white font-bold"><span className="text-2xl group-hover:scale-110 transition-transform">🖼️</span> Select from Gallery</button>
                 </>
               ) : (
-                <button onClick={() => triggerScanner(selectionModalFor, "WEB")} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-sky-500/20 border border-[#2B3142] hover:border-sky-500 rounded-xl transition-all group text-white font-bold">
-                  <span className="text-2xl group-hover:scale-110 transition-transform">📂</span> Choose File from Computer
-                </button>
+                <button onClick={() => triggerScanner(selectionModalFor, "WEB")} className="w-full flex items-center justify-center gap-3 p-4 bg-[#1A1F2C] hover:bg-sky-500/20 border border-[#2B3142] hover:border-sky-500 rounded-xl transition-all group text-white font-bold"><span className="text-2xl group-hover:scale-110 transition-transform">📂</span> Choose File from Computer</button>
               )}
-              <button onClick={() => setSelectionModalFor(null)} className="w-full p-3 mt-2 text-sm text-slate-500 font-bold hover:text-white transition-colors">
-                Cancel
-              </button>
+              <button onClick={() => setSelectionModalFor(null)} className="w-full p-3 mt-2 text-sm text-slate-500 font-bold hover:text-white transition-colors">Cancel</button>
             </div>
           </div>
         </div>
@@ -200,25 +158,17 @@ export function UploadHub() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button onClick={() => setSelectionModalFor("INVOICE")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-[#FF5A00] disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
-          <div className="h-12 w-12 bg-[#FF5A00]/10 text-[#FF5A00] rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-            {activeWorkflow === "INVOICE" ? "⏳" : "📄"}
-          </div>
+          <div className="h-12 w-12 bg-[#FF5A00]/10 text-[#FF5A00] rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">{activeWorkflow === "INVOICE" ? "⏳" : "📄"}</div>
           <h3 className="text-sm font-black text-white uppercase">{activeWorkflow === "INVOICE" ? "Parsing AI..." : "Trip Invoice"}</h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Scans to Pending Inbox for Trip Creation</p>
         </button>
-
         <button onClick={() => setSelectionModalFor("FUEL")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-sky-500 disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
-          <div className="h-12 w-12 bg-sky-500/10 text-sky-400 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-            {activeWorkflow === "FUEL" ? "⏳" : "⛽"}
-          </div>
+          <div className="h-12 w-12 bg-sky-500/10 text-sky-400 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">{activeWorkflow === "FUEL" ? "⏳" : "⛽"}</div>
           <h3 className="text-sm font-black text-white uppercase">{activeWorkflow === "FUEL" ? "Parsing AI..." : "Diesel Slip"}</h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Attach fuel & manual KM to an active trip</p>
         </button>
-
         <button onClick={() => setSelectionModalFor("POD")} disabled={isBusy} className="bg-[#1A1F2C] border border-[#2B3142] hover:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group">
-          <div className="h-12 w-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-            {activeWorkflow === "POD" ? "⏳" : "⚖️"}
-          </div>
+          <div className="h-12 w-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">{activeWorkflow === "POD" ? "⏳" : "⚖️"}</div>
           <h3 className="text-sm font-black text-white uppercase">{activeWorkflow === "POD" ? "Parsing AI..." : "POD / Weighment"}</h3>
           <p className="text-[10px] text-slate-400 text-center font-bold">Auto-calculate shortage & close trip</p>
         </button>
