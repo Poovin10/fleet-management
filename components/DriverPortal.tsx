@@ -124,12 +124,17 @@ export function DriverPortal() {
 
   const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
   const selectedTruckObj = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
-  const currentTrip = activeTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
+  
+  // 🚀 FIX: Ignore trips that are WAITING_FOR_LOAD, they are done from the driver's perspective!
+  const sortedTrips = [...activeTrips].sort((a, b) => b.trip_id - a.trip_id);
+  const latestAssignedTrip = sortedTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
+  const currentTrip = latestAssignedTrip?.trip_status === 'WAITING_FOR_LOAD' ? null : latestAssignedTrip;
 
   useEffect(() => {
     if (isDriverLocked && drivers.length > 0 && activeDriverObj) {
       if (activeTrips.length > 0) {
-        const activeTrip = activeTrips.find(t => String(t.primary_driver_id) === String(activeDriverObj.driver_id));
+        // Auto-select truck only if they have an active trip that isn't waiting for load
+        const activeTrip = activeTrips.find(t => String(t.primary_driver_id) === String(activeDriverObj.driver_id) && t.trip_status !== 'WAITING_FOR_LOAD');
         if (activeTrip) setSelectedTruckId(String(activeTrip.vehicle_id));
       }
       fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
@@ -281,7 +286,6 @@ export function DriverPortal() {
     setIsSubmitting(true);
     const timestamp = new Date().toISOString();
 
-    // 🚀 NEW FEATURE: GHOST TRIPS (DRIVER-INITIATED DRAFTS)
     if (!currentTrip && actionType === "START_TRIP") {
       const draftLr = `DRAFT-${Math.floor(Date.now() / 1000)}`;
       const updatePayload = {
@@ -306,7 +310,6 @@ export function DriverPortal() {
       return;
     }
 
-    // FUEL WITHOUT TRIP
     if (!currentTrip && actionType === "FUEL") {
       const { error } = await supabase.from('driver_pending_entries').insert([{
         vehicle_id: Number(selectedTruckId), driver_code: savedDriverCode || "DRV-MOBILE", entry_type: "FUEL",
@@ -380,12 +383,6 @@ export function DriverPortal() {
     setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData(); 
   };
 
-  const handleCancelRequest = async (id: number) => {
-    if (!supabase || !confirm("Delete this request?")) return;
-    await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
-    if (activeDriverObj) fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
-  };
-
   const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5A00] focus-visible:border-[#FF5A00]";
   const labelStyle = "text-xs font-bold text-fg-secondary uppercase tracking-wide leading-none mb-1";
   const numProps = { onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur() };
@@ -423,37 +420,15 @@ export function DriverPortal() {
 
       {!isDriverLocked ? (
         <form onSubmit={handleLockDriver} className="flex flex-col">
-          <div className="flex flex-col p-6 space-y-1">
-            <h3 className="font-bold tracking-tight text-xl">{isFirstTimeSetup ? "First-Time PIN Setup" : "Secure Login"}</h3>
-            <p className="text-sm text-fg-secondary">{isFirstTimeSetup ? "Create a 4-digit PIN." : "Select your profile."}</p>
-          </div>
+          <div className="flex flex-col p-6 space-y-1"><h3 className="font-bold tracking-tight text-xl">{isFirstTimeSetup ? "First-Time PIN Setup" : "Secure Login"}</h3><p className="text-sm text-fg-secondary">{isFirstTimeSetup ? "Create a 4-digit PIN." : "Select your profile."}</p></div>
           <div className="p-6 pt-0 grid gap-5">
-            <div className="grid gap-1.5">
-              <label className={labelStyle}>Driver Name</label>
-              <select value={driverCode} onChange={e => handleDriverChange(e.target.value)} className={inputStyle} required>
-                <option value="">Select your profile...</option>
-                {drivers.map(d => (<option key={d.driver_id} value={d.driver_code}>{d.full_name} ({d.driver_code})</option>))}
-              </select>
-            </div>
-            
+            <div className="grid gap-1.5"><label className={labelStyle}>Driver Name</label><select value={driverCode} onChange={e => handleDriverChange(e.target.value)} className={inputStyle} required><option value="">Select your profile...</option>{drivers.map(d => (<option key={d.driver_id} value={d.driver_code}>{d.full_name} ({d.driver_code})</option>))}</select></div>
             {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
-              <div className="flex flex-col items-center justify-center py-2">
-                <button type="button" onClick={handleManualFingerprint} className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95">
-                  <div className="absolute inset-0 rounded-full bg-[#FF5A00]/30 animate-ping opacity-75" style={{ animationDuration: '2.5s' }}></div>
-                  <div className="absolute inset-1.5 rounded-full bg-[#FF5A00]/10 group-hover:bg-[#FF5A00]/20 border border-[#FF5A00]/20 transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)]"></div>
-                  <FingerprintIcon className="w-8 h-8 text-[#FF5A00] relative z-10 drop-shadow-sm group-hover:scale-105 transition-transform" />
-                </button>
-              </div>
+              <div className="flex flex-col items-center justify-center py-2"><button type="button" onClick={handleManualFingerprint} className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95"><div className="absolute inset-0 rounded-full bg-[#FF5A00]/30 animate-ping opacity-75" style={{ animationDuration: '2.5s' }}></div><div className="absolute inset-1.5 rounded-full bg-[#FF5A00]/10 group-hover:bg-[#FF5A00]/20 border border-[#FF5A00]/20 transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)]"></div><FingerprintIcon className="w-8 h-8 text-[#FF5A00] relative z-10 drop-shadow-sm group-hover:scale-105 transition-transform" /></button></div>
             )}
-
-            <div className="grid gap-1.5 relative mt-2">
-              <label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Security PIN"}</label>
-              <input type="password" maxLength={4} value={driverPin} onChange={e => setDriverPin(e.target.value)} placeholder="••••" className={inputStyle} required={isFirstTimeSetup} />
-            </div>
+            <div className="grid gap-1.5 relative mt-2"><label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Security PIN"}</label><input type="password" maxLength={4} value={driverPin} onChange={e => setDriverPin(e.target.value)} placeholder="••••" className={inputStyle} required={isFirstTimeSetup} /></div>
             {isFirstTimeSetup && <div className="grid gap-1.5"><label className={labelStyle}>Confirm 4-Digit PIN</label><input type="password" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value)} placeholder="••••" className={inputStyle} required /></div>}
-            <button type="submit" className="inline-flex items-center justify-center rounded-lg text-sm font-bold bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-10 px-4 py-2 w-full mt-2">
-              {isFirstTimeSetup ? "Save & Lock Device" : "Verify & Login with PIN"}
-            </button>
+            <button type="submit" className="inline-flex items-center justify-center rounded-lg text-sm font-bold bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-10 px-4 py-2 w-full mt-2">{isFirstTimeSetup ? "Save & Lock Device" : "Verify & Login with PIN"}</button>
           </div>
         </form>
       ) : (
@@ -536,15 +511,6 @@ export function DriverPortal() {
                 </button>
               </div>
             </form>
-          )}
-
-          {activeTab === "LEDGER" && (
-            <div className="p-6 grid gap-6 bg-app min-h-[400px] animate-in fade-in">
-              <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-fg-muted">Current Month Net Balance</p>
-                <div className="flex justify-between items-baseline mt-1"><span className={`text-2xl font-bold ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>₹{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span><span className="text-[10px] text-fg-muted">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span></div>
-              </div>
-            </div>
           )}
         </div>
       )}
