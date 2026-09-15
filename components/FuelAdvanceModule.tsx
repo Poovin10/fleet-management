@@ -111,23 +111,22 @@ export function FuelAdvanceModule() {
     setFLitres(""); setFDieselRate(dieselRate); setFIsTankFull(false); setActiveScanId(null);
   };
 
-  // 🗑️ DELETE JUNK SCANS FROM INBOX
+  // 🗑️ DELETE INBOX ENTRIES
   const handleDeleteScan = async (e: React.MouseEvent, scanId: string) => {
     e.stopPropagation();
-    if (!confirm("Delete this bad scan permanently from the inbox?")) return;
+    if (!confirm("Delete this entry permanently from the inbox?")) return;
     await supabase.from("pending_scans").delete().eq("scan_id", scanId);
     setPendingScans(prev => prev.filter(s => s.scan_id !== scanId));
     if (activeScanId === scanId) setActiveScanId(null);
   };
 
-  // 🤖 AI SCAN AUTO-FILL FUNCTION WITH SMART UX
+  // ⚡ LOCAL PATTERN AUTO-FILL FUNCTION
   const applyScanData = (scan: any) => {
     setActiveScanId(scan.scan_id);
     const data = scan.raw_json_result || {};
 
     let matched = false;
 
-    // 🚀 Improved Fuzzy Match Logic
     if (data.truckNo && data.truckNo !== "UNKNOWN") {
       const aiTruck = String(data.truckNo).replace(/[^A-Z0-9]/g, '').toUpperCase();
       const matchedTruck = vehicles.find(v => {
@@ -144,9 +143,8 @@ export function FuelAdvanceModule() {
     if (data.rate) setFDieselRate(Number(data.rate));
     else setFDieselRate(dieselRate);
 
-    // Prompt user if AI couldn't read the image
     if (!matched) {
-      alert(`⚠️ The AI could not clearly match the Truck Number from the image (Detected: ${data.truckNo || "None"}). Please select the Truck from the dropdown below to apply this fuel log.`);
+      alert(`⚠️ Could not auto-match the Truck Number from this entry (Detected: ${data.truckNo || "None"}). Please select the Truck from the dropdown below.`);
     }
   };
 
@@ -328,12 +326,11 @@ export function FuelAdvanceModule() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
           <div className="lg:col-span-5 bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl h-fit">
             
-            {/* 📥 INBOX UI */}
             {!editLogId && pendingScans.length > 0 && (
               <div className="mb-6 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
                 <h4 className="text-xs font-black text-sky-400 uppercase tracking-wider flex items-center gap-2 mb-3">
                    <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span></span>
-                   Pending Scanned Slips ({pendingScans.length})
+                   Pending Fuel Slips Inbox ({pendingScans.length})
                 </h4>
                 <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
                   {pendingScans.map(scan => {
@@ -345,7 +342,7 @@ export function FuelAdvanceModule() {
                             <p className="text-[10px] text-slate-400 font-bold mb-1">Truck: <span className="text-white">{data.truckNo || "UNKNOWN"}</span></p>
                             <p className="text-xs font-black text-white truncate">{data.litres || 0} L <span className="text-slate-500 font-medium">@ ₹{data.rate || '?'}</span></p>
                           </div>
-                          <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete bad scan">🗑️</div>
+                          <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete entry">🗑️</div>
                         </div>
                       </button>
                     );
