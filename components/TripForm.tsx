@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'; // 📸 Added Capacitor Camera
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'; 
 
 // --- CUSTOM SEARCHABLE SELECT COMPONENT ---
 function SearchableSelect({ options, value, onChange, placeholder, disabled }: { options: {label: string, value: string}[], value: string, onChange: (val: string) => void, placeholder: string, disabled?: boolean }) {
@@ -55,7 +55,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const supabase = createClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isScanningAI, setIsScanningAI] = useState(false); // 🤖 AI Loading State
+  const [isScanningAI, setIsScanningAI] = useState(false); 
 
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
 
@@ -129,7 +129,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
     const selTruck = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
     if (selTruck) {
       const tName = `Truck ${selTruck.vehicle_number}`;
-      checkWarning(tName, "FC", selTruck.fc_expiry_date); checkWarning(tName, "Insurance", selTruck.insurance_expiry_date);
+      checkWarning(tName, "FC", selTruck.fc_expiry_date); checkWarning(tName, "Insurance", list => checkWarning(tName, "Insurance", selTruck.insurance_expiry_date));
       checkWarning(tName, "Q-Tax", selTruck.qtax_expiry_date); checkWarning(tName, "PUC", selTruck.puc_expiry_date);
       checkWarning(tName, "NP", selTruck.np_expiry_date); checkWarning(tName, "State Permit", selTruck.state_permit_expiry_date);
       if (String(selTruck.truck_type).toUpperCase().includes("BULK")) checkWarning(tName, "Tank Cert", selTruck.tank_cert_expiry_date);
@@ -159,6 +159,16 @@ export function TripForm({ onSuccess }: TripFormProps) {
     return r.origin?.trim().toUpperCase() === finalSource.trim().toUpperCase() && r.cargo_type?.toUpperCase() === cargoType.toUpperCase() && isCapMatch;
   });
 
+  // --- MANUAL TRUCK SELECTION FIX ---
+  // We decouple this so it only runs when a human clicks the dropdown, preventing AI overwrites.
+  const handleManualTruckSelect = (val: string) => {
+    setSelectedTruckId(val);
+    const truck = vehicles.find((v) => String(v.vehicle_id) === String(val));
+    if (truck && truck.carrying_capacity_tons) {
+      setLoadedMt(Number(truck.carrying_capacity_tons));
+    }
+  };
+
   // 🤖 --- AI DOCUMENT SCANNER FUNCTION ---
   const handleScanDocument = async () => {
     try {
@@ -184,29 +194,31 @@ export function TripForm({ onSuccess }: TripFormProps) {
       const { data, error } = await response.json();
       if (error) throw new Error(error);
 
-      // --- NEW SMART MATCHING BLOCK ---
       if (data.lrNo) setLrNo(String(data.lrNo).toUpperCase());
-      if (data.tonnage) setLoadedMt(Number(data.tonnage));
+      if (data.tonnage) setLoadedMt(Number(data.tonnage)); // The AI sets the exact tonnage here
       if (data.date) setStartDate(data.date);
 
-      // Smart Cargo Type Matching
       if (data.cargoType) {
         const cType = String(data.cargoType).toUpperCase();
         if (cType.includes("BULK")) setCargoType("BULK");
         if (cType.includes("BAG")) setCargoType("BAG");
       }
 
-      // Smart Truck Matching (strips spaces to match "TN33AB1234" with "TN 33 AB 1234")
       if (data.truckNo) {
         const aiTruck = String(data.truckNo).replace(/\s+/g, '').toUpperCase();
         const matchedTruck = vehicles.find(v => 
           String(v.vehicle_number).replace(/\s+/g, '').toUpperCase().includes(aiTruck) || 
           aiTruck.includes(String(v.vehicle_number).replace(/\s+/g, '').toUpperCase())
         );
-        if (matchedTruck) setSelectedTruckId(String(matchedTruck.vehicle_id));
+        if (matchedTruck) {
+          setSelectedTruckId(String(matchedTruck.vehicle_id));
+          // Smart Fallback: Only use the truck's default capacity if the AI couldn't find a weight on the paper
+          if (!data.tonnage && matchedTruck.carrying_capacity_tons) {
+            setLoadedMt(Number(matchedTruck.carrying_capacity_tons));
+          }
+        }
       }
 
-      // Smart Source Matching
       if (data.source) {
         const aiSource = String(data.source).toUpperCase().trim();
         const matchedSource = dynamicSources.find(s => 
@@ -220,7 +232,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
         }
       }
       
-      // Smart Destination Matching
       if (data.destination) {
         const aiDest = String(data.destination).toUpperCase().trim();
         const matchedRoute = validRoutes.find(r => 
@@ -236,9 +247,8 @@ export function TripForm({ onSuccess }: TripFormProps) {
           setIsManualRoute(true);
         }
       }
-      // --- END SMART MATCHING BLOCK ---
       
-      setAlertConfig({ isOpen: true, title: "AI Scan Complete ✨", message: "Invoice details extracted and filled successfully.", type: "success" });
+      setAlertConfig({ isOpen: true, title: "AI Scan Complete ✨", message: "Invoice details extracted and matched successfully.", type: "success" });
 
     } catch (err: any) {
       console.error(err);
@@ -249,10 +259,8 @@ export function TripForm({ onSuccess }: TripFormProps) {
   };
 
   useEffect(() => {
+    // 🚨 Notice we REMOVED the setLoadedMt() overwrite rule from here!
     if (selectedTruckId) {
-      const truck = vehicles.find((v) => String(v.vehicle_id) === String(selectedTruckId));
-      if (truck && truck.carrying_capacity_tons) setLoadedMt(Number(truck.carrying_capacity_tons));
-
       const fetchTruckHistory = async () => {
         const { data: lastTrip } = await supabase.from("trips").select("primary_driver_id").eq("vehicle_id", selectedTruckId).not("primary_driver_id", "is", null).order("trip_id", { ascending: false }).limit(1);
         if (lastTrip && lastTrip.length > 0 && lastTrip[0].primary_driver_id) setSelectedDriverId(String(lastTrip[0].primary_driver_id));
@@ -278,8 +286,12 @@ export function TripForm({ onSuccess }: TripFormProps) {
         }
       };
       fetchTruckHistory();
-    } else { setLoadedMt(""); setSelectedDriverId(""); setStartKm(""); }
-  }, [selectedTruckId, vehicles, supabase]);
+    } else { 
+      setLoadedMt(""); 
+      setSelectedDriverId(""); 
+      setStartKm(""); 
+    }
+  }, [selectedTruckId, supabase]);
 
   useEffect(() => {
     if (destinationLabel === "MANUAL_SPOT_ROUTE") {
@@ -398,7 +410,8 @@ export function TripForm({ onSuccess }: TripFormProps) {
               <button type="button" onClick={() => { setCargoType("BAG"); setSelectedTruckId(""); }} className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors ${cargoType === "BAG" ? "bg-[#FF5A00] text-white shadow-sm" : "text-slate-400 hover:text-white"}`}>BAGS</button>
             </div>
           </div>
-          <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">4. Assigned Truck ({cargoType}) *</label><SearchableSelect options={truckOptions} value={selectedTruckId} onChange={setSelectedTruckId} placeholder="-- SELECT TRUCK --" disabled={isLoading} /></div>
+          {/* 👇 Using the new handleManualTruckSelect here to stop the race condition */}
+          <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">4. Assigned Truck ({cargoType}) *</label><SearchableSelect options={truckOptions} value={selectedTruckId} onChange={handleManualTruckSelect} placeholder="-- SELECT TRUCK --" disabled={isLoading} /></div>
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">5. Source (Origin) *</label><SearchableSelect options={sourceOptions} value={source} onChange={setSource} placeholder="-- SELECT SOURCE --" />
             {source === "CUSTOM" && <input type="text" value={customSource} onChange={e => setCustomSource(e.target.value)} placeholder="Type custom source..." className="w-full text-sm p-3 mt-2 rounded-xl border border-[#2B3142] uppercase outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white font-bold" required />}
