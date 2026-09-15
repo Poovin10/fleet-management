@@ -64,9 +64,9 @@ export async function POST(req: Request) {
         break;
     }
 
-    // 🚀 FIX: Use "gemini-1.5-flash-latest" which is the safest global fallback
+    // 🚀 FIX: Use the exact, standard model name supported by the updated SDK
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash-latest",
+      model: "gemini-1.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
