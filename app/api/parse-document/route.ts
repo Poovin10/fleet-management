@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
-// Initialize the Gemini AI client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(req: Request) {
@@ -54,9 +53,9 @@ export async function POST(req: Request) {
         break;
     }
 
-    // Connect to the required Gemini 3.6 Flash endpoint
+    // 🚀 FIX: Updated to the correct official Google Model Name
     const model = genAI.getGenerativeModel({
-      model: "gemini-3.6-flash",
+      model: "gemini-1.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
