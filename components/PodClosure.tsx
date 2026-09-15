@@ -120,23 +120,22 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
   useEffect(() => { fetchActiveTrips(); }, []);
 
-  // 🗑️ DELETE JUNK SCANS FROM INBOX
+  // 🗑️ DELETE INBOX ENTRIES
   const handleDeleteScan = async (e: React.MouseEvent, scanId: string) => {
     e.stopPropagation();
-    if (!confirm("Delete this bad scan permanently from the inbox?")) return;
+    if (!confirm("Delete this entry permanently from the inbox?")) return;
     await supabase.from("pending_scans").delete().eq("scan_id", scanId);
     setPendingScans(prev => prev.filter(s => s.scan_id !== scanId));
     if (activeScanId === scanId) setActiveScanId(null);
   };
 
-  // 🤖 AI SCAN AUTO-FILL FUNCTION WITH SMART UX
+  // ⚡ LOCAL PATTERN AUTO-FILL FUNCTION
   const applyScanData = (scan: any) => {
     setActiveScanId(scan.scan_id);
     const data = scan.raw_json_result || {};
 
     let matched = false;
     
-    // 🚀 Improved Fuzzy Match Logic
     if (data.lrNo && data.lrNo !== "UNKNOWN") {
       const cleanLr = String(data.lrNo).toUpperCase().replace(/[^A-Z0-9]/g, '');
       const matchedLr = activeTrips.find(t => {
@@ -153,12 +152,11 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
     if (data.shortageKg) setScannedShortageKg(Number(data.shortageKg));
     else setScannedShortageKg(null);
 
-    // Prompt user if AI couldn't read the image
     if (!matched) {
       setAlertConfig({
         isOpen: true,
         title: "Manual Selection Required ⚠️",
-        message: `The AI could not clearly read the LR number from this photo (Detected: ${data.lrNo || "None"}). Please manually select the Active LR from the dropdown below to apply this scan.`,
+        message: `Could not auto-match the LR number from this entry (Detected: ${data.lrNo || "None"}). Please manually select the Active LR from the dropdown below.`,
         type: "info"
       });
     }
@@ -169,7 +167,6 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
       const trip = activeTrips.find((t) => t.trip_number === selectedLr);
       if (trip) {
         setCurrentTrip(trip);
-        // Smart Shortage Calculation
         if (scannedShortageKg !== null && trip.loaded_weight_mt) {
            const finalWeight = Number(trip.loaded_weight_mt) - (scannedShortageKg / 1000);
            setUnloadedMt(Number(finalWeight.toFixed(3)));
@@ -256,7 +253,6 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
     await supabase.from("vehicles").update({ current_status: "AVAILABLE_FOR_LOAD", status_remarks: "Available (Auto-Closed on POD)" }).eq("vehicle_id", currentTrip.vehicle_id);
 
-    // 📥 Clear Inbox Scan
     if (activeScanId) {
       await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
       setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId)); 
@@ -278,12 +274,11 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
       {/* LEFT PANEL: Settle POD Form */}
       <div className="lg:col-span-7 bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-sm">
         
-        {/* 📥 INBOX UI */}
         {pendingScans.length > 0 && (
           <div className="mb-6 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
             <h4 className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-2 mb-3">
                <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
-               Pending Scanned PODs ({pendingScans.length})
+               Pending POD Entries Inbox ({pendingScans.length})
             </h4>
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
               {pendingScans.map(scan => {
@@ -295,7 +290,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                         <p className="text-[10px] text-slate-400 font-bold mb-1">LR: <span className="text-white">{data.lrNo || "UNKNOWN"}</span></p>
                         <p className="text-xs font-black text-white truncate">Shortage: <span className={data.shortageKg > 0 ? "text-rose-400" : "text-emerald-400"}>{data.shortageKg || 0} kg</span></p>
                       </div>
-                      <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete bad scan">🗑️</div>
+                      <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete entry">🗑️</div>
                     </div>
                   </button>
                 );
@@ -306,7 +301,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
         <div className="border-b border-[#222634] pb-4 mb-6">
           <h3 className="text-base font-black text-white uppercase tracking-tight">Record POD & Settle Trip</h3>
-          <p className="text-xs text-slate-400 mt-1">Select an active LR or pick a scanned POD from the inbox to autofill.</p>
+          <p className="text-xs text-slate-400 mt-1">Select an active LR or pick a pending POD entry from the inbox to autofill.</p>
         </div>
 
         {activeTrips.length === 0 && !isLoading ? (
