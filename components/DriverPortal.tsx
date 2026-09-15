@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 import { BackgroundGeolocation } from "@capgo/background-geolocation";
+import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -21,15 +22,6 @@ const FingerprintIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-  const R = 6371e3; 
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; 
-};
-
 export function DriverPortal() {
   const [supabase, setSupabase] = useState<any>(null);
 
@@ -42,16 +34,15 @@ export function DriverPortal() {
   const [activeTrips, setActiveTrips] = useState<any[]>([]);
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
   const [savedDriverCode, setSavedDriverCode] = useState("");
-  const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState(""); 
+  const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState("");
   const [isDriverLocked, setIsDriverLocked] = useState(false);
-  // 🚫 Scanning tab removed from options
   const [activeTab, setActiveTab] = useState<"STATUS" | "LEDGER">("STATUS");
   const [selectedTruckId, setSelectedTruckId] = useState("");
   const [driverCode, setDriverCode] = useState("");
   const [driverPin, setDriverPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
-  const [actionType, setActionType] = useState("START_TRIP"); 
+  const [actionType, setActionType] = useState("START_TRIP");
   const [odometer, setOdometer] = useState<number | "">("");
   const [lastOdometer, setLastOdometer] = useState<number | "">("");
   const [fuelLitres, setFuelLitres] = useState<number | "">("");
@@ -116,7 +107,7 @@ export function DriverPortal() {
 
   const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
   const selectedTruckObj = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
-  
+
   const sortedTrips = [...activeTrips].sort((a, b) => b.trip_id - a.trip_id);
   const latestAssignedTrip = sortedTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
   const currentTrip = latestAssignedTrip?.trip_status === 'WAITING_FOR_LOAD' ? null : latestAssignedTrip;
@@ -149,22 +140,9 @@ export function DriverPortal() {
     } else setLastOdometer("");
   }, [selectedTruckId, activeTrips, pendingRequests, supabase]);
 
-  useEffect(() => {
-    const isStarted = currentTrip && currentTrip.start_km > 0;
-    if (isStarted && actionType === "START_TRIP") {
-       if (currentTrip?.trip_status === "IN_TRANSIT") setActionType("REACHED");
-       else if (currentTrip?.trip_status === "REACHED_DESTINATION") setActionType("UNLOADED");
-       else if (currentTrip?.trip_status === "UNLOADED") setActionType("RETURNING");
-       else if (currentTrip?.trip_status === "RETURNING") setActionType("WAITING_FOR_LOAD");
-       else setActionType("FUEL");
-    } else if (!isStarted && !currentTrip) {
-       setActionType("START_TRIP");
-    }
-  }, [currentTrip, selectedTruckId, actionType]);
-
   const handleDriverChange = (code: string) => {
     setDriverCode(code); setDriverPin(""); setConfirmPin("");
-    if (code) { const drv = drivers.find(d => d.driver_code === code); setIsFirstTimeSetup(!drv || !drv.pin || drv.pin.trim() === ""); } 
+    if (code) { const drv = drivers.find(d => d.driver_code === code); setIsFirstTimeSetup(!drv || !drv.pin || drv.pin.trim() === ""); }
     else setIsFirstTimeSetup(false);
   };
 
@@ -178,6 +156,31 @@ export function DriverPortal() {
   const totalMonthEarnings = monthEarnedBata + monthHaltBata;
   const totalMonthDeductions = monthTripAdvances + monthDirectAdvances;
   const currentMonthNetBalance = totalMonthEarnings - totalMonthDeductions;
+
+  // PDF Export Handler for Driver Portal Ledger
+  const handleDownloadPortalLedger = () => {
+    const headers = ["LR Number", "Date", "Route", "Bata (₹)", "Halt (₹)", "Trip Adv (₹)"];
+    
+    const rows = currentMonthTrips.map(t => [
+      t.trip_number || '-',
+      formatDate(t.trip_start_date),
+      `${t.origin || 'N/A'} -> ${t.destination || 'N/A'}`,
+      `Rs. ${Number(t.driver_bata || 0).toLocaleString('en-IN')}`,
+      `Rs. ${Number(t.halt_bata || 0).toLocaleString('en-IN')}`,
+      `Rs. ${Number(t.cash_advance_issued || 0).toLocaleString('en-IN')}`
+    ]);
+
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    generateUniversalPdf(
+      `Driver Statement: ${activeDriverObj?.full_name || savedDriverCode} (${savedDriverCode})`,
+      `Monthly Period: ${currentMonthStr} | Net Balance: Rs. ${currentMonthNetBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}`,
+      headers,
+      rows,
+      `Ledger_${savedDriverCode}_${currentMonthStr}`
+    );
+  };
 
   const handleManualFingerprint = async () => {
     if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Select your profile first.", type: "error" });
@@ -232,7 +235,7 @@ export function DriverPortal() {
         trip_number: draftLr, branch_id: 1, vehicle_id: Number(selectedTruckId), primary_driver_id: Number(activeDriverObj.driver_id),
         trip_start_date: timestamp.split('T')[0], origin: "PENDING OFFICE", destination: "PENDING OFFICE",
         start_km: Number(odometer) || 0, end_km: 0, total_km_run: 0, tonnage_loaded: 0, loaded_weight_mt: 0,
-        freight_revenue: 0, fuel_litres: 0, fuel_expense: 0, driver_bata: 0, cash_advance_issued: 0, 
+        freight_revenue: 0, fuel_litres: 0, fuel_expense: 0, driver_bata: 0, cash_advance_issued: 0,
         trip_status: "IN_TRANSIT"
       };
 
@@ -244,9 +247,9 @@ export function DriverPortal() {
       }).eq('vehicle_id', selectedTruckId);
 
       if (vehicleError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Vehicle Error", message: vehicleError.message, type: "error" }); }
-      
+
       setAlertConfig({ isOpen: true, title: "Trip Started", message: "Draft trip created! The office will attach paperwork later.", type: "success" });
-      setOdometer(""); setRemarks(""); setIsSubmitting(false); await fetchPortalData(); 
+      setOdometer(""); setRemarks(""); setIsSubmitting(false); await fetchPortalData();
       return;
     }
 
@@ -274,15 +277,15 @@ export function DriverPortal() {
       }]);
       if (error) setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
       else setAlertConfig({ isOpen: true, title: "Success", message: "Fuel request sent to dispatch!", type: "success" });
-    } 
+    }
     else {
         let updatePayload: any = {}; let finalRemarks = remarks; let vehicleStatusUpdate = "IN_TRANSIT"; let statusRemarksText = "";
 
-        if (actionType === "REACHED") { 
+        if (actionType === "REACHED") {
           updatePayload.reached_at = timestamp; updatePayload.trip_status = "REACHED_DESTINATION"; statusRemarksText = `Reached ${currentTrip.destination} at ${formatDateTime(timestamp)}`;
         }
-        else if (actionType === "UNLOADED") { 
-          updatePayload.unloaded_at = timestamp; updatePayload.trip_status = "UNLOADED"; 
+        else if (actionType === "UNLOADED") {
+          updatePayload.unloaded_at = timestamp; updatePayload.trip_status = "UNLOADED";
           if (isBulk) {
             if (noWeighment) finalRemarks = `[NO WEIGHMENT] ${finalRemarks}`;
             else {
@@ -295,7 +298,7 @@ export function DriverPortal() {
           } else finalRemarks = `[DAMAGED BAGS: ${damagedBags || 0}] ${finalRemarks}`;
           statusRemarksText = `Unloaded at ${currentTrip.destination}`;
         }
-        else if (actionType === "RETURNING") { 
+        else if (actionType === "RETURNING") {
           updatePayload.returning_at = timestamp; updatePayload.trip_status = "RETURNING"; statusRemarksText = `Returning from ${currentTrip.destination}`;
         }
         else if (actionType === "WAITING_FOR_LOAD") {
@@ -304,8 +307,8 @@ export function DriverPortal() {
           if (startKm > 0 && Number(odometer) > startKm) updatePayload.total_km_run = Number(odometer) - startKm;
           vehicleStatusUpdate = "WAITING_FOR_LOAD"; statusRemarksText = `Reached plant, waiting for load (${formatDateTime(timestamp)})`;
         }
-        else if (actionType === "BREAKDOWN") { 
-          updatePayload.breakdown_remarks = `${finalRemarks} [Odo: ${odometer}]`; updatePayload.trip_status = "BREAKDOWN"; 
+        else if (actionType === "BREAKDOWN") {
+          updatePayload.breakdown_remarks = `${finalRemarks} [Odo: ${odometer}]`; updatePayload.trip_status = "BREAKDOWN";
           vehicleStatusUpdate = "WORKSHOP_MAINTENANCE"; statusRemarksText = `Enroute Breakdown`;
         }
 
@@ -316,11 +319,11 @@ export function DriverPortal() {
 
         const { error: vehicleError } = await supabase.from('vehicles').update({ current_status: vehicleStatusUpdate, status_remarks: finalVehicleRemarks, status_updated_at: timestamp }).eq('vehicle_id', selectedTruckId);
         if (vehicleError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Vehicle Update Failed", message: vehicleError.message, type: "error" }); }
-        
+
         setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
     }
 
-    setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData(); 
+    setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData();
   };
 
   const handleCancelRequest = async (id: number) => {
@@ -336,7 +339,7 @@ export function DriverPortal() {
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-border bg-surface text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: 'light' }}>
-      
+
       <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm bg-surface"><KssLogo className="w-full h-full" /></div>
@@ -399,7 +402,7 @@ export function DriverPortal() {
                   {[ { id: "START_TRIP", label: "🚀 Start Trip" }, { id: "REACHED", label: "📍 Reached Dest." }, { id: "UNLOADED", label: "📦 Unloaded" }, { id: "RETURNING", label: "🔄 Returning" }, { id: "WAITING_FOR_LOAD", label: "🏭 Reached Plant" }, { id: "BREAKDOWN", label: "⚠️ Breakdown" }, { id: "FUEL", label: "⛽ Fuel Log" } ].map((item, idx, arr) => {
                     const isStarted = item.id === "START_TRIP" && currentTrip && currentTrip.start_km > 0;
                     return (
-                      <button 
+                      <button
                         type="button" key={item.id} onClick={() => !isStarted && setActionType(item.id)} disabled={isStarted}
                         className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${isStarted ? 'opacity-40 cursor-not-allowed bg-surface text-fg-muted border-border' : actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-fg border-border hover:bg-app'} ${idx === arr.length - 1 ? 'col-span-2' : ''}`}
                       >
@@ -433,13 +436,24 @@ export function DriverPortal() {
 
           {activeTab === "LEDGER" && (
             <div className="p-6 grid gap-6 bg-app min-h-[400px] animate-in fade-in">
-              <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-fg-muted">Current Month Net Balance</p>
-                <div className="flex justify-between items-baseline mt-1"><span className={`text-2xl font-bold ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>₹{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span><span className="text-[10px] text-fg-muted">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span></div>
-                <div className="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 text-[11px] text-slate-300">
+              <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm space-y-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current Month Net Balance</p>
+                  <div className="flex justify-between items-baseline mt-1"><span className={`text-2xl font-bold ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>₹{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span><span className="text-[10px] text-slate-400">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span></div>
+                </div>
+                <div className="pt-3 border-t border-slate-800 grid grid-cols-2 text-[11px] text-slate-300">
                   <div>Earned Bata: <strong className="text-white">₹{monthEarnedBata}</strong></div><div>Halt Bata (Exp): <strong className="text-amber-400">₹{monthHaltBata}</strong></div>
                   <div className="col-span-2 mt-1">Total Deductions (Advances): <strong className="text-rose-400">₹{totalMonthDeductions}</strong></div>
                 </div>
+
+                {/* 📥 PDF Statement Download Button */}
+                <button
+                  type="button"
+                  onClick={handleDownloadPortalLedger}
+                  className="w-full mt-2 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 uppercase tracking-wide"
+                >
+                  <span>📥</span> Download Statement PDF
+                </button>
               </div>
 
               {pendingRequests.length > 0 && (
