@@ -16,7 +16,6 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { DriverPortal } from "@/components/DriverPortal";
 import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
-import { UploadHub } from "@/components/UploadHub";
 import { AiInsightsDashboard } from "@/components/AiInsightsDashboard";
 
 const KssLogo = ({ className }: { className?: string }) => (
@@ -51,7 +50,8 @@ export default function Dashboard() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("Dashboard");
-  const [opSubTab, setOpSubTab] = useState("Document Uploads");
+  // 🚫 Removed "Document Uploads" from default operations sub-tab
+  const [opSubTab, setOpSubTab] = useState("Trips");
 
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
@@ -64,9 +64,6 @@ export default function Dashboard() {
   const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
   const [activeTripCount, setActiveTripCount] = useState<number>(0); 
   const [pendingDriverCount, setPendingDriverCount] = useState<number>(0);
-  
-  // 📥 Notification state for pending scans
-  const [pendingScanCount, setPendingScanCount] = useState<number>(0);
 
   const [expiringDocs, setExpiringDocs] = useState<Record<string, any[]>>({});
 
@@ -78,7 +75,8 @@ export default function Dashboard() {
   const [qsStatus, setQsStatus] = useState("WAITING_FOR_LOAD");
   const [qsRemarks, setQsRemarks] = useState("");
 
-  const opTabs = ["Document Uploads", "Trips", "POD Closure", "Modify Trips", "Quick Status", "Driver Approvals"];
+  // 🚫 Stripped out "Document Uploads" completely from operations sub-tabs
+  const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Driver Approvals"];
 
   const formatAmt = (amt: number) => (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -167,10 +165,6 @@ export default function Dashboard() {
 
     const { count: driverPendingCount } = await supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
     setPendingDriverCount(driverPendingCount || 0);
-
-    // 📥 Fetch Notification Count for Pending Scans
-    const { count: scanCount } = await supabase.from('pending_scans').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
-    setPendingScanCount(scanCount || 0);
 
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -278,7 +272,6 @@ export default function Dashboard() {
 
   if (!isAuthenticated) return null;
 
-  // 🧠 Cleaned up tab label to "AI Insights"
   const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "AI Insights", "Setup"];
   const navItems = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? allNavItems : ["Dashboard", "Financials", "P&L Statement", "AI Insights"];
 
@@ -310,15 +303,6 @@ export default function Dashboard() {
           {navItems.map((item) => (
             <button key={item} onClick={() => setActiveTab(item)} className={`relative px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 ease-out whitespace-nowrap ${activeTab === item ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" : "text-slate-400 hover:text-white hover:bg-[#1A1F2C]"}`}>
               {item}
-              {/* 📥 NOTIFICATION BADGE ON MAIN OPERATIONS TAB */}
-              {item === "Operations" && pendingScanCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white items-center justify-center font-black">
-                    {pendingScanCount}
-                  </span>
-                </span>
-              )}
             </button>
           ))}
         </nav>
@@ -451,18 +435,10 @@ export default function Dashboard() {
                 {opTabs.map((sub) => (
                   <button key={sub} onClick={() => setOpSubTab(sub)} className={`relative px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${opSubTab === sub ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" : "bg-[#161922] text-slate-400 hover:text-white hover:bg-[#1A1F2C] border border-[#222634]"}`}>
                     {sub}
-                    {/* 📥 NOTIFICATION BADGE ON SUB-TAB */}
-                    {sub === "Document Uploads" && pendingScanCount > 0 && (
-                      <span className="ml-2 px-1.5 py-0.5 bg-rose-500 text-white rounded-full text-[10px]">
-                        {pendingScanCount}
-                      </span>
-                    )}
                   </button>
                 ))}
               </div>
 
-              {opSubTab === "Document Uploads" && <UploadHub />}
-              
               {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
               {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
               {opSubTab === "Modify Trips" && <ModifyTrips />}
@@ -500,10 +476,7 @@ export default function Dashboard() {
           {activeTab === "Workshop & Tyres" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-6 mt-6"><WorkshopModule/></div>}
           {activeTab === "Financials" && <div className="p-6 mt-6"><FinancialsModule/></div>}
           {activeTab === "P&L Statement" && <div className="p-6 mt-6"><ProfitLossModule/></div>}
-          
-          {/* Render the AI Insights Operations Hub */}
           {activeTab === "AI Insights" && <div className="p-6 mt-6"><AiInsightsDashboard/></div>}
-
           {activeTab === "Setup" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-6 mt-6"><SetupModule/></div>}
         </div>
       </main>
