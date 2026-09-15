@@ -10,14 +10,8 @@ export function FuelAdvanceModule() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // SLEEK MODAL STATE
   const [modalConfig, setModalConfig] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    confirmText: "Confirm",
-    isDanger: false,
-    action: async () => {}
+    isOpen: false, title: "", message: "", confirmText: "Confirm", isDanger: false, action: async () => {}
   });
 
   const triggerModal = (title: string, message: string, isDanger: boolean, confirmText: string, action: () => Promise<void>) => {
@@ -25,19 +19,19 @@ export function FuelAdvanceModule() {
   };
   const closeModal = () => setModalConfig({ ...modalConfig, isOpen: false });
 
-  // Master Data
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [dieselRate, setDieselRate] = useState<number>(95.0);
 
-  // Data Tables
   const [recentFuelLogs, setRecentFuelLogs] = useState<any[]>([]);
   const [recentAdvances, setRecentAdvances] = useState<any[]>([]);
 
-  // --- UNIFIED DIESEL FORM STATES ---
+  // 📥 INBOX STATES
+  const [pendingScans, setPendingScans] = useState<any[]>([]); 
+  const [activeScanId, setActiveScanId] = useState<string | null>(null);
+
   const [editLogId, setEditLogId] = useState<string | null>(null);
   const [editTripId, setEditTripId] = useState<number | null>(null);
-  
   const [fDate, setFDate] = useState(new Date().toISOString().split('T')[0]);
   const [fVehicleId, setFVehicleId] = useState("");
   const [fCategory, setFCategory] = useState("TRIP_DIESEL");
@@ -47,57 +41,51 @@ export function FuelAdvanceModule() {
   const [fDieselRate, setFDieselRate] = useState<number | "">(95.0);
   const [fIsTankFull, setFIsTankFull] = useState(false);
 
-  // --- DRIVER ADVANCE STATES ---
   const [advDate, setAdvDate] = useState(new Date().toISOString().split('T')[0]);
   const [advDriverId, setAdvDriverId] = useState("");
   const [advAmount, setAdvAmount] = useState<number | "">("");
   const [advCategory, setAdvCategory] = useState("GENERAL_ADVANCE");
   const [advRef, setAdvRef] = useState("");
 
-  // --- FUEL AUDIT STATES ---
   const [auditDateMode, setAuditDateMode] = useState("All Time");
   const [auditSpecificDate, setAuditSpecificDate] = useState(new Date().toISOString().split('T')[0]);
-  const [auditFromDate, setAuditFromDate] = useState(() => {
-    const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0];
-  });
+  const [auditFromDate, setAuditFromDate] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; });
   const [auditToDate, setAuditToDate] = useState(new Date().toISOString().split('T')[0]);
   const [auditTruck, setAuditTruck] = useState("All Trucks");
   const [auditCategory, setAuditCategory] = useState("All Categories");
   const [auditSearchLr, setAuditSearchLr] = useState("");
   const [auditResults, setAuditResults] = useState<any[]>([]);
 
-  // Helper to format dates from YYYY-MM-DD to DD/MM/YYYY
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
     if (!dateStr.includes('-')) return dateStr;
     const parts = dateStr.split('T')[0].split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
     return dateStr;
   };
 
   const fetchData = async () => {
     setIsLoading(true);
-    const [vehRes, drvRes, fuelRes, advRes, dieselRateRes] = await Promise.all([
+    const [vehRes, drvRes, fuelRes, advRes, dieselRateRes, scansRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number'),
       supabase.from('drivers').select('*').eq('is_active', true).order('full_name'),
       supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(50),
       supabase.from('driver_direct_advances').select('*, drivers(full_name, driver_code)').order('advance_date', { ascending: false }).limit(50),
-      supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(1)
+      supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(1),
+      supabase.from("pending_scans").select("*").eq("document_type", "FUEL_SLIP").eq("status", "PENDING").order("created_at", { ascending: false })
     ]);
 
     if (vehRes.data) setVehicles(vehRes.data);
     if (drvRes.data) setDrivers(drvRes.data);
     if (fuelRes.data) setRecentFuelLogs(fuelRes.data);
     if (advRes.data) setRecentAdvances(advRes.data);
+    if (scansRes.data) setPendingScans(scansRes.data);
 
     if (dieselRateRes.data && dieselRateRes.data.length > 0 && dieselRateRes.data[0].diesel_rate_per_litre) {
       const latestRate = Number(dieselRateRes.data[0].diesel_rate_per_litre);
       setDieselRate(latestRate);
       if (!editLogId) setFDieselRate(latestRate);
     }
-
     setIsLoading(false);
   };
 
@@ -107,31 +95,33 @@ export function FuelAdvanceModule() {
   }, [faNav]);
 
   const clearFuelForm = () => {
-    setEditLogId(null);
-    setEditTripId(null);
-    setFDate(new Date().toISOString().split('T')[0]);
-    setFVehicleId("");
-    setFCategory("TRIP_DIESEL");
-    setFLrNo("");
-    setFFillingKm("");
-    setFLitres("");
-    setFDieselRate(dieselRate);
-    setFIsTankFull(false);
+    setEditLogId(null); setEditTripId(null); setFDate(new Date().toISOString().split('T')[0]);
+    setFVehicleId(""); setFCategory("TRIP_DIESEL"); setFLrNo(""); setFFillingKm("");
+    setFLitres(""); setFDieselRate(dieselRate); setFIsTankFull(false); setActiveScanId(null);
+  };
+
+  // 🤖 AI SCAN AUTO-FILL FUNCTION
+  const applyScanData = (scan: any) => {
+    setActiveScanId(scan.scan_id);
+    const data = scan.raw_json_result || {};
+
+    if (data.truckNo) {
+      const aiTruck = String(data.truckNo).replace(/\s+/g, '').toUpperCase();
+      const matchedTruck = vehicles.find(v => String(v.vehicle_number).replace(/\s+/g, '').toUpperCase().includes(aiTruck) || aiTruck.includes(String(v.vehicle_number).replace(/\s+/g, '').toUpperCase()));
+      if (matchedTruck) setFVehicleId(String(matchedTruck.vehicle_id));
+    }
+    
+    if (data.litres) setFLitres(Number(data.litres));
+    if (data.rate) setFDieselRate(Number(data.rate));
+    else setFDieselRate(dieselRate);
   };
 
   const handleEditClick = (log: any) => {
-    setFaNav("⛽ Issue Diesel");
-    setEditLogId(log.fuel_log_id);
-    setEditTripId(log.trip_id || null);
-    setFDate(log.fuel_date || "");
-    setFVehicleId(String(log.vehicle_id) || "");
-    setFCategory(log.diesel_category || "TRIP_DIESEL");
-    setFLrNo(log.lr_number === "SUNDRY" ? "" : (log.lr_number || ""));
-    setFFillingKm(log.filling_odometer_km || "");
-    setFLitres(log.litres_filled || "");
-    setFDieselRate(log.diesel_rate_per_litre || dieselRate);
-    setFIsTankFull(log.is_tank_full || false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setFaNav("⛽ Issue Diesel"); setEditLogId(log.fuel_log_id); setEditTripId(log.trip_id || null);
+    setFDate(log.fuel_date || ""); setFVehicleId(String(log.vehicle_id) || ""); setFCategory(log.diesel_category || "TRIP_DIESEL");
+    setFLrNo(log.lr_number === "SUNDRY" ? "" : (log.lr_number || "")); setFFillingKm(log.filling_odometer_km || "");
+    setFLitres(log.litres_filled || ""); setFDieselRate(log.diesel_rate_per_litre || dieselRate); setFIsTankFull(log.is_tank_full || false);
+    setActiveScanId(null); window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSaveDiesel = (e: React.FormEvent) => {
@@ -142,15 +132,9 @@ export function FuelAdvanceModule() {
     const cost = Math.round((Number(fLitres) * Number(fDieselRate)) * 100) / 100;
     
     const payload = {
-      fuel_date: fDate, 
-      vehicle_id: Number(fVehicleId), 
-      lr_number: fLrNo.toUpperCase().trim() || "SUNDRY",
-      diesel_category: fCategory, 
-      litres_filled: Number(fLitres), 
-      diesel_rate_per_litre: Number(fDieselRate),
-      total_fuel_cost: cost, 
-      filling_odometer_km: Number(fFillingKm) || 0, 
-      is_tank_full: fIsTankFull
+      fuel_date: fDate, vehicle_id: Number(fVehicleId), lr_number: fLrNo.toUpperCase().trim() || "SUNDRY",
+      diesel_category: fCategory, litres_filled: Number(fLitres), diesel_rate_per_litre: Number(fDieselRate),
+      total_fuel_cost: cost, filling_odometer_km: Number(fFillingKm) || 0, is_tank_full: fIsTankFull
     };
 
     triggerModal(
@@ -171,122 +155,89 @@ export function FuelAdvanceModule() {
           }
         } else {
           await supabase.from('diesel_fuel_logs').insert([payload]);
+          
+          // 📥 Clear Inbox Scan
+          if (activeScanId) {
+             await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
+          }
         }
 
-        clearFuelForm();
-        fetchData();
-        setIsProcessing(false);
-        closeModal();
+        clearFuelForm(); fetchData(); setIsProcessing(false); closeModal();
       }
     );
   };
 
   const handleDeleteFuel = (id: string) => {
     triggerModal("Delete Fuel Record", "Warning: Are you sure you want to permanently delete this fuel log? This action cannot be reversed.", true, "Delete Log", async () => {
-      setIsProcessing(true);
-      await supabase.from('diesel_fuel_logs').delete().eq('fuel_log_id', id);
-      clearFuelForm();
-      fetchData();
-      if (faNav === "📊 Fuel Audit") handleRunAudit();
-      setIsProcessing(false);
-      closeModal();
+      setIsProcessing(true); await supabase.from('diesel_fuel_logs').delete().eq('fuel_log_id', id);
+      clearFuelForm(); fetchData(); if (faNav === "📊 Fuel Audit") handleRunAudit(); setIsProcessing(false); closeModal();
     });
   };
 
   const handleIssueAdvance = (e: React.FormEvent) => {
     e.preventDefault();
     if (!advDriverId || Number(advAmount) <= 0) return;
-
     triggerModal("Issue Driver Advance", `You are about to issue ₹${advAmount} as a direct advance. This will deduct from the driver's next settlement.`, false, "Issue Advance", async () => {
       setIsProcessing(true);
       await supabase.from('driver_direct_advances').insert([{
         advance_date: advDate, driver_id: Number(advDriverId), amount_inr: Number(advAmount),
         advance_type: advCategory, reference_remarks: advRef
       }]);
-      setAdvAmount(""); setAdvRef("");
-      fetchData();
-      setIsProcessing(false);
-      closeModal();
+      setAdvAmount(""); setAdvRef(""); fetchData(); setIsProcessing(false); closeModal();
     });
   };
 
   const handleDeleteAdvance = (id: string) => {
     triggerModal("Delete Advance Record", "Warning: Are you sure you want to permanently delete this driver advance? This action cannot be reversed.", true, "Delete Advance", async () => {
-      setIsProcessing(true);
-      await supabase.from('driver_direct_advances').delete().eq('advance_id', id);
-      fetchData();
-      setIsProcessing(false);
-      closeModal();
+      setIsProcessing(true); await supabase.from('driver_direct_advances').delete().eq('advance_id', id);
+      fetchData(); setIsProcessing(false); closeModal();
     });
   };
 
   const handleRunAudit = async () => {
     setIsProcessing(true);
     let query = supabase.from('diesel_fuel_logs').select('*, vehicles!inner(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false });
-
     if (auditDateMode === "Specific Date") query = query.eq('fuel_date', auditSpecificDate);
     else if (auditDateMode === "Date Range") query = query.gte('fuel_date', auditFromDate).lte('fuel_date', auditToDate);
-
     if (auditTruck !== "All Trucks") query = query.eq('vehicles.vehicle_number', auditTruck);
     if (auditCategory !== "All Categories") query = query.eq('diesel_category', auditCategory);
     if (auditSearchLr) query = query.ilike('lr_number', `%${auditSearchLr}%`);
 
     const { data } = await query;
-    if (data) setAuditResults(data);
-    else setAuditResults([]);
+    if (data) setAuditResults(data); else setAuditResults([]);
     setIsProcessing(false);
   };
 
   const exportAuditToCSV = () => {
     if (auditResults.length === 0) return alert("No audit data to export.");
     const headers = ["Log ID", "Date", "Truck No", "Category", "LR Number", "Odometer KM", "Litres Filled", "Total Cost (INR)", "Tank Full"];
-    
     const rows = auditResults.map(l => [
-      l.fuel_log_id,
-      l.fuel_date,
-      l.vehicles?.vehicle_number || "Unknown",
-      l.diesel_category,
-      l.lr_number || "-",
-      l.filling_odometer_km || 0,
-      l.litres_filled || 0,
-      l.total_fuel_cost || 0,
-      l.is_tank_full ? "Yes" : "No"
+      l.fuel_log_id, l.fuel_date, l.vehicles?.vehicle_number || "Unknown", l.diesel_category,
+      l.lr_number || "-", l.filling_odometer_km || 0, l.litres_filled || 0, l.total_fuel_cost || 0, l.is_tank_full ? "Yes" : "No"
     ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
 
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `Fuel_Audit_Export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    link.href = URL.createObjectURL(blob); link.setAttribute("download", `Fuel_Audit_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
       <ConfirmModal 
-        isOpen={modalConfig.isOpen} 
-        title={modalConfig.title} 
-        message={modalConfig.message}
-        isDanger={modalConfig.isDanger}
-        confirmText={modalConfig.confirmText}
-        onConfirm={modalConfig.action} 
-        onCancel={closeModal}
-        isProcessing={isProcessing}
+        isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message}
+        isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} 
+        onCancel={closeModal} isProcessing={isProcessing}
       />
       
       <div className="flex flex-wrap gap-2 border-b border-[#272B36] pb-4">
         {["⛽ Issue Diesel", "💵 Driver Advances", "📊 Fuel Audit"].map((tab) => (
           <button
-            key={tab}
-            onClick={() => setFaNav(tab)}
+            key={tab} onClick={() => setFaNav(tab)}
             className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              faNav === tab 
-                ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" 
-                : "bg-[#161922] text-slate-400 hover:text-white hover:bg-[#1E222D] border border-[#272B36]"
+              faNav === tab ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" : "bg-[#161922] text-slate-400 hover:text-white hover:bg-[#1E222D] border border-[#272B36]"
             }`}
           >
             {tab}
@@ -298,6 +249,28 @@ export function FuelAdvanceModule() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
           
           <div className="lg:col-span-5 bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl h-fit">
+            
+            {/* 📥 INBOX UI */}
+            {!editLogId && pendingScans.length > 0 && (
+              <div className="mb-6 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
+                <h4 className="text-xs font-black text-sky-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+                   <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span></span>
+                   Pending Scanned Slips ({pendingScans.length})
+                </h4>
+                <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+                  {pendingScans.map(scan => {
+                    const data = scan.raw_json_result || {};
+                    return (
+                      <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[150px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-sky-500 bg-sky-500/10 ring-1 ring-sky-500' : 'border-[#2B3142] hover:border-slate-500 bg-[#12141C]'}`}>
+                        <p className="text-[10px] text-slate-400 font-bold mb-1">Truck: <span className="text-white">{data.truckNo || "UNKNOWN"}</span></p>
+                        <p className="text-xs font-black text-white truncate">{data.litres || 0} L <span className="text-slate-500 font-medium">@ ₹{data.rate || '?'}</span></p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-5">
               <h3 className="text-sm font-black text-white uppercase tracking-wide">
                 {editLogId ? "Edit Diesel Log" : "Record Fuel Bill"}
