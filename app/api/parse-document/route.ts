@@ -8,7 +8,6 @@ export async function POST(req: Request) {
   try {
     const { imageBase64, documentType } = await req.json();
 
-    // The ': any' bypasses TypeScript's overly strict checks for the SDK
     let schema: any; 
     let prompt = "";
 
@@ -21,6 +20,10 @@ export async function POST(req: Request) {
             lrNo: { type: SchemaType.STRING, description: "The LR, Consignment, or Bilty number" },
             tonnage: { type: SchemaType.NUMBER, description: "The total loaded weight in metric tons (MT)" },
             destination: { type: SchemaType.STRING, description: "The delivery destination city" },
+            date: { type: SchemaType.STRING, description: "The document date in YYYY-MM-DD format" },
+            truckNo: { type: SchemaType.STRING, description: "The vehicle or truck registration number (e.g., TN 33 AB 1234)" },
+            cargoType: { type: SchemaType.STRING, description: "The cargo packaging type, strictly return either 'BULK' or 'BAG'" },
+            source: { type: SchemaType.STRING, description: "The source or origin city where the trip starts" }
           }
         };
         break;
