@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { AlertModal } from "@/components/AlertModal";
-import { generateDriverSettlementPdf } from "@/lib/exportDriverPdf";
+import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
 
 export function DriverSettlementModule() {
   const [loading, setLoading] = useState(false);
@@ -107,6 +107,29 @@ export function DriverSettlementModule() {
     }
   }
 
+  // PDF Generation function using the universal helper
+  const handleDownloadDriverPdf = (driver: any) => {
+    const dTrips = rawTrips.filter(t => t.primary_driver_id === driver.driver_id);
+    const headers = ["LR Number", "Date", "Route", "Bata (₹)", "Halt (₹)", "Trip Adv (₹)"];
+    
+    const rows = dTrips.map(t => [
+      t.trip_number || '-',
+      t.trip_start_date || '-',
+      `${t.origin || 'N/A'} -> ${t.destination || 'N/A'}`,
+      `Rs. ${Number(t.driver_bata || 0).toLocaleString('en-IN')}`,
+      `Rs. ${Number(t.halt_bata || 0).toLocaleString('en-IN')}`,
+      `Rs. ${Number(t.cash_advance_issued || 0).toLocaleString('en-IN')}`
+    ]);
+
+    generateUniversalPdf(
+      `Driver Settlement Statement: ${driver.full_name} (${driver.driver_code})`,
+      `Monthly Period: ${selectedMonth}`,
+      headers,
+      rows,
+      `Settlement_${driver.driver_code}_${selectedMonth}`
+    );
+  };
+
   const handleAddRateSlab = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!destination || ratePerMt === "" || Number(ratePerMt) <= 0) {
@@ -166,7 +189,6 @@ export function DriverSettlementModule() {
         onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
       />
 
-      {/* Driver Settlements Period Review & PDF Download */}
       <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#222634] pb-3">
           <h3 className="text-base font-black uppercase text-white">Monthly Driver Settlements & Statements</h3>
@@ -207,7 +229,7 @@ export function DriverSettlementModule() {
                     <td className="p-3 text-right font-black text-white text-sm">₹{s.netPayable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                     <td className="p-3 text-center">
                       <Button 
-                        onClick={() => generateDriverSettlementPdf(fullDriverObj || s, rawTrips, rawAdvances, selectedMonth)}
+                        onClick={() => handleDownloadDriverPdf(fullDriverObj || s)}
                         className="bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold h-8 px-3 text-xs rounded-lg shadow-sm"
                       >
                         📥 PDF
