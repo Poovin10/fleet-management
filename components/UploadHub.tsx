@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
-// 🚀 ULTIMATE FIX: Force compress ANY image to < 300KB before sending to Vercel
 const compressImageBase64 = (base64Str: string, maxWidth = 1000, quality = 0.6): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -27,7 +26,7 @@ const compressImageBase64 = (base64Str: string, maxWidth = 1000, quality = 0.6):
       ctx?.drawImage(img, 0, 0, width, height);
       resolve(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
     };
-    img.onerror = () => resolve(base64Str); // Fallback to original if compression fails
+    img.onerror = () => resolve(base64Str);
   });
 };
 
@@ -86,7 +85,6 @@ export function UploadHub() {
       if (!rawBase64) return;
       setActiveWorkflow(docType);
 
-      // 🔥 COMPRESS THE IMAGE BEFORE SENDING
       const finalBase64 = await compressImageBase64(rawBase64, 1000, 0.6);
 
       const apiDocType = docType === "INVOICE" ? "TRIP_INVOICE" : docType === "FUEL" ? "FUEL_SLIP" : "POD_CLOSURE";
@@ -100,23 +98,21 @@ export function UploadHub() {
         })
       });
 
-      // 🛡️ SAFE ERROR HANDLING (Prevents the "SyntaxError: Unexpected Token R" crash)
+      // 🚀 FIX: Beautifully parse backend JSON errors so they don't break the UI
       const responseText = await response.text();
       if (!response.ok) {
         if (response.status === 413 || responseText.includes("Request Entity Too Large")) {
           throw new Error("The photo is too large to process. Please try taking a slightly lower quality photo.");
         }
-        throw new Error(`Server Error: ${responseText.substring(0, 40)}...`);
+        let serverErrMsg = responseText;
+        try {
+          const parsed = JSON.parse(responseText);
+          if (parsed.error) serverErrMsg = parsed.error;
+        } catch (e) { /* Ignore non-JSON text */ }
+        throw new Error(`API Error: ${serverErrMsg}`);
       }
 
-      let parsedJson;
-      try {
-        parsedJson = JSON.parse(responseText);
-      } catch (e) {
-        throw new Error("Received an invalid response from the server. The file might still be too large.");
-      }
-
-      const { data, error } = parsedJson;
+      const { data, error } = JSON.parse(responseText);
       if (error) throw new Error(error);
 
       if (docType === "INVOICE") {
