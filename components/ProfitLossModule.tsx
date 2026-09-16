@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
 
 export function ProfitLossModule() {
   const supabase = createClient();
@@ -40,7 +41,7 @@ export function ProfitLossModule() {
 
       if (error) {
         console.error("RPC Error:", error);
-        alert(`Database Error: ${error.message}`); // Added alert to catch issues immediately
+        alert(`Database Error: ${error.message}`); 
         setIsLoading(false);
         return;
       }
@@ -77,7 +78,7 @@ export function ProfitLossModule() {
     { name: "Net Profit", amount: netProfit, color: netProfit >= 0 ? "#FF5A00" : "#ef4444" }
   ];
 
-  // CSV Export with Injection Protection
+  // CSV Export
   const exportPLToCSV = () => {
     const sanitize = (val: any) => {
       let str = String(val ?? "");
@@ -109,6 +110,31 @@ export function ProfitLossModule() {
     document.body.removeChild(link);
   };
 
+  // PDF Export
+  const exportPLToPDF = () => {
+    const headers = ["Category", "Amount (INR)"];
+    
+    const rows = [
+      ["Gross Freight Revenue", `Rs. ${formatAmt(totalFreight)}`],
+      ["Diesel Expenses", `Rs. ${formatAmt(totalDiesel)}`],
+      ["Driver Bata", `Rs. ${formatAmt(totalBata)}`],
+      ["Halt Bata", `Rs. ${formatAmt(totalHaltBata)}`],
+      ["Enroute Repairs", `Rs. ${formatAmt(totalEnrouteRepairs)}`],
+      ["Workshop Spares & Bills", `Rs. ${formatAmt(totalWorkshopBills)}`],
+      ["Total Operating Expenses", `Rs. ${formatAmt(totalOperatingExpenses)}`],
+      ["Net Profit / Retention", `Rs. ${formatAmt(netProfit)}`],
+      ["Net Margin %", `${netMarginPct.toFixed(2)}%`]
+    ];
+
+    generateUniversalPdf(
+      `Profit & Loss Statement`,
+      `Financial Period: ${selectedMonth} | Total Trips Logged: ${tripCount}`,
+      headers,
+      rows,
+      `PL_Statement_${selectedMonth}`
+    );
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
 
@@ -118,19 +144,27 @@ export function ProfitLossModule() {
           <h3 className="text-sm font-black text-white uppercase tracking-wide">Monthly P&L Statement</h3>
           <p className="text-xs text-slate-400 mt-0.5 font-semibold">Comprehensive financial performance ledger.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <input 
-            type="month" 
-            value={selectedMonth} 
-            onChange={e => setSelectedMonth(e.target.value)} 
-            className="text-sm p-2.5 rounded-xl border border-[#272B36] font-bold bg-[#0F1117] text-white outline-none focus:border-[#FF5A00]" 
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(e.target.value)}
+            className="text-sm p-2.5 rounded-xl border border-[#272B36] font-bold bg-[#0F1117] text-white outline-none focus:border-[#FF5A00]"
           />
-          <button 
-            onClick={exportPLToCSV} 
-            className="px-4 py-2.5 bg-[#0F1117] hover:bg-[#1A1F2C] border border-[#272B36] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95"
-          >
-            <span className="text-lg leading-none">📊</span> Export CSV
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={exportPLToCSV}
+              className="px-4 py-2.5 bg-[#0F1117] hover:bg-[#1A1F2C] border border-[#272B36] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95"
+            >
+              EXPORT CSV
+            </button>
+            <button
+              onClick={exportPLToPDF}
+              className="px-4 py-2.5 bg-[#FF5A00] hover:bg-[#e04f00] border border-[#FF5A00] text-white font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95"
+            >
+              EXPORT PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -214,7 +248,7 @@ export function ProfitLossModule() {
               <div className="text-left sm:text-right">
                 <p className="text-xs font-bold text-slate-400">Operating Margin Status</p>
                 <p className={`text-sm font-black mt-0.5 ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
-                  {netProfit >= 0 ? '🟢 Profitable Month' : '🔴 Net Loss Month'}
+                  {netProfit >= 0 ? 'PROFITABLE MONTH' : 'NET LOSS MONTH'}
                 </p>
               </div>
             </div>
@@ -226,22 +260,22 @@ export function ProfitLossModule() {
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: 15, bottom: 25 }}>
-                  <XAxis 
-                    dataKey="name" 
-                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }} 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }}
+                    axisLine={false}
+                    tickLine={false}
                     dy={12}
                     interval={0}
                   />
-                  <YAxis 
-                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <YAxis
+                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }}
+                    axisLine={false}
+                    tickLine={false}
                     width={45}
                     tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
                   />
-                  <Tooltip 
+                  <Tooltip
                     cursor={{ fill: '#272B36', opacity: 0.4 }}
                     contentStyle={{ backgroundColor: '#0F1117', border: '1px solid #272B36', borderRadius: '12px', fontWeight: 'bold', color: '#fff' }}
                     formatter={(value: any) => [`₹ ${formatAmt(Number(value))}`, 'Amount']}
