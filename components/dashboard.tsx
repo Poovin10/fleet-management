@@ -101,10 +101,10 @@ export default function Dashboard() {
           const { data: userData } = await supabase.from('app_users')
             .select('role')
             .eq('username', sessionUsername)
-            .single();
+            .maybeSingle();
 
           if (userData && userData.role) {
-            setUserRole(userData.role); 
+            setUserRole(userData.role.toUpperCase()); 
           } else {
             setUserRole("ADMIN");
           }
