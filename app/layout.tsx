@@ -4,7 +4,6 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "KSS Roadways ERP",
   description: "KSS Roadways Fleet Management Portal",
-  manifest: "/manifest.json", 
   themeColor: "#050507",
   appleWebApp: {
     capable: true,
