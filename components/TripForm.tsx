@@ -73,13 +73,16 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const [startKm, setStartKm] = useState<number | "">("");
   const [isTankFull, setIsTankFull] = useState(false);
   const [isManualRoute, setIsManualRoute] = useState(false);
+  const [saveToFreightMaster, setSaveToFreightMaster] = useState(true);
+  const [saveToBataMaster, setSaveToBataMaster] = useState(true);
   const [complianceWarnings, setComplianceWarnings] = useState<any[]>([]);
 
   const dynamicSources = Array.from(new Set(freightMaster.map(r => r.origin?.toUpperCase().trim()).filter(Boolean))).sort();
 
   const handleClear = () => {
     setStartDate(new Date().toISOString().split("T")[0]); setLrNo(""); setCargoType("BULK"); setSelectedTruckId(""); setSource("COCHIN"); setCustomSource("");
-    setDestinationLabel(""); setCustomDest(""); setFreightRate(""); setLoadedMt(""); setSelectedDriverId(""); setDriverBata(""); setAdvance(""); setDieselL(""); setStartKm(""); setIsManualRoute(false); setActiveScanId(null);
+    setDestinationLabel(""); setCustomDest(""); setFreightRate(""); setLoadedMt(""); setSelectedDriverId(""); setDriverBata(""); setAdvance(""); setDieselL(""); setStartKm("");
+    setIsTankFull(false); setIsManualRoute(false); setSaveToFreightMaster(true); setSaveToBataMaster(true); setActiveScanId(null);
   };
 
   useEffect(() => {
@@ -271,7 +274,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
         return b.origin?.trim().toUpperCase() === finalSource.trim().toUpperCase() && b.destination_name?.trim().toUpperCase() === finalDest.trim().toUpperCase() && b.cargo_type === cargoType && isCapMatch;
       });
       if (match) setDriverBata(Number(match.standard_bata_inr));
-      else setDriverBata("");
+      else if (!isManualRoute) setDriverBata("");
     }
   }, [finalSource, destinationLabel, customDest, cargoType, activeTruckCap, bataMaster, isManualRoute]);
 
@@ -282,10 +285,36 @@ export function TripForm({ onSuccess }: TripFormProps) {
     }
 
     setIsSubmitting(true);
-    const finalDest = isManualRoute ? customDest.toUpperCase() : destinationLabel;
+    const finalDest = (isManualRoute ? customDest : destinationLabel).toUpperCase().trim();
+    const finalSrc = finalSource.toUpperCase().trim();
     const finalStartKm = Number(startKm) || 0;
     const grossFreight = Math.round(Number(loadedMt) * Number(freightRate) * 100) / 100;
     const fuelCost = Math.round((Number(dieselL) || 0) * dieselRate * 100) / 100;
+
+    // 1. SAVE NEW DESTINATION TO FREIGHT MASTER IF REQUESTED
+    if (isManualRoute && saveToFreightMaster && finalDest && Number(freightRate) > 0) {
+      const { error: fmError } = await supabase.from("destinations_freight_master").insert([{
+        origin: finalSrc,
+        destination_name: finalDest,
+        cargo_type: cargoType,
+        capacity_tons: activeTruckCap > 0 ? String(activeTruckCap) : "ALL",
+        freight_rate_per_ton: Number(freightRate),
+        is_active: true
+      }]);
+      if (fmError) console.warn("Failed to auto-save to freight master:", fmError.message);
+    }
+
+    // 2. SAVE BATA TO DRIVER BATA MASTER IF REQUESTED
+    if (isManualRoute && saveToBataMaster && finalDest && Number(driverBata) > 0) {
+      const { error: bmError } = await supabase.from("driver_bata_master").insert([{
+        origin: finalSrc,
+        destination_name: finalDest,
+        cargo_type: cargoType,
+        capacity_tons: activeTruckCap > 0 ? String(activeTruckCap) : "ALL",
+        standard_bata_inr: Number(driverBata)
+      }]);
+      if (bmError) console.warn("Failed to auto-save to bata master:", bmError.message);
+    }
 
     const { data: existingDraftTrips } = await supabase.from("trips")
       .select("*")
@@ -302,7 +331,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
       trip_number: lrNo.toUpperCase().trim(),
       vehicle_id: Number(selectedTruckId),
       branch_id: 1,
-      origin: finalSource.toUpperCase(),
+      origin: finalSrc,
       destination: finalDest,
       primary_driver_id: Number(selectedDriverId),
       tonnage_loaded: Number(loadedMt),
@@ -310,6 +339,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
       freight_revenue: grossFreight,
       driver_bata: Number(driverBata) || 0,
       cash_advance_issued: Number(advance) || 0,
+      is_tank_full: isTankFull,
     };
 
     if (activeDraftTrip) {
@@ -321,7 +351,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (updateError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Draft Update Failed", message: updateError.message, type: "error" }); }
 
       await supabase.from("vehicles").update({ 
-          status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSource.toUpperCase()} ➔ ${finalDest} (${activeDraftTrip.trip_status})`, 
+          status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSrc} ➔ ${finalDest} (${activeDraftTrip.trip_status})`, 
           status_updated_at: new Date().toISOString() 
       }).eq("vehicle_id", Number(selectedTruckId));
 
@@ -332,7 +362,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
       tripPayload.end_km = 0;
       tripPayload.total_km_run = 0;
       tripPayload.trip_status = "IN_TRANSIT";
-      tripPayload.is_tank_full = isTankFull;
       tripPayload.fuel_litres = Number(dieselL) || 0;
       tripPayload.fuel_expense = fuelCost;
 
@@ -343,7 +372,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
       await supabase.from("vehicles").update({ 
         current_status: "IN_TRANSIT", 
-        status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSource.toUpperCase()} ➔ ${finalDest}`, 
+        status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSrc} ➔ ${finalDest}`, 
         status_updated_at: new Date().toISOString() 
       }).eq("vehicle_id", Number(selectedTruckId));
     }
@@ -434,17 +463,50 @@ export function TripForm({ onSuccess }: TripFormProps) {
           </div>
           <div className="bg-[#161922] p-2 -m-2 rounded-xl border border-[#2B3142]">
             <label className="block text-[10px] font-bold text-[#FF5A00] uppercase mb-1">6. Destination *</label><SearchableSelect options={destOptions} value={destinationLabel} onChange={setDestinationLabel} placeholder="-- SELECT DESTINATION --" disabled={!selectedTruckId} />
-            {isManualRoute && <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 mt-2 rounded-xl border border-[#2B3142] uppercase outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white font-bold" required />}
+            {isManualRoute && (
+              <div className="mt-2 space-y-2">
+                <input type="text" value={customDest} onChange={e => setCustomDest(e.target.value)} placeholder="Type custom destination..." className="w-full text-sm p-3 rounded-xl border border-[#2B3142] uppercase outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white font-bold" required />
+                <label className="flex items-center gap-2 cursor-pointer mt-1">
+                  <input type="checkbox" checked={saveToFreightMaster} onChange={e => setSaveToFreightMaster(e.target.checked)} className="rounded border-slate-700 bg-slate-800 text-[#FF5A00] focus:ring-0 w-4 h-4 cursor-pointer" />
+                  <span className="text-[11px] font-semibold text-slate-300">Save route to Freight Master database</span>
+                </label>
+              </div>
+            )}
           </div>
           <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">7. Freight Rate / MT (₹) *</label><input type="number" {...numProps} value={freightRate} onChange={e => setFreightRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className={`w-full text-sm p-3 rounded-xl border outline-none font-black ${noSpinClass} ${isManualRoute ? 'border-[#2B3142] focus:border-[#FF5A00] text-[#FF5A00] bg-[#1A1F2C]' : 'border-emerald-900 bg-emerald-950/40 text-emerald-400 cursor-not-allowed'}`} disabled={!isManualRoute} readOnly={!isManualRoute} required /></div>
           <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">8. Loaded MT *</label><input type="number" {...numProps} value={loadedMt} onChange={e => setLoadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] font-bold bg-[#1A1F2C] text-white ${noSpinClass}`} required /></div>
           <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">9. Driver Name *</label><SearchableSelect options={driverOptions} value={selectedDriverId} onChange={setSelectedDriverId} placeholder="-- SELECT DRIVER --" disabled={isLoading || !selectedTruckId} /></div>
-          <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">10. Driver Bata (₹) *</label><input type="number" {...numProps} value={driverBata} onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white font-bold ${noSpinClass}`} required /></div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">10. Driver Bata (₹) *</label>
+            <input type="number" {...numProps} value={driverBata} onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white font-bold ${noSpinClass}`} required />
+            {isManualRoute && (
+              <label className="flex items-center gap-2 cursor-pointer mt-2">
+                <input type="checkbox" checked={saveToBataMaster} onChange={e => setSaveToBataMaster(e.target.checked)} className="rounded border-slate-700 bg-slate-800 text-[#FF5A00] focus:ring-0 w-4 h-4 cursor-pointer" />
+                <span className="text-[11px] font-semibold text-slate-300">Save bata to Bata Master database</span>
+              </label>
+            )}
+          </div>
           <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">11. Direct Advance (₹)</label><input type="number" {...numProps} value={advance} onChange={e => setAdvance(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-white font-bold ${noSpinClass}`} /></div>
           <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">12. Diesel Rate (₹/L)</label><input type="number" {...numProps} value={dieselRate} onChange={e => setDieselRate(e.target.value === "" ? 0 : parseFloat(e.target.value))} className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#0F1117] text-white font-bold ${noSpinClass}`} /></div>
-          <div className="grid grid-cols-2 gap-3 border border-[#2B3142] p-2 rounded-xl bg-[#0F1117]">
-             <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">13. Diesel Issued (L)</label><input type="number" {...numProps} value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={`w-full text-sm p-2.5 rounded-lg border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-[#FF5A00] font-black ${noSpinClass}`} /></div>
-             <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Start Odo KM</label><input type="number" {...numProps} value={startKm} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={`w-full text-sm p-2.5 rounded-lg border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-sky-400 font-black ${noSpinClass}`} /></div>
+          
+          <div className="border border-[#2B3142] p-3 rounded-xl bg-[#0F1117] space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">13. Diesel Issued (L)</label><input type="number" {...numProps} value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={`w-full text-sm p-2.5 rounded-lg border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-[#FF5A00] font-black ${noSpinClass}`} /></div>
+              <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Start Odo KM</label><input type="number" {...numProps} value={startKm} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={`w-full text-sm p-2.5 rounded-lg border border-[#2B3142] outline-none focus:border-[#FF5A00] bg-[#1A1F2C] text-sky-400 font-black ${noSpinClass}`} /></div>
+            </div>
+
+            <div className="pt-2 border-t border-[#1F2432] flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                <span>⛽</span> Tank Full (Initial Fill)
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsTankFull(!isTankFull)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isTankFull ? 'bg-[#FF5A00]' : 'bg-slate-700'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isTankFull ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
           </div>
         </div>
 
