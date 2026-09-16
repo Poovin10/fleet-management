@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
 
 export function FinancialsModule() {
   const supabase = createClient();
-  const [finNav, setFinNav] = useState("💵 Driver Settlement");
+  const [finNav, setFinNav] = useState("Driver Settlement");
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -27,7 +28,7 @@ export function FinancialsModule() {
   
   const [sortMetric, setSortMetric] = useState("Total Net Retention (₹)");
   const [sortOrder, setSortOrder] = useState("Top Performers (Descending)");
-  const [analyticsSubTab, setAnalyticsSubTab] = useState("📊 Fleet Retention");
+  const [analyticsSubTab, setAnalyticsSubTab] = useState("Fleet Retention");
   const [selectedVariant, setSelectedVariant] = useState("All Variants");
 
   const [fleetData, setFleetData] = useState<any[]>([]);
@@ -93,6 +94,36 @@ export function FinancialsModule() {
     await supabase.from('driver_direct_advances').update({ is_settled: true }).eq('driver_id', selectedDriverId).gte('advance_date', fromDate).lte('advance_date', toDate);
     alert("Settled successfully!");
     generateSettlement(); 
+  };
+
+  // 🚀 PDF EXPORT FUNCTION
+  const exportSettlementToPDF = () => {
+    if (!selectedDriverObj) return;
+
+    const headers = ["Date / LR No", "Truck & Route", "Diesel (L)", "Bata Earned", "Adv Deducted", "Trip Balance"];
+    
+    const rows = driverTrips.map(t => {
+      const tripBata = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0);
+      const tripAdv = Number(t.cash_advance_issued) || 0;
+      const tripBal = tripBata - tripAdv;
+      
+      return [
+        `${formatDate(t.trip_start_date)} / ${t.trip_number || '-'}`,
+        `${t.vehicles?.vehicle_number || '-'} (${t.origin || '-'} to ${t.destination || '-'})`,
+        formatDec(t.fuel_litres),
+        `Rs. ${formatAmt(tripBata)}`,
+        `Rs. ${formatAmt(tripAdv)}`,
+        `Rs. ${formatAmt(tripBal)}`
+      ];
+    });
+
+    generateUniversalPdf(
+      `Driver Settlement Report: ${selectedDriverObj.full_name} (${selectedDriverObj.driver_code})`,
+      `Period: ${formatDate(fromDate)} to ${formatDate(toDate)} | Total Balance Payable: Rs. ${formatAmt(finalBalancePayable)}`,
+      headers,
+      rows,
+      `Settlement_${selectedDriverObj.driver_code}_${fromDate}_to_${toDate}`
+    );
   };
 
   const fetchAnalyticsData = async () => {
@@ -184,7 +215,7 @@ export function FinancialsModule() {
   };
 
   useEffect(() => {
-    if (finNav === "📈 Analytics & Margins") fetchAnalyticsData();
+    if (finNav === "Analytics & Margins") fetchAnalyticsData();
   }, [finNav, analysisWindow, customStart, customEnd]);
 
   const getSortedFleetData = () => {
@@ -197,7 +228,7 @@ export function FinancialsModule() {
     };
     
     let filtered = [...fleetData];
-    if (analyticsSubTab === "⚖️ Variant Benchmarks" && selectedVariant !== "All Variants") {
+    if (analyticsSubTab === "Variant Benchmarks" && selectedVariant !== "All Variants") {
       filtered = filtered.filter(f => f.truck_type === selectedVariant);
     }
 
@@ -212,7 +243,6 @@ export function FinancialsModule() {
   const aggRetention = sortedFleetData.reduce((acc, c) => acc + c.net_retention, 0);
   const aggRetentionPct = aggFreight > 0 ? (aggRetention / aggFreight) * 100 : 0;
 
-  // 🚀 CSV EXPORT FUNCTION
   const exportAnalyticsToCSV = () => {
     let headers: string[] = [];
     let rows: string[] = [];
@@ -226,7 +256,7 @@ export function FinancialsModule() {
       return `"${str.replace(/"/g, '""')}"`;
     };
 
-    if (analyticsSubTab === "👨‍✈️ Driver Scorecard") {
+    if (analyticsSubTab === "Driver Scorecard") {
       if (driverScorecard.length === 0) return alert("No data to export.");
       headers = ["Driver Code", "Full Name", "Total Trips", "Total KM", "Est KMPL", "Revenue (INR)"];
       rows = driverScorecard.map(d => [
@@ -275,11 +305,11 @@ export function FinancialsModule() {
       
       {/* TABS */}
       <div className="flex flex-wrap gap-2 border-b border-[#272B36] pb-4">
-        {["💵 Driver Settlement", "📈 Analytics & Margins"].map((tab) => (
+        {["Driver Settlement", "Analytics & Margins"].map((tab) => (
           <button
             key={tab}
             onClick={() => setFinNav(tab)}
-            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all uppercase tracking-wider ${
               finNav === tab 
                 ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20 ring-1 ring-[#FF5A00]" 
                 : "bg-[#161922] text-slate-400 hover:text-white hover:bg-[#1E222D] border border-[#272B36]"
@@ -290,7 +320,7 @@ export function FinancialsModule() {
         ))}
       </div>
 
-      {finNav === "💵 Driver Settlement" && (
+      {finNav === "Driver Settlement" && (
         <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="md:col-span-2">
@@ -314,7 +344,7 @@ export function FinancialsModule() {
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">To Date *</label>
                 <div className="flex gap-2">
                   <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" />
-                  <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black rounded-xl transition-all shadow-sm disabled:bg-slate-700 active:scale-95">
+                  <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-black rounded-xl transition-all shadow-sm disabled:bg-slate-700 active:scale-95 uppercase">
                     Load
                   </button>
                 </div>
@@ -404,8 +434,11 @@ export function FinancialsModule() {
               </div>
 
               <div className="pt-4 border-t border-[#272B36] flex justify-end gap-4">
-                <button onClick={handleMarkSettled} disabled={isProcessing} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">
-                  {isProcessing ? "Processing..." : "✅ Mark All as Settled"}
+                <button onClick={exportSettlementToPDF} disabled={isProcessing} className="px-6 py-3 bg-[#0F1117] hover:bg-[#1A1F2C] border border-[#2B3142] text-emerald-400 font-black text-sm rounded-xl transition-all shadow-sm disabled:opacity-50 active:scale-95 uppercase">
+                  EXPORT PDF
+                </button>
+                <button onClick={handleMarkSettled} disabled={isProcessing} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 uppercase">
+                  {isProcessing ? "PROCESSING..." : "MARK ALL AS SETTLED"}
                 </button>
               </div>
             </div>
@@ -413,7 +446,7 @@ export function FinancialsModule() {
         </div>
       )}
 
-      {finNav === "📈 Analytics & Margins" && (
+      {finNav === "Analytics & Margins" && (
         <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="md:col-span-2">
@@ -465,18 +498,18 @@ export function FinancialsModule() {
 
           <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
             <div className="flex flex-wrap gap-4">
-              {["📊 Fleet Retention", "⚖️ Variant Benchmarks", "👨‍✈️ Driver Scorecard"].map((tab) => (
+              {["Fleet Retention", "Variant Benchmarks", "Driver Scorecard"].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setAnalyticsSubTab(tab)}
-                  className={`pb-2 text-sm font-bold transition-all duration-200 border-b-2 ${
+                  className={`pb-2 text-sm font-bold uppercase tracking-wider transition-all duration-200 border-b-2 ${
                     analyticsSubTab === tab ? "border-[#FF5A00] text-[#FF5A00]" : "border-transparent text-slate-500 hover:text-white"
                   }`}
                 >
                   {tab}
                 </button>
               ))}
-              {analyticsSubTab === "⚖️ Variant Benchmarks" && (
+              {analyticsSubTab === "Variant Benchmarks" && (
                 <select value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)} className="ml-auto text-xs p-2 rounded-lg border border-[#2B3142] font-bold text-white bg-[#0F1117] outline-none">
                   <option value="All Variants">All Variants</option>
                   {variantTypes.map(v => <option key={v} value={v}>{v}</option>)}
@@ -484,12 +517,12 @@ export function FinancialsModule() {
               )}
             </div>
 
-            <button onClick={exportAnalyticsToCSV} className="px-6 py-2.5 bg-[#0F1117] hover:bg-[#1A1F2C] border border-[#272B36] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95">
-              <span className="text-lg leading-none">📊</span> Export CSV
+            <button onClick={exportAnalyticsToCSV} className="px-6 py-2.5 bg-[#0F1117] hover:bg-[#1A1F2C] border border-[#272B36] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95 uppercase">
+              EXPORT CSV
             </button>
           </div>
 
-          {analyticsSubTab !== "👨‍✈️ Driver Scorecard" && (
+          {analyticsSubTab !== "Driver Scorecard" && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
               <div className="p-4 rounded-xl border border-[#2B3142] bg-[#1A1F2C] min-w-0">
                 <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase mb-1 truncate">Fleet Revenue</p>
@@ -517,7 +550,7 @@ export function FinancialsModule() {
               </div>
             )}
             
-            {(analyticsSubTab === "📊 Fleet Retention" || analyticsSubTab === "⚖️ Variant Benchmarks") && (
+            {(analyticsSubTab === "Fleet Retention" || analyticsSubTab === "Variant Benchmarks") && (
               <table className="min-w-full divide-y divide-[#272B36] text-xs text-right whitespace-nowrap">
                 <thead className="bg-[#0F1117] sticky top-0 z-10">
                   <tr className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
@@ -559,7 +592,7 @@ export function FinancialsModule() {
               </table>
             )}
 
-            {analyticsSubTab === "👨‍✈️ Driver Scorecard" && (
+            {analyticsSubTab === "Driver Scorecard" && (
               <table className="min-w-full divide-y divide-[#272B36] text-xs text-right whitespace-nowrap">
                 <thead className="bg-[#0F1117] sticky top-0 z-10">
                   <tr className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
