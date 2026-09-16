@@ -9,14 +9,14 @@ function SearchableSelect({ options, value, onChange, placeholder, disabled }: {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => { if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false); };
     document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-  
+
   const selectedOption = options.find(o => String(o.value) === String(value));
-  
+
   return (
     <div ref={containerRef} className="relative w-full">
       <div className={`w-full text-sm p-3 rounded-xl border ${isOpen ? 'border-[#FF5A00] ring-1 ring-[#FF5A00]' : 'border-[#2B3142]'} bg-[#1A1F2C] text-white flex justify-between items-center cursor-pointer font-bold ${disabled ? "opacity-50 cursor-not-allowed" : ""}`} onClick={() => !disabled && setIsOpen(!isOpen)}>
@@ -44,14 +44,14 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
-  
+
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [freightMaster, setFreightMaster] = useState<any[]>([]);
   const [bataMaster, setBataMaster] = useState<any[]>([]);
   const [draftTrips, setDraftTrips] = useState<any[]>([]); 
 
-  // 📥 INBOX STATES
+  // INBOX STATES
   const [pendingScans, setPendingScans] = useState<any[]>([]); 
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
 
@@ -101,7 +101,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (btRes.data) setBataMaster(btRes.data);
       if (dieselRes.data && dieselRes.data.length > 0 && dieselRes.data[0].diesel_rate_per_litre) setDieselRate(Number(dieselRes.data[0].diesel_rate_per_litre));
       if (scansRes.data) setPendingScans(scansRes.data);
-      
+
       if (activeTripsRes.data) {
         setDraftTrips(activeTripsRes.data.filter(t => t.trip_number.startsWith("DRAFT-")).map(t => String(t.vehicle_id)));
       }
@@ -110,7 +110,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
     fetchMasterData();
   }, [supabase]);
 
-  // 🗑️ DELETE INBOX ENTRIES
   const handleDeleteScan = async (e: React.MouseEvent, scanId: string) => {
     e.stopPropagation();
     if (!confirm("Delete this entry permanently from the inbox?")) return;
@@ -119,7 +118,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
     if (activeScanId === scanId) handleClear();
   };
 
-  // ⚡ LOCAL PATTERN AUTO-FILL FUNCTION
   const applyScanData = (scan: any) => {
     setActiveScanId(scan.scan_id);
     const data = scan.raw_json_result || {};
@@ -154,7 +152,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
       const matchedSource = dynamicSources.find(s => s.toUpperCase() === src);
       if (matchedSource) setSource(matchedSource); else { setSource("CUSTOM"); setCustomSource(src); }
     }
-    
+
     if (data.destination) {
       setDestinationLabel("MANUAL_SPOT_ROUTE"); 
       setCustomDest(String(data.destination).toUpperCase().trim()); 
@@ -296,12 +294,14 @@ export function TripForm({ onSuccess }: TripFormProps) {
       .neq("trip_status", "COMPLETED")
       .order("trip_id", { ascending: false })
       .limit(1);
-      
+
     const activeDraftTrip = existingDraftTrips && existingDraftTrips.length > 0 ? existingDraftTrips[0] : null;
     let activeTripId = null;
 
     const tripPayload: any = {
       trip_number: lrNo.toUpperCase().trim(),
+      vehicle_id: Number(selectedTruckId),
+      branch_id: 1,
       origin: finalSource.toUpperCase(),
       destination: finalDest,
       primary_driver_id: Number(selectedDriverId),
@@ -326,7 +326,6 @@ export function TripForm({ onSuccess }: TripFormProps) {
       }).eq("vehicle_id", Number(selectedTruckId));
 
     } else {
-      tripPayload.branch_id = 1;
       tripPayload.trip_start_date = startDate;
       tripPayload.trip_end_date = startDate;
       tripPayload.start_km = finalStartKm;
@@ -339,7 +338,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
       const { data: newTrip, error: insertError } = await supabase.from("trips").insert([tripPayload]).select().single();
       if (insertError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Dispatch Failed", message: insertError.message, type: "error" }); }
-      
+
       activeTripId = newTrip.trip_id;
 
       await supabase.from("vehicles").update({ 
@@ -400,7 +399,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
                       <p className="text-xs font-black text-white truncate">{scan.source || data.source || "?"} ➔ {scan.destination || data.destination || "?"}</p>
                       <p className="text-[10px] text-slate-500 mt-1">Truck: {scan.truck_number || data.truckNo || "Manual select"}</p>
                     </div>
-                    <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete entry">🗑️</div>
+                    <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors font-bold uppercase text-[10px]" title="Delete entry">Delete</div>
                   </div>
                 </button>
               );
@@ -451,7 +450,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
         {complianceWarnings.length > 0 && (
           <div className="bg-rose-950/20 border border-rose-900/50 p-4 rounded-xl mt-4 mb-2 animate-in slide-in-from-top-2">
-            <h4 className="text-[10px] font-black text-rose-500 uppercase mb-2 flex items-center gap-2">⚠️ Compliance Warnings</h4>
+            <h4 className="text-[10px] font-black text-rose-500 uppercase mb-2 flex items-center gap-2">COMPLIANCE WARNINGS</h4>
             {complianceWarnings.map((w, i) => (
               <p key={i} className={`text-xs font-bold ${w.isUrgent ? 'text-rose-500' : 'text-amber-500'}`}>• {w.name} {w.docName} expiring on {w.date}</p>
             ))}
@@ -465,7 +464,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
           </div>
           <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0">
             <button type="button" onClick={handleClear} className="flex-1 md:flex-none px-6 py-4 bg-[#1A1F2C] hover:bg-[#222634] text-slate-300 border border-[#2B3142] font-bold text-sm rounded-xl transition-all active:scale-95">Clear Form</button>
-            <button type="submit" disabled={isSubmitting} className="flex-[2] md:flex-none px-10 py-4 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">{isSubmitting ? "Dispatching..." : "🚀 Dispatch Trip"}</button>
+            <button type="submit" disabled={isSubmitting} className="flex-[2] md:flex-none px-10 py-4 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">{isSubmitting ? "DISPATCHING..." : "DISPATCH TRIP"}</button>
           </div>
         </div>
       </form>
