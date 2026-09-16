@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { TripForm } from "@/components/TripForm";
 import { PodClosure } from "@/components/PodClosure";
 import { ModifyTrips } from "@/components/ModifyTrips";
+import { AccountsModule } from "@/components/AccountsModule";
 import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
 import { FinancialsModule } from "@/components/FinancialsModule";
 import { ProfitLossModule } from "@/components/ProfitLossModule";
@@ -50,7 +51,6 @@ export default function Dashboard() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("Dashboard");
-  // 🚫 Removed "Document Uploads" from default operations sub-tab
   const [opSubTab, setOpSubTab] = useState("Trips");
 
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
@@ -75,7 +75,6 @@ export default function Dashboard() {
   const [qsStatus, setQsStatus] = useState("WAITING_FOR_LOAD");
   const [qsRemarks, setQsRemarks] = useState("");
 
-  // 🚫 Stripped out "Document Uploads" completely from operations sub-tabs
   const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Driver Approvals"];
 
   const formatAmt = (amt: number) => (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -272,8 +271,8 @@ export default function Dashboard() {
 
   if (!isAuthenticated) return null;
 
-  const allNavItems = ["Dashboard", "Operations", "Fuel & Adv", "Workshop & Tyres", "Financials", "P&L Statement", "AI Insights", "Setup"];
-  const navItems = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? allNavItems : ["Dashboard", "Financials", "P&L Statement", "AI Insights"];
+  const allNavItems = ["Dashboard", "Operations", "Accounts", "Fuel", "Workshop & Tyres", "Financials", "P&L Statement", "Insights", "Master"];
+  const navItems = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? allNavItems : ["Dashboard", "Financials", "P&L Statement", "Insights"];
 
   return (
     <div className="min-h-screen bg-[#050507] text-white font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
@@ -315,7 +314,6 @@ export default function Dashboard() {
                 {pendingDriverCount > 0 && (
                   <div className="bg-amber-950/30 border-l-4 border-amber-500 rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3">
-                      
                       <div>
                         <h3 className="text-xs sm:text-sm font-black text-amber-400 uppercase tracking-wide">Pending Driver Approvals</h3>
                         <p className="text-xs text-amber-200 mt-0.5">There are <span className="font-black">{pendingDriverCount}</span> fuel bills waiting for manager review in Operations.</p>
@@ -330,7 +328,6 @@ export default function Dashboard() {
                 {Object.keys(expiringDocs).length > 0 && (
                   <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm p-4 sm:p-6 animate-in slide-in-from-top-4">
                     <div className="flex items-center gap-3 mb-5">
-                      
                       <h3 className="text-xs sm:text-sm font-black text-rose-400 uppercase tracking-wide">Compliance Alerts (10 Days)</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -472,12 +469,47 @@ export default function Dashboard() {
             </div>
           )}
 
-          {activeTab === "Fuel & Adv" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-4 sm:p-6 mt-6"><FuelAdvanceModule/></div>}
-          {activeTab === "Workshop & Tyres" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-6 mt-6"><WorkshopModule/></div>}
-          {activeTab === "Financials" && <div className="p-6 mt-6"><FinancialsModule/></div>}
-          {activeTab === "P&L Statement" && <div className="p-6 mt-6"><ProfitLossModule/></div>}
-          {activeTab === "AI Insights" && <div className="p-6 mt-6"><AiInsightsDashboard/></div>}
-          {activeTab === "Setup" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && <div className="p-6 mt-6"><SetupModule/></div>}
+          {activeTab === "Accounts" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
+            <div className="p-4 sm:p-6 mt-6">
+              <AccountsModule />
+            </div>
+          )}
+
+          {activeTab === "Fuel" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
+            <div className="p-4 sm:p-6 mt-6">
+              <FuelAdvanceModule />
+            </div>
+          )}
+
+          {activeTab === "Workshop & Tyres" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
+            <div className="p-6 mt-6">
+              <WorkshopModule />
+            </div>
+          )}
+
+          {activeTab === "Financials" && (
+            <div className="p-6 mt-6">
+              <FinancialsModule />
+            </div>
+          )}
+
+          {activeTab === "P&L Statement" && (
+            <div className="p-6 mt-6">
+              <ProfitLossModule />
+            </div>
+          )}
+
+          {activeTab === "Insights" && (
+            <div className="p-6 mt-6">
+              <AiInsightsDashboard />
+            </div>
+          )}
+
+          {activeTab === "Master" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
+            <div className="p-6 mt-6">
+              <SetupModule />
+            </div>
+          )}
         </div>
       </main>
     </div>
