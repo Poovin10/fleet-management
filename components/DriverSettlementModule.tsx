@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -107,7 +107,28 @@ export function DriverSettlementModule() {
     }
   }
 
-  // PDF Generation function using the universal PDF helper
+  // PDF Generation function for the MASTER summary
+  const handleDownloadMasterPdf = () => {
+    const headers = ["Driver Name & Code", "Total Trips", "Earnings (Bata)", "Deductions (Adv)", "Net Payable"];
+    
+    const rows = settlements.map(s => [
+      `${s.full_name} (${s.driver_code})`,
+      s.tripCount.toString(),
+      `Rs. ${s.totalEarnings.toLocaleString('en-IN', {minimumFractionDigits: 2})}`,
+      `Rs. ${s.totalDeductions.toLocaleString('en-IN', {minimumFractionDigits: 2})}`,
+      `Rs. ${s.netPayable.toLocaleString('en-IN', {minimumFractionDigits: 2})}`
+    ]);
+
+    generateUniversalPdf(
+      `Master Driver Settlements Report`,
+      `Monthly Period: ${selectedMonth} | Total Drivers Active: ${settlements.filter(s => s.tripCount > 0).length}`,
+      headers,
+      rows,
+      `Master_Settlements_${selectedMonth}`
+    );
+  };
+
+  // PDF Generation function for INDIVIDUAL drivers
   const handleDownloadDriverPdf = (driver: any) => {
     const dTrips = rawTrips.filter(t => t.primary_driver_id === driver.driver_id);
     const headers = ["LR Number", "Date", "Route", "Bata (₹)", "Halt (₹)", "Trip Adv (₹)"];
@@ -190,36 +211,43 @@ export function DriverSettlementModule() {
       />
 
       <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#222634] pb-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#222634] pb-4">
           <h3 className="text-base font-black uppercase text-white">Monthly Driver Settlements & Statements</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <label className="text-xs font-semibold text-slate-400 uppercase">Select Month:</label>
             <input 
               type="month" 
               value={selectedMonth} 
               onChange={(e) => setSelectedMonth(e.target.value)} 
-              className="border border-[#2B3142] rounded-lg p-2 text-sm bg-[#1A1F2C] text-white font-bold"
+              className="border border-[#2B3142] rounded-lg p-2.5 text-sm bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]"
             />
+            {/* MASTER EXPORT BUTTON ADDED HERE */}
+            <Button 
+              onClick={handleDownloadMasterPdf} 
+              className="bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold h-[42px] px-4 rounded-xl shadow-sm uppercase tracking-wide text-xs"
+            >
+              EXPORT SUMMARY PDF
+            </Button>
           </div>
         </div>
 
         <div className="overflow-x-auto pt-2 max-h-[450px] overflow-y-auto">
           <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
-            <thead className="bg-[#161922] sticky top-0">
+            <thead className="bg-[#161922] sticky top-0 z-10 shadow-sm">
               <tr className="text-slate-400 uppercase">
                 <th className="p-3 border-b border-[#222634]">Driver Code & Name</th>
                 <th className="p-3 border-b border-[#222634] text-center">Trips</th>
                 <th className="p-3 border-b border-[#222634] text-right">Earnings (Bata)</th>
                 <th className="p-3 border-b border-[#222634] text-right">Deductions (Advances)</th>
                 <th className="p-3 border-b border-[#222634] text-right">Net Payable (₹)</th>
-                <th className="p-3 border-b border-[#222634] text-center">PDF Statement</th>
+                <th className="p-3 border-b border-[#222634] text-center">Individual PDF</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#222634]">
               {settlements.map((s) => {
                 const fullDriverObj = driversList.find(d => d.driver_id === s.driver_id);
                 return (
-                  <tr key={s.driver_id} className="hover:bg-[#1A1F2C]">
+                  <tr key={s.driver_id} className="hover:bg-[#1A1F2C] transition-colors">
                     <td className="p-3 font-bold text-white">
                       {s.full_name} <span className="text-[#FF5A00] font-normal">({s.driver_code})</span>
                     </td>
@@ -230,7 +258,7 @@ export function DriverSettlementModule() {
                     <td className="p-3 text-center">
                       <Button 
                         onClick={() => handleDownloadDriverPdf(fullDriverObj || s)}
-                        className="bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold h-8 px-3 text-xs rounded-lg shadow-sm"
+                        className="bg-transparent border border-[#2B3142] hover:bg-[#2B3142] text-white font-bold h-8 px-3 text-[10px] rounded-lg transition-colors"
                       >
                         EXPORT PDF
                       </Button>
@@ -240,7 +268,7 @@ export function DriverSettlementModule() {
               })}
               {settlements.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500 font-medium">No driver records found for this period.</td>
+                  <td colSpan={6} className="p-8 text-center text-slate-500 font-bold">No driver records found for this period.</td>
                 </tr>
               )}
             </tbody>
@@ -259,7 +287,7 @@ export function DriverSettlementModule() {
               type="text" 
               value={source} 
               onChange={(e) => setSource(e.target.value)} 
-              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm uppercase bg-[#1A1F2C] text-white"
+              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm uppercase bg-[#1A1F2C] text-white outline-none focus:border-[#FF5A00]"
               required 
             />
           </div>
@@ -270,7 +298,7 @@ export function DriverSettlementModule() {
               placeholder="e.g. NAMAKKAL"
               value={destination} 
               onChange={(e) => setDestination(e.target.value)} 
-              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm uppercase bg-[#1A1F2C] text-white"
+              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm uppercase bg-[#1A1F2C] text-white outline-none focus:border-[#FF5A00]"
               required 
             />
           </div>
@@ -279,7 +307,7 @@ export function DriverSettlementModule() {
             <select 
               value={cargoType} 
               onChange={(e) => setCargoType(e.target.value)} 
-              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm bg-[#1A1F2C] text-white font-bold"
+              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]"
             >
               <option value="BULK">BULK</option>
               <option value="BAG">BAG</option>
@@ -294,32 +322,32 @@ export function DriverSettlementModule() {
               placeholder="0.00"
               value={ratePerMt} 
               onChange={(e) => setRatePerMt(e.target.value === "" ? "" : parseFloat(e.target.value))} 
-              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm bg-[#1A1F2C] text-white font-bold"
+              className="w-full border border-[#2B3142] rounded-lg p-2.5 text-sm bg-[#1A1F2C] text-white font-bold outline-none focus:border-[#FF5A00]"
               required 
             />
           </div>
-          <Button type="submit" disabled={loading} className="bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold h-10 rounded-xl">
-            {loading ? "Adding..." : "Add Slab"}
+          <Button type="submit" disabled={loading} className="bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold h-[42px] rounded-xl shadow-sm">
+            {loading ? "ADDING..." : "ADD SLAB"}
           </Button>
         </form>
 
         <div className="overflow-x-auto pt-2 max-h-[300px] overflow-y-auto">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="bg-[#161922] sticky top-0">
+            <thead className="bg-[#161922] sticky top-0 shadow-sm z-10">
               <tr className="text-slate-400 uppercase">
-                <th className="p-2.5 border-b border-[#222634]">Route Origin</th>
-                <th className="p-2.5 border-b border-[#222634]">Destination</th>
-                <th className="p-2.5 border-b border-[#222634]">Cargo Type</th>
-                <th className="p-2.5 border-b border-[#222634]">Rate / MT</th>
+                <th className="p-3 border-b border-[#222634]">Route Origin</th>
+                <th className="p-3 border-b border-[#222634]">Destination</th>
+                <th className="p-3 border-b border-[#222634]">Cargo Type</th>
+                <th className="p-3 border-b border-[#222634]">Rate / MT</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#222634]">
               {rates.map((r, idx) => (
-                <tr key={idx} className="hover:bg-[#1A1F2C]">
-                  <td className="p-2.5 font-medium text-white">{r.origin}</td>
-                  <td className="p-2.5 font-medium text-white">{r.destination_name}</td>
-                  <td className="p-2.5 text-slate-300">{r.cargo_type || r.cargo_category || 'BULK'}</td>
-                  <td className="p-2.5 font-bold text-[#FF5A00]">₹{Number(r.freight_rate_per_ton || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <tr key={idx} className="hover:bg-[#1A1F2C] transition-colors">
+                  <td className="p-3 font-bold text-white">{r.origin}</td>
+                  <td className="p-3 font-bold text-white">{r.destination_name}</td>
+                  <td className="p-3 font-semibold text-slate-300">{r.cargo_type || r.cargo_category || 'BULK'}</td>
+                  <td className="p-3 font-black text-[#FF5A00]">₹{Number(r.freight_rate_per_ton || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 </tr>
               ))}
             </tbody>
