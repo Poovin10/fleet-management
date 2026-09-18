@@ -1,5 +1,4 @@
 "use client";
-import TelemetryHUD from "./TelemetryHUD";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -31,7 +30,7 @@ const KssLogo = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export default function Dashboard() {
+export default function TelemetryHUD() {
   const router = useRouter();
   const [supabase, setSupabase] = useState<any>(null);
 
@@ -220,8 +219,92 @@ export default function Dashboard() {
 
         <div>
           {activeTab === "Dashboard" && (
-          <TelemetryHUD />
-        )}
+            <div className="flex flex-col lg:flex-row gap-6">
+              <div className="flex-1 space-y-6 min-w-0">
+
+                {pendingDriverCount > 0 && (
+                  <div className="bg-gradient-to-r from-amber-500/10 via-[#080A10] to-[#080A10] border border-amber-500/30 rounded-2xl p-4 flex justify-between items-center">
+                    <div>
+                      <h3 className="text-xs font-black text-amber-400 uppercase tracking-wider">Pending Approvals</h3>
+                      <p className="text-xs text-slate-300 mt-0.5"><span className="font-black text-white">{pendingDriverCount}</span> fuel entries waiting for clearance.</p>
+                    </div>
+                    <button onClick={() => { setActiveTab("Operations"); setOpSubTab("Driver Approvals"); }} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl uppercase tracking-wider transition-all">
+                      Review &rarr;
+                    </button>
+                  </div>
+                )}
+
+                <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+                  <div className="flex justify-between items-center mb-6 border-b border-white/[0.06] pb-4">
+                    <div>
+                      <h3 className="text-xs font-black text-white uppercase tracking-widest">Operations Telemetry</h3>
+                      <p className="text-[11px] text-slate-400 font-medium mt-0.5">Real-time financial throughput and throughput metrics</p>
+                    </div>
+                    <span className="px-3 py-1 bg-[#FF5A00]/10 text-[#FF5A00] text-[10px] font-black rounded-full border border-[#FF5A00]/20 uppercase tracking-widest font-mono">
+                      {currentMonthText}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 hover:border-white/[0.1] transition-all">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Trips</p>
+                      <p className="text-3xl font-black text-white mt-2 font-mono">{monthTripsCount}</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 hover:border-white/[0.1] transition-all">
+                      <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest">PODs Pending</p>
+                      <p className="text-3xl font-black text-rose-300 mt-2 font-mono">{activeTripCount}</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 hover:border-white/[0.1] transition-all">
+                      <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Freight Revenue</p>
+                      <p className="text-2xl sm:text-3xl font-black text-emerald-300 mt-2 font-mono tracking-tight">₹{formatAmt(monthFreight)}</p>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 hover:border-white/[0.1] transition-all">
+                      <p className="text-[9px] font-black text-[#FF5A00] uppercase tracking-widest">Net Retention</p>
+                      <p className="text-2xl sm:text-3xl font-black text-[#FF5A00] mt-2 font-mono tracking-tight">₹{formatAmt(monthNetRetention)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-2xl">
+                  <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6">Fleet Status Grid</h3>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {["Plant Loading", "In Transit", "Workshop / Repairs", "No Driver / Leave"].map(status => (
+                      <div key={status} onClick={() => setSelectedStatus(selectedStatus === status ? null : status)} className={`p-4 rounded-2xl border cursor-pointer transition-all ${selectedStatus === status ? 'border-[#FF5A00] bg-[#FF5A00]/10 shadow-[0_0_20px_rgba(255,90,0,0.2)]' : 'border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]'}`}>
+                        <p className="text-3xl font-black text-white font-mono">{statusCounts[status as keyof typeof statusCounts]}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">{status}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {selectedStatus && (
+                    <div className="mt-6 border-t border-white/[0.06] pt-6 animate-slide-up">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-xs font-black text-[#FF5A00] uppercase tracking-wider">{selectedStatus} Fleet Units</h4>
+                        <button onClick={() => setSelectedStatus(null)} className="text-[10px] font-bold text-slate-400 hover:text-white bg-white/[0.05] px-3 py-1 rounded-lg">Close</button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {liveVehicles.filter((v: any) => {
+                          const s = extractStatus(v);
+                          if (selectedStatus === 'Plant Loading') return s === 'WAITING_FOR_LOAD' || s === 'AVAILABLE_FOR_LOAD';
+                          if (selectedStatus === 'In Transit') return s === 'IN_TRANSIT';
+                          if (selectedStatus === 'Workshop / Repairs') return s === 'WORKSHOP_MAINTENANCE';
+                          if (selectedStatus === 'No Driver / Leave') return s === 'DRIVER_UNAVAILABLE';
+                          return false;
+                        }).map((v: any) => (
+                          <div key={v.id} className="p-3.5 border border-white/[0.05] rounded-xl bg-white/[0.02] flex justify-between items-center">
+                            <div><p className="text-sm font-black text-white font-mono">{v.vehicle_number}</p><p className="text-[9px] font-bold text-slate-500 uppercase">{v.truck_type}</p></div>
+                            <span className="text-[10px] font-black px-2 py-1 bg-white/[0.04] border border-white/[0.06] rounded-md text-slate-300 font-mono">{v.carrying_capacity_tons} MT</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+              <div className="w-full lg:w-[400px] shrink-0"><LiveAlertsWidget/></div>
+            </div>
+          )}
 
           {activeTab === "Operations" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
             <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 sm:p-8 shadow-2xl min-h-[60vh]">
