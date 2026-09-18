@@ -1,114 +1,114 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
-const KssLogo = ({ className }: { className?: string }) => (
- <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
- <rect width="200" height="200" fill="#FF5A00" />
- <rect x="15" y="15" width="170" height="170" fill="#07080B" />
- <path d="M 50 35 L 50 165" stroke="#FF5A00" strokeWidth="24" strokeLinecap="square" />
- <path d="M 50 110 L 140 35" stroke="#FF5A00" strokeWidth="24" strokeLinecap="square" />
- <path d="M 85 85 C 130 95, 145 130, 145 165" stroke="#FF5A00" strokeWidth="24" fill="none" />
- </svg>
-);
+export default function LoginForm() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const supabase = createClient();
 
-export function LoginForm() {
- const supabase = createClient();
- const router = useRouter();
- 
- const [email, setEmail] = useState("");
- const [password, setPassword] = useState("");
- const [loading, setLoading] = useState(false);
- const [errorMsg, setErrorMsg] = useState("");
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
 
- const handleLogin = async (e: React.FormEvent) => {
- e.preventDefault();
- if (!email.trim() || !password.trim()) {
- setErrorMsg("Please enter both credentials.");
- return;
- }
- setLoading(true);
- setErrorMsg("");
+    startTransition(async () => {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
- const formattedEmail = email.includes("@") ? email.trim() : `${email.trim().toLowerCase()}@kssroadways.com`;
+      if (error) {
+        setError(error.message);
+        alert("Authentication Failed: " + error.message);
+      } else {
+        alert("Access Authorized. Initializing Fleet Telemetry...");
+        router.push("/");
+        router.refresh();
+      }
+    });
+  };
 
- const { error } = await supabase.auth.signInWithPassword({
- email: formattedEmail,
- password: password.trim()
- });
+  return (
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#05070B] font-sans selection:bg-[#FF5A00] selection:text-white">
+      
+      {/* Immersive Fleet Telemetry Background Grid & Glows */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(255,90,0,0.15),rgba(255,255,255,0))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293d15_1px,transparent_1px),linear-gradient(to_bottom,#1f293d15_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
 
- if (error) {
- setErrorMsg(error.message);
- setLoading(false);
- } else {
- router.replace("/");
- }
- };
+      {/* Floating Ambient Orbs */}
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#FF5A00]/10 rounded-full blur-[128px] pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-600/10 rounded-full blur-[128px] pointer-events-none" />
 
- return (
- <div className="animate-tab-focus min-h-screen bg-[#07080B] flex flex-col items-center justify-center p-4 selection:bg-[#FF5A00]/20 selection:text-[#FF5A00]">
- <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(255,90,0,0.12),rgba(255,255,255,0))] pointer-events-none"></div>
+      {/* iOS Liquidglass Authentication Card */}
+      <div className="relative z-10 w-full max-w-md p-8 sm:p-10 mx-4 rounded-3xl bg-[#121622]/60 backdrop-blur-3xl saturate-200 border border-white/[0.12] shadow-[0_24px_64px_rgba(0,0,0,0.6)] animate-tab-focus">
+        
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF5A00] to-[#C93B00] flex items-center justify-center shadow-[0_0_32px_rgba(255,90,0,0.4)] mb-4 border border-white/20">
+            <span className="text-2xl font-bold text-white tracking-wider font-mono">K</span>
+          </div>
+          <h1 className="text-xl font-semibold text-white/95 tracking-tight">KSS ROADWAYS ERP</h1>
+          <p className="text-xs text-white/50 mt-1 font-medium">Enterprise Fleet Intelligence & Logistics Suite</p>
+        </div>
 
- <div className="w-full max-w-md relative z-10 animate-in fade-in zoom-in-95 duration-300">
- <div className="glass-panel rounded-3xl p-8 sm:p-10 shadow-2xl border border-[#1E2230] glow-primary">
- 
- <div className="flex flex-col items-center text-center mb-8">
- <div className="w-16 h-16 rounded-2xl bg-[#101218] border border-[#1E2230] flex items-center justify-center shadow-lg mb-4 overflow-hidden">
- <KssLogo className="w-12 h-12" />
- </div>
- <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight ">KSS Roadways ERP</h1>
- <p className="text-xs text-white/60 font-semibold mt-1">Enterprise Fleet Intelligence & Logistics Suite</p>
- </div>
+        {/* Login Form */}
+        <form onSubmit={handleLogin} className="space-y-5">
+          {error && (
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 font-medium text-center">
+              {error}
+            </div>
+          )}
 
- {errorMsg && (
- <div className="mb-6 p-4 rounded-2xl bg-rose-950/30 border border-rose-900/50 text-rose-400 text-xs font-bold animate-in slide-in-from-top-2 flex items-center gap-2">
- <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
- <span>{errorMsg}</span>
- </div>
- )}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-white/60 tracking-wide uppercase">
+              Corporate Username / Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="superadmin@kss.com"
+              required
+              className="w-full px-4 py-3.5 rounded-xl bg-black/40 border border-white/[0.08] text-white/90 placeholder-white/20 text-sm font-medium focus:outline-none focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all shadow-inner"
+            />
+          </div>
 
- <form onSubmit={handleLogin} className="space-y-5">
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Username / Corporate Email</label>
- <input
- type="text"
- value={email}
- onChange={(e) => setEmail(e.target.value)}
- placeholder="e.g. superadmin"
- className="w-full text-sm p-3.5 rounded-xl border border-[#1E2230] bg-[#101218] text-white font-bold outline-none focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all placeholder:text-slate-600"
- required
- />
- </div>
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-medium text-white/60 tracking-wide uppercase">
+              Secure Passcode
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••••••"
+              required
+              className="w-full px-4 py-3.5 rounded-xl bg-black/40 border border-white/[0.08] text-white/90 placeholder-white/20 text-sm font-medium focus:outline-none focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all shadow-inner"
+            />
+          </div>
 
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Secure Password</label>
- <input
- type="password"
- value={password}
- onChange={(e) => setPassword(e.target.value)}
- placeholder=""
- className="w-full text-sm p-3.5 rounded-xl border border-[#1E2230] bg-[#101218] text-white font-bold outline-none focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all placeholder:text-slate-600"
- required
- />
- </div>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="w-full mt-2 py-4 rounded-xl bg-gradient-to-r from-[#FF5A00] to-[#E04F00] hover:brightness-110 text-white font-semibold text-sm tracking-wide shadow-[0_8px_24px_rgba(255,90,0,0.35)] transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50"
+          >
+            {isPending ? "Authorizing Session..." : "Authorize Access"}
+          </button>
+        </form>
 
- <button
- type="submit"
- disabled={loading}
- className="w-full py-4 mt-2 bg-[#FF5A00] hover:bg-[#E04F00] active:scale-[0.98] text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/25 disabled:bg-slate-800 disabled:text-white/40  tracking-wider cursor-pointer"
- >
- {loading ? "Authenticating Session..." : "Authorize Access"}
- </button>
- </form>
+        {/* Ultrafleet Watermark */}
+        <div className="mt-8 pt-6 border-t border-white/[0.06] text-center">
+          <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase block">
+            Powered by <strong className="text-white/70 font-semibold">Ultrafleet Solutions</strong>
+          </span>
+        </div>
 
- <div className="mt-8 pt-6 border-t border-[#1E2230] text-center">
- <p className="text-[10px] font-bold text-white/40  tracking-normal">Secured Enterprise Node Cochin Operations</p>
- </div>
-
- </div>
- </div>
- </div>
- );
+      </div>
+    </div>
+  );
 }

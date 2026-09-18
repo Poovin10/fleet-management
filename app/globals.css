@@ -98,3 +98,12 @@ body, input, button, select, textarea {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Global macOS Liquidglass Button Standard with Orange Accent */
+button:not(.unstyled), .btn-primary {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
