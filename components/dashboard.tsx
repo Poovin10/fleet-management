@@ -18,6 +18,7 @@ import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { DriverPortal } from "@/components/DriverPortal";
 import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
 import { AiInsightsDashboard } from "@/components/AiInsightsDashboard";
+import { DriverSettlementModule } from "@/components/DriverSettlementModule"; // RESTORED IMPORT
 
 const KssLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -33,43 +34,29 @@ export default function Dashboard() {
   const router = useRouter();
   const [supabase, setSupabase] = useState<any>(null);
 
-  useEffect(() => {
-    try {
-      setSupabase(createClient());
-    } catch (err) {
-      console.error("Failed to init supabase", err);
-    }
-  }, []);
+  useEffect(() => { try { setSupabase(createClient()); } catch (err) { console.error(err); } }, []);
 
   const [isDriverRoute, setIsDriverRoute] = useState(false);
   const [isCheckingRoute, setIsCheckingRoute] = useState(true);
-
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string>("VIEWER");
-
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [opSubTab, setOpSubTab] = useState("Trips");
 
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-
   const [currentMonthText, setCurrentMonthText] = useState("");
   const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
-
   const [monthTripsCount, setMonthTripsCount] = useState<number>(0);
   const [monthFreight, setMonthFreight] = useState<number>(0);
   const [monthDieselCost, setMonthDieselCost] = useState<number>(0);
   const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
-  const [activeTripCount, setActiveTripCount] = useState<number>(0); 
+  const [activeTripCount, setActiveTripCount] = useState<number>(0);
   const [pendingDriverCount, setPendingDriverCount] = useState<number>(0);
-
   const [expiringDocs, setExpiringDocs] = useState<Record<string, any[]>>({});
-
-  const [statusCounts, setStatusCounts] = useState({
-    "Plant Loading": 0, "In Transit": 0, "Workshop / Repairs": 0, "No Driver / Leave": 0
-  });
+  const [statusCounts, setStatusCounts] = useState({ "Plant Loading": 0, "In Transit": 0, "Workshop / Repairs": 0, "No Driver / Leave": 0 });
 
   const [qsTruckId, setQsTruckId] = useState("");
   const [qsStatus, setQsStatus] = useState("WAITING_FOR_LOAD");
@@ -80,68 +67,39 @@ export default function Dashboard() {
   const formatAmt = (amt: number) => (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (window.location.pathname.startsWith('/driver')) setIsDriverRoute(true);
-    }
+    if (typeof window !== "undefined") { if (window.location.pathname.startsWith('/driver')) setIsDriverRoute(true); }
     setIsCheckingRoute(false);
   }, []);
 
   useEffect(() => {
     if (!supabase) return;
-
     const checkAuth = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
-
       if (user && !error) {
         setIsAuthenticated(true);
         const sessionUsername = user.email?.split('@')[0];
-
         if (sessionUsername) {
-          const { data: userData } = await supabase.from('app_users')
-            .select('role')
-            .eq('username', sessionUsername)
-            .maybeSingle();
-
-          if (userData && userData.role) {
-            setUserRole(userData.role.toUpperCase()); 
-          } else {
-            setUserRole("ADMIN");
-          }
+          const { data: userData } = await supabase.from('app_users').select('role').eq('username', sessionUsername).maybeSingle();
+          if (userData && userData.role) { setUserRole(userData.role.toUpperCase()); } else { setUserRole("ADMIN"); }
         }
         setIsAuthLoading(false);
       } else {
-        setIsAuthenticated(false);
-        setUserRole("VIEWER");
-        if (!isDriverRoute) {
-          router.replace("/auth/login");
-        }
+        setIsAuthenticated(false); setUserRole("VIEWER");
+        if (!isDriverRoute) { router.replace("/auth/login"); }
       }
     };
 
-    if (!isDriverRoute) {
-      checkAuth();
-    } else {
-      setIsAuthLoading(false);
-    }
+    if (!isDriverRoute) { checkAuth(); } else { setIsAuthLoading(false); }
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event: any, session: any) => {
-      if (session) {
-        setIsAuthenticated(true);
-      } else if (event === 'SIGNED_OUT' && !isDriverRoute) {
-        router.replace("/auth/login");
-      }
+      if (session) { setIsAuthenticated(true); } else if (event === 'SIGNED_OUT' && !isDriverRoute) { router.replace("/auth/login"); }
     });
 
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    return () => { authListener.subscription.unsubscribe(); };
   }, [supabase, router, isDriverRoute]);
 
   const executeLogout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    setIsLogoutModalOpen(false);
-    router.replace("/auth/login");
+    if (!supabase) return; await supabase.auth.signOut(); setIsLogoutModalOpen(false); router.replace("/auth/login");
   };
 
   const extractStatus = (v: any) => String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
@@ -165,24 +123,16 @@ export default function Dashboard() {
     const { count: driverPendingCount } = await supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
     setPendingDriverCount(driverPendingCount || 0);
 
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const tenDaysFromNow = new Date(today);
-    tenDaysFromNow.setDate(today.getDate() + 10);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    const tenDaysFromNow = new Date(today); tenDaysFromNow.setDate(today.getDate() + 10);
 
     const alerts: Record<string, any[]> = {};
     const checkDoc = (docName: string, entityName: string, dateVal: string) => {
-      if (!dateVal) return;
-      const expDate = new Date(dateVal);
-      expDate.setHours(0,0,0,0);
-
+      if (!dateVal) return; const expDate = new Date(dateVal); expDate.setHours(0,0,0,0);
       if (expDate <= tenDaysFromNow) {
-        const isUrgent = expDate <= tomorrow; 
-        if (!alerts[docName]) alerts[docName] = [];
-        const cleanName = entityName.replace("Truck ", "");
-        alerts[docName].push({ name: cleanName, date: dateVal, isUrgent, expDate });
+        const isUrgent = expDate <= tomorrow; if (!alerts[docName]) alerts[docName] = [];
+        const cleanName = entityName.replace("Truck ", ""); alerts[docName].push({ name: cleanName, date: dateVal, isUrgent, expDate });
       }
     };
 
@@ -193,12 +143,8 @@ export default function Dashboard() {
     if (vehicles) {
       vehicles.forEach((v: any) => {
         const tName = `Truck ${v.vehicle_number}`;
-        checkDoc("FC Test", tName, v.fc_expiry_date);
-        checkDoc("Insurance", tName, v.insurance_expiry_date);
-        checkDoc("Quarterly Tax", tName, v.qtax_expiry_date);
-        checkDoc("PUC Certificate", tName, v.puc_expiry_date);
-        checkDoc("National Permit", tName, v.np_expiry_date);
-        checkDoc("State Permit", tName, v.state_permit_expiry_date);
+        checkDoc("FC Test", tName, v.fc_expiry_date); checkDoc("Insurance", tName, v.insurance_expiry_date); checkDoc("Quarterly Tax", tName, v.qtax_expiry_date);
+        checkDoc("PUC Certificate", tName, v.puc_expiry_date); checkDoc("National Permit", tName, v.np_expiry_date); checkDoc("State Permit", tName, v.state_permit_expiry_date);
         if (String(v.truck_type).toUpperCase().includes("BULK")) checkDoc("Tank Cert", tName, v.tank_cert_expiry_date);
       });
     }
@@ -206,50 +152,33 @@ export default function Dashboard() {
     Object.keys(alerts).forEach(k => alerts[k].sort((a, b) => a.expDate.getTime() - b.expDate.getTime()));
     setExpiringDocs(alerts);
 
-    const now = new Date();
-    const year = now.getFullYear();
-    const monthStr = String(now.getMonth() + 1).padStart(2, '0');
-    const firstDay = `${year}-${monthStr}-01`;
-    const lastDayObj = new Date(year, now.getMonth() + 1, 0);
-    const lastDay = `${year}-${monthStr}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
+    const now = new Date(); const year = now.getFullYear(); const monthStr = String(now.getMonth() + 1).padStart(2, '0');
+    const firstDay = `${year}-${monthStr}-01`; const lastDayObj = new Date(year, now.getMonth() + 1, 0); const lastDay = `${year}-${monthStr}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
 
     const { data: monthTrips } = await supabase.from('trips').select('freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance').gte('trip_start_date', firstDay).lte('trip_start_date', lastDay);
     const { data: monthDiesel } = await supabase.from('diesel_fuel_logs').select('total_fuel_cost').gte('fuel_date', firstDay).lte('fuel_date', lastDay);
 
     if (monthTrips && monthDiesel) {
-      setMonthTripsCount(monthTrips.length);
-      let totalFreight = 0; let nonFuelExpenses = 0; let totalDieselCost = 0;
-      monthTrips.forEach((t: any) => {
-        totalFreight += Number(t.freight_revenue) || 0;
-        nonFuelExpenses += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0) + (Number(t.enroute_repairs_maintenance) || 0);
-      });
+      setMonthTripsCount(monthTrips.length); let totalFreight = 0; let nonFuelExpenses = 0; let totalDieselCost = 0;
+      monthTrips.forEach((t: any) => { totalFreight += Number(t.freight_revenue) || 0; nonFuelExpenses += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0) + (Number(t.enroute_repairs_maintenance) || 0); });
       monthDiesel.forEach((d: any) => { totalDieselCost += Number(d.total_fuel_cost) || 0; });
-      setMonthFreight(totalFreight);
-      setMonthDieselCost(totalDieselCost);
-      setMonthNetRetention(totalFreight - totalDieselCost - nonFuelExpenses);
+      setMonthFreight(totalFreight); setMonthDieselCost(totalDieselCost); setMonthNetRetention(totalFreight - totalDieselCost - nonFuelExpenses);
     }
   };
 
   useEffect(() => {
-    if (isAuthenticated && supabase) {
-      setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
-      fetchDashboardData();
-    }
+    if (isAuthenticated && supabase) { setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' })); fetchDashboardData(); }
   }, [activeTab, opSubTab, isAuthenticated, supabase]);
 
   const getDrillDownData = (statusLabel: string) => {
-    const statusMap: Record<string, string[]> = {
-      "Plant Loading": ["WAITING_FOR_LOAD", "AVAILABLE_FOR_LOAD"], "In Transit": ["IN_TRANSIT"], "Workshop / Repairs": ["WORKSHOP_MAINTENANCE"], "No Driver / Leave": ["DRIVER_UNAVAILABLE"]
-    };
+    const statusMap: Record<string, string[]> = { "Plant Loading": ["WAITING_FOR_LOAD", "AVAILABLE_FOR_LOAD"], "In Transit": ["IN_TRANSIT"], "Workshop / Repairs": ["WORKSHOP_MAINTENANCE"], "No Driver / Leave": ["DRIVER_UNAVAILABLE"] };
     return liveVehicles.filter((v: any) => (statusMap[statusLabel] || []).includes(extractStatus(v)));
   };
 
   const currentDrillDownData = selectedStatus ? getDrillDownData(selectedStatus) : [];
 
   const handleQuickStatusSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!supabase) return;
-    if (!qsTruckId) return alert("Please select a truck.");
+    e.preventDefault(); if (!supabase) return; if (!qsTruckId) return alert("Please select a truck.");
     const { error } = await supabase.from('trucks').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('vehicle_id', qsTruckId);
     if (error) alert("Error updating status: " + error.message);
     else { alert("Vehicle status updated successfully!"); setQsTruckId(""); setQsRemarks(""); fetchDashboardData(); }
@@ -271,8 +200,28 @@ export default function Dashboard() {
 
   if (!isAuthenticated) return null;
 
-  const allNavItems = ["Dashboard", "Operations", "Accounts", "Fuel", "Workshop & Tyres", "Financials", "P&L Statement", "Insights", "Master"];
-  const navItems = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? allNavItems : ["Dashboard", "Financials", "P&L Statement", "Insights"];
+  // WORLD-CLASS ERP CATEGORIZED NAVIGATION
+  const erpNavigation = [
+    {
+      category: "Overview & Dispatch",
+      items: ["Dashboard", "Operations", "Fuel", "Workshop & Tyres"]
+    },
+    {
+      category: "Finance & Accounting",
+      items: ["Driver Settlement", "Accounts", "Fleet Analytics", "P&L Statement"]
+    },
+    {
+      category: "Administration",
+      items: ["Insights", "Master"]
+    }
+  ];
+
+  const allowedCategories = (userRole === "ADMIN" || userRole === "SUPERADMIN") 
+    ? erpNavigation 
+    : [
+        { category: "Overview", items: ["Dashboard"] },
+        { category: "Finance", items: ["Fleet Analytics", "P&L Statement", "Insights"] }
+      ];
 
   return (
     <div className="min-h-screen bg-[#050507] text-white font-sans selection:bg-[#FF5A00]/20 selection:text-[#FF5A00] relative overflow-x-hidden">
@@ -298,11 +247,20 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-        <nav className="flex flex-wrap gap-1.5 bg-[#12141C] p-1.5 rounded-2xl border border-[#222634] shadow-sm">
-          {navItems.map((item) => (
-            <button key={item} onClick={() => setActiveTab(item)} className={`relative px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 ease-out whitespace-nowrap ${activeTab === item ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" : "text-slate-400 hover:text-white hover:bg-[#1A1F2C]"}`}>
-              {item}
-            </button>
+        
+        {/* WORLD-CLASS CATEGORIZED ERP NAVIGATION */}
+        <nav className="flex flex-col md:flex-row gap-4 mb-8">
+          {allowedCategories.map((group) => (
+            <div key={group.category} className="flex-1 bg-[#12141C] border border-[#222634] rounded-2xl p-2 shadow-sm">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 pt-2 pb-1">{group.category}</p>
+              <div className="flex flex-wrap gap-1">
+                {group.items.map((item) => (
+                  <button key={item} onClick={() => setActiveTab(item)} className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 ease-out whitespace-nowrap ${activeTab === item ? "bg-[#FF5A00] text-white shadow-sm ring-1 ring-[#FF5A00]" : "text-slate-400 hover:text-white hover:bg-[#1A1F2C]"}`}>
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
@@ -435,12 +393,10 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
-
               {opSubTab === "Trips" && <TripForm onSuccess={() => fetchDashboardData()} />}
               {opSubTab === "POD Closure" && <PodClosure onSuccess={() => fetchDashboardData()} />}
               {opSubTab === "Modify Trips" && <ModifyTrips />}
               {opSubTab === "Driver Approvals" && <ApprovalQueue/>}
-
               {opSubTab === "Quick Status" && (
                 <div className="bg-[#161922] border border-[#222634] rounded-xl p-4 sm:p-6 shadow-sm max-w-2xl animate-in fade-in duration-300">
                   <h3 className="text-xs sm:text-sm font-black text-white mb-6 uppercase tracking-wider border-b border-[#222634] pb-2">Manual Status Override</h3>
@@ -469,46 +425,39 @@ export default function Dashboard() {
             </div>
           )}
 
-          {activeTab === "Accounts" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
+          {/* THE RESTORED DRIVER SETTLEMENT MODULE */}
+          {activeTab === "Driver Settlement" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
             <div className="p-4 sm:p-6 mt-6">
-              <AccountsModule />
+              <DriverSettlementModule />
             </div>
+          )}
+
+          {activeTab === "Accounts" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
+            <div className="p-4 sm:p-6 mt-6"><AccountsModule /></div>
           )}
 
           {activeTab === "Fuel" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
-            <div className="p-4 sm:p-6 mt-6">
-              <FuelAdvanceModule />
-            </div>
+            <div className="p-4 sm:p-6 mt-6"><FuelAdvanceModule /></div>
           )}
 
           {activeTab === "Workshop & Tyres" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
-            <div className="p-6 mt-6">
-              <WorkshopModule />
-            </div>
+            <div className="p-6 mt-6"><WorkshopModule /></div>
           )}
 
-          {activeTab === "Financials" && (
-            <div className="p-6 mt-6">
-              <FinancialsModule />
-            </div>
+          {activeTab === "Fleet Analytics" && (
+            <div className="p-6 mt-6"><FinancialsModule /></div>
           )}
 
           {activeTab === "P&L Statement" && (
-            <div className="p-6 mt-6">
-              <ProfitLossModule />
-            </div>
+            <div className="p-6 mt-6"><ProfitLossModule /></div>
           )}
 
           {activeTab === "Insights" && (
-            <div className="p-6 mt-6">
-              <AiInsightsDashboard />
-            </div>
+            <div className="p-6 mt-6"><AiInsightsDashboard /></div>
           )}
 
           {activeTab === "Master" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
-            <div className="p-6 mt-6">
-              <SetupModule />
-            </div>
+            <div className="p-6 mt-6"><SetupModule /></div>
           )}
         </div>
       </main>
