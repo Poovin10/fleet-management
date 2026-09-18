@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export default function ProfitLossModule() {
+export function ProfitLossModule() {
   const [loading, setLoading] = useState(true);
   const [trips, setTrips] = useState<any[]>([]);
   const [fuelLogs, setFuelLogs] = useState<any[]>([]);
@@ -41,7 +41,6 @@ export default function ProfitLossModule() {
     fetchData();
   }, []);
 
-  // Calculate totals
   const totalRevenue = trips.reduce((acc, t) => acc + Number(t.freight_revenue || 0), 0);
   const totalFuel = fuelLogs.reduce((acc, f) => acc + Number(f.total_fuel_cost || 0), 0);
   const totalBata = trips.reduce((acc, t) => acc + Number(t.driver_bata || 0) + Number(t.halt_bata || 0), 0);
