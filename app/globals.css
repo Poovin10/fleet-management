@@ -88,6 +88,6 @@
 }
 
 .animate-tab-focus {
-  animation: tierOneTabEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: tierOneTabEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity, filter;
 }
