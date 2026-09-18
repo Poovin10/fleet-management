@@ -1,4 +1,5 @@
 "use client";
+import LiquidGlassProvider from "./LiquidGlassProvider";
 import TelemetryHUD from "./TelemetryHUD";
 
 import { useState, useEffect } from "react";
@@ -146,10 +147,11 @@ export default function Dashboard() {
 
  if (isDriverRoute) {
  return (
- <div className="min-h-screen bg-[#030407] py-6 px-4">
+ <LiquidGlassProvider>
+<div className="min-h-screen bg-[#030407] py-6 px-4">
  <div className="max-w-md mx-auto mb-6 text-center">
- <h1 className="text-xl font-black tracking-tighter text-white">KSS Roadways</h1>
- <p className="text-[10px] text-[#FF5A00] uppercase tracking-widest font-extrabold">Driver Highway Portal</p>
+ <h1 className="text-xl font-semibold tracking-tighter text-white">KSS Roadways</h1>
+ <p className="text-[10px] text-[#FF5A00]  tracking-normal font-semibold">Driver Highway Portal</p>
  </div>
  <DriverPortal/>
  </div>
@@ -180,18 +182,18 @@ export default function Dashboard() {
  <KssLogo className="w-5 h-5"/>
  </div>
  <div>
- <h1 className="text-xs font-black tracking-wider text-white uppercase">KSS Roadways</h1>
+ <h1 className="text-xs font-semibold tracking-wider text-white ">KSS Roadways</h1>
  <div className="flex items-center gap-1.5 mt-0.5">
  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
- <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Cochin Node {liveVehicles.length} Active Units</span>
+ <span className="text-[9px] font-bold text-white/60  tracking-normal">Cochin Node {liveVehicles.length} Active Units</span>
  </div>
  </div>
  </div>
 
  <div className="flex items-center gap-3">
  <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[11px] font-semibold text-slate-300 font-mono">
- <span className="text-slate-500 uppercase">ROLE:</span>
- <span className="text-[#FF5A00] font-black">{userRole}</span>
+ <span className="text-white/40 ">ROLE:</span>
+ <span className="text-[#FF5A00] font-semibold">{userRole}</span>
  </div>
  <button onClick={() => setIsLogoutModalOpen(true)} className="px-3.5 py-1.5 text-[11px] font-bold text-slate-300 hover:text-white bg-white/[0.04] hover:bg-rose-500/10 border border-white/[0.06] hover:border-rose-500/30 rounded-xl transition-all">
  Sign Out
@@ -206,10 +208,10 @@ export default function Dashboard() {
  <div className="flex flex-col lg:flex-row gap-3 p-1.5 bg-[#080A10]/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl">
  {allowedCategories.map((group) => (
  <div key={group.category} className="flex-1 flex items-center gap-1 p-1 bg-white/[0.01] rounded-xl border border-white/[0.03]">
- <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-3 hidden xl:inline">{group.category}</span>
+ <span className="text-[9px] font-semibold text-white/40  tracking-normal px-3 hidden xl:inline">{group.category}</span>
  <div className="flex flex-wrap gap-1 flex-1">
  {group.items.map((item) => (
- <button key={item} onClick={() => setActiveTab(item)} className={`flex-1 px-3 py-2 text-[11px] font-bold rounded-lg transition-all tracking-tight ${activeTab === item ? "bg-gradient-to-r from-[#FF5A00] to-[#E04F00] text-white shadow-[0_0_20px_rgba(255,90,0,0.3)] font-black" : "text-slate-400 hover:text-white hover:bg-white/[0.04]"}`}>
+ <button key={item} onClick={() => setActiveTab(item)} className={`flex-1 px-3 py-2 text-[11px] font-bold rounded-lg transition-all tracking-tight ${activeTab === item ? "bg-gradient-to-r from-[#FF5A00] to-[#E04F00] text-white shadow-[0_0_20px_rgba(255,90,0,0.3)] font-semibold" : "text-white/60 hover:text-white hover:bg-white/[0.04]"}`}>
  {item}
  </button>
  ))}
@@ -227,7 +229,7 @@ export default function Dashboard() {
  <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 sm:p-8 shadow-2xl min-h-[60vh]">
  <div className="flex flex-wrap gap-2 border-b border-white/[0.06] pb-5 mb-6">
  {opTabs.map((sub) => (
- <button key={sub} onClick={() => setOpSubTab(sub)} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${opSubTab === sub ? "bg-[#FF5A00] text-white shadow-[0_0_20px_rgba(255,90,0,0.3)] font-black" : "text-slate-400 hover:text-white hover:bg-white/[0.04]"}`}>
+ <button key={sub} onClick={() => setOpSubTab(sub)} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${opSubTab === sub ? "bg-[#FF5A00] text-white shadow-[0_0_20px_rgba(255,90,0,0.3)] font-semibold" : "text-white/60 hover:text-white hover:bg-white/[0.04]"}`}>
  {sub}
  </button>
  ))}
@@ -238,30 +240,30 @@ export default function Dashboard() {
  {opSubTab === "Driver Approvals" && <ApprovalQueue/>}
  {opSubTab === "Quick Status" && (
  <div className="bg-[#080A10] border border-white/[0.06] rounded-2xl p-6 max-w-xl">
- <h3 className="text-xs font-black text-white mb-6 uppercase tracking-wider border-b border-white/[0.06] pb-3">Manual Status Override</h3>
+ <h3 className="text-xs font-semibold text-white mb-6  tracking-wider border-b border-white/[0.06] pb-3">Manual Status Override</h3>
  <form onSubmit={async (e) => {
  e.preventDefault(); if (!supabase || !qsTruckId) return;
  const { error } = await supabase.from('trucks').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('id', qsTruckId);
  if (error) alert("Error: " + error.message); else { alert("Status updated!"); setQsTruckId(""); setQsRemarks(""); fetchDashboardData(); }
  }} className="animate-tab-focus space-y-4">
  <div>
- <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Select Truck</label>
+ <label className="block text-[10px] font-semibold text-white/60 mb-1.5 ">Select Truck</label>
  <select value={qsTruckId} onChange={(e) => setQsTruckId(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] focus:border-[#FF5A00] outline-none font-bold text-white">
  <option value="">Select vehicle...</option>
  {liveVehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number} ({v.carrying_capacity_tons}MT)</option>))}
  </select>
  </div>
  <div>
- <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Status</label>
+ <label className="block text-[10px] font-semibold text-white/60 mb-1.5 ">Status</label>
  <select value={qsStatus} onChange={(e) => setQsStatus(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] focus:border-[#FF5A00] outline-none font-bold text-white">
  <option value="WAITING_FOR_LOAD">Plant Loading</option><option value="IN_TRANSIT">In Transit</option><option value="WORKSHOP_MAINTENANCE">Workshop / Repairs</option><option value="DRIVER_UNAVAILABLE">No Driver / Leave</option>
  </select>
  </div>
  <div>
- <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Remarks</label>
+ <label className="block text-[10px] font-semibold text-white/60 mb-1.5 ">Remarks</label>
  <input type="text" value={qsRemarks} onChange={(e) => setQsRemarks(e.target.value)} placeholder="Location or repair notes" className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] focus:border-[#FF5A00] outline-none font-semibold text-white" />
  </div>
- <button type="submit" className="w-full py-3 bg-[#FF5A00] hover:bg-[#E04F00] text-white font-black text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)]">Update Fleet Status</button>
+ <button type="submit" className="w-full py-3 bg-[#FF5A00] hover:bg-[#E04F00] text-white font-semibold text-xs rounded-xl  tracking-wider transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)]">Update Fleet Status</button>
  </form>
  </div>
  )}
@@ -280,5 +282,6 @@ export default function Dashboard() {
 
  </main>
  </div>
+    </LiquidGlassProvider>
  );
 }

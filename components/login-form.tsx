@@ -58,8 +58,8 @@ export function LoginForm() {
  <div className="w-16 h-16 rounded-2xl bg-[#101218] border border-[#1E2230] flex items-center justify-center shadow-lg mb-4 overflow-hidden">
  <KssLogo className="w-12 h-12" />
  </div>
- <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">KSS Roadways ERP</h1>
- <p className="text-xs text-slate-400 font-semibold mt-1">Enterprise Fleet Intelligence & Logistics Suite</p>
+ <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight ">KSS Roadways ERP</h1>
+ <p className="text-xs text-white/60 font-semibold mt-1">Enterprise Fleet Intelligence & Logistics Suite</p>
  </div>
 
  {errorMsg && (
@@ -71,7 +71,7 @@ export function LoginForm() {
 
  <form onSubmit={handleLogin} className="space-y-5">
  <div>
- <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Username / Corporate Email</label>
+ <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Username / Corporate Email</label>
  <input
  type="text"
  value={email}
@@ -83,7 +83,7 @@ export function LoginForm() {
  </div>
 
  <div>
- <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Secure Password</label>
+ <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Secure Password</label>
  <input
  type="password"
  value={password}
@@ -97,14 +97,14 @@ export function LoginForm() {
  <button
  type="submit"
  disabled={loading}
- className="w-full py-4 mt-2 bg-[#FF5A00] hover:bg-[#E04F00] active:scale-[0.98] text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/25 disabled:bg-slate-800 disabled:text-slate-500 uppercase tracking-wider cursor-pointer"
+ className="w-full py-4 mt-2 bg-[#FF5A00] hover:bg-[#E04F00] active:scale-[0.98] text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/25 disabled:bg-slate-800 disabled:text-white/40  tracking-wider cursor-pointer"
  >
  {loading ? "Authenticating Session..." : "Authorize Access"}
  </button>
  </form>
 
  <div className="mt-8 pt-6 border-t border-[#1E2230] text-center">
- <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Secured Enterprise Node Cochin Operations</p>
+ <p className="text-[10px] font-bold text-white/40  tracking-normal">Secured Enterprise Node Cochin Operations</p>
  </div>
 
  </div>

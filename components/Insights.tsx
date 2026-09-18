@@ -105,7 +105,7 @@ export default function Insights() {
   }, [supabase]);
 
   return (
-    <div className="space-y-6 animate-tab-focus text-slate-200 font-sans">
+    <div className="space-y-6 animate-tab-focus text-white/90 font-sans">
       
       {/* Enterprise Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-4 border-b border-white/[0.08] gap-4">
@@ -116,12 +116,12 @@ export default function Insights() {
               AI Analytics Active
             </span>
           </h2>
-          <p className="text-sm text-slate-500 mt-1">Predictive logistics, route optimization, and anomaly detection</p>
+          <p className="text-sm text-white/40 mt-1">Predictive logistics, route optimization, and anomaly detection</p>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="h-64 flex items-center justify-center text-slate-500 text-sm font-medium">
+        <div className="h-64 flex items-center justify-center text-white/40 text-sm font-medium">
           Processing Fleet Telemetry...
         </div>
       ) : (
@@ -141,17 +141,17 @@ export default function Insights() {
               
               <div className="space-y-4">
                 {routeProfitability.length === 0 ? (
-                  <div className="text-xs text-slate-500">Insufficient trip data to calculate route matrices.</div>
+                  <div className="text-xs text-white/40">Insufficient trip data to calculate route matrices.</div>
                 ) : (
                   routeProfitability.map((route, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.04] rounded-lg">
                       <div>
                         <div className="text-[13px] font-medium text-white">{route.route}</div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">{route.trips} Dispatches Logged</div>
+                        <div className="text-[11px] text-white/40 mt-0.5">{route.trips} Dispatches Logged</div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-semibold text-emerald-400 tracking-tight">₹{formatINR(route.revenue)}</div>
-                        <div className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">Gross Yield</div>
+                        <div className="text-[10px] text-white/40  tracking-normal mt-0.5">Gross Yield</div>
                       </div>
                     </div>
                   ))
@@ -179,11 +179,11 @@ export default function Insights() {
                     <div key={idx} className="flex items-center justify-between p-3 bg-rose-500/5 border border-rose-500/10 rounded-lg">
                       <div>
                         <div className="text-[13px] font-medium text-white">{anom.truck}</div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">Logged {anom.distance} KM on {anom.litres} Litres</div>
+                        <div className="text-[11px] text-white/60 mt-0.5">Logged {anom.distance} KM on {anom.litres} Litres</div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-semibold text-rose-400 tracking-tight">{anom.kmpl} KMPL</div>
-                        <div className="text-[10px] text-rose-500/70 uppercase tracking-widest mt-0.5">Requires Audit</div>
+                        <div className="text-[10px] text-rose-500/70  tracking-normal mt-0.5">Requires Audit</div>
                       </div>
                     </div>
                   ))}
@@ -201,7 +201,7 @@ export default function Insights() {
               <h3 className="text-sm font-medium text-white tracking-tight mb-5">Fleet Utilization</h3>
               <div className="flex items-end gap-3 mb-4">
                 <div className="text-4xl font-semibold text-white tracking-tight">{utilizationRate.toFixed(1)}%</div>
-                <div className="text-xs text-slate-500 mb-1.5 uppercase tracking-widest">Active Units</div>
+                <div className="text-xs text-white/40 mb-1.5  tracking-normal">Active Units</div>
               </div>
               
               <div className="w-full bg-white/[0.04] rounded-full h-1.5 mb-2 overflow-hidden">
@@ -210,7 +210,7 @@ export default function Insights() {
                   style={{ width: `${utilizationRate}%` }}
                 ></div>
               </div>
-              <div className="text-[11px] text-slate-500 mt-2 text-center">
+              <div className="text-[11px] text-white/40 mt-2 text-center">
                 Percentage of registered fleet dispatched this cycle.
               </div>
             </div>
@@ -226,7 +226,7 @@ export default function Insights() {
               </h3>
               
               {maintenanceAlerts.length === 0 ? (
-                <div className="text-xs text-slate-500 text-center py-4">No critical wear detected based on trip volume.</div>
+                <div className="text-xs text-white/40 text-center py-4">No critical wear detected based on trip volume.</div>
               ) : (
                 <div className="space-y-3">
                   {maintenanceAlerts.map((alert, idx) => (

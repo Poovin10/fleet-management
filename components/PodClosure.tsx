@@ -27,7 +27,7 @@ function SearchableSelect({ options, value, onChange, placeholder, disabled }: {
  onClick={() => !disabled && setIsOpen(!isOpen)}
  >
  <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
- <span className="text-[10px] text-slate-400"></span>
+ <span className="text-[10px] text-white/60"></span>
  </div>
  {isOpen && (
  <div className="absolute z-50 w-full mt-1 bg-[#12141C] border border-[#2B3142] rounded-xl shadow-2xl max-h-60 overflow-y-auto">
@@ -53,7 +53,7 @@ function SearchableSelect({ options, value, onChange, placeholder, disabled }: {
  </div>
  ))}
  {options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())).length === 0 && (
- <div className="p-3 text-xs text-slate-500 text-center font-bold">No matches found</div>
+ <div className="p-3 text-xs text-white/40 text-center font-bold">No matches found</div>
  )}
  </div>
  </div>
@@ -276,7 +276,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  
  {pendingScans.length > 0 && (
  <div className="mb-6 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
- <h4 className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+ <h4 className="text-xs font-semibold text-emerald-400  tracking-wider flex items-center gap-2 mb-3">
  <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
  Pending POD Entries Inbox ({pendingScans.length})
  </h4>
@@ -287,10 +287,10 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500' : 'border-[#2B3142] hover:border-slate-500 bg-[#12141C]'}`}>
  <div className="flex justify-between items-start gap-4">
  <div>
- <p className="text-[10px] text-slate-400 font-bold mb-1">LR: <span className="text-white">{data.lrNo || "UNKNOWN"}</span></p>
- <p className="text-xs font-black text-white truncate">Shortage: <span className={data.shortageKg > 0 ? "text-rose-400" : "text-emerald-400"}>{data.shortageKg || 0} kg</span></p>
+ <p className="text-[10px] text-white/60 font-bold mb-1">LR: <span className="text-white">{data.lrNo || "UNKNOWN"}</span></p>
+ <p className="text-xs font-semibold text-white truncate">Shortage: <span className={data.shortageKg > 0 ? "text-rose-400" : "text-emerald-400"}>{data.shortageKg || 0} kg</span></p>
  </div>
- <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-slate-500 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete entry">️</div>
+ <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-white/40 hover:text-rose-500 bg-[#0F1117] p-1.5 rounded border border-[#2B3142] transition-colors" title="Delete entry">️</div>
  </div>
  </button>
  );
@@ -300,8 +300,8 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  )}
 
  <div className="border-b border-[#222634] pb-4 mb-6">
- <h3 className="text-base font-black text-white uppercase tracking-tight">Record POD & Settle Trip</h3>
- <p className="text-xs text-slate-400 mt-1">Select an active LR or pick a pending POD entry from the inbox to autofill.</p>
+ <h3 className="text-base font-semibold text-white  tracking-tight">Record POD & Settle Trip</h3>
+ <p className="text-xs text-white/60 mt-1">Select an active LR or pick a pending POD entry from the inbox to autofill.</p>
  </div>
 
  {activeTrips.length === 0 && !isLoading ? (
@@ -311,47 +311,47 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  ) : (
  <form onSubmit={handleSettlePod} className="space-y-5">
  <div>
- <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Search & Select Active LR *</label>
+ <label className="block text-[10px] font-bold text-white/60  mb-1">Search & Select Active LR *</label>
  <SearchableSelect options={lrOptions} value={selectedLr} onChange={setSelectedLr} placeholder="-- SELECT LR TO CLOSE --" disabled={isLoading} />
  </div>
 
  {currentTrip && (
  <>
  <div className="p-4 bg-[#0F1117] border border-[#222634] rounded-xl flex flex-wrap gap-4 justify-between text-xs text-slate-300">
- <span><strong className="text-slate-500">DRIVER:</strong> <br/><span className="font-bold text-white">{currentTrip.drivers?.full_name || "Unassigned"}</span></span>
- <span><strong className="text-slate-500">ROUTE:</strong> <br/><span className="font-bold text-white">{currentTrip.origin} {currentTrip.destination}</span></span>
- <span><strong className="text-slate-500">DISPATCHED:</strong> <br/><span className="font-black text-[#FF5A00]">{currentTrip.loaded_weight_mt} MT</span></span>
+ <span><strong className="text-white/40">DRIVER:</strong> <br/><span className="font-bold text-white">{currentTrip.drivers?.full_name || "Unassigned"}</span></span>
+ <span><strong className="text-white/40">ROUTE:</strong> <br/><span className="font-bold text-white">{currentTrip.origin} {currentTrip.destination}</span></span>
+ <span><strong className="text-white/40">DISPATCHED:</strong> <br/><span className="font-semibold text-[#FF5A00]">{currentTrip.loaded_weight_mt} MT</span></span>
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">POD No *</label><input type="text" value={podNo} onChange={(e) => setPodNo(e.target.value)} placeholder="e.g. POD-8821" className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white uppercase font-bold outline-none focus:border-[#FF5A00]" required /></div>
- <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Closing Date *</label><input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-semibold outline-none focus:border-[#FF5A00]" required /></div>
- <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Unloaded MT</label><input type="number" {...numProps} value={unloadedMt} onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">POD No *</label><input type="text" value={podNo} onChange={(e) => setPodNo(e.target.value)} placeholder="e.g. POD-8821" className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white  font-bold outline-none focus:border-[#FF5A00]" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Closing Date *</label><input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-semibold outline-none focus:border-[#FF5A00]" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Unloaded MT</label><input type="number" {...numProps} value={unloadedMt} onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-white font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} /></div>
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Closing KM *</label><input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder={`Start: ${currentTrip.start_km || 0}`} className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-sky-400 font-bold outline-none focus:border-[#FF5A00] ${noSpinClass}`} required /></div>
- <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Halt Bata ()</label><input type="number" {...numProps} value={haltBata} onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-[#FF5A00] font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} /></div>
- <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Claims / Repairs ()</label><input type="number" {...numProps} value={claims} onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-rose-400 font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Closing KM *</label><input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder={`Start: ${currentTrip.start_km || 0}`} className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-sky-400 font-bold outline-none focus:border-[#FF5A00] ${noSpinClass}`} required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Halt Bata ()</label><input type="number" {...numProps} value={haltBata} onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-[#FF5A00] font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Claims / Repairs ()</label><input type="number" {...numProps} value={claims} onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-rose-400 font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} /></div>
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-[#222634] pt-5 items-center">
  <div>
- <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Closing Diesel Top-up (L)</label>
- <input type="number" {...numProps} value={closingDiesel} onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0 Litres" className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-[#FF5A00] font-black outline-none focus:border-[#FF5A00] ${noSpinClass}`} />
- <span className="text-[10px] text-slate-500 font-bold mt-1 block">Valued at current rate: {dieselRate}/L</span>
+ <label className="block text-[10px] font-bold text-white/60  mb-1">Closing Diesel Top-up (L)</label>
+ <input type="number" {...numProps} value={closingDiesel} onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0 Litres" className={`w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] text-[#FF5A00] font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} />
+ <span className="text-[10px] text-white/40 font-bold mt-1 block">Valued at current rate: {dieselRate}/L</span>
  </div>
  <div className="pt-2">
  <label className="flex items-center gap-3 cursor-pointer select-none bg-[#0F1117] p-3 rounded-xl border border-[#222634] w-fit">
  <input type="checkbox" checked={isTankFull} onChange={(e) => setIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] bg-[#1A1F2C] border-[#2B3142]" />
- <span className="text-xs font-black text-white uppercase"> Mark Tank Full</span>
+ <span className="text-xs font-semibold text-white "> Mark Tank Full</span>
  </label>
  </div>
  </div>
 
  {complianceWarnings.length > 0 && (
  <div className="bg-rose-950/20 border border-rose-900/50 p-4 rounded-xl mt-4 mb-2">
- <h4 className="text-[10px] font-black text-rose-500 uppercase mb-2 flex items-center gap-2">️ Compliance Warnings (Closing Allowed)</h4>
+ <h4 className="text-[10px] font-semibold text-rose-500  mb-2 flex items-center gap-2">️ Compliance Warnings (Closing Allowed)</h4>
  {complianceWarnings.map((w, i) => (
  <p key={i} className={`text-xs font-bold ${w.isUrgent ? 'text-rose-500' : 'text-amber-500'}`}> {w.name} {w.docName} expiring on {w.date}</p>
  ))}
@@ -359,7 +359,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  )}
 
  <div className="pt-6 border-t border-[#222634] flex justify-end">
- <button type="submit" disabled={isSubmitting} className="w-full md:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:bg-slate-700 disabled:shadow-none">
+ <button type="submit" disabled={isSubmitting} className="w-full md:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:bg-slate-700 disabled:shadow-none">
  {isSubmitting ? "Settling..." : " Settle & Close POD"}
  </button>
  </div>
@@ -372,17 +372,17 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  {/* RIGHT PANEL: Pending POD List */}
  <div className="lg:col-span-5 bg-[#12141C] border border-[#222634] rounded-2xl overflow-hidden flex flex-col shadow-sm h-fit">
  <div className="bg-[#161922] px-5 py-4 flex justify-between items-center border-b border-[#222634]">
- <h4 className="text-xs font-black text-white uppercase tracking-wider">Pending POD List ({activeTrips.length})</h4>
- <span className="text-[9px] font-bold px-2.5 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg uppercase tracking-widest">Awaiting</span>
+ <h4 className="text-xs font-semibold text-white  tracking-wider">Pending POD List ({activeTrips.length})</h4>
+ <span className="text-[9px] font-bold px-2.5 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg  tracking-normal">Awaiting</span>
  </div>
  <div className="overflow-x-auto overflow-y-auto max-h-[600px] w-full">
  <table className="w-full text-left border-collapse whitespace-nowrap">
  <thead className="bg-[#0F1117] sticky top-0 z-10">
  <tr>
- <th className="py-3 px-5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#222634]">LR No</th>
- <th className="py-3 px-5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#222634]">Date</th>
- <th className="py-3 px-5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#222634]">Truck</th>
- <th className="py-3 px-5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#222634] text-right">Aging</th>
+ <th className="py-3 px-5 text-[10px] font-bold text-white/40  tracking-wider border-b border-[#222634]">LR No</th>
+ <th className="py-3 px-5 text-[10px] font-bold text-white/40  tracking-wider border-b border-[#222634]">Date</th>
+ <th className="py-3 px-5 text-[10px] font-bold text-white/40  tracking-wider border-b border-[#222634]">Truck</th>
+ <th className="py-3 px-5 text-[10px] font-bold text-white/40  tracking-wider border-b border-[#222634] text-right">Aging</th>
  </tr>
  </thead>
  <tbody className="divide-y divide-[#222634] bg-[#12141C]">
@@ -391,14 +391,14 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  const isSelected = selectedLr === t.trip_number;
  return (
  <tr key={t.trip_id} onClick={() => setSelectedLr(t.trip_number)} className={`cursor-pointer transition-all ${isSelected ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'border-l-2 border-l-transparent hover:bg-[#1A1F2C]'}`}>
- <td className={`py-3.5 px-5 text-xs font-black ${isSelected ? 'text-[#FF5A00]' : 'text-white'}`}>{t.trip_number}</td>
- <td className="animate-tab-focus py-3.5 px-5 text-xs font-semibold text-slate-400">{formatDate(t.trip_start_date)}</td>
+ <td className={`py-3.5 px-5 text-xs font-semibold ${isSelected ? 'text-[#FF5A00]' : 'text-white'}`}>{t.trip_number}</td>
+ <td className="animate-tab-focus py-3.5 px-5 text-xs font-semibold text-white/60">{formatDate(t.trip_start_date)}</td>
  <td className="py-3.5 px-5 text-xs font-bold text-slate-300">{t.vehicles?.vehicle_number || "-"}</td>
- <td className={`py-3.5 px-5 text-xs font-black text-right ${days >= 2 ? 'text-rose-400' : 'text-amber-500'}`}>{days}d</td>
+ <td className={`py-3.5 px-5 text-xs font-semibold text-right ${days >= 2 ? 'text-rose-400' : 'text-amber-500'}`}>{days}d</td>
  </tr>
  );
  })}
- {activeTrips.length === 0 && (<tr><td colSpan={4} className="py-8 text-center text-slate-500 text-xs font-medium">No pending PODs found.</td></tr>)}
+ {activeTrips.length === 0 && (<tr><td colSpan={4} className="py-8 text-center text-white/40 text-xs font-medium">No pending PODs found.</td></tr>)}
  </tbody>
  </table>
  </div>

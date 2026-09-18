@@ -343,7 +343,7 @@ export function DriverPortal() {
  };
 
  const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5A00] focus-visible:border-[#FF5A00]";
- const labelStyle = "text-xs font-bold text-fg-secondary uppercase tracking-wide leading-none mb-1";
+ const labelStyle = "text-xs font-bold text-fg-secondary  tracking-wide leading-none mb-1";
  const numProps = { onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur() };
 
  return (
@@ -352,7 +352,7 @@ export function DriverPortal() {
  <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
  <div className="flex items-center gap-3">
  <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm bg-surface"><KssLogo className="w-full h-full" /></div>
- <div><h1 className="text-sm font-bold text-white tracking-tight leading-none">KSS Roadways</h1><p className="text-[9px] text-[#FF5A00] font-bold uppercase tracking-widest mt-0.5">Driver Portal</p></div>
+ <div><h1 className="text-sm font-bold text-white tracking-tight leading-none">KSS Roadways</h1><p className="text-[9px] text-[#FF5A00] font-bold  tracking-normal mt-0.5">Driver Portal</p></div>
  </div>
  </div>
 
@@ -374,7 +374,7 @@ export function DriverPortal() {
  ) : (
  <div className="flex flex-col pb-4">
  <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-app">
- <div><p className="text-[10px] text-fg-secondary font-bold uppercase">Active Driver</p><span className="text-sm font-bold text-fg">{displayDriverName}</span></div>
+ <div><p className="text-[10px] text-fg-secondary font-bold ">Active Driver</p><span className="text-sm font-bold text-fg">{displayDriverName}</span></div>
  <button type="button" onClick={handleResetDriver} className="text-xs font-bold text-[#FF5A00] hover:text-[#e04f00] underline transition-colors">Switch</button>
  </div>
 
@@ -400,7 +400,7 @@ export function DriverPortal() {
  </div>
  ) : (
  <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl text-center">
- <p className="text-xs font-bold text-slate-500">No active trip dispatched by office.</p>
+ <p className="text-xs font-bold text-white/40">No active trip dispatched by office.</p>
  <p className="text-[11px] font-bold text-[#FF5A00] mt-1">Hit 'Start Trip' to create a Draft Trip.</p>
  </div>
  )}
@@ -430,9 +430,9 @@ export function DriverPortal() {
  {actionType === "UNLOADED" && (
  <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl space-y-3">
  {isBulk ? (
- <><div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 uppercase">Unloaded Weight (MT)</label><input type="number" step="any" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} {...numProps}/></div>
+ <><div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 ">Unloaded Weight (MT)</label><input type="number" step="any" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} {...numProps}/></div>
  <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={noWeighment} onChange={(e) => setNoWeighment(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-orange-300" /><span className="text-xs font-bold text-orange-800">No weighment facility</span></label></>
- ) : ( <div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 uppercase">Damaged Bags Count</label><input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required {...numProps}/></div> )}
+ ) : ( <div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 ">Damaged Bags Count</label><input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required {...numProps}/></div> )}
  </div>
  )}
  {(actionType === "BREAKDOWN" || actionType === "UNLOADED") && <div className="grid gap-1.5"><label className={labelStyle}>Remarks</label><input type="text" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Optional details..." className={inputStyle} required={actionType === "BREAKDOWN"} /></div>}
@@ -447,8 +447,8 @@ export function DriverPortal() {
  <div className="p-6 grid gap-6 bg-app min-h-[400px] animate-in fade-in">
  <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm space-y-3">
  <div>
- <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current Month Net Balance</p>
- <div className="flex justify-between items-baseline mt-1"><span className={`text-2xl font-bold ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span><span className="text-[10px] text-slate-400">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span></div>
+ <p className="text-[10px] font-bold  tracking-normal text-white/60">Current Month Net Balance</p>
+ <div className="flex justify-between items-baseline mt-1"><span className={`text-2xl font-bold ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span><span className="text-[10px] text-white/60">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span></div>
  </div>
  <div className="pt-3 border-t border-slate-800 grid grid-cols-2 text-[11px] text-slate-300">
  <div>Earned Bata: <strong className="text-white">{monthEarnedBata}</strong></div><div>Halt Bata (Exp): <strong className="text-amber-400">{monthHaltBata}</strong></div>
@@ -458,7 +458,7 @@ export function DriverPortal() {
  <button
  type="button"
  onClick={handleDownloadPortalLedger}
- className="w-full mt-2 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 uppercase tracking-wide"
+ className="w-full mt-2 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2  tracking-wide"
  >
  Download Statement PDF
  </button>
@@ -466,13 +466,13 @@ export function DriverPortal() {
 
  {pendingRequests.length > 0 && (
  <div>
- <h4 className="text-xs font-bold text-fg uppercase mb-3">Pending Requests</h4>
+ <h4 className="text-xs font-bold text-fg  mb-3">Pending Requests</h4>
  <div className="space-y-3">
  {pendingRequests.map(r => (
  <div key={r.entry_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm">
  <div className="flex justify-between items-start mb-1">
  <span className="text-xs font-bold text-fg">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : r.entry_type === 'START_TRIP' ? `${r.odometer_km} KM` : `${r.amount_inr}`}</span>
- <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
+ <span className="text-[9px] font-bold  px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
  </div>
  <div className="flex justify-end mt-2"><button onClick={() => handleCancelRequest(r.entry_id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-surface border border-rose-200 rounded-lg transition-colors">Cancel Request</button></div>
  </div>
@@ -482,7 +482,7 @@ export function DriverPortal() {
  )}
 
  <div>
- <h4 className="text-xs font-bold text-fg uppercase mb-3">Current Month Tripwise Ledger</h4>
+ <h4 className="text-xs font-bold text-fg  mb-3">Current Month Tripwise Ledger</h4>
  {currentMonthTrips.length === 0 ? (
  <p className="text-xs text-fg-secondary italic">No trips logged this month yet.</p>
  ) : (

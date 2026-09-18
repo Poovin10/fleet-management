@@ -30,7 +30,7 @@ export function FleetTable() {
       <h3 className="text-lg font-bold text-fg border-b pb-2">Active Fleet Assets</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-fg-secondary">
-          <thead className="bg-surface-raised text-xs uppercase text-fg font-bold">
+          <thead className="bg-surface-raised text-xs  text-fg font-bold">
             <tr>
               <th className="p-3">Vehicle No</th>
               <th className="p-3">Variant / Type</th>

@@ -206,7 +206,7 @@ export default function TelemetryHUD() {
  const retentionMargin = monthlyRevenue > 0 ? ((netRetention / monthlyRevenue) * 100).toFixed(1) : "0.0";
 
  return (
- <div className="animate-tab-focus space-y-6 text-slate-200">
+ <div className="animate-tab-focus space-y-6 text-white/90">
  
  {/* Enterprise Header */}
  <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-4 border-b border-white/[0.08] gap-4">
@@ -217,18 +217,18 @@ export default function TelemetryHUD() {
  {vehicles.length} Units Online
  </span>
  </h2>
- <p className="text-sm text-slate-500 mt-1">Enterprise Fleet Telemetry & Real-Time Logistics Operations</p>
+ <p className="text-sm text-white/40 mt-1">Enterprise Fleet Telemetry & Real-Time Logistics Operations</p>
  </div>
  <div className="flex items-center gap-4">
  <div className="text-right hidden sm:block">
- <div className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Operating Cycle</div>
+ <div className="text-[10px] font-medium text-white/40  tracking-normal">Operating Cycle</div>
  <div className="text-sm font-semibold text-white tracking-wide">{currentMonthName}</div>
  </div>
  <button
  onClick={() => fetchDashboardData()}
  className="px-4 py-2 bg-[#11141D] hover:bg-[#1A1E2B] border border-white/[0.08] rounded-lg text-xs font-medium text-white transition-colors flex items-center gap-2"
  >
- <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+ <svg className="w-3.5 h-3.5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
  </svg>
  Sync
@@ -241,47 +241,47 @@ export default function TelemetryHUD() {
  {/* Total Trips */}
  <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-5 flex flex-col justify-between h-32 hover:border-white/[0.12] transition-colors">
  <div className="flex justify-between items-start">
- <span className="text-xs font-medium text-slate-400">Total Completed Trips</span>
+ <span className="text-xs font-medium text-white/60">Total Completed Trips</span>
  </div>
  <div>
  <div className="text-2xl font-semibold text-white tracking-tight">{totalTripsCount}</div>
- <div className="text-[11px] text-slate-500 mt-0.5">Dispatches logged this cycle</div>
+ <div className="text-[11px] text-white/40 mt-0.5">Dispatches logged this cycle</div>
  </div>
  </div>
 
  {/* PODs Pending */}
  <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-5 flex flex-col justify-between h-32 hover:border-white/[0.12] transition-colors">
  <div className="flex justify-between items-start">
- <span className="text-xs font-medium text-slate-400">PODs Pending Closure</span>
+ <span className="text-xs font-medium text-white/60">PODs Pending Closure</span>
  </div>
  <div>
  <div className="text-2xl font-semibold text-rose-400 tracking-tight">{pendingPodsCount}</div>
- <div className="text-[11px] text-slate-500 mt-0.5">Awaiting physical sign-off</div>
+ <div className="text-[11px] text-white/40 mt-0.5">Awaiting physical sign-off</div>
  </div>
  </div>
 
  {/* Freight Revenue */}
  <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-5 flex flex-col justify-between h-32 hover:border-white/[0.12] transition-colors">
  <div className="flex justify-between items-start">
- <span className="text-xs font-medium text-slate-400">Gross Freight Revenue</span>
+ <span className="text-xs font-medium text-white/60">Gross Freight Revenue</span>
  </div>
  <div>
  <div className="text-2xl font-semibold text-emerald-400 tracking-tight">{formatINR(monthlyRevenue)}</div>
- <div className="text-[11px] text-slate-500 mt-0.5">Total billed tonnage income</div>
+ <div className="text-[11px] text-white/40 mt-0.5">Total billed tonnage income</div>
  </div>
  </div>
 
  {/* Net Retention */}
  <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-5 flex flex-col justify-between h-32 hover:border-white/[0.12] transition-colors">
  <div className="flex justify-between items-start">
- <span className="text-xs font-medium text-slate-400">Net Operating Margin</span>
+ <span className="text-xs font-medium text-white/60">Net Operating Margin</span>
  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/20">
  {retentionMargin}%
  </span>
  </div>
  <div>
  <div className="text-2xl font-semibold text-[#FF5A00] tracking-tight">{formatINR(netRetention)}</div>
- <div className="text-[11px] text-slate-500 mt-0.5">OPEX: {formatINR(monthlyExpenses)}</div>
+ <div className="text-[11px] text-white/40 mt-0.5">OPEX: {formatINR(monthlyExpenses)}</div>
  </div>
  </div>
  </div>
@@ -294,22 +294,22 @@ export default function TelemetryHUD() {
  <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-4 flex flex-col items-start hover:border-white/[0.12] transition-colors">
  <span className="w-2 h-2 rounded-full bg-amber-400 mb-2" />
  <div className="text-xl font-semibold text-white tracking-tight">{statusDistribution.plantLoading}</div>
- <div className="text-[11px] font-medium text-slate-400 mt-1">Plant Loading</div>
+ <div className="text-[11px] font-medium text-white/60 mt-1">Plant Loading</div>
  </div>
  <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-4 flex flex-col items-start hover:border-white/[0.12] transition-colors">
  <span className="w-2 h-2 rounded-full bg-sky-400 mb-2" />
  <div className="text-xl font-semibold text-white tracking-tight">{statusDistribution.inTransit}</div>
- <div className="text-[11px] font-medium text-slate-400 mt-1">In Transit</div>
+ <div className="text-[11px] font-medium text-white/60 mt-1">In Transit</div>
  </div>
  <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-4 flex flex-col items-start hover:border-white/[0.12] transition-colors">
  <span className="w-2 h-2 rounded-full bg-rose-400 mb-2" />
  <div className="text-xl font-semibold text-white tracking-tight">{statusDistribution.workshop}</div>
- <div className="text-[11px] font-medium text-slate-400 mt-1">Workshop Repairs</div>
+ <div className="text-[11px] font-medium text-white/60 mt-1">Workshop Repairs</div>
  </div>
  <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-4 flex flex-col items-start hover:border-white/[0.12] transition-colors">
  <span className="w-2 h-2 rounded-full bg-emerald-400 mb-2" />
  <div className="text-xl font-semibold text-white tracking-tight">{statusDistribution.waitingForLoad}</div>
- <div className="text-[11px] font-medium text-slate-400 mt-1">Ready For Dispatch</div>
+ <div className="text-[11px] font-medium text-white/60 mt-1">Ready For Dispatch</div>
  </div>
  </div>
 
@@ -318,7 +318,7 @@ export default function TelemetryHUD() {
  <h4 className="text-sm font-medium text-white tracking-tight mb-4">Rapid Status Override</h4>
  <form onSubmit={handleUpdateStatus} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
  <div className="sm:col-span-1">
- <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Vehicle</label>
+ <label className="block text-[11px] font-medium text-white/60 mb-1.5">Vehicle</label>
  <select
  value={selectedTruckId}
  onChange={(e) => setSelectedTruckId(e.target.value)}
@@ -332,7 +332,7 @@ export default function TelemetryHUD() {
  </select>
  </div>
  <div className="sm:col-span-1">
- <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Status</label>
+ <label className="block text-[11px] font-medium text-white/60 mb-1.5">Status</label>
  <select
  value={overrideStatus}
  onChange={(e) => setOverrideStatus(e.target.value)}
@@ -345,7 +345,7 @@ export default function TelemetryHUD() {
  </select>
  </div>
  <div className="sm:col-span-1">
- <label className="block text-[11px] font-medium text-slate-400 mb-1.5">Remarks</label>
+ <label className="block text-[11px] font-medium text-white/60 mb-1.5">Remarks</label>
  <input
  type="text"
  value={overrideRemarks}
@@ -373,8 +373,8 @@ export default function TelemetryHUD() {
  <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-1 max-h-[340px] overflow-y-auto">
  {liveAlerts.length === 0 ? (
  <div className="p-6 text-center">
- <div className="text-[13px] font-medium text-slate-400">No active alerts</div>
- <div className="text-[11px] text-slate-500 mt-1">All systems operating normally</div>
+ <div className="text-[13px] font-medium text-white/60">No active alerts</div>
+ <div className="text-[11px] text-white/40 mt-1">All systems operating normally</div>
  </div>
  ) : (
  <div className="flex flex-col gap-1 p-1">
@@ -383,7 +383,7 @@ export default function TelemetryHUD() {
  <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${alert.severity === "HIGH" || alert.severity === "URGENT" ? "bg-rose-400" : "bg-amber-400"}`} />
  <div>
  <div className="text-[13px] font-medium text-white">{alert.title}</div>
- <div className="text-[11px] text-slate-500 mt-0.5">{alert.desc}</div>
+ <div className="text-[11px] text-white/40 mt-0.5">{alert.desc}</div>
  </div>
  </div>
  ))}

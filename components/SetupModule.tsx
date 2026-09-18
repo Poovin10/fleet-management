@@ -99,8 +99,8 @@ export function SetupModule() {
  return (
  <div className="animate-tab-focus space-y-6">
  <div className="border-b border-white/[0.06] pb-4">
- <h2 className="text-xl font-black text-white uppercase tracking-tight">Master Database Configuration</h2>
- <p className="text-xs text-slate-400 font-medium mt-0.5">Manage enterprise assets, active fleet units, driver rosters, and operational rates.</p>
+ <h2 className="text-xl font-semibold text-white  tracking-tight">Master Database Configuration</h2>
+ <p className="text-xs text-white/60 font-medium mt-0.5">Manage enterprise assets, active fleet units, driver rosters, and operational rates.</p>
  </div>
 
  <div className="flex flex-wrap gap-2 border-b border-white/[0.06] pb-4">
@@ -108,7 +108,7 @@ export function SetupModule() {
  <button
  key={sub}
  onClick={() => setActiveSubTab(sub)}
- className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeSubTab === sub ? "bg-[#FF5A00] text-white shadow-[0_0_20px_rgba(255,90,0,0.3)] font-black" : "text-slate-400 hover:text-white hover:bg-white/[0.04]"}`}
+ className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeSubTab === sub ? "bg-[#FF5A00] text-white shadow-[0_0_20px_rgba(255,90,0,0.3)] font-semibold" : "text-white/60 hover:text-white hover:bg-white/[0.04]"}`}
  >
  {sub}
  </button>
@@ -118,44 +118,44 @@ export function SetupModule() {
  {activeSubTab === "Trucks" && (
  <div className="space-y-6">
  <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-xl max-w-xl">
- <h3 className="text-xs font-black text-white uppercase tracking-wider mb-4">{editTruckId ? "Edit Truck Record" : "Add New Fleet Truck"}</h3>
+ <h3 className="text-xs font-semibold text-white  tracking-wider mb-4">{editTruckId ? "Edit Truck Record" : "Add New Fleet Truck"}</h3>
  <form onSubmit={handleSaveTruck} className="space-y-4">
  <div>
- <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Truck No *</label>
- <input type="text" value={truckNo} onChange={e => setTruckNo(e.target.value)} placeholder="e.g. TN 56 F 0452" className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-black uppercase outline-none focus:border-[#FF5A00]" required />
+ <label className="block text-[10px] font-semibold text-white/60 mb-1.5 ">Truck No *</label>
+ <input type="text" value={truckNo} onChange={e => setTruckNo(e.target.value)} placeholder="e.g. TN 56 F 0452" className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-semibold  outline-none focus:border-[#FF5A00]" required />
  </div>
  <div className="grid grid-cols-2 gap-4">
  <div>
- <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Variant</label>
+ <label className="block text-[10px] font-semibold text-white/60 mb-1.5 ">Variant</label>
  <select value={truckType} onChange={e => setTruckType(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-[#080A10] text-white font-bold outline-none focus:border-[#FF5A00]">
  <option value="Bulks">Bulks</option><option value="16-Wheel Multi-Axle">16-Wheel Multi-Axle</option><option value="14-Wheel Heavy Duty">14-Wheel Heavy Duty</option>
  </select>
  </div>
  <div>
- <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Capacity (MT)</label>
+ <label className="block text-[10px] font-semibold text-white/60 mb-1.5 ">Capacity (MT)</label>
  <select value={capacity} onChange={e => setCapacity(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-[#080A10] text-white font-bold outline-none focus:border-[#FF5A00]">
  <option value="30">30 MT</option><option value="35">35 MT</option>
  </select>
  </div>
  </div>
- <button type="submit" className="w-full py-3 bg-gradient-to-r from-[#FF5A00] to-[#E04F00] text-white font-black text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)] cursor-pointer">
+ <button type="submit" className="w-full py-3 bg-gradient-to-r from-[#FF5A00] to-[#E04F00] text-white font-semibold text-xs rounded-xl  tracking-wider transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)] cursor-pointer">
  {editTruckId ? "Update Truck" : "Save Truck"}
  </button>
  </form>
  </div>
 
  <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-xl">
- <h3 className="text-xs font-black text-white uppercase tracking-wider mb-4">Registered Fleet ({trucks.length} Units)</h3>
+ <h3 className="text-xs font-semibold text-white  tracking-wider mb-4">Registered Fleet ({trucks.length} Units)</h3>
  <div className="overflow-x-auto">
  <table className="min-w-full divide-y divide-white/[0.06] text-xs">
- <thead className="bg-[#030407]"><tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Truck No</th><th className="px-4 py-3">Variant</th><th className="px-4 py-3">Capacity</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
+ <thead className="bg-[#030407]"><tr className="text-left font-bold text-white/60  tracking-wider text-[9px]"><th className="px-4 py-3">Truck No</th><th className="px-4 py-3">Variant</th><th className="px-4 py-3">Capacity</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
  <tbody className="divide-y divide-white/[0.05]">
  {trucks.map(t => (
  <tr key={t.id} className="hover:bg-white/[0.02]">
- <td className="px-4 py-3.5 font-black text-white font-mono">{t.vehicle_number}</td>
+ <td className="px-4 py-3.5 font-semibold text-white font-mono">{t.vehicle_number}</td>
  <td className="px-4 py-3.5 text-slate-300 font-semibold">{t.truck_type}</td>
  <td className="px-4 py-3.5 text-slate-300 font-mono">{t.carrying_capacity_tons} MT</td>
- <td className="px-4 py-3.5"><span className="px-2 py-1 bg-emerald-950/40 text-emerald-400 rounded-md text-[9px] font-black uppercase font-mono">{t.current_status || "ACTIVE"}</span></td>
+ <td className="px-4 py-3.5"><span className="px-2 py-1 bg-emerald-950/40 text-emerald-400 rounded-md text-[9px] font-semibold  font-mono">{t.current_status || "ACTIVE"}</span></td>
  <td className="px-4 py-3.5 text-right">
  <button onClick={() => { setTruckNo(t.vehicle_number); setTruckType(t.truck_type); setCapacity(String(t.carrying_capacity_tons)); setEditTruckId(t.id); }} className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.1] text-white rounded-lg text-[10px] font-bold">Edit</button>
  </td>
@@ -171,38 +171,38 @@ export function SetupModule() {
  {activeSubTab === "Drivers" && (
  <div className="space-y-6">
  <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-xl max-w-xl">
- <h3 className="text-xs font-black text-white uppercase tracking-wider mb-4">{editDriverId ? "Edit Driver Record" : "Register New Driver"}</h3>
+ <h3 className="text-xs font-semibold text-white  tracking-wider mb-4">{editDriverId ? "Edit Driver Record" : "Register New Driver"}</h3>
  <form onSubmit={handleSaveDriver} className="space-y-4">
  <div>
- <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Full Name *</label>
- <input type="text" value={driverName} onChange={e => setDriverName(e.target.value)} placeholder="e.g. Aneesh CR" className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-bold uppercase outline-none focus:border-[#FF5A00]" required />
+ <label className="block text-[10px] font-semibold text-white/60 mb-1.5 ">Full Name *</label>
+ <input type="text" value={driverName} onChange={e => setDriverName(e.target.value)} placeholder="e.g. Aneesh CR" className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-bold  outline-none focus:border-[#FF5A00]" required />
  </div>
  <div className="grid grid-cols-2 gap-4">
  <div>
- <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Phone Number</label>
+ <label className="block text-[10px] font-semibold text-white/60 mb-1.5 ">Phone Number</label>
  <input type="text" value={driverPhone} onChange={e => setDriverPhone(e.target.value)} placeholder="10-digit mobile" className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-mono outline-none focus:border-[#FF5A00]" />
  </div>
  <div>
- <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">License Expiry</label>
+ <label className="block text-[10px] font-semibold text-white/60 mb-1.5 ">License Expiry</label>
  <input type="date" value={licenseExp} onChange={e => setLicenseExp(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-mono outline-none focus:border-[#FF5A00]" />
  </div>
  </div>
- <button type="submit" className="w-full py-3 bg-gradient-to-r from-[#FF5A00] to-[#E04F00] text-white font-black text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)] cursor-pointer">
+ <button type="submit" className="w-full py-3 bg-gradient-to-r from-[#FF5A00] to-[#E04F00] text-white font-semibold text-xs rounded-xl  tracking-wider transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)] cursor-pointer">
  {editDriverId ? "Update Driver" : "Register Driver"}
  </button>
  </form>
  </div>
 
  <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-xl">
- <h3 className="text-xs font-black text-white uppercase tracking-wider mb-4">Active Driver Roster ({drivers.length} Drivers)</h3>
+ <h3 className="text-xs font-semibold text-white  tracking-wider mb-4">Active Driver Roster ({drivers.length} Drivers)</h3>
  <div className="overflow-x-auto">
  <table className="min-w-full divide-y divide-white/[0.06] text-xs">
- <thead className="bg-[#030407]"><tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Code</th><th className="px-4 py-3">Full Name</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">License Expiry</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
+ <thead className="bg-[#030407]"><tr className="text-left font-bold text-white/60  tracking-wider text-[9px]"><th className="px-4 py-3">Code</th><th className="px-4 py-3">Full Name</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">License Expiry</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
  <tbody className="divide-y divide-white/[0.05]">
  {drivers.map(d => (
  <tr key={d.driver_id} className="hover:bg-white/[0.02]">
- <td className="px-4 py-3.5 font-black text-[#FF5A00] font-mono">{d.driver_code}</td>
- <td className="px-4 py-3.5 font-black text-white">{d.full_name}</td>
+ <td className="px-4 py-3.5 font-semibold text-[#FF5A00] font-mono">{d.driver_code}</td>
+ <td className="px-4 py-3.5 font-semibold text-white">{d.full_name}</td>
  <td className="px-4 py-3.5 text-slate-300 font-mono">{d.phone_number || "-"}</td>
  <td className="px-4 py-3.5 text-slate-300 font-mono">{d.license_expiry_date || "-"}</td>
  <td className="px-4 py-3.5 text-right">
@@ -219,16 +219,16 @@ export function SetupModule() {
 
  {activeSubTab === "Freight Slabs" && (
  <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-xl">
- <h3 className="text-xs font-black text-white uppercase tracking-wider mb-4">Destinations & Freight Master Slabs ({destinations.length})</h3>
+ <h3 className="text-xs font-semibold text-white  tracking-wider mb-4">Destinations & Freight Master Slabs ({destinations.length})</h3>
  <div className="overflow-x-auto">
  <table className="min-w-full divide-y divide-white/[0.06] text-xs">
- <thead className="bg-[#030407]"><tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3">Origin</th><th className="px-4 py-3 text-right">Rate / MT ()</th></tr></thead>
+ <thead className="bg-[#030407]"><tr className="text-left font-bold text-white/60  tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3">Origin</th><th className="px-4 py-3 text-right">Rate / MT ()</th></tr></thead>
  <tbody className="divide-y divide-white/[0.05]">
  {destinations.map(d => (
  <tr key={d.destination_id} className="hover:bg-white/[0.02]">
- <td className="px-4 py-3.5 font-black text-white uppercase">{d.destination_name}</td>
- <td className="px-4 py-3.5 text-slate-300 uppercase">{d.origin || "COCHIN"}</td>
- <td className="px-4 py-3.5 text-right font-black text-emerald-400 font-mono">{(Number(d.freight_rate_per_ton)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+ <td className="px-4 py-3.5 font-semibold text-white ">{d.destination_name}</td>
+ <td className="px-4 py-3.5 text-slate-300 ">{d.origin || "COCHIN"}</td>
+ <td className="px-4 py-3.5 text-right font-semibold text-emerald-400 font-mono">{(Number(d.freight_rate_per_ton)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
  </tr>
  ))}
  </tbody>
@@ -239,15 +239,15 @@ export function SetupModule() {
 
  {activeSubTab === "Bata" && (
  <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-xl">
- <h3 className="text-xs font-black text-white uppercase tracking-wider mb-4">Driver Bata Rules ({bataRules.length})</h3>
+ <h3 className="text-xs font-semibold text-white  tracking-wider mb-4">Driver Bata Rules ({bataRules.length})</h3>
  <div className="overflow-x-auto">
  <table className="min-w-full divide-y divide-white/[0.06] text-xs">
- <thead className="bg-[#030407]"><tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3 text-right">Standard Bata ()</th></tr></thead>
+ <thead className="bg-[#030407]"><tr className="text-left font-bold text-white/60  tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3 text-right">Standard Bata ()</th></tr></thead>
  <tbody className="divide-y divide-white/[0.05]">
  {bataRules.map(b => (
  <tr key={b.bata_rule_id} className="hover:bg-white/[0.02]">
- <td className="px-4 py-3.5 font-black text-white uppercase">{b.destination_name}</td>
- <td className="px-4 py-3.5 text-right font-black text-[#FF5A00] font-mono">{(Number(b.standard_bata_inr)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+ <td className="px-4 py-3.5 font-semibold text-white ">{b.destination_name}</td>
+ <td className="px-4 py-3.5 text-right font-semibold text-[#FF5A00] font-mono">{(Number(b.standard_bata_inr)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
  </tr>
  ))}
  </tbody>
@@ -258,15 +258,15 @@ export function SetupModule() {
 
  {activeSubTab === "User Control" && (
  <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-xl">
- <h3 className="text-xs font-black text-white uppercase tracking-wider mb-4">App Users & Roles ({appUsers.length})</h3>
+ <h3 className="text-xs font-semibold text-white  tracking-wider mb-4">App Users & Roles ({appUsers.length})</h3>
  <div className="overflow-x-auto">
  <table className="min-w-full divide-y divide-white/[0.06] text-xs">
- <thead className="bg-[#030407]"><tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Username / Email</th><th className="px-4 py-3">Role</th></tr></thead>
+ <thead className="bg-[#030407]"><tr className="text-left font-bold text-white/60  tracking-wider text-[9px]"><th className="px-4 py-3">Username / Email</th><th className="px-4 py-3">Role</th></tr></thead>
  <tbody className="divide-y divide-white/[0.05]">
  {appUsers.map(u => (
  <tr key={u.user_id} className="hover:bg-white/[0.02]">
- <td className="px-4 py-3.5 font-black text-white font-mono">{u.username}</td>
- <td className="px-4 py-3.5"><span className="px-2.5 py-1 bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/20 rounded-md text-[9px] font-black uppercase font-mono">{u.role}</span></td>
+ <td className="px-4 py-3.5 font-semibold text-white font-mono">{u.username}</td>
+ <td className="px-4 py-3.5"><span className="px-2.5 py-1 bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/20 rounded-md text-[9px] font-semibold  font-mono">{u.role}</span></td>
  </tr>
  ))}
  </tbody>

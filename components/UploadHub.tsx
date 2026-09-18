@@ -65,10 +65,10 @@ export function UploadHub() {
  return (
  <div className="animate-tab-focus space-y-6 max-w-4xl mx-auto">
  <div className="bg-[#161922] border border-[#222634] rounded-2xl p-6 shadow-xl">
- <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">Manual Document Entry Hub</h3>
+ <h3 className="text-sm font-semibold text-white  tracking-wider mb-4">Manual Document Entry Hub</h3>
  
  <div className="mb-4">
- <label className="block text-xs font-bold text-slate-400 mb-1">Select Document Type</label>
+ <label className="block text-xs font-bold text-white/60 mb-1">Select Document Type</label>
  <select 
  value={documentType} 
  onChange={(e) => setDocumentType(e.target.value)}
@@ -81,7 +81,7 @@ export function UploadHub() {
  </div>
 
  <div className="mb-4">
- <label className="block text-xs font-bold text-slate-400 mb-1">Enter Details (Vehicle, LR, Tonnage, etc.)</label>
+ <label className="block text-xs font-bold text-white/60 mb-1">Enter Details (Vehicle, LR, Tonnage, etc.)</label>
  <textarea 
  rows={4}
  value={rawText}
@@ -94,7 +94,7 @@ export function UploadHub() {
  <button 
  onClick={handleParseText}
  disabled={isProcessing}
- className="px-6 py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20"
+ className="px-6 py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-semibold text-xs  tracking-wider rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20"
  >
  {isProcessing ? "Processing..." : " Process Entry"}
  </button>
@@ -102,12 +102,12 @@ export function UploadHub() {
 
  {parsedResult && (
  <div className="bg-[#161922] border border-[#222634] rounded-2xl p-6 shadow-xl animate-in fade-in">
- <h4 className="text-xs font-black text-emerald-400 uppercase tracking-wider mb-4">Processed Fields Preview</h4>
+ <h4 className="text-xs font-semibold text-emerald-400  tracking-wider mb-4">Processed Fields Preview</h4>
  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
  {Object.entries(parsedResult).map(([key, value]) => (
  <div key={key} className="bg-[#1A1F2C] border border-[#2B3142] p-3 rounded-xl">
- <p className="text-[10px] font-bold text-slate-400 uppercase">{key}</p>
- <p className="text-sm font-black text-white mt-1">{String(value)}</p>
+ <p className="text-[10px] font-bold text-white/60 ">{key}</p>
+ <p className="text-sm font-semibold text-white mt-1">{String(value)}</p>
  </div>
  ))}
  </div>
@@ -115,7 +115,7 @@ export function UploadHub() {
  <button 
  onClick={handleSaveToDatabase}
  disabled={isSaving}
- className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg"
+ className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs  tracking-wider rounded-xl transition-all shadow-lg"
  >
  {isSaving ? "Saving..." : " Confirm & Push to ERP Queue"}
  </button>
