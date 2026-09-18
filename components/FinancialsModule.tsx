@@ -39,14 +39,17 @@ export function FinancialsModule() {
 
     let tQuery = supabase.from('trips').select('vehicle_id, primary_driver_id, trip_status, total_km_run, loaded_weight_mt, tonnage_loaded, freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance, fuel_litres');
     let fQuery = supabase.from('diesel_fuel_logs').select('vehicle_id, litres_filled, total_fuel_cost');
+    let wQuery = supabase.from('workshop_spares_bills').select('vehicle_id, bill_amount');
 
     if (sDate && eDate) {
       tQuery = tQuery.gte('trip_start_date', sDate).lte('trip_start_date', eDate);
       fQuery = fQuery.gte('fuel_date', sDate).lte('fuel_date', eDate);
+      wQuery = wQuery.gte('bill_date', sDate).lte('bill_date', eDate);
     }
 
     const { data: trips } = await tQuery;
     const { data: fuels } = await fQuery;
+    const { data: bills } = await wQuery;
 
     const fleetMetrics: any[] = [];
     const variants = new Set<string>();
@@ -55,6 +58,7 @@ export function FinancialsModule() {
       variants.add(v.truck_type || "Unknown");
       const vTrips = (trips || []).filter(t => t.vehicle_id === v.vehicle_id);
       const vFuels = (fuels || []).filter(f => f.vehicle_id === v.vehicle_id);
+      const vBills = (bills || []).filter(b => b.vehicle_id === v.vehicle_id);
 
       let trips_count = vTrips.length;
       let incomplete_trips = vTrips.filter(t => t.trip_status !== 'COMPLETED').length;
@@ -73,7 +77,11 @@ export function FinancialsModule() {
         total_diesel_cost += Number(f.total_fuel_cost) || 0;
       });
 
-      const net_retention = total_freight - total_diesel_cost - non_fuel_costs;
+      let total_workshop = 0;
+      vBills.forEach(b => { total_workshop += Number(b.bill_amount) || 0; });
+
+      // SYNCHRONIZED MATH: Now deducts workshop bills per truck to match global P&L exactly
+      const net_retention = total_freight - total_diesel_cost - non_fuel_costs - total_workshop;
       const retention_pct = total_freight > 0 ? (net_retention / total_freight) * 100 : 0;
       const diesel_pct = total_freight > 0 ? (total_diesel_cost / total_freight) * 100 : 0;
       const kmpl = total_diesel_litres > 0 ? total_km / total_diesel_litres : 0;

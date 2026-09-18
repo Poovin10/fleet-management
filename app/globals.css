@@ -4,48 +4,71 @@
 
 @layer base {
   :root {
-    --background: 7 8 11;
-    --surface: 16 18 24;
-    --surface-raised: 24 28 38;
-    --border: 30 34 48;
-    --primary: 255 90 0;
-    --primary-hover: 224 79 0;
-    --text-main: 241 245 249;
-    --text-muted: 148 163 184;
+    --bg-deep: #050608;
+    --surface-base: #0B0D13;
+    --surface-elevated: #131722;
+    --surface-hover: #1A1F2E;
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-active: rgba(255, 90, 0, 0.4);
+    --primary: #FF5A00;
+    --primary-glow: rgba(255, 90, 0, 0.25);
+    --text-main: #F8FAFC;
+    --text-muted: #94A3B8;
   }
 
   body {
-    background-color: #07080B;
-    color: #F1F5F9;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: var(--bg-deep);
+    color: var(--text-main);
+    font-family: system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
   }
 }
 
-/* Custom Tier-1 Scrollbars */
+.erp-card {
+  background: linear-gradient(135deg, rgba(19, 23, 34, 0.8) 0%, rgba(11, 13, 19, 0.9) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.erp-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+.erp-button-primary {
+  background: linear-gradient(135deg, #FF5A00 0%, #E04F00 100%);
+  color: #FFFFFF;
+  font-weight: 800;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 20px -2px rgba(255, 90, 0, 0.4);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.erp-button-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 25px 0 rgba(255, 90, 0, 0.6);
+}
+
+.erp-button-primary:active {
+  transform: translateY(0px) scale(0.98);
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #07080B;
+  background: #050608;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1E2230;
-  border-radius: 3px;
+  background: #1E2538;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #FF5A00;
-}
-
-/* Glassmorphism & Micro-glow Effects */
-.glass-panel {
-  background: rgba(16, 18, 24, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(30, 34, 48, 0.8);
-}
-
-.glow-primary {
-  box-shadow: 0 0 25px -5px rgba(255, 90, 0, 0.25);
 }
