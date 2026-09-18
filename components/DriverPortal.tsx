@@ -490,7 +490,7 @@ export function DriverPortal() {
                     {currentMonthTrips.map(t => {
                       const tripBata = Number(t.driver_bata) || 0; const halt = Number(t.halt_bata) || 0; const adv = Number(t.cash_advance_issued) || 0;
                       return (
-                        <div key={t.trip_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm space-y-2">
+                        <div key={t.trip_id} className="animate-tab-focus p-3 bg-surface border border-border rounded-xl shadow-sm space-y-2">
                           <div className="flex justify-between items-start border-b border-border pb-2">
                             <div><p className="text-sm font-bold text-fg">{t.trip_number}</p><p className="text-[10px] font-bold text-fg-secondary truncate max-w-[150px]">{t.origin} ➔ {t.destination}</p></div>
                             <span className="text-[10px] font-bold px-2 py-0.5 bg-surface-raised text-fg rounded">{formatDate(t.trip_start_date)}</span>

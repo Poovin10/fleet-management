@@ -48,7 +48,7 @@ export function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07080B] flex flex-col items-center justify-center p-4 selection:bg-[#FF5A00]/20 selection:text-[#FF5A00]">
+    <div className="animate-tab-focus min-h-screen bg-[#07080B] flex flex-col items-center justify-center p-4 selection:bg-[#FF5A00]/20 selection:text-[#FF5A00]">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(255,90,0,0.12),rgba(255,255,255,0))] pointer-events-none"></div>
 
       <div className="w-full max-w-md relative z-10 animate-in fade-in zoom-in-95 duration-300">

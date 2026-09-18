@@ -298,7 +298,7 @@ export function FuelAdvanceModule() {
                     const data = scan.raw_json_result || {};
                     return (
                       <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-sky-500 bg-sky-500/10 ring-1 ring-sky-500' : 'border-[#2B3142] hover:border-slate-500 bg-[#12141C]'}`}>
-                        <div className="flex justify-between items-start gap-4">
+                        <div className="animate-tab-focus flex justify-between items-start gap-4">
                           <div>
                             <p className="text-[10px] text-slate-400 font-bold mb-1">Truck: <span className="text-white">{data.truckNo || "UNKNOWN"}</span></p>
                             <p className="text-xs font-black text-white truncate">{data.litres || 0} L <span className="text-slate-500 font-medium">@ ₹{data.rate || '?'}</span></p>

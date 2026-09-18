@@ -146,7 +146,7 @@ export function LiveAlertsWidget() {
   }, []);
 
   return (
-    <div className="bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm overflow-hidden flex flex-col h-[500px]">
+    <div className="animate-tab-focus bg-[#12141C] border border-[#222634] rounded-2xl shadow-sm overflow-hidden flex flex-col h-[500px]">
       <div className="bg-[#161922] border-b border-[#222634] px-5 py-4 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2.5">
           <span className="text-base">🔔</span>

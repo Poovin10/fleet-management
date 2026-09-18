@@ -217,7 +217,7 @@ export function ModifyTrips() {
                 const isEditing = editTripId === t.trip_id;
                 return (
                   <tr key={t.trip_id} onClick={() => handleEditClick(t)} className={`cursor-pointer transition-colors ${isEditing ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
-                    <td className="px-5 py-3.5 font-semibold text-slate-300">{formatDate(t.trip_start_date)}</td>
+                    <td className="animate-tab-focus px-5 py-3.5 font-semibold text-slate-300">{formatDate(t.trip_start_date)}</td>
                     <td className="px-5 py-3.5 font-black text-white">{t.trip_number}</td>
                     <td className="px-5 py-3.5 text-slate-300"><span className="font-bold text-white">{t.trucks?.vehicle_number}</span><br/><span className="text-[10px] text-slate-500">{t.drivers?.full_name}</span></td>
                     <td className="px-5 py-3.5 text-slate-300">{t.origin} ➔ {t.destination}</td>

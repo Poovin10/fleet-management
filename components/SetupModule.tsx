@@ -97,7 +97,7 @@ export function SetupModule() {
   const subTabs = ["Trucks", "Drivers", "Freight Slabs", "Bata", "User Control"];
 
   return (
-    <div className="space-y-6">
+    <div className="animate-tab-focus space-y-6">
       <div className="border-b border-white/[0.06] pb-4">
         <h2 className="text-xl font-black text-white uppercase tracking-tight">Master Database Configuration</h2>
         <p className="text-xs text-slate-400 font-medium mt-0.5">Manage enterprise assets, active fleet units, driver rosters, and operational rates.</p>

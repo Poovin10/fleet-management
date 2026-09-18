@@ -136,7 +136,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 sm:p-10 max-w-5xl mx-auto shadow-2xl">
+    <div className="animate-tab-focus bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 sm:p-10 max-w-5xl mx-auto shadow-2xl">
       <ConfirmModal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}

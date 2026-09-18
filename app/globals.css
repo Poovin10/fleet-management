@@ -72,3 +72,22 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #FF5A00;
 }
+
+/* Tier-1 Aerospace Tab Content Animation */
+@keyframes tierOneTabEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.995);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-tab-focus {
+  animation: tierOneTabEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
+}

@@ -243,7 +243,7 @@ export default function Dashboard() {
                     e.preventDefault(); if (!supabase || !qsTruckId) return;
                     const { error } = await supabase.from('trucks').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('id', qsTruckId);
                     if (error) alert("Error: " + error.message); else { alert("Status updated!"); setQsTruckId(""); setQsRemarks(""); fetchDashboardData(); }
-                  }} className="space-y-4">
+                  }} className="animate-tab-focus space-y-4">
                     <div>
                       <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Select Truck</label>
                       <select value={qsTruckId} onChange={(e) => setQsTruckId(e.target.value)} className="w-full text-xs p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] focus:border-[#FF5A00] outline-none font-bold text-white">

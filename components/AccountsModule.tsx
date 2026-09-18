@@ -116,7 +116,7 @@ export function AccountsModule() {
   const exportPetty = filteredPetty.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.trucks?.vehicle_number || "GENERAL", "Category": b.vendor_name, "Description": b.service_description, "Amount (INR)": b.bill_amount }));
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#272B36] pb-4">
         <div><h2 className="text-xl font-black text-white uppercase tracking-tight">Finance & Accounts</h2><p className="text-xs text-slate-400 mt-0.5">Manage cash advances, petty cash, and workshop ledgers.</p></div>
         <div className="flex flex-wrap gap-2">

@@ -54,7 +54,7 @@ export function AiInsightsDashboard() {
   if (isLoading) return <div className="p-12 text-center text-slate-400 font-bold animate-pulse">Loading Operations Hub...</div>;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 max-w-6xl mx-auto px-2">
+    <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300 max-w-6xl mx-auto px-2">
       <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
         <div>
           <div className="flex items-center gap-2">

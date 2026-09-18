@@ -63,7 +63,7 @@ export function UploadHub() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="animate-tab-focus space-y-6 max-w-4xl mx-auto">
       <div className="bg-[#161922] border border-[#222634] rounded-2xl p-6 shadow-xl">
         <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">Manual Document Entry Hub</h3>
         

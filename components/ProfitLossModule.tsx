@@ -124,7 +124,7 @@ export function ProfitLossModule() {
   };
 
   return (
-    <div className="space-y-6 animate-slide-up">
+    <div className="animate-tab-focus space-y-6 animate-slide-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/[0.06] pb-4">
         <div>
           <h2 className="text-xl font-black text-white uppercase tracking-tight">Executive Profit & Loss Statement</h2>

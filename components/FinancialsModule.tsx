@@ -147,7 +147,7 @@ export function FinancialsModule() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#272B36] pb-4">
         <div><h2 className="text-xl font-black text-white uppercase tracking-tight">Fleet Analytics & Margins</h2><p className="text-xs text-slate-400 mt-0.5">High-level financial benchmarks and performance tracking.</p></div>
       </div>

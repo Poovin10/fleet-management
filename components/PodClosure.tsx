@@ -392,7 +392,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
                 return (
                   <tr key={t.trip_id} onClick={() => setSelectedLr(t.trip_number)} className={`cursor-pointer transition-all ${isSelected ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'border-l-2 border-l-transparent hover:bg-[#1A1F2C]'}`}>
                     <td className={`py-3.5 px-5 text-xs font-black ${isSelected ? 'text-[#FF5A00]' : 'text-white'}`}>{t.trip_number}</td>
-                    <td className="py-3.5 px-5 text-xs font-semibold text-slate-400">{formatDate(t.trip_start_date)}</td>
+                    <td className="animate-tab-focus py-3.5 px-5 text-xs font-semibold text-slate-400">{formatDate(t.trip_start_date)}</td>
                     <td className="py-3.5 px-5 text-xs font-bold text-slate-300">{t.vehicles?.vehicle_number || "-"}</td>
                     <td className={`py-3.5 px-5 text-xs font-black text-right ${days >= 2 ? 'text-rose-400' : 'text-amber-500'}`}>{days}d</td>
                   </tr>

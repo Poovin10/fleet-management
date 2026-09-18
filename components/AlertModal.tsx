@@ -16,7 +16,7 @@ export function AlertModal({ isOpen, title, message, type = 'info', onClose }: A
   const isError = type === 'error';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="animate-tab-focus fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-border">
         
         <div className="p-6 sm:p-8 text-center">

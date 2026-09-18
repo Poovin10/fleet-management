@@ -206,7 +206,7 @@ export default function TelemetryHUD() {
   const retentionMargin = monthlyRevenue > 0 ? ((netRetention / monthlyRevenue) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className="space-y-6 animate-fade-in text-slate-200">
+    <div className="animate-tab-focus space-y-6  text-slate-200">
       
       {/* Enterprise Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-4 border-b border-white/[0.08] gap-4">

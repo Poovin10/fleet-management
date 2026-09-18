@@ -166,7 +166,7 @@ export function WorkshopModule() {
   const exportBills = filteredBills.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.trucks?.vehicle_number || "GENERAL", "Vendor": b.vendor_name, "Description": b.service_description, "Amount (INR)": b.bill_amount }));
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 text-white">
+    <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300 text-white">
       <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
 
       {/* CUSTOM LIFECYCLE MODAL */}

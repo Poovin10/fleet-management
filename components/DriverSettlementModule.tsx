@@ -160,7 +160,7 @@ export function DriverSettlementModule() {
                             const tb = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0); const ta = Number(t.cash_advance_issued) || 0;
                             trFreight += Number(t.freight_revenue) || 0; trBata += tb; trAdv += ta;
                             return (
-                              <tr key={t.trip_id} className="hover:bg-white/[0.02]">
+                              <tr key={t.trip_id} className="animate-tab-focus hover:bg-white/[0.02]">
                                 <td className="px-5 py-3.5 font-semibold text-white">{formatDate(t.trip_start_date)}<br/><span className="text-slate-500 font-black text-[9px] font-mono">{t.trip_number || "-"}</span></td>
                                 <td className="px-5 py-3.5 text-slate-300 font-bold"><span className="text-xs">{t.origin} ➔ {t.destination}</span></td>
                                 <td className="px-5 py-3.5 text-right font-black text-slate-300 font-mono">{formatAmt(t.freight_revenue)}</td>

@@ -26,7 +26,7 @@ export function FleetTable() {
   if (loading) return <div className="p-4 text-sm text-fg-secondary">Loading fleet assets...</div>;
 
   return (
-    <div className="bg-surface border border-border rounded-xl p-6 shadow-sm space-y-4">
+    <div className="animate-tab-focus bg-surface border border-border rounded-xl p-6 shadow-sm space-y-4">
       <h3 className="text-lg font-bold text-fg border-b pb-2">Active Fleet Assets</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-fg-secondary">
