@@ -1,5 +1,4 @@
 "use client";
-import LiquidGlassProvider from "./LiquidGlassProvider";
 import TelemetryHUD from "./TelemetryHUD";
 
 import { useState, useEffect } from "react";
@@ -147,8 +146,7 @@ export default function Dashboard() {
 
  if (isDriverRoute) {
  return (
- <LiquidGlassProvider>
-<div className="min-h-screen bg-[#030407] py-6 px-4">
+ <div className="min-h-screen bg-[#030407] py-6 px-4">
  <div className="max-w-md mx-auto mb-6 text-center">
  <h1 className="text-xl font-semibold tracking-tighter text-white">KSS Roadways</h1>
  <p className="text-[10px] text-[#FF5A00]  tracking-normal font-semibold">Driver Highway Portal</p>
@@ -282,6 +280,5 @@ export default function Dashboard() {
 
  </main>
  </div>
-    </LiquidGlassProvider>
  );
 }

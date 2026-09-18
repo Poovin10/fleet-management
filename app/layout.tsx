@@ -1,3 +1,4 @@
+import LiquidGlassProvider from "@/components/LiquidGlassProvider";
 import type { Metadata } from "next";
 import "./globals.css";
 
@@ -20,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        <LiquidGlassProvider>
         {children}
         
         {/* PWA Service Worker Registration Script */}
@@ -38,6 +40,7 @@ export default function RootLayout({
             `,
           }}
         />
+              </LiquidGlassProvider>
       </body>
     </html>
   );
