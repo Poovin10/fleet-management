@@ -56,13 +56,13 @@ export function WorkshopModule() {
   };
 
   const fetchData = async () => {
-    const { data: vData } = await supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number');
+    const { data: vData } = await supabase.from('trucks').select('*').order('vehicle_number');
     if (vData) setVehicles(vData);
 
-    const { data: tData } = await supabase.from('fleet_tyres').select('*, vehicles(vehicle_number)').order('mounted_date', { ascending: false });
+    const { data: tData } = await supabase.from('fleet_tyres').select('*, trucks(vehicle_number)').order('mounted_date', { ascending: false });
     if (tData) setActiveTyres(tData);
 
-    const { data: bData } = await supabase.from('workshop_spares_bills').select('*, vehicles(vehicle_number)').order('bill_date', { ascending: false });
+    const { data: bData } = await supabase.from('workshop_spares_bills').select('*, trucks(vehicle_number)').order('bill_date', { ascending: false });
     if (bData) setActiveBills(bData);
   };
 
@@ -137,10 +137,10 @@ export function WorkshopModule() {
     if (!wsTruckId || !vendor.trim() || Number(amount) <= 0) return;
     triggerModal("Record Service Bill", `Log ₹${amount} expense from ${vendor}?`, false, "Save Bill", async () => {
       setIsProcessing(true);
-      await supabase.from('workshop_spares_bills').insert([{
+      const { error: billError } = await supabase.from('workshop_spares_bills').insert([{
         bill_date: billDate, vehicle_id: Number(wsTruckId), vendor_name: vendor.trim(), service_description: description.trim(), bill_amount: Number(amount)
       }]);
-      setVendor(""); setDescription(""); setAmount(""); fetchData(); setIsProcessing(false); closeModal();
+      if (billError) { alert("Failed to save bill: " + billError.message); setIsProcessing(false); return; } alert("Service bill recorded successfully!"); setVendor(""); setDescription(""); setAmount(""); fetchData(); setIsProcessing(false); closeModal();
     });
   };
 
@@ -188,7 +188,7 @@ export function WorkshopModule() {
 
               {actionModal.mode === "MOUNT" && (
                 <>
-                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Assign to Truck *</label><select value={actionTruckId} onChange={e=>setActionTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}</select></div>
+                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Assign to Truck *</label><select value={actionTruckId} onChange={e=>setActionTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id || v.vehicle_id} value={String(v.id || v.vehicle_id)}>{v.vehicle_number}</option>)}</select></div>
                   <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Position *</label><select value={actionPos} onChange={e=>setActionPos(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-semibold outline-none bg-surface text-fg"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></select></div>
                   <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Truck Odo at Mount (KM) *</label><input type="number" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg" placeholder="0" /></div>
                 </>
@@ -246,7 +246,7 @@ export function WorkshopModule() {
                     <label className="block text-[10px] font-bold text-[#FF5A00] uppercase mb-1">Select Truck *</label>
                     <select value={truckId} onChange={e => setTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
                       <option value="">-- SELECT TRUCK --</option>
-                      {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
+                      {vehicles.map(v => <option key={v.id || v.vehicle_id} value={String(v.id || v.vehicle_id)}>{v.vehicle_number}</option>)}
                     </select>
                   </div>
                   <div>
@@ -349,7 +349,7 @@ export function WorkshopModule() {
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Select Truck *</label>
                 <select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required>
                   <option value="">-- SELECT TRUCK --</option>
-                  {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
+                  {vehicles.map(v => <option key={v.id || v.vehicle_id} value={String(v.id || v.vehicle_id)}>{v.vehicle_number}</option>)}
                 </select>
               </div>
             </div>
