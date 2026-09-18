@@ -148,7 +148,7 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     if (!supabase) return;
-    const { data: vehiclesData } = await supabase.from('vehicles').select('*').eq('is_active', true);
+    const { data: vehiclesData } = await supabase.from('trucks').select('*').eq('is_active', true);
     if (vehiclesData && vehiclesData.length > 0) {
       setLiveVehicles(vehiclesData);
       setStatusCounts({
@@ -189,7 +189,7 @@ export default function Dashboard() {
     const { data: drivers } = await supabase.from('drivers').select('driver_code, full_name, license_expiry_date').eq('is_active', true);
     if (drivers) drivers.forEach((d: any) => checkDoc("Driving License", `${d.driver_code} - ${d.full_name}`, d.license_expiry_date));
 
-    const { data: vehicles } = await supabase.from('vehicles').select('vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date').eq('is_active', true);
+    const { data: vehicles } = await supabase.from('trucks').select('vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date').eq('is_active', true);
     if (vehicles) {
       vehicles.forEach((v: any) => {
         const tName = `Truck ${v.vehicle_number}`;
@@ -250,7 +250,7 @@ export default function Dashboard() {
     e.preventDefault();
     if (!supabase) return;
     if (!qsTruckId) return alert("Please select a truck.");
-    const { error } = await supabase.from('vehicles').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('vehicle_id', qsTruckId);
+    const { error } = await supabase.from('trucks').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('vehicle_id', qsTruckId);
     if (error) alert("Error updating status: " + error.message);
     else { alert("Vehicle status updated successfully!"); setQsTruckId(""); setQsRemarks(""); fetchDashboardData(); }
   };
@@ -411,7 +411,7 @@ export default function Dashboard() {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {currentDrillDownData.map((v: any) => (
-                          <div key={v.vehicle_id} className="p-3 border border-[#2B3142] rounded-lg bg-[#161922] flex justify-between items-center">
+                          <div key={v.id} className="p-3 border border-[#2B3142] rounded-lg bg-[#161922] flex justify-between items-center">
                             <div><p className="text-sm font-black text-white">{v.vehicle_number}</p><p className="text-[10px] font-bold text-slate-500">{v.truck_type}</p></div>
                             <div className="text-right"><span className="text-[9px] font-bold px-2 py-1 bg-[#1A1F2C] border border-[#2B3142] rounded text-slate-300 shadow-sm">{v.carrying_capacity_tons} MT</span></div>
                           </div>
@@ -449,7 +449,7 @@ export default function Dashboard() {
                       <label className="block text-xs font-bold text-slate-400 mb-1">Select Truck</label>
                       <select value={qsTruckId} onChange={(e) => setQsTruckId(e.target.value)} className="w-full text-sm p-3 rounded-lg border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white">
                         <option value="">Select a vehicle...</option>
-                        {liveVehicles.map(v => (<option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} ({v.carrying_capacity_tons}MT {v.truck_type})</option>))}
+                        {liveVehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number} ({v.carrying_capacity_tons}MT {v.truck_type})</option>))}
                       </select>
                     </div>
                     <div>

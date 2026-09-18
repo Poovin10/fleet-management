@@ -61,7 +61,7 @@ export function LiveAlertsWidget() {
     tenDaysFromNow.setDate(today.getDate() + 10);
 
     try {
-      const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
+      const { data: vehicles } = await supabase.from('trucks').select('*').eq('is_active', true);
       const { data: drivers } = await supabase.from('drivers').select('*').eq('is_active', true);
       
       vehicles?.forEach((v: any) => {
@@ -76,7 +76,7 @@ export function LiveAlertsWidget() {
         
         if (expiries.length > 0) {
           newItems.push({
-            id: `exp_v_${v.vehicle_id}`,
+            id: `exp_v_${v.id}`,
             type: "CRITICAL",
             title: "Compliance Warning",
             message: `${v.vehicle_number} docs expiring: ${expiries.join(', ')}`,

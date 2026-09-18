@@ -80,7 +80,7 @@ export function ModifyTrips() {
   const loadInitialData = async () => {
     setIsProcessing(true);
     // Fetch vehicles for the dropdown
-    const { data: vData } = await supabase.from('vehicles').select('vehicle_id, vehicle_number').eq('is_active', true).order('vehicle_number');
+    const { data: vData } = await supabase.from('trucks').select('vehicle_id, vehicle_number').eq('is_active', true).order('vehicle_number');
     if (vData) setVehicles(vData);
 
     // Fetch active drivers for the dropdown
@@ -292,7 +292,7 @@ export function ModifyTrips() {
             // THE FIX: The log was missing from the audit entirely! Inject a brand new receipt.
             const { error: insErr } = await supabase.from('diesel_fuel_logs').insert([{
                 fuel_date: startDate || new Date().toISOString().split('T')[0],
-                vehicle_id: currentTrip.vehicle_id,
+                vehicle_id: currentTrip.id,
                 trip_id: currentTrip.trip_id,
                 lr_number: tripNumber.toUpperCase().trim(),
                 diesel_category: "TRIP_DIESEL",

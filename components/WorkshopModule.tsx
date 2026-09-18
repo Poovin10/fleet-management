@@ -76,7 +76,7 @@ export function WorkshopModule() {
 
     triggerModal("Register Tyre", `Add ${serialNo.toUpperCase()} to ${regMode === 'IN_STORE' ? 'Inventory' : 'Fleet'}?`, false, "Register", async () => {
       setIsProcessing(true);
-      await supabase.from('fleet_tyres').insert([{
+      const { error: tyreError } = await supabase.from('fleet_tyres').insert([{
         vehicle_id: regMode === "MOUNTED" ? Number(truckId) : null,
         serial_number: serialNo.toUpperCase().trim(),
         brand_model: brand.toUpperCase().trim(),
@@ -145,8 +145,8 @@ export function WorkshopModule() {
   };
 
   // Filter Tyres
-  const mountedTyres = activeTyres.filter(t => t.tyre_status === 'MOUNTED' || (!t.tyre_status && t.vehicle_id));
-  const storeTyres = activeTyres.filter(t => t.tyre_status === 'IN_STORE' || t.tyre_status === 'RETREADING' || (!t.tyre_status && !t.vehicle_id));
+  const mountedTyres = activeTyres.filter(t => t.tyre_status === 'MOUNTED' || (!t.tyre_status && t.id));
+  const storeTyres = activeTyres.filter(t => t.tyre_status === 'IN_STORE' || t.tyre_status === 'RETREADING' || (!t.tyre_status && !t.id));
   const scrapTyres = activeTyres.filter(t => t.tyre_status === 'SCRAPPED' || t.tyre_status === 'REJECTED');
 
   return (
@@ -188,7 +188,7 @@ export function WorkshopModule() {
 
               {actionModal.mode === "MOUNT" && (
                 <>
-                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Assign to Truck *</label><select value={actionTruckId} onChange={e=>setActionTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id || v.vehicle_id} value={String(v.id || v.vehicle_id)}>{v.vehicle_number}</option>)}</select></div>
+                  <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Assign to Truck *</label><select value={actionTruckId} onChange={e=>setActionTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id || v.id} value={String(v.id || v.id)}>{v.vehicle_number}</option>)}</select></div>
                   <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Position *</label><select value={actionPos} onChange={e=>setActionPos(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-semibold outline-none bg-surface text-fg"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></select></div>
                   <div><label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Truck Odo at Mount (KM) *</label><input type="number" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-border-strong focus:ring-2 focus:ring-[#FF5A00] font-bold outline-none bg-surface text-fg" placeholder="0" /></div>
                 </>
@@ -246,7 +246,7 @@ export function WorkshopModule() {
                     <label className="block text-[10px] font-bold text-[#FF5A00] uppercase mb-1">Select Truck *</label>
                     <select value={truckId} onChange={e => setTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg">
                       <option value="">-- SELECT TRUCK --</option>
-                      {vehicles.map(v => <option key={v.id || v.vehicle_id} value={String(v.id || v.vehicle_id)}>{v.vehicle_number}</option>)}
+                      {vehicles.map(v => <option key={v.id || v.id} value={String(v.id || v.id)}>{v.vehicle_number}</option>)}
                     </select>
                   </div>
                   <div>
@@ -349,7 +349,7 @@ export function WorkshopModule() {
                 <label className="block text-[10px] font-bold text-fg-secondary uppercase mb-1">Select Truck *</label>
                 <select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-border-strong outline-none focus:ring-2 focus:ring-[#FF5A00] font-bold bg-surface text-fg" required>
                   <option value="">-- SELECT TRUCK --</option>
-                  {vehicles.map(v => <option key={v.id || v.vehicle_id} value={String(v.id || v.vehicle_id)}>{v.vehicle_number}</option>)}
+                  {vehicles.map(v => <option key={v.id || v.id} value={String(v.id || v.id)}>{v.vehicle_number}</option>)}
                 </select>
               </div>
             </div>

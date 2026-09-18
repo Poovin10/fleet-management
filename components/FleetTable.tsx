@@ -11,7 +11,7 @@ export function FleetTable() {
   useEffect(() => {
     async function fetchVehicles() {
       const { data, error } = await supabase
-        .from('vehicles')
+        .from('trucks')
         .select('*')
         .order('vehicle_number', { ascending: true });
 
@@ -41,7 +41,7 @@ export function FleetTable() {
           </thead>
           <tbody>
             {vehicles.map((v) => (
-              <tr key={v.vehicle_id || v.vehicle_number} className="border-b hover:bg-app">
+              <tr key={v.id || v.vehicle_number} className="border-b hover:bg-app">
                 <td className="p-3 font-bold text-fg">{v.vehicle_number}</td>
                 <td className="p-3">{v.truck_type}</td>
                 <td className="p-3">{v.carrying_capacity_tons} MT</td>

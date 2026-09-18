@@ -85,7 +85,7 @@ export function DriverPortal() {
   const fetchPortalData = async () => {
     if (!supabase) return;
     const [vRes, dRes, tRes] = await Promise.all([
-      supabase.from('vehicles').select('*').eq('is_active', true),
+      supabase.from('trucks').select('*').eq('is_active', true),
       supabase.from('drivers').select('*').eq('is_active', true),
       supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status, trip_start_date, reached_at, unloaded_at, returning_at, start_km, destination_lat, destination_lng, origin_lat, origin_lng').neq('trip_status', 'COMPLETED')
     ]);
@@ -116,17 +116,17 @@ export function DriverPortal() {
   }, [supabase]);
 
   const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
-  const selectedTruckObj = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
+  const selectedTruckObj = vehicles.find(v => String(v.id) === String(selectedTruckId));
 
   const sortedTrips = [...activeTrips].sort((a, b) => b.trip_id - a.trip_id);
-  const latestAssignedTrip = sortedTrips.find(t => String(t.vehicle_id) === String(selectedTruckId));
+  const latestAssignedTrip = sortedTrips.find(t => String(t.id) === String(selectedTruckId));
   const currentTrip = latestAssignedTrip?.trip_status === 'WAITING_FOR_LOAD' ? null : latestAssignedTrip;
 
   useEffect(() => {
     if (isDriverLocked && drivers.length > 0 && activeDriverObj) {
       if (activeTrips.length > 0) {
         const activeTrip = activeTrips.find(t => String(t.primary_driver_id) === String(activeDriverObj.driver_id) && t.trip_status !== 'WAITING_FOR_LOAD');
-        if (activeTrip) setSelectedTruckId(String(activeTrip.vehicle_id));
+        if (activeTrip) setSelectedTruckId(String(activeTrip.id));
       }
       fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
     }
@@ -251,7 +251,7 @@ export function DriverPortal() {
       const { error: tripError } = await supabase.from('trips').insert([updatePayload]);
       if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Trip Error", message: tripError.message, type: "error" }); }
 
-      const { error: vehicleError } = await supabase.from('vehicles').update({
+      const { error: vehicleError } = await supabase.from('trucks').update({
           current_status: "IN_TRANSIT", status_remarks: `Started draft trip [${draftLr}]`, status_updated_at: timestamp
       }).eq('vehicle_id', selectedTruckId);
 
@@ -326,7 +326,7 @@ export function DriverPortal() {
         const { error: tripError } = await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
         if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Trip Update Failed", message: tripError.message, type: "error" }); }
 
-        const { error: vehicleError } = await supabase.from('vehicles').update({ current_status: vehicleStatusUpdate, status_remarks: finalVehicleRemarks, status_updated_at: timestamp }).eq('vehicle_id', selectedTruckId);
+        const { error: vehicleError } = await supabase.from('trucks').update({ current_status: vehicleStatusUpdate, status_remarks: finalVehicleRemarks, status_updated_at: timestamp }).eq('vehicle_id', selectedTruckId);
         if (vehicleError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Vehicle Update Failed", message: vehicleError.message, type: "error" }); }
 
         setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
@@ -389,7 +389,7 @@ export function DriverPortal() {
                 <label className={labelStyle}>Active Truck</label>
                 <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className={inputStyle} required>
                   <option value="">Select assigned vehicle...</option>
-                  {vehicles.map(v => (<option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} ({v.truck_type})</option>))}
+                  {vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number} ({v.truck_type})</option>))}
                 </select>
               </div>
 

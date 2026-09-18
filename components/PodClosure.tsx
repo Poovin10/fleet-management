@@ -244,14 +244,14 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
     if (tripUpdateError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Closure Failed", message: "Error updating trip: " + tripUpdateError.message, type: "error" }); }
 
     if (addDiesel > 0) {
-      await supabase.from("diesel_fuel_logs").insert([{
-        fuel_date: closingDate, vehicle_id: currentTrip.vehicle_id, trip_id: currentTrip.trip_id, lr_number: currentTrip.trip_number,
+      const { error: podFuelError } = await supabase.from("diesel_fuel_logs").insert([{
+        fuel_date: closingDate, vehicle_id: currentTrip.id, trip_id: currentTrip.trip_id, lr_number: currentTrip.trip_number,
         diesel_category: "TRIP_DIESEL", litres_filled: addDiesel, diesel_rate_per_litre: dieselRate, total_fuel_cost: addedDieselCost,
         filling_odometer_km: endKm, is_tank_full: isTankFull
       }]);
     }
 
-    await supabase.from("vehicles").update({ current_status: "AVAILABLE_FOR_LOAD", status_remarks: "Available (Auto-Closed on POD)" }).eq("vehicle_id", currentTrip.vehicle_id);
+    await supabase.from("trucks").update({ current_status: "AVAILABLE_FOR_LOAD", status_remarks: "Available (Auto-Closed on POD)" }).eq("vehicle_id", currentTrip.id);
 
     if (activeScanId) {
       await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);

@@ -137,7 +137,7 @@ export function FinancialsModule() {
       sDate = customStart; eDate = customEnd;
     }
 
-    const { data: activeVehicles } = await supabase.from('vehicles').select('vehicle_id, vehicle_number, truck_type').eq('is_active', true);
+    const { data: activeVehicles } = await supabase.from('trucks').select('vehicle_id, vehicle_number, truck_type').eq('is_active', true);
     const { data: activeDrivers } = await supabase.from('drivers').select('driver_id, driver_code, full_name').eq('is_active', true);
     
     let tQuery = supabase.from('trips').select('vehicle_id, primary_driver_id, trip_status, total_km_run, loaded_weight_mt, tonnage_loaded, freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance, fuel_litres');
@@ -156,8 +156,8 @@ export function FinancialsModule() {
 
     (activeVehicles || []).forEach(v => {
       variants.add(v.truck_type || "Unknown");
-      const vTrips = (trips || []).filter(t => t.vehicle_id === v.vehicle_id);
-      const vFuels = (fuels || []).filter(f => f.vehicle_id === v.vehicle_id);
+      const vTrips = (trips || []).filter(t => t.id === v.id);
+      const vFuels = (fuels || []).filter(f => f.id === v.id);
 
       let trips_count = vTrips.length;
       let incomplete_trips = vTrips.filter(t => t.trip_status !== 'COMPLETED').length;

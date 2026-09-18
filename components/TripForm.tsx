@@ -89,7 +89,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
     async function fetchMasterData() {
       setIsLoading(true);
       const [vehRes, drvRes, frRes, btRes, dieselRes, scansRes, activeTripsRes] = await Promise.all([
-        supabase.from("vehicles").select("*").eq("is_active", true).order("vehicle_number"),
+        supabase.from("trucks").select("*").eq("is_active", true).order("vehicle_number"),
         supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
         supabase.from("destinations_freight_master").select("*").eq("is_active", true),
         supabase.from("driver_bata_master").select("*"),
@@ -106,7 +106,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (scansRes.data) setPendingScans(scansRes.data);
 
       if (activeTripsRes.data) {
-        setDraftTrips(activeTripsRes.data.filter(t => t.trip_number.startsWith("DRAFT-")).map(t => String(t.vehicle_id)));
+        setDraftTrips(activeTripsRes.data.filter(t => t.trip_number.startsWith("DRAFT-")).map(t => String(t.id)));
       }
       setIsLoading(false);
     }
@@ -145,7 +145,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
          return dbTruck === matchTruck || dbTruck.includes(matchTruck);
       });
       if (matched) {
-        setSelectedTruckId(String(matched.vehicle_id));
+        setSelectedTruckId(String(matched.id));
         if (!data.tonnage && matched.carrying_capacity_tons) setLoadedMt(Number(matched.carrying_capacity_tons));
       }
     }
@@ -165,7 +165,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
   const handleManualTruckSelect = (val: string) => {
     setSelectedTruckId(val);
-    const truck = vehicles.find((v) => String(v.vehicle_id) === String(val));
+    const truck = vehicles.find((v) => String(v.id) === String(val));
     if (truck && truck.carrying_capacity_tons) setLoadedMt(Number(truck.carrying_capacity_tons));
   };
 
@@ -182,7 +182,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
     const selDriver = drivers.find(d => String(d.driver_id) === String(selectedDriverId));
     if (selDriver) checkWarning(`Driver ${selDriver.driver_code}`, "License", selDriver.license_expiry_date);
 
-    const selTruck = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
+    const selTruck = vehicles.find(v => String(v.id) === String(selectedTruckId));
     if (selTruck) {
       const tName = `Truck ${selTruck.vehicle_number}`;
       checkWarning(tName, "FC", selTruck.fc_expiry_date); checkWarning(tName, "Insurance", selTruck.insurance_expiry_date);
@@ -195,12 +195,12 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
   const availableTrucks = vehicles.filter((v) => {
     const isBulkTruck = String(v.truck_type).toUpperCase().includes("BULK");
-    const isAvailable = v.current_status === "AVAILABLE_FOR_LOAD" || v.current_status === "WAITING_FOR_LOAD" || draftTrips.includes(String(v.vehicle_id));
+    const isAvailable = v.current_status === "AVAILABLE_FOR_LOAD" || v.current_status === "WAITING_FOR_LOAD" || draftTrips.includes(String(v.id));
     if (!isAvailable) return false;
     return cargoType === "BULK" ? isBulkTruck : !isBulkTruck;
   });
 
-  const activeTruck = vehicles.find((v) => String(v.vehicle_id) === selectedTruckId);
+  const activeTruck = vehicles.find((v) => String(v.id) === selectedTruckId);
   const activeTruckCap = activeTruck ? Number(activeTruck.carrying_capacity_tons) : 0;
   const finalSource = source === "CUSTOM" ? customSource : source;
 
@@ -350,7 +350,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
       const { error: updateError } = await supabase.from("trips").update(tripPayload).eq("trip_id", activeTripId);
       if (updateError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Draft Update Failed", message: updateError.message, type: "error" }); }
 
-      await supabase.from("vehicles").update({ 
+      await supabase.from("trucks").update({ 
           status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSrc} ➔ ${finalDest} (${activeDraftTrip.trip_status})`, 
           status_updated_at: new Date().toISOString() 
       }).eq("vehicle_id", Number(selectedTruckId));
@@ -370,7 +370,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
 
       activeTripId = newTrip.trip_id;
 
-      await supabase.from("vehicles").update({ 
+      await supabase.from("trucks").update({ 
         current_status: "IN_TRANSIT", 
         status_remarks: `Trip ${lrNo.toUpperCase()}: ${finalSrc} ➔ ${finalDest}`, 
         status_updated_at: new Date().toISOString() 
@@ -398,7 +398,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
     setIsSubmitting(false); handleClear(); if (onSuccess) onSuccess();
   };
 
-  const truckOptions = availableTrucks.map(v => ({ value: String(v.vehicle_id), label: `${v.vehicle_number} [${v.truck_type}]` }));
+  const truckOptions = availableTrucks.map(v => ({ value: String(v.id), label: `${v.vehicle_number} [${v.truck_type}]` }));
   const sourceOptions = dynamicSources.map(s => ({ value: s, label: s })).concat([{ value: "CUSTOM", label: "CUSTOM (MANUAL)" }]);
   const destOptions = validRoutes.map(r => ({ value: r.destination_name, label: `${r.destination_name} (₹${r.freight_rate_per_ton}/MT)` })).concat([{ value: "MANUAL_SPOT_ROUTE", label: "-- MANUAL / SPOT ROUTE --" }]);
   const driverOptions = drivers.map(d => ({ value: String(d.driver_id), label: `${d.driver_code} - ${d.full_name}` }));

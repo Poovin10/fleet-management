@@ -72,7 +72,7 @@ export function FuelAdvanceModule() {
   const fetchData = async () => {
     setIsLoading(true);
     const [vehRes, drvRes, fuelRes, advRes, dieselRateRes, scansRes] = await Promise.all([
-      supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number'),
+      supabase.from('trucks').select('*').eq('is_active', true).order('vehicle_number'),
       supabase.from('drivers').select('*').eq('is_active', true).order('full_name'),
       supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(50),
       supabase.from('driver_direct_advances').select('*, drivers(full_name, driver_code)').order('advance_date', { ascending: false }).limit(50),
@@ -134,7 +134,7 @@ export function FuelAdvanceModule() {
           return dbTruck === aiTruck || dbTruck.includes(aiTruck) || aiTruck.includes(dbTruck);
       });
       if (matchedTruck) {
-          setFVehicleId(String(matchedTruck.vehicle_id));
+          setFVehicleId(String(matchedTruck.id));
           matched = true;
       }
     }
@@ -150,7 +150,7 @@ export function FuelAdvanceModule() {
 
   const handleEditClick = (log: any) => {
     setFaNav("⛽ Issue Diesel"); setEditLogId(log.fuel_log_id); setEditTripId(log.trip_id || null);
-    setFDate(log.fuel_date || ""); setFVehicleId(String(log.vehicle_id) || ""); setFCategory(log.diesel_category || "TRIP_DIESEL");
+    setFDate(log.fuel_date || ""); setFVehicleId(String(log.id) || ""); setFCategory(log.diesel_category || "TRIP_DIESEL");
     setFLrNo(log.lr_number === "SUNDRY" ? "" : (log.lr_number || "")); setFFillingKm(log.filling_odometer_km || "");
     setFLitres(log.litres_filled || ""); setFDieselRate(log.diesel_rate_per_litre || dieselRate); setFIsTankFull(log.is_tank_full || false);
     setActiveScanId(null); window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -367,7 +367,7 @@ export function FuelAdvanceModule() {
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Select Truck *</label>
                 <select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold" required disabled={isLoading}>
                   <option value="">-- SELECT TRUCK --</option>
-                  {vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}
+                  {vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}
                 </select>
               </div>
               <div>
@@ -583,7 +583,7 @@ export function FuelAdvanceModule() {
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Truck No</label>
               <select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold">
                 <option value="All Trucks">All Trucks</option>
-                {vehicles.map(v => <option key={v.vehicle_id} value={v.vehicle_number}>{v.vehicle_number}</option>)}
+                {vehicles.map(v => <option key={v.id} value={v.vehicle_number}>{v.vehicle_number}</option>)}
               </select>
             </div>
             <div>
@@ -662,7 +662,7 @@ export function FuelAdvanceModule() {
              <div className="w-full md:w-64">
                <select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white">
                  <option value="">-- SELECT TRUCK --</option>
-                 {vehicles.map(v => (<option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>))}
+                 {vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number}</option>))}
                </select>
              </div>
           </div>

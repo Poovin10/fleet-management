@@ -78,7 +78,7 @@ export function SetupModule() {
     }
 
     const [v, d, s, b, u] = await Promise.all([
-      supabase.from('vehicles').select('*').order('vehicle_number'),
+      supabase.from('trucks').select('*').order('vehicle_number'),
       supabase.from('drivers').select('*').order('full_name'),
       supabase.from('destinations_freight_master').select('*').order('destination_name'),
       supabase.from('driver_bata_master').select('*').order('destination_name'),
@@ -112,7 +112,7 @@ export function SetupModule() {
   };
 
   const handleEditTruck = (t: any) => {
-    setEditTruckId(t.vehicle_id);
+    setEditTruckId(t.id);
     setTruckNo(t.vehicle_number);
     setVariant(t.truck_type || "Bulker (16-Wheel)");
     setCapacity(`${t.carrying_capacity_tons}.0 MT`);
@@ -158,7 +158,7 @@ export function SetupModule() {
 
     triggerModal("Update Compliance", `Save document expiry dates for ${selectedTruckForCompliance.vehicle_number}?`, false, "Save Dates", async () => {
       setIsProcessing(true);
-      const { error } = await supabase.from('vehicles').update({
+      const { error } = await supabase.from('trucks').update({
         fc_expiry_date: fcExp || null,
         insurance_expiry_date: insExp || null,
         qtax_expiry_date: qtaxExp || null,
@@ -166,7 +166,7 @@ export function SetupModule() {
         np_expiry_date: npExp || null,
         state_permit_expiry_date: spExp || null,
         tank_cert_expiry_date: tankExp || null
-      }).eq('vehicle_id', selectedTruckForCompliance.vehicle_id);
+      }).eq('vehicle_id', selectedTruckForCompliance.id);
 
       if (error) alert("Error updating compliance: " + error.message);
       else {
@@ -277,9 +277,9 @@ export function SetupModule() {
       const payload = { vehicle_number: truckNo.toUpperCase().trim(), truck_type: variant, carrying_capacity_tons: parseFloat(capacity), is_active: true };
 
       if (isUpdate) {
-        await supabase.from('vehicles').update(payload).eq('vehicle_id', editTruckId);
+        await supabase.from('trucks').update(payload).eq('vehicle_id', editTruckId);
       } else {
-        await supabase.from('vehicles').insert([{ ...payload, current_status: "WAITING_FOR_LOAD" }]);
+        const { error } = await supabase.from('trucks').insert([{ ...payload, current_status: "WAITING_FOR_LOAD" }]);
       }
       clearTruckForm(); fetchData(); setIsProcessing(false); closeModal();
     });
@@ -355,7 +355,7 @@ export function SetupModule() {
         const res = await supabase.from('destinations_freight_master').update(payload).eq('destination_id', editSlabId);
         error = res.error;
       } else {
-        const res = await supabase.from('destinations_freight_master').insert([payload]);
+        const { error: resError } = await supabase.from('destinations_freight_master').insert([payload]);
         error = res.error;
       }
 
@@ -387,7 +387,7 @@ export function SetupModule() {
         const res = await supabase.from('driver_bata_master').update(payload).eq('bata_rule_id', editBataId);
         error = res.error;
       } else {
-        const res = await supabase.from('driver_bata_master').insert([payload]);
+        const { error: bataError } = await supabase.from('driver_bata_master').insert([payload]);
         error = res.error;
       }
 
@@ -446,7 +446,7 @@ export function SetupModule() {
               <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Registered Fleet (Click to Edit)</h4>
               <div className="flex flex-wrap gap-2">
                 {trucksList.map(t => (
-                  <button key={t.vehicle_id} onClick={() => handleEditTruck(t)} className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${editTruckId === t.vehicle_id ? 'bg-[#FF5A00] text-white border-[#FF5A00]' : 'bg-[#0F1117] text-slate-300 border-[#272B36] hover:border-[#FF5A00]/50 hover:text-white'}`}>
+                  <button key={t.id} onClick={() => handleEditTruck(t)} className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${editTruckId === t.id ? 'bg-[#FF5A00] text-white border-[#FF5A00]' : 'bg-[#0F1117] text-slate-300 border-[#272B36] hover:border-[#FF5A00]/50 hover:text-white'}`}>
                     {t.vehicle_number}
                   </button>
                 ))}
@@ -692,16 +692,16 @@ export function SetupModule() {
             <div className="mb-6">
               <label className="block text-xs font-bold text-slate-300 uppercase mb-2">Select Truck to Manage Permits</label>
               <select 
-                value={selectedTruckForCompliance ? selectedTruckForCompliance.vehicle_id : ""} 
+                value={selectedTruckForCompliance ? selectedTruckForCompliance.id : ""} 
                 onChange={e => {
-                  const found = trucksList.find(t => String(t.vehicle_id) === e.target.value);
+                  const found = trucksList.find(t => String(t.id) === e.target.value);
                   setSelectedTruckForCompliance(found || null);
                 }}
                 className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] font-bold outline-none focus:border-[#FF5A00] text-white"
               >
                 <option value="">-- SELECT TRUCK --</option>
                 {trucksList.map(t => (
-                  <option key={t.vehicle_id} value={t.vehicle_id}>
+                  <option key={t.id} value={t.id}>
                     {t.vehicle_number} [{t.truck_type}]
                   </option>
                 ))}
@@ -781,9 +781,9 @@ export function SetupModule() {
                   <tbody className="divide-y divide-[#272B36] bg-[#161922]">
                     {trucksList.map(t => (
                       <tr 
-                        key={t.vehicle_id} 
+                        key={t.id} 
                         onClick={() => { setSelectedTruckForCompliance(t); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                        className={`cursor-pointer transition-colors ${selectedTruckForCompliance?.vehicle_id === t.vehicle_id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}
+                        className={`cursor-pointer transition-colors ${selectedTruckForCompliance?.id === t.id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}
                       >
                         <td className="p-3 font-bold text-[#FF5A00]">{t.vehicle_number}</td>
                         <td className="p-3 text-slate-300 font-semibold">{t.fc_expiry_date || '-'}</td>
