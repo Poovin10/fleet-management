@@ -148,7 +148,7 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     if (!supabase) return;
-    const { data: vehiclesData } = await supabase.from('trucks').select('*').eq('is_active', true);
+    const { data: vehiclesData } = await supabase.from('trucks').select('*');
     if (vehiclesData && vehiclesData.length > 0) {
       setLiveVehicles(vehiclesData);
       setStatusCounts({
@@ -186,10 +186,10 @@ export default function Dashboard() {
       }
     };
 
-    const { data: drivers } = await supabase.from('drivers').select('driver_code, full_name, license_expiry_date').eq('is_active', true);
+    const { data: drivers } = await supabase.from('drivers').select('driver_code, full_name, license_expiry_date');
     if (drivers) drivers.forEach((d: any) => checkDoc("Driving License", `${d.driver_code} - ${d.full_name}`, d.license_expiry_date));
 
-    const { data: vehicles } = await supabase.from('trucks').select('vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date').eq('is_active', true);
+    const { data: vehicles } = await supabase.from('trucks').select('vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date');
     if (vehicles) {
       vehicles.forEach((v: any) => {
         const tName = `Truck ${v.vehicle_number}`;
