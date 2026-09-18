@@ -352,11 +352,11 @@ export function SetupModule() {
 
       let error;
       if (isUpdate) {
-        const res = await supabase.from('destinations_freight_master').update(payload).eq('destination_id', editSlabId);
-        error = res.error;
+        const { error: resError } = await supabase.from('destinations_freight_master').update(payload).eq('destination_id', editSlabId);
+        error = resError;
       } else {
         const { error: resError } = await supabase.from('destinations_freight_master').insert([payload]);
-        error = res.error;
+        error = resError;
       }
 
       if (error) alert("DATABASE REJECTION ERROR:\n\n" + error.message);
@@ -384,11 +384,11 @@ export function SetupModule() {
 
       let error;
       if (isUpdate) {
-        const res = await supabase.from('driver_bata_master').update(payload).eq('bata_rule_id', editBataId);
-        error = res.error;
+        const { error: resError } = await supabase.from('driver_bata_master').update(payload).eq('bata_rule_id', editBataId);
+        error = resError;
       } else {
-        const { error: bataError } = await supabase.from('driver_bata_master').insert([payload]);
-        error = res.error;
+        const { error: resError } = await supabase.from('driver_bata_master').insert([payload]);
+        error = resError;
       }
 
       if (error) alert("DATABASE REJECTION ERROR:\n\n" + error.message);

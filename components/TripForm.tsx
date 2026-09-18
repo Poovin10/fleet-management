@@ -106,7 +106,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
       if (scansRes.data) setPendingScans(scansRes.data);
 
       if (activeTripsRes.data) {
-        setDraftTrips(activeTripsRes.data.filter(t => t.trip_number.startsWith("DRAFT-")).map(t => String(t.id)));
+        setDraftTrips(activeTripsRes.data.filter(t => t.trip_number.startsWith("DRAFT-")).map(t => String(t.vehicle_id)));
       }
       setIsLoading(false);
     }

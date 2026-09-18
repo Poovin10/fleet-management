@@ -156,8 +156,8 @@ export function FinancialsModule() {
 
     (activeVehicles || []).forEach(v => {
       variants.add(v.truck_type || "Unknown");
-      const vTrips = (trips || []).filter(t => t.id === v.id);
-      const vFuels = (fuels || []).filter(f => f.id === v.id);
+      const vTrips = (trips || []).filter(t => t.vehicle_id === ((v as any).id || (v as any).vehicle_id));
+      const vFuels = (fuels || []).filter(f => f.vehicle_id === ((v as any).id || (v as any).vehicle_id));
 
       let trips_count = vTrips.length;
       let incomplete_trips = vTrips.filter(t => t.trip_status !== 'COMPLETED').length;

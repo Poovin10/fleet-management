@@ -30,10 +30,10 @@ export function ApprovalQueue() {
     }
 
     if (qData && qData.length > 0) {
-      const { data: vData } = await supabase.from('trucks').select('vehicle_id, vehicle_number');
+      const { data: vData } = await supabase.from('trucks').select('id, vehicle_number');
       const mappedQueue = qData.map(req => {
-        const truck = vData?.find(v => v.id === req.id);
-        return { ...req, truck_number: truck ? truck.vehicle_number : `Truck ID: ${req.id}` };
+        const truck = vData?.find(v => v.id === req.vehicle_id);
+        return { ...req, truck_number: truck ? truck.vehicle_number : `Truck ID: ${req.vehicle_id}` };
       });
       setQueue(mappedQueue);
     } else {
@@ -69,7 +69,7 @@ export function ApprovalQueue() {
     const actualRate = finalCost / Number(req.litres);
 
     const { error: insertError } = await supabase.from('diesel_fuel_logs').insert([{
-      fuel_date: new Date().toISOString().split('T')[0], vehicle_id: req.id, diesel_category: 'TRIP_DIESEL',
+      fuel_date: new Date().toISOString().split('T')[0], vehicle_id: req.vehicle_id, diesel_category: 'TRIP_DIESEL',
       litres_filled: Number(req.litres), diesel_rate_per_litre: actualRate, total_fuel_cost: finalCost, filling_odometer_km: req.odometer_km || 0,
       lr_number: 'SUNDRY', is_tank_full: false
     }]);
