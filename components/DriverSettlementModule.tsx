@@ -60,10 +60,9 @@ export function DriverSettlementModule() {
     return acc;
   }, {});
 
-  let grandTotalFreight = 0; let grandTotalBata = 0; let grandTotalTripAdv = 0;
+  let grandTotalBata = 0; let grandTotalTripAdv = 0;
   Object.values(tripsByTruck).forEach((tripsArr: any) => {
     tripsArr.forEach((t: any) => {
-      grandTotalFreight += Number(t.freight_revenue) || 0;
       grandTotalBata += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0);
       grandTotalTripAdv += Number(t.cash_advance_issued) || 0;
     });
@@ -74,47 +73,6 @@ export function DriverSettlementModule() {
 
   const finalBalancePayable = grandTotalBata - grandTotalTripAdv - directAdvTotal;
   const selectedDriverObj = drivers.find(d => String(d.driver_id) === selectedDriverId);
-
-  const exportToCSV = () => {
-    if (!selectedDriverObj) return;
-    const sanitize = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const rows: string[] = [];
-    rows.push(["DRIVER SETTLEMENT STATEMENT"].join(","));
-    rows.push(["Driver", sanitize(selectedDriverObj.full_name), "Code", sanitize(selectedDriverObj.driver_code)].join(","));
-    rows.push(["Period", sanitize(`${formatDate(fromDate)} to ${formatDate(toDate)}`), "Generated", sanitize(new Date().toISOString().split('T')[0])].join(","));
-    rows.push("");
-
-    Object.entries(tripsByTruck).forEach(([truckNo, tArr]: any) => {
-      rows.push([sanitize(`--- TRUCK NO: ${truckNo} ---`)].join(","));
-      rows.push(["Date", "LR Number", "Route", "Freight (INR)", "Total Bata (INR)", "Trip Advance (INR)", "Net Balance (INR)", "Status"].map(sanitize).join(","));
-      let trFreight = 0; let trBata = 0; let trAdv = 0;
-      tArr.forEach((t: any) => {
-        const tb = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0); const ta = Number(t.cash_advance_issued) || 0;
-        trFreight += Number(t.freight_revenue) || 0; trBata += tb; trAdv += ta;
-        rows.push([formatDate(t.trip_start_date), t.trip_number || "-", `${t.origin} to ${t.destination}`, t.freight_revenue || 0, tb, ta, tb - ta, t.settlement_status || "PENDING"].map(sanitize).join(","));
-      });
-      rows.push(["TRUCK SUBTOTAL", "", "", trFreight.toFixed(2), trBata.toFixed(2), trAdv.toFixed(2), (trBata - trAdv).toFixed(2), ""].map(sanitize).join(","));
-      rows.push("");
-    });
-
-    if (driverAdvances.length > 0) {
-      rows.push(["--- DIRECT CASH ADVANCES ---"].join(","));
-      rows.push(["Date", "Category", "Remarks", "Amount (INR)"].map(sanitize).join(","));
-      driverAdvances.forEach(a => { rows.push([formatDate(a.advance_date), a.advance_type, a.reference_remarks || "-", a.amount_inr || 0].map(sanitize).join(",")); });
-      rows.push(["ADVANCE SUBTOTAL", "", "", directAdvTotal.toFixed(2)].map(sanitize).join(","));
-      rows.push("");
-    }
-
-    rows.push(["--- GRAND TOTALS ---"].join(","));
-    rows.push(["Total Bata Earned", "", "", grandTotalBata.toFixed(2)].map(sanitize).join(","));
-    rows.push(["Less: Trip Advances", "", "", grandTotalTripAdv.toFixed(2)].map(sanitize).join(","));
-    rows.push(["Less: Direct Advances", "", "", directAdvTotal.toFixed(2)].map(sanitize).join(","));
-    rows.push(["NET BALANCE PAYABLE", "", "", finalBalancePayable.toFixed(2)].map(sanitize).join(","));
-
-    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.setAttribute("download", `Settlement_${selectedDriverObj.driver_code}_${fromDate}_to_${toDate}.csv`);
-    document.body.appendChild(link); link.click(); document.body.removeChild(link);
-  };
 
   const exportToPDF = () => {
     if (!selectedDriverObj) return;
@@ -137,7 +95,6 @@ export function DriverSettlementModule() {
       rows.push(["-- DIRECT ADVANCES --", "", "", "", "", ""]);
       driverAdvances.forEach(a => { rows.push([formatDate(a.advance_date), `${a.advance_type} | ${a.reference_remarks || "-"}`, "-", "-", `Rs.${formatAmt(a.amount_inr)}`, `(Rs.${formatAmt(a.amount_inr)})`]); });
       rows.push(["SUBTOTAL", "Direct Advances", "", "-", `Rs.${formatAmt(directAdvTotal)}`, `(Rs.${formatAmt(directAdvTotal)})`]);
-      rows.push(["", "", "", "", "", ""]);
     }
 
     generateUniversalPdf(
@@ -148,31 +105,31 @@ export function DriverSettlementModule() {
   };
 
   return (
-    <div className="space-y-6 animate-slide-up">
+    <div className="space-y-6">
       <div className="border-b border-white/[0.06] pb-4">
         <h2 className="text-xl font-black text-white uppercase tracking-tight">Driver Accounting & Settlements</h2>
-        <p className="text-xs text-slate-400 font-medium mt-0.5">Generate multi-truck ledgers, calculate net balances, and export audit-ready PDF/CSV statements.</p>
+        <p className="text-xs text-slate-400 font-medium mt-0.5">Generate multi-truck ledgers, calculate net balances, and export statements.</p>
       </div>
 
-      <div className="erp-card rounded-3xl p-6 sm:p-8 shadow-xl">
+      <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 sm:p-8 shadow-2xl">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="md:col-span-2">
             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Select Driver *</label>
-            <select value={selectedDriverId} onChange={(e) => { setSelectedDriverId(e.target.value); setHasSearched(false); }} className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-white outline-none focus:border-[#FF5A00] font-bold">
+            <select value={selectedDriverId} onChange={(e) => { setSelectedDriverId(e.target.value); setHasSearched(false); }} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white outline-none focus:border-[#FF5A00] font-bold">
               <option value="">-- SELECT DRIVER --</option>
               {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">From Date *</label>
-            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-white font-semibold outline-none" />
+            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-semibold outline-none" />
           </div>
           <div className="flex items-end">
             <div className="w-full">
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">To Date *</label>
               <div className="flex gap-2">
-                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-white font-semibold outline-none" />
-                <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="erp-button-primary px-6 uppercase tracking-wider text-xs">
+                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-semibold outline-none" />
+                <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 py-3.5 bg-gradient-to-r from-[#FF5A00] to-[#E04F00] text-white font-black text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)] cursor-pointer">
                   Load
                 </button>
               </div>
@@ -183,55 +140,54 @@ export function DriverSettlementModule() {
         {hasSearched && (
           <div className="space-y-8 animate-slide-up">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-[#0B0D13] border border-white/[0.06] rounded-2xl p-5"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Trips</p><p className="text-2xl font-black text-white mt-2">{driverTrips.length}</p></div>
-              <div className="bg-emerald-950/20 border border-emerald-900/40 rounded-2xl p-5"><p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Gross Bata Earned</p><p className="text-2xl font-black text-emerald-300 mt-2">₹{formatAmt(grandTotalBata)}</p></div>
-              <div className="bg-rose-950/20 border border-rose-900/40 rounded-2xl p-5"><p className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Total Deductions</p><p className="text-2xl font-black text-rose-300 mt-2">₹{formatAmt(grandTotalTripAdv + directAdvTotal)}</p></div>
-              <div className="bg-[#FF5A00]/10 border border-[#FF5A00]/30 rounded-2xl p-5 shadow-sm"><p className="text-[10px] font-black text-[#FF5A00] uppercase tracking-widest">Net Payable</p><p className="text-2xl sm:text-3xl font-black text-[#FF5A00] mt-2">₹{formatAmt(finalBalancePayable)}</p></div>
+              <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Trips</p><p className="text-2xl font-black text-white mt-2 font-mono">{driverTrips.length}</p></div>
+              <div className="bg-emerald-950/20 border border-emerald-900/40 rounded-2xl p-5"><p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Gross Bata Earned</p><p className="text-2xl font-black text-emerald-300 mt-2 font-mono">₹{formatAmt(grandTotalBata)}</p></div>
+              <div className="bg-rose-950/20 border border-rose-900/40 rounded-2xl p-5"><p className="text-[9px] font-black text-rose-400 uppercase tracking-widest">Total Deductions</p><p className="text-2xl font-black text-rose-300 mt-2 font-mono">₹{formatAmt(grandTotalTripAdv + directAdvTotal)}</p></div>
+              <div className="bg-[#FF5A00]/10 border border-[#FF5A00]/30 rounded-2xl p-5 shadow-sm"><p className="text-[9px] font-black text-[#FF5A00] uppercase tracking-widest">Net Payable</p><p className="text-2xl sm:text-3xl font-black text-[#FF5A00] mt-2 font-mono">₹{formatAmt(finalBalancePayable)}</p></div>
             </div>
 
             <div className="space-y-6">
               {Object.entries(tripsByTruck).map(([truckNo, tArr]: any) => {
                 let trFreight = 0; let trBata = 0; let trAdv = 0;
                 return (
-                  <div key={truckNo} className="border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm bg-[#0B0D13]">
-                    <div className="bg-[#131722] px-6 py-3.5 border-b border-white/[0.06] flex justify-between items-center"><h4 className="text-xs font-black text-[#FF5A00] uppercase tracking-wide">TRUCK: {truckNo}</h4></div>
+                  <div key={truckNo} className="border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm bg-white/[0.01]">
+                    <div className="bg-white/[0.03] px-6 py-3.5 border-b border-white/[0.06] flex justify-between items-center"><h4 className="text-xs font-black text-[#FF5A00] uppercase tracking-wide">TRUCK: {truckNo}</h4></div>
                     <div className="overflow-x-auto w-full max-h-80 overflow-y-auto">
                       <table className="min-w-full divide-y divide-white/[0.06] text-xs whitespace-nowrap">
-                        <thead className="bg-[#050608] sticky top-0"><tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[10px]"><th className="px-5 py-3 border-b border-white/[0.06]">Date / LR No</th><th className="px-5 py-3 border-b border-white/[0.06]">Route</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Freight (₹)</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Bata (₹)</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Trip Adv (₹)</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Balance (₹)</th><th className="px-5 py-3 text-center border-b border-white/[0.06]">Status</th></tr></thead>
-                        <tbody className="divide-y divide-white/[0.06]">
+                        <thead className="bg-[#030407] sticky top-0"><tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[9px]"><th className="px-5 py-3 border-b border-white/[0.06]">Date / LR No</th><th className="px-5 py-3 border-b border-white/[0.06]">Route</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Freight (₹)</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Bata (₹)</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Trip Adv (₹)</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Balance (₹)</th><th className="px-5 py-3 text-center border-b border-white/[0.06]">Status</th></tr></thead>
+                        <tbody className="divide-y divide-white/[0.05]">
                           {tArr.map((t: any) => {
                             const tb = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0); const ta = Number(t.cash_advance_issued) || 0;
                             trFreight += Number(t.freight_revenue) || 0; trBata += tb; trAdv += ta;
                             return (
                               <tr key={t.trip_id} className="hover:bg-white/[0.02]">
-                                <td className="px-5 py-3.5 font-semibold text-white">{formatDate(t.trip_start_date)}<br/><span className="text-slate-500 font-black text-[10px]">{t.trip_number || "-"}</span></td>
+                                <td className="px-5 py-3.5 font-semibold text-white">{formatDate(t.trip_start_date)}<br/><span className="text-slate-500 font-black text-[9px] font-mono">{t.trip_number || "-"}</span></td>
                                 <td className="px-5 py-3.5 text-slate-300 font-bold"><span className="text-xs">{t.origin} ➔ {t.destination}</span></td>
-                                <td className="px-5 py-3.5 text-right font-black text-slate-300">{formatAmt(t.freight_revenue)}</td>
-                                <td className="px-5 py-3.5 text-right font-black text-emerald-400">{formatAmt(tb)}</td>
-                                <td className="px-5 py-3.5 text-right font-black text-rose-400">{formatAmt(ta)}</td>
-                                <td className="px-5 py-3.5 text-right font-black text-[#FF5A00]">{formatAmt(tb - ta)}</td>
+                                <td className="px-5 py-3.5 text-right font-black text-slate-300 font-mono">{formatAmt(t.freight_revenue)}</td>
+                                <td className="px-5 py-3.5 text-right font-black text-emerald-400 font-mono">{formatAmt(tb)}</td>
+                                <td className="px-5 py-3.5 text-right font-black text-rose-400 font-mono">{formatAmt(ta)}</td>
+                                <td className="px-5 py-3.5 text-right font-black text-[#FF5A00] font-mono">{formatAmt(tb - ta)}</td>
                                 <td className="px-5 py-3.5 text-center"><span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${t.settlement_status === 'SETTLED' ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/40' : 'bg-amber-950/40 text-amber-400 border border-amber-900/40'}`}>{t.settlement_status || "PENDING"}</span></td>
                               </tr>
                             );
                           })}
-                          <tr className="bg-[#050608]"><td colSpan={2} className="px-5 py-3.5 text-right font-black text-slate-400 uppercase tracking-widest text-[10px]">Truck Subtotal</td><td className="px-5 py-3.5 text-right font-black text-white">₹{formatAmt(trFreight)}</td><td className="px-5 py-3.5 text-right font-black text-emerald-400">₹{formatAmt(trBata)}</td><td className="px-5 py-3.5 text-right font-black text-rose-400">₹{formatAmt(trAdv)}</td><td className="px-5 py-3.5 text-right font-black text-[#FF5A00]">₹{formatAmt(trBata - trAdv)}</td><td className="px-5 py-3.5"></td></tr>
+                          <tr className="bg-[#030407]"><td colSpan={2} className="px-5 py-3.5 text-right font-black text-slate-400 uppercase tracking-widest text-[9px]">Truck Subtotal</td><td className="px-5 py-3.5 text-right font-black text-white font-mono">₹{formatAmt(trFreight)}</td><td className="px-5 py-3.5 text-right font-black text-emerald-400 font-mono">₹{formatAmt(trBata)}</td><td className="px-5 py-3.5 text-right font-black text-rose-400 font-mono">₹{formatAmt(trAdv)}</td><td className="px-5 py-3.5 text-right font-black text-[#FF5A00] font-mono">₹{formatAmt(trBata - trAdv)}</td><td className="px-5 py-3.5"></td></tr>
                         </tbody>
                       </table>
                     </div>
                   </div>
                 );
               })}
-              {Object.keys(tripsByTruck).length === 0 && <div className="p-8 text-center text-slate-500 font-medium bg-[#0B0D13] border border-white/[0.06] rounded-2xl">No trips logged by this driver in the selected period.</div>}
 
               {driverAdvances.length > 0 && (
-                <div className="border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm bg-[#0B0D13]">
-                  <div className="bg-[#131722] px-6 py-3.5 border-b border-white/[0.06]"><h4 className="text-xs font-black text-rose-400 uppercase tracking-wide">Direct Cash Advances</h4></div>
+                <div className="border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm bg-white/[0.01]">
+                  <div className="bg-white/[0.03] px-6 py-3.5 border-b border-white/[0.06]"><h4 className="text-xs font-black text-rose-400 uppercase tracking-wide">Direct Cash Advances</h4></div>
                   <div className="overflow-x-auto w-full max-h-60 overflow-y-auto">
                     <table className="min-w-full divide-y divide-white/[0.06] text-xs whitespace-nowrap">
-                      <thead className="bg-[#050608] sticky top-0"><tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[10px]"><th className="px-5 py-3 border-b border-white/[0.06]">Date</th><th className="px-5 py-3 border-b border-white/[0.06]">Category</th><th className="px-5 py-3 border-b border-white/[0.06]">Remarks</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Amount (₹)</th></tr></thead>
-                      <tbody className="divide-y divide-white/[0.06]">
-                        {driverAdvances.map(a => (<tr key={a.advance_id} className="hover:bg-white/[0.02]"><td className="px-5 py-3.5 font-semibold text-white">{formatDate(a.advance_date)}</td><td className="px-5 py-3.5 text-slate-300 font-bold">{a.advance_type}</td><td className="px-5 py-3.5 text-slate-500">{a.reference_remarks || "-"}</td><td className="px-5 py-3.5 text-right font-black text-rose-400">{formatAmt(a.amount_inr)}</td></tr>))}
-                        <tr className="bg-[#050608]"><td colSpan={3} className="px-5 py-3.5 text-right font-black text-slate-400 uppercase tracking-widest text-[10px]">Advance Subtotal</td><td className="px-5 py-3.5 text-right font-black text-rose-400">₹{formatAmt(directAdvTotal)}</td></tr>
+                      <thead className="bg-[#030407] sticky top-0"><tr className="text-left font-bold text-slate-400 uppercase tracking-wider text-[9px]"><th className="px-5 py-3 border-b border-white/[0.06]">Date</th><th className="px-5 py-3 border-b border-white/[0.06]">Category</th><th className="px-5 py-3 border-b border-white/[0.06]">Remarks</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Amount (₹)</th></tr></thead>
+                      <tbody className="divide-y divide-white/[0.05]">
+                        {driverAdvances.map(a => (<tr key={a.advance_id} className="hover:bg-white/[0.02]"><td className="px-5 py-3.5 font-semibold text-white">{formatDate(a.advance_date)}</td><td className="px-5 py-3.5 text-slate-300 font-bold">{a.advance_type}</td><td className="px-5 py-3.5 text-slate-500">{a.reference_remarks || "-"}</td><td className="px-5 py-3.5 text-right font-black text-rose-400 font-mono">{formatAmt(a.amount_inr)}</td></tr>))}
+                        <tr className="bg-[#030407]"><td colSpan={3} className="px-5 py-3.5 text-right font-black text-slate-400 uppercase tracking-widest text-[9px]">Advance Subtotal</td><td className="px-5 py-3.5 text-right font-black text-rose-400 font-mono">₹{formatAmt(directAdvTotal)}</td></tr>
                       </tbody>
                     </table>
                   </div>
@@ -240,11 +196,8 @@ export function DriverSettlementModule() {
             </div>
 
             <div className="pt-6 border-t border-white/[0.06] flex flex-wrap justify-between items-center gap-4">
-              <div className="flex gap-3">
-                <button onClick={exportToCSV} disabled={isProcessing} className="px-6 py-3 bg-[#0B0D13] hover:bg-white/[0.04] border border-white/[0.08] text-emerald-400 font-black text-xs rounded-xl transition-all uppercase tracking-wider cursor-pointer">Export CSV</button>
-                <button onClick={exportToPDF} disabled={isProcessing} className="px-6 py-3 bg-[#0B0D13] hover:bg-white/[0.04] border border-white/[0.08] text-[#FF5A00] font-black text-xs rounded-xl transition-all uppercase tracking-wider cursor-pointer">Export PDF Statement</button>
-              </div>
-              <button onClick={handleMarkSettled} disabled={isProcessing} className="erp-button-primary px-8 py-3.5 text-xs uppercase tracking-wider cursor-pointer bg-emerald-600 hover:bg-emerald-500">
+              <button onClick={exportToPDF} disabled={isProcessing} className="px-6 py-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-[#FF5A00] font-black text-xs rounded-xl transition-all uppercase tracking-wider cursor-pointer">Export PDF Statement</button>
+              <button onClick={handleMarkSettled} disabled={isProcessing} className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] cursor-pointer">
                 Mark Period as Settled
               </button>
             </div>

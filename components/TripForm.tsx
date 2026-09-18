@@ -12,7 +12,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const [destinations, setDestinations] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Form States
   const [lrNumber, setLrNumber] = useState("");
   const [tripDate, setTripDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedTruckId, setSelectedTruckId] = useState("");
@@ -55,7 +54,6 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
     loadData();
   }, [supabase]);
 
-  // Auto-fill rate when destination changes
   const handleDestinationChange = (destName: string) => {
     setDestination(destName);
     const matched = destinations.find(d => d.destination_name.toUpperCase() === destName.toUpperCase());
@@ -69,24 +67,22 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!lrNumber.trim() || !selectedTruckId || !destination) {
-      alert("Please fill in all mandatory dispatch fields (LR Number, Truck, Destination).");
+      alert("Please fill in all mandatory dispatch fields.");
       return;
     }
 
     triggerModal(
       "Confirm Waybill Dispatch",
-      `Authorize dispatch for Waybill LR #${lrNumber.toUpperCase().trim()}? This will lock in fleet inventory and update telemetry.`,
+      `Authorize dispatch for Waybill LR #${lrNumber.toUpperCase().trim()}?`,
       async () => {
         setIsProcessing(true);
         
-        // 1. Fetch latest diesel rate
         let currentDieselRate = 95.0;
         const { data: dLog } = await supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).limit(1);
         if (dLog && dLog.length > 0) currentDieselRate = Number(dLog[0].diesel_rate_per_litre);
 
         const fuelCost = Math.round((Number(dieselL) || 0) * currentDieselRate * 100) / 100;
 
-        // 2. Insert Trip Record
         const tripPayload = {
           trip_number: lrNumber.toUpperCase().trim(),
           trip_start_date: tripDate,
@@ -112,10 +108,8 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           alert("Dispatch Error: " + tripErr.message);
           setIsProcessing(false);
         } else {
-          // 3. Update Truck Status to In Transit
           await supabase.from('trucks').update({ current_status: 'IN_TRANSIT' }).eq('id', selectedTruckId);
 
-          // 4. Log Diesel if issued
           if (Number(dieselL) > 0 && insertedTrip) {
             await supabase.from('diesel_fuel_logs').insert([{
               fuel_date: tripDate,
@@ -134,7 +128,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           alert("Waybill successfully authorized and dispatched!");
           setLrNumber(""); setTonnage(""); setSpotRate(""); setDieselL(""); setStartKm(""); setDriverBata(""); setAdvanceIssued("");
           setIsProcessing(false);
-          closeMapModal: closeModal();
+          closeModal();
           if (onSuccess) onSuccess();
         }
       }
@@ -142,7 +136,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   return (
-    <div className="erp-card rounded-3xl p-6 sm:p-10 max-w-5xl mx-auto animate-slide-up">
+    <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 sm:p-10 max-w-5xl mx-auto shadow-2xl">
       <ConfirmModal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}
@@ -155,7 +149,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
       />
 
       <div className="border-b border-white/[0.06] pb-4 mb-8">
-        <h3 className="text-base font-black text-white uppercase tracking-wider">New Trip Dispatch & Waybill Registration</h3>
+        <h3 className="text-sm font-black text-white uppercase tracking-wider">New Trip Dispatch & Waybill Registration</h3>
         <p className="text-xs text-slate-400 font-medium mt-0.5">Initialize logistics waybill, assign active fleet units, and lock in freight rates.</p>
       </div>
 
@@ -168,7 +162,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               value={lrNumber}
               onChange={e => setLrNumber(e.target.value)}
               placeholder="e.g. LR-94021"
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-white uppercase font-black outline-none focus:border-[#FF5A00] transition-all"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white uppercase font-black outline-none focus:border-[#FF5A00]"
               required
             />
           </div>
@@ -178,7 +172,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               type="date"
               value={tripDate}
               onChange={e => setTripDate(e.target.value)}
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-white font-bold outline-none focus:border-[#FF5A00] transition-all"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-bold outline-none focus:border-[#FF5A00]"
               required
             />
           </div>
@@ -187,7 +181,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
             <select
               value={selectedTruckId}
               onChange={e => setSelectedTruckId(e.target.value)}
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-white font-bold outline-none focus:border-[#FF5A00] transition-all"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white font-bold outline-none focus:border-[#FF5A00]"
               required
             >
               <option value="">Select available truck...</option>
@@ -203,7 +197,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               type="text"
               value={origin}
               onChange={e => setOrigin(e.target.value)}
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-white uppercase font-bold outline-none focus:border-[#FF5A00]"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white uppercase font-bold outline-none focus:border-[#FF5A00]"
             />
           </div>
           <div>
@@ -211,7 +205,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
             <select
               value={destination}
               onChange={e => handleDestinationChange(e.target.value)}
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-white uppercase font-bold outline-none focus:border-[#FF5A00]"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white uppercase font-bold outline-none focus:border-[#FF5A00]"
               required
             >
               <option value="">Select destination...</option>
@@ -223,7 +217,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
             <select
               value={selectedDriverId}
               onChange={e => setSelectedDriverId(e.target.value)}
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-white font-bold outline-none focus:border-[#FF5A00]"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white font-bold outline-none focus:border-[#FF5A00]"
             >
               <option value="">Assign driver...</option>
               {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
@@ -231,7 +225,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5 bg-[#0B0D13] rounded-2xl border border-white/[0.06]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5 bg-white/[0.02] rounded-2xl border border-white/[0.05]">
           <div>
             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Loaded Tonnage (MT)</label>
             <input
@@ -240,7 +234,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               value={tonnage}
               onChange={e => setTonnage(e.target.value === "" ? "" : parseFloat(e.target.value))}
               placeholder="e.g. 35.0"
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#131722] text-white font-bold outline-none focus:border-[#FF5A00]"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white font-bold outline-none focus:border-[#FF5A00]"
             />
           </div>
           <div>
@@ -251,7 +245,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               value={spotRate}
               onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))}
               placeholder="0.00"
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#131722] text-emerald-400 font-bold outline-none focus:border-[#FF5A00]"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-emerald-400 font-bold outline-none focus:border-[#FF5A00]"
             />
           </div>
           <div>
@@ -260,7 +254,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               type="text"
               value={`₹${grossFreight.toLocaleString('en-IN', {minimumFractionDigits: 2})}`}
               disabled
-              className="w-full text-sm p-3.5 rounded-xl border border-emerald-900/50 bg-emerald-950/20 text-emerald-400 font-black outline-none cursor-not-allowed"
+              className="w-full text-xs p-3.5 rounded-xl border border-emerald-900/50 bg-emerald-950/20 text-emerald-400 font-black outline-none font-mono cursor-not-allowed"
             />
           </div>
         </div>
@@ -270,8 +264,8 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
             <div className="flex justify-between items-center mb-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diesel Issued (L)</label>
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                <input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="w-3.5 h-3.5 rounded text-[#FF5A00] bg-[#0B0D13] border-white/[0.08]" />
-                <span className="text-[10px] font-black text-white uppercase">Tank Full</span>
+                <input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="w-3.5 h-3.5 rounded text-[#FF5A00] bg-white/[0.02] border-white/[0.08]" />
+                <span className="text-[9px] font-black text-white uppercase">Tank Full</span>
               </label>
             </div>
             <input
@@ -280,7 +274,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               value={dieselL}
               onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))}
               placeholder="0.0"
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]"
             />
           </div>
           <div>
@@ -290,7 +284,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               value={startKm}
               onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))}
               placeholder="e.g. 450200"
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-sky-400 font-bold outline-none focus:border-[#FF5A00]"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-sky-400 font-bold outline-none focus:border-[#FF5A00]"
             />
           </div>
           <div>
@@ -300,7 +294,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
               value={driverBata}
               onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))}
               placeholder="0.00"
-              className="w-full text-sm p-3.5 rounded-xl border border-white/[0.08] bg-[#0B0D13] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]"
+              className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]"
             />
           </div>
         </div>
@@ -309,7 +303,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
           <button
             type="submit"
             disabled={isProcessing}
-            className="erp-button-primary px-8 py-4 text-xs uppercase tracking-wider cursor-pointer"
+            className="px-8 py-3.5 bg-gradient-to-r from-[#FF5A00] to-[#E04F00] text-white font-black text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)] cursor-pointer"
           >
             {isProcessing ? "Authorizing Dispatch..." : "Authorize & Dispatch Waybill"}
           </button>
