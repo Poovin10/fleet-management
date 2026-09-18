@@ -74,7 +74,7 @@ export function FuelAdvanceModule() {
     const [vehRes, drvRes, fuelRes, advRes, dieselRateRes, scansRes] = await Promise.all([
       supabase.from('trucks').select('*').eq('is_active', true).order('vehicle_number'),
       supabase.from('drivers').select('*').eq('is_active', true).order('full_name'),
-      supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(50),
+      supabase.from('diesel_fuel_logs').select('*, trucks(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(50),
       supabase.from('driver_direct_advances').select('*, drivers(full_name, driver_code)').order('advance_date', { ascending: false }).limit(50),
       supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(1),
       supabase.from("pending_scans").select("*").eq("document_type", "FUEL_SLIP").eq("status", "PENDING").order("created_at", { ascending: false })

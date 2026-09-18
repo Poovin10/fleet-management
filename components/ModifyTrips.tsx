@@ -100,7 +100,7 @@ export function ModifyTrips() {
     
     const selectString = auditTruck !== "All Trucks" 
       ? '*, vehicles!inner(vehicle_number), drivers(full_name)' 
-      : '*, vehicles(vehicle_number), drivers(full_name)';
+      : '*, trucks(vehicle_number), drivers(full_name)';
 
     let query = supabase.from('trips').select(selectString).order('trip_start_date', { ascending: false }).order('trip_id', { ascending: false }).limit(200);
 
