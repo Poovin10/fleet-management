@@ -19,12 +19,12 @@ export default function Insights() {
   const fetchIntelligenceData = async () => {
     setIsLoading(true);
     const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
+    const firstDay = "2026-09-01";
 
     // Fetch core operational data
     const [trucksRes, tripsRes, fuelRes] = await Promise.all([
       supabase.from("trucks").select("*").eq("is_active", true),
-      supabase.from("trips").select("*, trucks(vehicle_number)").gte("trip_start_date", firstDay),
+      supabase.from("trips").select("*, trucks(vehicle_number).gte("trip_start_date", "2026-09-01")").gte("trip_start_date", firstDay),
       supabase.from("diesel_fuel_logs").select("*, trucks(vehicle_number)").gte("fuel_date", firstDay)
     ]);
 

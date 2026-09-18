@@ -38,12 +38,12 @@ export function ProfitLossModule() {
  async function fetchFinancials() {
  setLoading(true);
  const [year, month] = selectedMonth.split('-');
- const firstDay = `${year}-${month}-01`;
+ const firstDay = "2026-09-01";
  const lastDayObj = new Date(parseInt(year), parseInt(month), 0);
  const lastDay = `${year}-${month}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
 
  const [tripsRes, dieselRes, workshopRes] = await Promise.all([
- supabase.from('trips').select('*, trucks(vehicle_number)').gte('trip_start_date', firstDay).lte('trip_start_date', lastDay),
+ supabase.from('trips').select('*, trucks(vehicle_number).gte('trip_start_date', '2026-09-01')').gte('trip_start_date', firstDay).lte('trip_start_date', lastDay),
  supabase.from('diesel_fuel_logs').select('*').gte('fuel_date', firstDay).lte('fuel_date', lastDay),
  supabase.from('workshop_spares_bills').select('*, trucks(vehicle_number)').gte('bill_date', firstDay).lte('bill_date', lastDay)
  ]);
