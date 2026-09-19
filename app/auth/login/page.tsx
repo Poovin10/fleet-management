@@ -34,13 +34,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#050507] flex flex-col justify-center items-center relative overflow-hidden font-sans">
       {/* Telemetry Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
       
       {/* Orange Ambient Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-500/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-500/25 mix-blend-screen rounded-full blur-[120px] pointer-events-none" />
 
       {/* Liquidglass Panel */}
-      <div className="w-full max-w-sm mx-auto p-8 rounded-[32px] bg-white/[0.02] backdrop-blur-3xl border border-white/[0.08] shadow-2xl relative z-10">
+      <div className="w-full max-w-sm mx-auto p-8 rounded-[32px] bg-white/[0.06] backdrop-blur-3xl border border-white/[0.2] shadow-2xl relative z-10">
         <div className="mb-10 text-center">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 mx-auto flex items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.3)] mb-4">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

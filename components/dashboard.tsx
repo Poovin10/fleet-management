@@ -2,6 +2,7 @@
 import TelemetryHUD from "./TelemetryHUD";
 
 import { useState, useEffect } from "react";
+import { LogoutButton } from "@/components/LogoutButton";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -146,7 +147,12 @@ export default function Dashboard() {
 
  if (isDriverRoute) {
  return (
- <div className="min-h-screen bg-[#030407] py-6 px-4">
+ <div className="min-h-screen bg-[#050507] text-white relative font-sans">
+      {/* Global Telemetry Grid */}
+      <div className="fixed inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_80%_100%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none z-0" />
+      {/* Ambient Orange Glow */}
+      <div className="fixed top-[-150px] left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-orange-500/20 rounded-full blur-[150px] pointer-events-none z-0 mix-blend-screen" />
+
  <div className="max-w-md mx-auto mb-6 text-center">
  <h1 className="text-xl font-semibold tracking-tighter text-white">KSS Roadways</h1>
  <p className="text-[10px] text-[#FF5A00]  tracking-normal font-semibold">Driver Highway Portal</p>
