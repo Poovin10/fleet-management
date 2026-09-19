@@ -117,15 +117,15 @@ button:active:not(:disabled) {
   
   /* Inputs & Alert Boxes */
   .liquid-input {
-    @apply bg-black/40 border border-white/10 rounded-2xl px-5 py-4 backdrop-blur-xl text-white placeholder:text-white/30 outline-none focus:border-[#FF9F0A]/60 focus:bg-white/[0.03] transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)];
+    @apply bg-black/40 border border-white/10 rounded-2xl px-5 py-4 backdrop-blur-xl text-white placeholder:text-white/30 outline-none focus:border-[#FF9F0A]/60 focus:bg-white/[0.03] transition-all duration-150 ease-out;
   }
 
   /* The iOS Spring Animation for Interactions */
   .ios-spring {
-    @apply transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)];
+    @apply transition-all duration-150 ease-out;
   }
   .ios-spring:active {
-    @apply scale-[0.96];
+    @apply scale-[0.98];
   }
 
   /* Core Buttons */
