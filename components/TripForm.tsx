@@ -34,24 +34,26 @@ export function TripForm() {
   const [destMode, setDestMode] = useState<"select" | "manual">("select");
   const [destination, setDestination] = useState("");
 
-  // Financial & Operational States
+  // Operational & Financial States
   const [tonnage, setTonnage] = useState("");
   const [freightRevenue, setFreightRevenue] = useState("");
   const [driverBata, setDriverBata] = useState("");
   const [advance, setAdvance] = useState("");
   const [dieselIssued, setDieselIssued] = useState("");
+  const [tankFull, setTankFull] = useState(false);
+
+  // KM Tracking States
+  const [startKm, setStartKm] = useState("");
+  const [previousKm, setPreviousKm] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchFormContext() {
-      // 1. Fetch active vehicles
       const { data: vData } = await supabase.from("vehicles").select("*").eq("is_active", true);
       if (vData) setVehicles(vData);
 
-      // 2. Fetch active drivers
       const { data: dData } = await supabase.from("drivers").select("*").eq("is_active", true);
       if (dData) setDrivers(dData);
 
-      // 3. Fetch unique historical locations
       const { data: tData } = await supabase.from("trips").select("source, destination").order("created_at", { ascending: false }).limit(300);
       if (tData) {
         const uniqueS = Array.from(new Set(tData.map(t => t.source).filter(Boolean))) as string[];
@@ -63,7 +65,31 @@ export function TripForm() {
     fetchFormContext();
   }, [supabase]);
 
-  // Filter trucks based on Cargo Type 
+  // Fetch the latest End KM for the selected truck
+  useEffect(() => {
+    async function getPreviousKm() {
+      if (!truckId) {
+        setPreviousKm(null);
+        setStartKm("");
+        return;
+      }
+      const { data } = await supabase.from("trips")
+        .select("end_km")
+        .eq("vehicle_id", truckId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data && data.end_km) {
+        setPreviousKm(Number(data.end_km));
+        setStartKm(String(data.end_km)); // Pre-fill with previous KM for convenience
+      } else {
+        setPreviousKm(0);
+      }
+    }
+    getPreviousKm();
+  }, [truckId, supabase]);
+
   const filteredVehicles = useMemo(() => {
     return vehicles.filter(v => {
       const type = (v.truck_type || v.cargo_type || "").toUpperCase();
@@ -71,9 +97,31 @@ export function TripForm() {
     });
   }, [vehicles, cargoType]);
 
+  // Input safeguard to block scrolling and arrow key adjustments
+  const strictNumberProps = {
+    min: "0",
+    onWheel: (e: any) => e.currentTarget.blur(),
+    onKeyDown: (e: any) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setSuccess(false);
+
+    // 0. Strict Math Validation
+    if (Number(startKm) < 0 || Number(tonnage) < 0 || Number(freightRevenue) < 0 || Number(driverBata) < 0 || Number(advance) < 0 || Number(dieselIssued) < 0) {
+      alert("SECURITY BLOCK: Negative values are strictly prohibited.");
+      setLoading(false);
+      return;
+    }
+
+    if (previousKm !== null && Number(startKm) <= previousKm) {
+      alert(`SECURITY BLOCK: Starting KM (${startKm}) must be strictly LARGER than the previous recorded end KM (${previousKm}).`);
+      setLoading(false);
+      return;
+    }
 
     // 1. Validate Duplicate LR Number
     if (lrNumber) {
@@ -118,6 +166,8 @@ export function TripForm() {
       driver_bata: Number(driverBata),
       cash_advance_issued: Number(advance),
       diesel_issued: Number(dieselIssued),
+      start_km: Number(startKm),
+      is_tank_full: tankFull,
       trip_status: "WAITING_FOR_LOAD"
     };
 
@@ -127,6 +177,7 @@ export function TripForm() {
       setSuccess(true);
       setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination(""); 
       setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance(""); setDieselIssued("");
+      setStartKm(""); setTankFull(false);
       if (driverMode === "manual") {
         setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
       }
@@ -164,16 +215,16 @@ export function TripForm() {
           <div>
             <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Cargo Type</label>
             <div className="flex gap-2">
-              <button type="button" onClick={() => { setCargoType("BULK"); setTruckId(""); }} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ios-spring ${cargoType === "BULK" ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)]" : "bg-white/[0.03] text-white/60 border border-white/[0.08]"}`}>
+              <button type="button" onClick={() => { setCargoType("BULK"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ios-spring ${cargoType === "BULK" ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)]" : "bg-white/[0.03] text-white/60 border border-white/[0.08]"}`}>
                 BULK CARGO
               </button>
-              <button type="button" onClick={() => { setCargoType("BAG"); setTruckId(""); }} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ios-spring ${cargoType === "BAG" ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)]" : "bg-white/[0.03] text-white/60 border border-white/[0.08]"}`}>
+              <button type="button" onClick={() => { setCargoType("BAG"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ios-spring ${cargoType === "BAG" ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)]" : "bg-white/[0.03] text-white/60 border border-white/[0.08]"}`}>
                 BAG CARGO
               </button>
             </div>
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Assign Truck (Filtered for {cargoType})</label>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Assign Truck</label>
             <select value={truckId} onChange={(e) => setTruckId(e.target.value)} className="w-full liquid-input bg-[#020203]" required>
               <option value="" className="text-white/40">Select an available truck...</option>
               {filteredVehicles.map(v => (
@@ -242,31 +293,48 @@ export function TripForm() {
           </div>
         </div>
 
-        {/* ROW 5: Cargo Details */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Tonnage (MT)</label>
-            <input type="number" step="0.01" value={tonnage} onChange={(e) => setTonnage(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Freight Rate (₹)</label>
-            <input type="number" value={freightRevenue} onChange={(e) => setFreightRevenue(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
+        {/* ROW 5: Operational Telemetry (KM & Fuel) */}
+        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
+          <label className="block text-[11px] font-semibold text-[#FF9F0A] uppercase tracking-wider mb-2">Telemetry & Fuel Logging</label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+            <div>
+              <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase">Starting KM (Prev: {previousKm ?? "N/A"})</label>
+              <input type="number" {...strictNumberProps} value={startKm} onChange={(e) => setStartKm(e.target.value)} className="w-full liquid-input font-mono" placeholder="0" required />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase">Diesel Issued (Litres)</label>
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className="w-full liquid-input font-mono" placeholder="0.00" required />
+            </div>
+            <div className="flex items-center h-[52px]">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-6 h-6 rounded-md bg-black/40 border border-white/20 text-[#FF9F0A] focus:ring-[#FF9F0A] focus:ring-offset-0 focus:ring-offset-transparent cursor-pointer appearance-none checked:bg-[#FF9F0A] checked:border-[#FF9F0A] transition-all ios-spring flex items-center justify-center relative after:content-[''] after:w-1.5 after:h-3 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-1" />
+                <span className="text-xs font-bold text-white/80 uppercase tracking-wide">Tank Full Marker</span>
+              </label>
+            </div>
           </div>
         </div>
 
-        {/* ROW 6: Allowances & Issues */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* ROW 6: Cargo Details */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Tonnage (MT)</label>
+            <input type="number" {...strictNumberProps} step="0.01" value={tonnage} onChange={(e) => setTonnage(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Freight Rate (₹)</label>
+            <input type="number" {...strictNumberProps} value={freightRevenue} onChange={(e) => setFreightRevenue(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
+          </div>
+        </div>
+
+        {/* ROW 7: Allowances */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Driver Bata (₹)</label>
-            <input type="number" value={driverBata} onChange={(e) => setDriverBata(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
+            <input type="number" {...strictNumberProps} value={driverBata} onChange={(e) => setDriverBata(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Advance (₹)</label>
-            <input type="number" value={advance} onChange={(e) => setAdvance(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Diesel Issued</label>
-            <input type="number" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className="w-full liquid-input" placeholder="0" required />
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Advance Issued (₹)</label>
+            <input type="number" {...strictNumberProps} value={advance} onChange={(e) => setAdvance(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
           </div>
         </div>
 
