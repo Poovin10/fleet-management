@@ -60,13 +60,13 @@ export function WorkshopModule() {
  };
 
  const fetchData = async () => {
- const { data: vData } = await supabase.from('trucks').select('*').order('vehicle_number');
+ const { data: vData } = await supabase.from('vehicles').select('*').order('vehicle_number');
  if (vData) setVehicles(vData);
 
- const { data: tData } = await supabase.from('fleet_tyres').select('*, trucks(vehicle_number)').order('mounted_date', { ascending: false });
+ const { data: tData } = await supabase.from('fleet_tyres').select('*, vehicles(vehicle_number)').order('mounted_date', { ascending: false });
  if (tData) setActiveTyres(tData);
 
- const { data: bData } = await supabase.from('workshop_spares_bills').select('*, trucks(vehicle_number)').order('bill_date', { ascending: false });
+ const { data: bData } = await supabase.from('workshop_spares_bills').select('*, vehicles(vehicle_number)').order('bill_date', { ascending: false });
  if (bData) setActiveBills(bData);
  };
 
@@ -153,8 +153,8 @@ export function WorkshopModule() {
  const storeTyres = activeTyres.filter(t => t.tyre_status === 'IN_STORE' || t.tyre_status === 'RETREADING' || (!t.tyre_status && !t.vehicle_id));
  const scrapTyres = activeTyres.filter(t => t.tyre_status === 'SCRAPPED' || t.tyre_status === 'REJECTED');
 
- const filteredMounted = mountedTyres.filter(t => (t.serial_number || "").toLowerCase().includes(mountedSearch.toLowerCase()) || (t.trucks?.vehicle_number || "").toLowerCase().includes(mountedSearch.toLowerCase()));
- const exportMounted = filteredMounted.map(t => ({ "Truck": t.trucks?.vehicle_number || "-", "Serial": t.serial_number, "Brand": t.brand_model, "Position": t.placement_position, "Mounted Date": formatDate(t.mounted_date), "Current KM Run": t.total_km_run || 0 }));
+ const filteredMounted = mountedTyres.filter(t => (t.serial_number || "").toLowerCase().includes(mountedSearch.toLowerCase()) || (t.vehicles?.vehicle_number || "").toLowerCase().includes(mountedSearch.toLowerCase()));
+ const exportMounted = filteredMounted.map(t => ({ "Truck": t.vehicles?.vehicle_number || "-", "Serial": t.serial_number, "Brand": t.brand_model, "Position": t.placement_position, "Mounted Date": formatDate(t.mounted_date), "Current KM Run": t.total_km_run || 0 }));
 
  const filteredStore = storeTyres.filter(t => (t.serial_number || "").toLowerCase().includes(storeSearch.toLowerCase()) || (t.brand_model || "").toLowerCase().includes(storeSearch.toLowerCase()));
  const exportStore = filteredStore.map(t => ({ "Serial": t.serial_number, "Brand": t.brand_model, "Status": t.tyre_status || "IN_STORE", "Condition": t.tyre_condition, "Total Lifetime KM": t.total_km_run || 0 }));
@@ -162,8 +162,8 @@ export function WorkshopModule() {
  const filteredScrap = scrapTyres.filter(t => (t.serial_number || "").toLowerCase().includes(scrapSearch.toLowerCase()));
  const exportScrap = filteredScrap.map(t => ({ "Serial": t.serial_number, "Brand": t.brand_model, "Status": t.tyre_status, "Total Lifetime KM": t.total_km_run || 0 }));
 
- const filteredBills = activeBills.filter(b => (b.vendor_name || "").toLowerCase().includes(billsSearch.toLowerCase()) || (b.trucks?.vehicle_number || "").toLowerCase().includes(billsSearch.toLowerCase()));
- const exportBills = filteredBills.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.trucks?.vehicle_number || "GENERAL", "Vendor": b.vendor_name, "Description": b.service_description, "Amount (INR)": b.bill_amount }));
+ const filteredBills = activeBills.filter(b => (b.vendor_name || "").toLowerCase().includes(billsSearch.toLowerCase()) || (b.vehicles?.vehicle_number || "").toLowerCase().includes(billsSearch.toLowerCase()));
+ const exportBills = filteredBills.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.vehicles?.vehicle_number || "GENERAL", "Vendor": b.vendor_name, "Description": b.service_description, "Amount (INR)": b.bill_amount }));
 
  return (
  <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300 text-white">
@@ -262,7 +262,7 @@ export function WorkshopModule() {
  <tbody className="divide-y divide-[#272B36] bg-[#161922]">
  {filteredMounted.map(t => (
  <tr key={t.tyre_id} className="hover:bg-[#1E222D]">
- <td className="px-5 py-3.5 font-semibold text-white">{t.trucks?.vehicle_number || "UNKNOWN"}</td>
+ <td className="px-5 py-3.5 font-semibold text-white">{t.vehicles?.vehicle_number || "UNKNOWN"}</td>
  <td className="px-5 py-3.5 font-mono font-bold text-white">{t.serial_number} <br/><span className="font-sans font-semibold text-[10px] text-white/60">{t.brand_model}</span></td>
  <td className="px-5 py-3.5 text-slate-300 font-bold">{t.placement_position}</td>
  <td className="px-5 py-3.5 text-white/60">{formatDate(t.mounted_date)}</td>
@@ -354,7 +354,7 @@ export function WorkshopModule() {
  {filteredBills.map(b => (
  <tr key={b.bill_id} className="hover:bg-[#1E222D]">
  <td className="px-5 py-4 font-semibold text-slate-300">{formatDate(b.bill_date)}</td>
- <td className="px-5 py-4 font-semibold text-white">{b.trucks?.vehicle_number || "UNKNOWN"}</td>
+ <td className="px-5 py-4 font-semibold text-white">{b.vehicles?.vehicle_number || "UNKNOWN"}</td>
  <td className="px-5 py-4 text-slate-300 font-bold">{b.vendor_name} <br/><span className="text-[10px] text-white/40 font-normal">{b.service_description}</span></td>
  <td className="px-5 py-4 text-right font-semibold text-rose-500">{(b.bill_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
  </tr>

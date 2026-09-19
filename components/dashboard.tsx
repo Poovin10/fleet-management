@@ -99,7 +99,7 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     if (!supabase) return;
-    const { data: vehiclesData } = await supabase.from('trucks').select('*');
+    const { data: vehiclesData } = await supabase.from('vehicles').select('*');
     if (vehiclesData && vehiclesData.length > 0) {
       setLiveVehicles(vehiclesData);
       setStatusCounts({
@@ -249,7 +249,7 @@ export default function Dashboard() {
                     <h3 className="text-sm font-semibold text-white mb-6 tracking-wide border-b border-white/[0.08] pb-4">Manual Status Override</h3>
                     <form onSubmit={async (e) => {
                       e.preventDefault(); if (!supabase || !qsTruckId) return;
-                      const { error } = await supabase.from('trucks').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('id', qsTruckId);
+                      const { error } = await supabase.from('vehicles').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('id', qsTruckId);
                       if (error) alert("Error: " + error.message); else { alert("Status updated!"); setQsTruckId(""); setQsRemarks(""); fetchDashboardData(); }
                     }} className="space-y-5">
                       <div>

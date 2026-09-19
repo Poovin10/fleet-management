@@ -85,7 +85,7 @@ export function DriverPortal() {
  const fetchPortalData = async () => {
  if (!supabase) return;
  const [vRes, dRes, tRes] = await Promise.all([
- supabase.from('trucks').select('*').eq('is_active', true),
+ supabase.from('vehicles').select('*').eq('is_active', true),
  supabase.from('drivers').select('*').eq('is_active', true),
  supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status, trip_start_date, reached_at, unloaded_at, returning_at, start_km, destination_lat, destination_lng, origin_lat, origin_lng').neq('trip_status', 'COMPLETED')
  ]);
@@ -251,7 +251,7 @@ export function DriverPortal() {
  const { error: tripError } = await supabase.from('trips').insert([updatePayload]);
  if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Trip Error", message: tripError.message, type: "error" }); }
 
- const { error: vehicleError } = await supabase.from('trucks').update({
+ const { error: vehicleError } = await supabase.from('vehicles').update({
  current_status: "IN_TRANSIT", status_remarks: `Started draft trip [${draftLr}]`, status_updated_at: timestamp
  }).eq('vehicle_id', selectedTruckId);
 
@@ -326,7 +326,7 @@ export function DriverPortal() {
  const { error: tripError } = await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
  if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Trip Update Failed", message: tripError.message, type: "error" }); }
 
- const { error: vehicleError } = await supabase.from('trucks').update({ current_status: vehicleStatusUpdate, status_remarks: finalVehicleRemarks, status_updated_at: timestamp }).eq('vehicle_id', selectedTruckId);
+ const { error: vehicleError } = await supabase.from('vehicles').update({ current_status: vehicleStatusUpdate, status_remarks: finalVehicleRemarks, status_updated_at: timestamp }).eq('vehicle_id', selectedTruckId);
  if (vehicleError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Vehicle Update Failed", message: vehicleError.message, type: "error" }); }
 
  setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });

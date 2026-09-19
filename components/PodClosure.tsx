@@ -251,7 +251,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  }]);
  }
 
- await supabase.from("trucks").update({ current_status: "AVAILABLE_FOR_LOAD", status_remarks: "Available (Auto-Closed on POD)" }).eq("vehicle_id", currentTrip.id);
+ await supabase.from('vehicles').update({ current_status: "AVAILABLE_FOR_LOAD", status_remarks: "Available (Auto-Closed on POD)" }).eq("vehicle_id", currentTrip.id);
 
  if (activeScanId) {
  await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);

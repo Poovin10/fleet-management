@@ -36,7 +36,7 @@ export function DriverSettlementModule() {
  if (!selectedDriverId) return alert("Please select a driver first.");
  setIsProcessing(true); setHasSearched(true);
 
- const { data: trips } = await supabase.from('trips').select(`trip_id, trip_start_date, trip_number, origin, destination, freight_revenue, driver_bata, halt_bata, cash_advance_issued, settlement_status, trucks ( vehicle_number )`).eq('primary_driver_id', selectedDriverId).gte('trip_start_date', fromDate).lte('trip_start_date', toDate).order('trip_start_date', { ascending: true });
+ const { data: trips } = await supabase.from('trips').select(`trip_id, trip_start_date, trip_number, origin, destination, freight_revenue, driver_bata, halt_bata, cash_advance_issued, settlement_status, vehicles(vehicle_number)`).eq('primary_driver_id', selectedDriverId).gte('trip_start_date', fromDate).lte('trip_start_date', toDate).order('trip_start_date', { ascending: true });
  const { data: advances } = await supabase.from('driver_direct_advances').select('*').eq('driver_id', selectedDriverId).gte('advance_date', fromDate).lte('advance_date', toDate).order('advance_date', { ascending: true });
 
  if (trips) setDriverTrips(trips);
@@ -54,7 +54,7 @@ export function DriverSettlementModule() {
  };
 
  const tripsByTruck = driverTrips.reduce((acc: any, trip: any) => {
- const truckNo = trip.trucks?.vehicle_number || "UNKNOWN TRUCK";
+ const truckNo = trip.vehicles?.vehicle_number || "UNKNOWN TRUCK";
  if (!acc[truckNo]) acc[truckNo] = [];
  acc[truckNo].push(trip);
  return acc;

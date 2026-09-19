@@ -60,7 +60,7 @@ export default function TelemetryHUD() {
  sparesFinRes,
  driversRes,
  ] = await Promise.all([
- supabase.from("trucks").select("*").order("vehicle_number"),
+ supabase.from('vehicles').select("*").order("vehicle_number"),
  supabase
  .from("trips")
  .select("*", { count: "exact", head: true })
@@ -186,7 +186,7 @@ export default function TelemetryHUD() {
  if (!selectedTruckId) return alert("Select a vehicle to update.");
  setIsUpdatingStatus(true);
  const { error } = await supabase
- .from("trucks")
+ .from('vehicles')
  .update({
  current_status: overrideStatus,
  status_remarks: overrideRemarks || null,

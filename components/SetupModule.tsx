@@ -28,7 +28,7 @@ export function SetupModule() {
 
  const fetchData = async () => {
  const [tRes, dRes, destRes, bRes, uRes] = await Promise.all([
- supabase.from('trucks').select('*').order('vehicle_number'),
+ supabase.from('vehicles').select('*').order('vehicle_number'),
  supabase.from('drivers').select('*').order('full_name'),
  supabase.from('destinations_freight_master').select('*').order('destination_name'),
  supabase.from('driver_bata_master').select('*').order('destination_name'),
@@ -57,10 +57,10 @@ export function SetupModule() {
  };
 
  if (editTruckId) {
- await supabase.from('trucks').update(payload).eq('id', editTruckId);
+ await supabase.from('vehicles').update(payload).eq('id', editTruckId);
  alert("Truck updated successfully!");
  } else {
- await supabase.from('trucks').insert([{ ...payload, current_status: "WAITING_FOR_LOAD" }]);
+ await supabase.from('vehicles').insert([{ ...payload, current_status: "WAITING_FOR_LOAD" }]);
  alert("New truck registered successfully!");
  }
  setTruckNo(""); setEditTruckId(null); fetchData();

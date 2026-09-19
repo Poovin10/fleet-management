@@ -19,7 +19,7 @@ export function ProfitLossModule() {
       const [tripsRes, fuelRes, workshopRes] = await Promise.all([
         supabase
           .from("trips")
-          .select("*, trucks(vehicle_number)")
+          .select("*, vehicles(vehicle_number)")
           .gte("trip_start_date", baselineDate),
         supabase
           .from("diesel_fuel_logs")
@@ -27,7 +27,7 @@ export function ProfitLossModule() {
           .gte("fuel_date", baselineDate),
         supabase
           .from("workshop_spares_bills")
-          .select("*, trucks(vehicle_number)")
+          .select("*, vehicles(vehicle_number)")
           .gte("bill_date", baselineDate)
       ]);
 

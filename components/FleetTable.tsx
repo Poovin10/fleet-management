@@ -11,7 +11,7 @@ export function FleetTable() {
   useEffect(() => {
     async function fetchVehicles() {
       const { data, error } = await supabase
-        .from('trucks')
+        .from('vehicles')
         .select('*')
         .order('vehicle_number', { ascending: true });
 

@@ -43,7 +43,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
  useEffect(() => {
  async function loadData() {
  const [vRes, dRes, rRes] = await Promise.all([
- supabase.from('trucks').select('id, vehicle_number, carrying_capacity_tons').eq('is_active', true).order('vehicle_number'),
+ supabase.from('vehicles').select('id, vehicle_number, carrying_capacity_tons').eq('is_active', true).order('vehicle_number'),
  supabase.from('drivers').select('driver_id, full_name, driver_code').eq('is_active', true).order('full_name'),
  supabase.from('destinations_freight_master').select('*').eq('is_active', true).order('destination_name')
  ]);
@@ -108,7 +108,7 @@ export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
  alert("Dispatch Error: " + tripErr.message);
  setIsProcessing(false);
  } else {
- await supabase.from('trucks').update({ current_status: 'IN_TRANSIT' }).eq('id', selectedTruckId);
+ await supabase.from('vehicles').update({ current_status: 'IN_TRANSIT' }).eq('id', selectedTruckId);
 
  if (Number(dieselL) > 0 && insertedTrip) {
  await supabase.from('diesel_fuel_logs').insert([{

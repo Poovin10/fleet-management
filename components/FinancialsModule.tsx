@@ -34,7 +34,7 @@ export function FinancialsModule() {
  sDate = customStart; eDate = customEnd;
  }
 
- const { data: activeVehicles } = await supabase.from('trucks').select('vehicle_id:id, vehicle_number, truck_type').eq('is_active', true);
+ const { data: activeVehicles } = await supabase.from('vehicles').select('vehicle_id:id, vehicle_number, truck_type').eq('is_active', true);
  const { data: activeDrivers } = await supabase.from('drivers').select('driver_id, driver_code, full_name').eq('is_active', true);
 
  let tQuery = supabase.from('trips').select('vehicle_id, primary_driver_id, trip_status, total_km_run, loaded_weight_mt, tonnage_loaded, freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance, fuel_litres');

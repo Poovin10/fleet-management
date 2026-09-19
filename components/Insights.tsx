@@ -18,11 +18,11 @@ export function Insights() {
       const [tripsRes, fuelRes] = await Promise.all([
         supabase
           .from("trips")
-          .select("*, trucks(vehicle_number)")
+          .select("*, vehicles(vehicle_number)")
           .gte("trip_start_date", baselineDate),
         supabase
           .from("diesel_fuel_logs")
-          .select("*, trucks(vehicle_number)")
+          .select("*, vehicles(vehicle_number)")
           .gte("fuel_date", baselineDate)
       ]);
 

@@ -30,7 +30,7 @@ export function ApprovalQueue() {
  }
 
  if (qData && qData.length > 0) {
- const { data: vData } = await supabase.from('trucks').select('id, vehicle_number');
+ const { data: vData } = await supabase.from('vehicles').select('id, vehicle_number');
  const mappedQueue = qData.map(req => {
  const truck = vData?.find(v => v.id === req.vehicle_id);
  return { ...req, truck_number: truck ? truck.vehicle_number : `Truck ID: ${req.vehicle_id}` };

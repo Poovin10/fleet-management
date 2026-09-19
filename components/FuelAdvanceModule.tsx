@@ -70,8 +70,8 @@ export function FuelAdvanceModule() {
  const fetchData = async () => {
  setIsLoading(true);
  const [vehRes, fuelRes, dieselRateRes, scansRes] = await Promise.all([
- supabase.from('trucks').select('*').eq('is_active', true).order('vehicle_number'),
- supabase.from('diesel_fuel_logs').select('*, trucks(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(200),
+ supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number'),
+ supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(200),
  supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(1),
  supabase.from("pending_scans").select("*").eq("document_type", "FUEL_SLIP").eq("status", "PENDING").order("created_at", { ascending: false })
  ]);
@@ -241,20 +241,20 @@ export function FuelAdvanceModule() {
 
  // --- PREMIUM EXPORT MAPPINGS ---
  const filteredRecent = recentFuelLogs.filter(l => 
- (l.trucks?.vehicle_number || "").toLowerCase().includes(recentSearch.toLowerCase()) ||
+ (l.vehicles?.vehicle_number || "").toLowerCase().includes(recentSearch.toLowerCase()) ||
  (l.lr_number || "").toLowerCase().includes(recentSearch.toLowerCase())
  );
  const exportRecent = filteredRecent.map(l => ({
- "Date": formatDate(l.fuel_date), "Truck": l.trucks?.vehicle_number, "Category": l.diesel_category, "LR No": l.lr_number || "-",
+ "Date": formatDate(l.fuel_date), "Truck": l.vehicles?.vehicle_number, "Category": l.diesel_category, "LR No": l.lr_number || "-",
  "Litres": l.litres_filled, "Total Cost (INR)": l.total_fuel_cost, "Tank Full": l.is_tank_full ? "Yes" : "No"
  }));
 
  const filteredAudit = auditResults.filter(l => 
- (l.trucks?.vehicle_number || "").toLowerCase().includes(auditSearch.toLowerCase()) ||
+ (l.vehicles?.vehicle_number || "").toLowerCase().includes(auditSearch.toLowerCase()) ||
  (l.lr_number || "").toLowerCase().includes(auditSearch.toLowerCase())
  );
  const exportAudit = filteredAudit.map(l => ({
- "Log ID": l.fuel_log_id, "Date": formatDate(l.fuel_date), "Truck": l.trucks?.vehicle_number || "Unknown",
+ "Log ID": l.fuel_log_id, "Date": formatDate(l.fuel_date), "Truck": l.vehicles?.vehicle_number || "Unknown",
  "Category": l.diesel_category, "LR Number": l.lr_number || "-", "Odometer": l.filling_odometer_km || 0,
  "Litres": l.litres_filled || 0, "Cost (INR)": l.total_fuel_cost || 0, "Tank Full": l.is_tank_full ? "Yes" : "No"
  }));
@@ -367,7 +367,7 @@ export function FuelAdvanceModule() {
  {filteredRecent.map((log) => (
  <tr key={log.fuel_log_id} onClick={() => handleEditClick(log)} className={`cursor-pointer transition-colors ${editLogId === log.fuel_log_id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
  <td className="px-5 py-3.5 font-semibold text-slate-300">{formatDate(log.fuel_date)}</td>
- <td className="px-5 py-3.5 font-semibold text-white">{log.trucks?.vehicle_number}</td>
+ <td className="px-5 py-3.5 font-semibold text-white">{log.vehicles?.vehicle_number}</td>
  <td className="px-5 py-3.5 text-slate-300">{log.diesel_category}<br/><span className="text-[9px] text-white/40">{log.lr_number}</span></td>
  <td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00]">{log.litres_filled} L {log.is_tank_full && <span title="Tank Full" className="ml-1 text-sm"></span>}</td>
  <td className="px-5 py-3.5 text-right font-bold text-rose-500">{(log.total_fuel_cost || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
@@ -408,7 +408,7 @@ export function FuelAdvanceModule() {
  <tr key={l.fuel_log_id} onClick={() => handleEditClick(l)} className="hover:bg-[#1E222D] cursor-pointer transition-colors">
  <td className="px-5 py-3 font-bold text-white/40">#{l.fuel_log_id}</td>
  <td className="px-5 py-3 font-semibold text-slate-300">{formatDate(l.fuel_date)}</td>
- <td className="px-5 py-3 font-semibold text-white">{l.trucks?.vehicle_number}</td>
+ <td className="px-5 py-3 font-semibold text-white">{l.vehicles?.vehicle_number}</td>
  <td className="px-5 py-3 text-slate-300">{l.diesel_category}</td>
  <td className="px-5 py-3 font-bold text-[#FF5A00]">{l.lr_number}</td>
  <td className="px-5 py-3 text-right text-slate-300">{l.filling_odometer_km}</td>

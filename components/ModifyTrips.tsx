@@ -55,7 +55,7 @@ export function ModifyTrips() {
 
  const loadInitialData = async () => {
  setIsProcessing(true);
- const { data: vData } = await supabase.from('trucks').select('vehicle_id:id, vehicle_number').order('vehicle_number');
+ const { data: vData } = await supabase.from('vehicles').select('vehicle_id:id, vehicle_number').order('vehicle_number');
  if (vData) setVehicles(vData);
  const { data: dData } = await supabase.from('drivers').select('driver_id, full_name, driver_code').order('full_name');
  if (dData) setDrivers(dData);
@@ -66,7 +66,7 @@ export function ModifyTrips() {
 
  const handleSearchTrips = async () => {
  setIsProcessing(true);
- const selectString = auditTruck !== "All Trucks" ? '*, trucks!inner(vehicle_number), drivers(full_name)' : '*, trucks(vehicle_number), drivers(full_name)';
+ const selectString = auditTruck !== "All Trucks" ? '*, trucks!inner(vehicle_number), drivers(full_name)' : '*, vehicles(vehicle_number), drivers(full_name)';
  let query = supabase.from('trips').select(selectString).order('trip_start_date', { ascending: false }).order('trip_id', { ascending: false }).limit(200);
 
  if (auditDateMode === "Specific Date") query = query.eq('trip_start_date', auditSpecificDate);
@@ -219,7 +219,7 @@ export function ModifyTrips() {
  <tr key={t.trip_id} onClick={() => handleEditClick(t)} className={`cursor-pointer transition-colors ${isEditing ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
  <td className="animate-tab-focus px-5 py-3.5 font-semibold text-slate-300">{formatDate(t.trip_start_date)}</td>
  <td className="px-5 py-3.5 font-semibold text-white">{t.trip_number}</td>
- <td className="px-5 py-3.5 text-slate-300"><span className="font-bold text-white">{t.trucks?.vehicle_number}</span><br/><span className="text-[10px] text-white/40">{t.drivers?.full_name}</span></td>
+ <td className="px-5 py-3.5 text-slate-300"><span className="font-bold text-white">{t.vehicles?.vehicle_number}</span><br/><span className="text-[10px] text-white/40">{t.drivers?.full_name}</span></td>
  <td className="px-5 py-3.5 text-slate-300">{t.origin} {t.destination}</td>
  <td className="px-5 py-3.5 text-center"><span className={`px-2.5 py-1 rounded text-[10px] font-bold ${t.trip_status === 'COMPLETED' ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/50' : t.trip_status === 'CANCELLED' ? 'bg-rose-950/40 text-rose-400 border border-rose-900/50' : 'bg-amber-950/40 text-amber-400 border border-amber-900/50'}`}>{t.trip_status}</span></td>
  </tr>

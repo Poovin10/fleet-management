@@ -43,9 +43,9 @@ export function AccountsModule() {
  setIsLoading(true);
  const [driversRes, trucksRes, advRes, billsRes] = await Promise.all([
  supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
- supabase.from("trucks").select("*").order("vehicle_number"),
+ supabase.from('vehicles').select("*").order("vehicle_number"),
  supabase.from("driver_direct_advances").select("*, drivers(full_name, driver_code)").order("advance_date", { ascending: false }).limit(200),
- supabase.from("workshop_spares_bills").select("*, trucks(vehicle_number)").order("bill_date", { ascending: false }).limit(400)
+ supabase.from("workshop_spares_bills").select("*, vehicles(vehicle_number)").order("bill_date", { ascending: false }).limit(400)
  ]);
 
  if (driversRes.data) setDrivers(driversRes.data);
@@ -109,11 +109,11 @@ export function AccountsModule() {
  const filteredAdvances = recentAdvances.filter(a => (a.drivers?.full_name || "").toLowerCase().includes(advancesSearch.toLowerCase()) || (a.advance_type || "").toLowerCase().includes(advancesSearch.toLowerCase()));
  const exportAdvances = filteredAdvances.map(a => ({ "Date": formatDate(a.advance_date), "Driver": a.drivers?.full_name || "-", "Type": a.advance_type, "Amount (INR)": a.amount_inr, "Remarks": a.reference_remarks || "-" }));
 
- const filteredWorkshop = workshopBills.filter(b => (b.trucks?.vehicle_number || "").toLowerCase().includes(workshopSearch.toLowerCase()) || (b.vendor_name || "").toLowerCase().includes(workshopSearch.toLowerCase()) || (b.service_description || "").toLowerCase().includes(workshopSearch.toLowerCase()));
- const exportWorkshop = filteredWorkshop.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.trucks?.vehicle_number || "GENERAL", "Vendor": b.vendor_name, "Description": b.service_description, "Amount (INR)": b.bill_amount }));
+ const filteredWorkshop = workshopBills.filter(b => (b.vehicles?.vehicle_number || "").toLowerCase().includes(workshopSearch.toLowerCase()) || (b.vendor_name || "").toLowerCase().includes(workshopSearch.toLowerCase()) || (b.service_description || "").toLowerCase().includes(workshopSearch.toLowerCase()));
+ const exportWorkshop = filteredWorkshop.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.vehicles?.vehicle_number || "GENERAL", "Vendor": b.vendor_name, "Description": b.service_description, "Amount (INR)": b.bill_amount }));
 
- const filteredPetty = pettyExpenses.filter(b => (b.trucks?.vehicle_number || "").toLowerCase().includes(pettySearch.toLowerCase()) || (b.vendor_name || "").toLowerCase().includes(pettySearch.toLowerCase()) || (b.service_description || "").toLowerCase().includes(pettySearch.toLowerCase()));
- const exportPetty = filteredPetty.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.trucks?.vehicle_number || "GENERAL", "Category": b.vendor_name, "Description": b.service_description, "Amount (INR)": b.bill_amount }));
+ const filteredPetty = pettyExpenses.filter(b => (b.vehicles?.vehicle_number || "").toLowerCase().includes(pettySearch.toLowerCase()) || (b.vendor_name || "").toLowerCase().includes(pettySearch.toLowerCase()) || (b.service_description || "").toLowerCase().includes(pettySearch.toLowerCase()));
+ const exportPetty = filteredPetty.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.vehicles?.vehicle_number || "GENERAL", "Category": b.vendor_name, "Description": b.service_description, "Amount (INR)": b.bill_amount }));
 
  return (
  <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300">
@@ -177,7 +177,7 @@ export function AccountsModule() {
  <TableToolbar title="Petty Expense Ledger" searchQuery={pettySearch} setSearchQuery={setPettySearch} exportData={exportPetty} exportFilename="Petty_Expenses" />
  <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
  <table className="min-w-full divide-y divide-[#272B36] text-left text-xs whitespace-nowrap"><thead className="bg-[#0F1117] sticky top-0 text-white/60  font-semibold text-[10px] tracking-wider z-10"><tr><th className="px-5 py-3.5">Date</th><th className="px-5 py-3.5">Category</th><th className="px-5 py-3.5">Truck</th><th className="px-5 py-3.5">Description</th><th className="px-5 py-3.5 text-right">Amount ()</th></tr></thead>
- <tbody className="divide-y divide-[#272B36] bg-[#161922]">{filteredPetty.map(b => (<tr key={b.bill_id} className="hover:bg-[#1E222D]"><td className="px-5 py-3.5 text-slate-300">{formatDate(b.bill_date)}</td><td className="px-5 py-3.5 text-white font-bold">{b.vendor_name}</td><td className="px-5 py-3.5 font-bold text-white/60">{b.trucks?.vehicle_number || "-"}</td><td className="px-5 py-3.5 text-white/60">{b.service_description || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00]">{(b.bill_amount || 0).toLocaleString("en-IN")}</td></tr>))}
+ <tbody className="divide-y divide-[#272B36] bg-[#161922]">{filteredPetty.map(b => (<tr key={b.bill_id} className="hover:bg-[#1E222D]"><td className="px-5 py-3.5 text-slate-300">{formatDate(b.bill_date)}</td><td className="px-5 py-3.5 text-white font-bold">{b.vendor_name}</td><td className="px-5 py-3.5 font-bold text-white/60">{b.vehicles?.vehicle_number || "-"}</td><td className="px-5 py-3.5 text-white/60">{b.service_description || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00]">{(b.bill_amount || 0).toLocaleString("en-IN")}</td></tr>))}
  {filteredPetty.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-white/40 font-medium">No petty expenses recorded.</td></tr>}</tbody></table>
  </div>
  </div>
@@ -192,7 +192,7 @@ export function AccountsModule() {
  <thead className="bg-[#0F1117] sticky top-0 text-white/60  font-semibold text-[10px] tracking-wider z-10"><tr><th className="px-5 py-3.5">Bill Date</th><th className="px-5 py-3.5">Truck</th><th className="px-5 py-3.5">Vendor</th><th className="px-5 py-3.5">Description</th><th className="px-5 py-3.5 text-right">Amount ()</th></tr></thead>
  <tbody className="divide-y divide-[#272B36] bg-[#161922]">
  {filteredWorkshop.map((b) => (
- <tr key={b.bill_id} className="hover:bg-[#1E222D]"><td className="px-5 py-3.5 text-slate-300">{formatDate(b.bill_date)}</td><td className="px-5 py-3.5 font-bold text-white">{b.trucks?.vehicle_number || "-"}</td><td className="px-5 py-3.5 text-slate-300 font-semibold">{b.vendor_name}</td><td className="px-5 py-3.5 text-white/60">{b.service_description || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-rose-400">{(b.bill_amount || 0).toLocaleString("en-IN")}</td></tr>
+ <tr key={b.bill_id} className="hover:bg-[#1E222D]"><td className="px-5 py-3.5 text-slate-300">{formatDate(b.bill_date)}</td><td className="px-5 py-3.5 font-bold text-white">{b.vehicles?.vehicle_number || "-"}</td><td className="px-5 py-3.5 text-slate-300 font-semibold">{b.vendor_name}</td><td className="px-5 py-3.5 text-white/60">{b.service_description || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-rose-400">{(b.bill_amount || 0).toLocaleString("en-IN")}</td></tr>
  ))}
  {filteredWorkshop.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-white/40 font-medium">No workshop bills match your search.</td></tr>}
  </tbody>

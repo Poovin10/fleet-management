@@ -61,7 +61,7 @@ export function LiveAlertsWidget() {
  tenDaysFromNow.setDate(today.getDate() + 10);
 
  try {
- const { data: vehicles } = await supabase.from('trucks').select('*').eq('is_active', true);
+ const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
  const { data: drivers } = await supabase.from('drivers').select('*').eq('is_active', true);
  
  vehicles?.forEach((v: any) => {
@@ -100,7 +100,7 @@ export function LiveAlertsWidget() {
  });
 
  const tenMinutesAgo = new Date(now.getTime() - (10 * 60 * 1000)).toISOString();
- const { data: recentTrips } = await supabase.from('trips').select('trip_id, trip_number, trip_start_date, origin, destination, trucks(vehicle_number)').gte('trip_start_date', tenMinutesAgo).order('trip_start_date', { ascending: false });
+ const { data: recentTrips } = await supabase.from('trips').select('trip_id, trip_number, trip_start_date, origin, destination, vehicles(vehicle_number)').gte('trip_start_date', tenMinutesAgo).order('trip_start_date', { ascending: false });
 
  recentTrips?.forEach((t: any) => {
  const vehData = Array.isArray(t.vehicles) ? t.vehicles[0] : t.vehicles;
@@ -114,7 +114,7 @@ export function LiveAlertsWidget() {
  });
  });
 
- const { data: recentFuel } = await supabase.from('diesel_fuel_logs').select('fuel_log_id, fuel_date, litres_filled, trucks(vehicle_number)').gte('fuel_date', tenMinutesAgo.split('T')[0]).order('fuel_log_id', { ascending: false }).limit(3);
+ const { data: recentFuel } = await supabase.from('diesel_fuel_logs').select('fuel_log_id, fuel_date, litres_filled, vehicles(vehicle_number)').gte('fuel_date', tenMinutesAgo.split('T')[0]).order('fuel_log_id', { ascending: false }).limit(3);
 
  recentFuel?.forEach((f: any) => {
  const vehData = Array.isArray(f.vehicles) ? f.vehicles[0] : f.vehicles;
