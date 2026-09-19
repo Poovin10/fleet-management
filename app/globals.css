@@ -107,3 +107,35 @@ button:not(.unstyled), .btn-primary {
 button:active:not(:disabled) {
   transform: scale(0.97);
 }
+
+@layer utilities {
+  /* The core iOS Frosted Glass Panel */
+  .liquid-glass {
+    @apply bg-gradient-to-br from-white/[0.04] to-black/[0.2] backdrop-blur-[50px] border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.4)];
+    -webkit-backdrop-filter: blur(50px);
+  }
+  
+  /* Inputs & Alert Boxes */
+  .liquid-input {
+    @apply bg-black/40 border border-white/10 rounded-2xl px-5 py-4 backdrop-blur-xl text-white placeholder:text-white/30 outline-none focus:border-[#FF9F0A]/60 focus:bg-white/[0.03] transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)];
+  }
+
+  /* The iOS Spring Animation for Interactions */
+  .ios-spring {
+    @apply transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)];
+  }
+  .ios-spring:active {
+    @apply scale-[0.96];
+  }
+
+  /* Core Buttons */
+  .btn-orange-glow {
+    background: linear-gradient(180deg, #FFB340 0%, #FF9F0A 100%);
+    box-shadow: 0 4px 20px rgba(255, 159, 10, 0.4), inset 0 1px 1px rgba(255,255,255,0.5);
+    @apply text-black font-bold border border-[#FF9F0A] ios-spring;
+  }
+  
+  .btn-glass {
+    @apply bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.1] text-white/80 hover:text-white ios-spring backdrop-blur-md;
+  }
+}
