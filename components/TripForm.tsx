@@ -7,6 +7,7 @@ export function TripForm() {
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Core Data States
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -104,8 +105,23 @@ export function TripForm() {
 
   const compactInput = "w-full bg-white/[0.02] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 focus:border-[#FF9F0A]/50 focus:bg-white/[0.05] transition-all outline-none font-medium";
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Financial Calculations
+  const totalRevenue = Number(freightRevenue || 0);
+  const totalExpense = Number(driverBata || 0) + Number(advance || 0);
+  const netMargin = totalRevenue - totalExpense;
+
+  const handleClear = () => {
+    setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination(""); 
+    setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance(""); setDieselIssued("");
+    setStartKm(""); setTankFull(false); setSuccess(false);
+    if (driverMode === "manual") {
+      setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
+    }
+  };
+
+  // Step 1: Validate custom rules, then show confirmation modal
+  const handleReview = async (e: React.FormEvent) => {
+    e.preventDefault(); // Native HTML5 validates empty fields first
     setLoading(true); setSuccess(false);
 
     if (Number(startKm) < 0 || Number(tonnage) < 0 || Number(freightRevenue) < 0 || Number(driverBata) < 0 || Number(advance) < 0 || Number(dieselIssued) < 0) {
@@ -120,14 +136,21 @@ export function TripForm() {
         alert(`SECURITY BLOCK: The LR Number "${lrNumber}" already exists.`); setLoading(false); return;
       }
     }
+    
+    setLoading(false);
+    setShowConfirm(true);
+  };
 
+  // Step 2: Final dispatch after confirmation
+  const confirmDispatch = async () => {
+    setLoading(true);
     let finalDriverId = driverId;
     if (driverMode === "manual") {
       const { data: newDriver, error: driverErr } = await supabase.from("drivers").insert([{
         name: newDriverName, phone_number: newDriverPhone, license_number: newDriverLicense, license_expiry: newDriverExpiry, is_active: true
       }]).select().single();
       
-      if (driverErr) { alert("Failed to register new driver. Error: " + driverErr.message); setLoading(false); return; }
+      if (driverErr) { alert("Failed to register new driver. Error: " + driverErr.message); setLoading(false); setShowConfirm(false); return; }
       finalDriverId = newDriver.id || newDriver.driver_id;
     }
 
@@ -142,12 +165,8 @@ export function TripForm() {
     
     if (!error) {
       setSuccess(true);
-      setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination(""); 
-      setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance(""); setDieselIssued("");
-      setStartKm(""); setTankFull(false);
-      if (driverMode === "manual") {
-        setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
-      }
+      setShowConfirm(false);
+      handleClear();
     } else {
       alert("Error dispatching trip: " + error.message);
     }
@@ -155,7 +174,44 @@ export function TripForm() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
+    <div className="max-w-5xl mx-auto space-y-4 relative">
+      
+      {/* Liquid Glass Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
+          <div className="liquid-glass rounded-3xl p-6 sm:p-8 w-full max-w-md border border-white/[0.1] shadow-2xl scale-in-center">
+            <h3 className="text-lg font-bold text-white mb-2">Confirm Trip Dispatch</h3>
+            <p className="text-xs text-white/60 mb-6">You are about to lock this trip into the live operations log. Please verify the financials.</p>
+            
+            <div className="space-y-3 mb-8 bg-black/30 p-4 rounded-xl border border-white/[0.05]">
+              <div className="flex justify-between text-xs">
+                <span className="text-white/50 uppercase tracking-wider font-semibold">LR Number:</span>
+                <span className="text-white font-bold">{lrNumber.toUpperCase()}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-white/50 uppercase tracking-wider font-semibold">Route:</span>
+                <span className="text-white font-bold text-right">{source} <br/>↓<br/> {destination}</span>
+              </div>
+              <div className="flex justify-between text-xs pt-2 border-t border-white/[0.05]">
+                <span className="text-white/50 uppercase tracking-wider font-semibold">Expected Revenue:</span>
+                <span className="text-emerald-400 font-bold">₹{totalRevenue.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-white/50 uppercase tracking-wider font-semibold">Total Cash Issued:</span>
+                <span className="text-rose-400 font-bold">₹{totalExpense.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowConfirm(false)} className="px-5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white/70 font-bold hover:bg-white/[0.08] transition-all text-xs">Cancel</button>
+              <button onClick={confirmDispatch} disabled={loading} className="btn-orange-glow px-6 py-2.5 rounded-xl text-xs font-bold tracking-wide">
+                {loading ? "Dispatching..." : "Confirm & Dispatch"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-end mb-4">
         <div>
           <h2 className="text-sm font-semibold text-white tracking-wide">Dispatch New Trip</h2>
@@ -163,9 +219,9 @@ export function TripForm() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleReview} className="space-y-4">
         
-        {/* ROW 1: Core Identifiers (4 columns) */}
+        {/* ROW 1: Core Identifiers */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           <div className="md:col-span-3">
             <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">Trip Date</label>
@@ -193,7 +249,7 @@ export function TripForm() {
           </div>
         </div>
 
-        {/* ROW 2: Routing & Driver (3 columns) */}
+        {/* ROW 2: Routing & Driver */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 rounded-2xl bg-white/[0.01] border border-white/[0.04]">
           <div className="md:col-span-4">
             <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">Origin</label>
@@ -246,7 +302,7 @@ export function TripForm() {
           </div>
         </div>
 
-        {/* ROW 3: Financials & Telemetry (6 columns) */}
+        {/* ROW 3: Financials & Telemetry */}
         <div className="grid grid-cols-2 md:grid-cols-12 gap-3">
           <div className="md:col-span-2">
             <label className="block text-[9px] font-semibold text-white/40 mb-1.5 uppercase tracking-wider">Tonnage (MT)</label>
@@ -279,17 +335,40 @@ export function TripForm() {
           </div>
         </div>
 
+        {/* Live Calculation & Controls Bar */}
+        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
+          <div className="flex items-center gap-6 overflow-x-auto pb-2 md:pb-0">
+            <div>
+              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Total Revenue</p>
+              <p className="text-sm font-bold text-emerald-400">₹{totalRevenue.toLocaleString('en-IN')}</p>
+            </div>
+            <div className="w-px h-8 bg-white/[0.08]"></div>
+            <div>
+              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Trip Expense (Cash)</p>
+              <p className="text-sm font-bold text-rose-400">₹{totalExpense.toLocaleString('en-IN')}</p>
+            </div>
+            <div className="w-px h-8 bg-white/[0.08]"></div>
+            <div>
+              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Expected Margin</p>
+              <p className="text-sm font-bold text-white">₹{netMargin.toLocaleString('en-IN')}</p>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-3 w-full md:w-auto">
+            <button type="button" onClick={handleClear} className="px-5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white/70 font-bold hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all text-xs ios-spring">
+              Clear
+            </button>
+            <button type="submit" disabled={loading} className="btn-orange-glow px-6 py-2.5 rounded-xl text-xs font-bold tracking-wide shadow-[0_0_15px_rgba(255,159,10,0.3)]">
+              Review & Dispatch
+            </button>
+          </div>
+        </div>
+
         {success && (
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] text-center font-bold">
-            Trip successfully dispatched!
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs text-center font-bold">
+            Trip successfully registered and dispatched to live telemetry!
           </div>
         )}
-
-        <div className="pt-2">
-          <button type="submit" disabled={loading} className="w-full btn-orange-glow py-3 rounded-xl text-xs font-bold tracking-wide">
-            {loading ? "Dispatching..." : "Confirm & Dispatch Trip"}
-          </button>
-        </div>
       </form>
     </div>
   );
