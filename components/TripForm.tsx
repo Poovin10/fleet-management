@@ -262,7 +262,7 @@ export function TripForm() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 rounded-3xl bg-white/[0.01] border border-white/[0.04]">
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
-              <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider">Origin</label>
+              <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Origin</label>
               <button type="button" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 transition-all uppercase tracking-wider ios-spring">
                 {sourceMode === "select" ? "+ New" : "≡ List"}
               </button>
@@ -279,7 +279,7 @@ export function TripForm() {
 
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
-              <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider">Destination</label>
+              <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Destination</label>
               <button type="button" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 transition-all uppercase tracking-wider ios-spring">
                 {destMode === "select" ? "+ New" : "≡ List"}
               </button>
@@ -296,7 +296,7 @@ export function TripForm() {
 
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
-              <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider">Driver</label>
+              <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Driver</label>
               <button type="button" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 transition-all uppercase tracking-wider ios-spring">
                 {driverMode === "select" ? "+ New" : "≡ List"}
               </button>
@@ -320,19 +320,19 @@ export function TripForm() {
         {/* ROW 3: Financials & Telemetry */}
         <div className="grid grid-cols-2 md:grid-cols-12 gap-3">
           <div className="md:col-span-2">
-            <label className="block text-[9px] font-semibold text-white/40 mb-1.5 uppercase tracking-wider">Tonnage (MT)</label>
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Tonnage (MT)</label>
             <input type="number" {...strictNumberProps} step="0.01" value={tonnage} onChange={(e) => setTonnage(e.target.value)} className={compactInput} placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-[9px] font-semibold text-white/40 mb-1.5 uppercase tracking-wider">Freight (₹)</label>
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Freight (₹)</label>
             <input type="number" {...strictNumberProps} value={freightRevenue} onChange={(e) => setFreightRevenue(e.target.value)} className={compactInput} placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-[9px] font-semibold text-white/40 mb-1.5 uppercase tracking-wider">Bata (₹)</label>
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Bata (₹)</label>
             <input type="number" {...strictNumberProps} value={driverBata} onChange={(e) => setDriverBata(e.target.value)} className={compactInput} placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-[9px] font-semibold text-white/40 mb-1.5 uppercase tracking-wider">Advance (₹)</label>
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Advance (₹)</label>
             <input type="number" {...strictNumberProps} value={advance} onChange={(e) => setAdvance(e.target.value)} className={compactInput} placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
