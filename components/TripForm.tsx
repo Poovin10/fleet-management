@@ -41,6 +41,7 @@ export function TripForm() {
   const [driverBata, setDriverBata] = useState("");
   const [advance, setAdvance] = useState("");
   const [dieselIssued, setDieselIssued] = useState("");
+  const [dieselRate, setDieselRate] = useState("");
   const [tankFull, setTankFull] = useState(false);
 
   // KM Tracking States
@@ -105,26 +106,26 @@ export function TripForm() {
 
   const compactInput = "w-full bg-white/[0.02] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 focus:border-[#FF9F0A]/50 focus:bg-white/[0.05] transition-all outline-none font-medium";
 
-  // Financial Calculations
+  // Strict Financial Calculations
   const totalRevenue = Number(freightRevenue || 0);
-  const totalExpense = Number(driverBata || 0) + Number(advance || 0);
+  const fuelExpense = Number(dieselIssued || 0) * Number(dieselRate || 0);
+  const totalExpense = Number(driverBata || 0) + Number(advance || 0) + fuelExpense;
   const netMargin = totalRevenue - totalExpense;
 
   const handleClear = () => {
     setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination(""); 
-    setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance(""); setDieselIssued("");
-    setStartKm(""); setTankFull(false); setSuccess(false);
+    setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance(""); 
+    setDieselIssued(""); setDieselRate(""); setStartKm(""); setTankFull(false); setSuccess(false);
     if (driverMode === "manual") {
       setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
     }
   };
 
-  // Step 1: Validate custom rules, then show confirmation modal
   const handleReview = async (e: React.FormEvent) => {
-    e.preventDefault(); // Native HTML5 validates empty fields first
+    e.preventDefault(); 
     setLoading(true); setSuccess(false);
 
-    if (Number(startKm) < 0 || Number(tonnage) < 0 || Number(freightRevenue) < 0 || Number(driverBata) < 0 || Number(advance) < 0 || Number(dieselIssued) < 0) {
+    if (Number(startKm) < 0 || Number(tonnage) < 0 || Number(freightRevenue) < 0 || Number(driverBata) < 0 || Number(advance) < 0 || Number(dieselIssued) < 0 || Number(dieselRate) < 0) {
       alert("SECURITY BLOCK: Negative values are strictly prohibited."); setLoading(false); return;
     }
     if (previousKm !== null && Number(startKm) <= previousKm) {
@@ -141,7 +142,6 @@ export function TripForm() {
     setShowConfirm(true);
   };
 
-  // Step 2: Final dispatch after confirmation
   const confirmDispatch = async () => {
     setLoading(true);
     let finalDriverId = driverId;
@@ -176,29 +176,31 @@ export function TripForm() {
   return (
     <div className="max-w-5xl mx-auto space-y-4 relative">
       
-      {/* Liquid Glass Confirmation Modal */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
           <div className="liquid-glass rounded-3xl p-6 sm:p-8 w-full max-w-md border border-white/[0.1] shadow-2xl scale-in-center">
             <h3 className="text-lg font-bold text-white mb-2">Confirm Trip Dispatch</h3>
-            <p className="text-xs text-white/60 mb-6">You are about to lock this trip into the live operations log. Please verify the financials.</p>
+            <p className="text-xs text-white/60 mb-6">Verify the calculated operational financials before locking this trip.</p>
             
             <div className="space-y-3 mb-8 bg-black/30 p-4 rounded-xl border border-white/[0.05]">
               <div className="flex justify-between text-xs">
                 <span className="text-white/50 uppercase tracking-wider font-semibold">LR Number:</span>
                 <span className="text-white font-bold">{lrNumber.toUpperCase()}</span>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-white/50 uppercase tracking-wider font-semibold">Route:</span>
-                <span className="text-white font-bold text-right">{source} <br/>↓<br/> {destination}</span>
-              </div>
               <div className="flex justify-between text-xs pt-2 border-t border-white/[0.05]">
-                <span className="text-white/50 uppercase tracking-wider font-semibold">Expected Revenue:</span>
+                <span className="text-white/50 uppercase tracking-wider font-semibold">Total Revenue (Freight):</span>
                 <span className="text-emerald-400 font-bold">₹{totalRevenue.toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-white/50 uppercase tracking-wider font-semibold">Total Cash Issued:</span>
+                <span className="text-white/50 uppercase tracking-wider font-semibold">Total Expenses:</span>
                 <span className="text-rose-400 font-bold">₹{totalExpense.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-white/40 pl-2">
+                <span>(Advance + Bata + Fuel Cost)</span>
+              </div>
+              <div className="flex justify-between text-sm pt-2 border-t border-white/[0.05]">
+                <span className="text-white/70 uppercase tracking-wider font-bold">Expected Margin:</span>
+                <span className="text-white font-bold">₹{netMargin.toLocaleString('en-IN')}</span>
               </div>
             </div>
 
@@ -324,13 +326,15 @@ export function TripForm() {
             <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider" title={`Previous: ${previousKm ?? 'N/A'}`}>Start KM</label>
             <input type="number" {...strictNumberProps} value={startKm} onChange={(e) => setStartKm(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30`} placeholder={previousKm ? String(previousKm) : "0"} required />
           </div>
-          <div className="md:col-span-2 relative">
-            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Diesel (L)</label>
-            <div className="relative">
-              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30 pr-8`} placeholder="0.00" required />
-              <label className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer flex items-center" title="Tank Full Marker">
-                <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-4 h-4 rounded-sm bg-black/40 border border-[#FF9F0A]/50 text-[#FF9F0A] focus:ring-0 cursor-pointer appearance-none checked:bg-[#FF9F0A] flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
-              </label>
+          <div className="md:col-span-2">
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Diesel</label>
+            <div className="flex gap-1">
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30 w-1/2`} placeholder="Liters" required title="Diesel Issued (Litres)" />
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselRate} onChange={(e) => setDieselRate(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30 w-1/2`} placeholder="₹/L" required title="Diesel Rate (₹/Litre)" />
+            </div>
+            <div className="flex items-center mt-1.5 gap-1.5">
+              <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-3.5 h-3.5 rounded-sm bg-black/40 border border-[#FF9F0A]/50 text-[#FF9F0A] focus:ring-0 cursor-pointer appearance-none checked:bg-[#FF9F0A] flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
+              <span className="text-[9px] text-[#FF9F0A] uppercase tracking-wider font-bold">Tank Full</span>
             </div>
           </div>
         </div>
@@ -344,8 +348,10 @@ export function TripForm() {
             </div>
             <div className="w-px h-8 bg-white/[0.08]"></div>
             <div>
-              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Trip Expense (Cash)</p>
-              <p className="text-sm font-bold text-rose-400">₹{totalExpense.toLocaleString('en-IN')}</p>
+              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Total Expenses</p>
+              <p className="text-sm font-bold text-rose-400" title={`Bata (₹${driverBata || 0}) + Advance (₹${advance || 0}) + Fuel (₹${fuelExpense || 0})`}>
+                ₹{totalExpense.toLocaleString('en-IN')}
+              </p>
             </div>
             <div className="w-px h-8 bg-white/[0.08]"></div>
             <div>
@@ -363,12 +369,6 @@ export function TripForm() {
             </button>
           </div>
         </div>
-
-        {success && (
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs text-center font-bold">
-            Trip successfully registered and dispatched to live telemetry!
-          </div>
-        )}
       </form>
     </div>
   );
