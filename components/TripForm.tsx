@@ -66,7 +66,6 @@ export function TripForm() {
     }
     fetchFormContext();
 
-    // Pull the cached diesel rate into state on load
     const savedRate = localStorage.getItem("kss_diesel_rate");
     if (savedRate) setDieselRate(savedRate);
   }, [supabase]);
@@ -234,22 +233,22 @@ export function TripForm() {
         {/* ROW 1: Core Identifiers */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">Trip Date</label>
+            <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Trip Date</label>
             <input type="date" value={tripDate} onChange={(e) => setTripDate(e.target.value)} className={compactInput} required />
           </div>
           <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">LR Number</label>
+            <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">LR Number</label>
             <input type="text" value={lrNumber} onChange={(e) => setLrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))} placeholder="KSS..." className={`${compactInput} uppercase font-mono`} required pattern="[A-Za-z0-9]+" />
           </div>
           <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">Cargo Type</label>
+            <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Cargo Type</label>
             <div className="flex gap-1.5">
               <button type="button" onClick={() => { setCargoType("BULK"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-full text-[10px] font-bold transition-all ios-spring ${cargoType === "BULK" ? "bg-[#FF9F0A] text-black shadow-[0_0_10px_rgba(255,159,10,0.3)]" : "bg-white/[0.02] text-white/50 border border-white/[0.06]"}`}>BULK</button>
               <button type="button" onClick={() => { setCargoType("BAG"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-full text-[10px] font-bold transition-all ios-spring ${cargoType === "BAG" ? "bg-[#FF9F0A] text-black shadow-[0_0_10px_rgba(255,159,10,0.3)]" : "bg-white/[0.02] text-white/50 border border-white/[0.06]"}`}>BAG</button>
             </div>
           </div>
           <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">Assign Truck</label>
+            <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Assign Truck</label>
             <select value={truckId} onChange={(e) => setTruckId(e.target.value)} className={`${compactInput} bg-[#020203]`} required>
               <option value="" className="text-white/40">Select...</option>
               {filteredVehicles.map(v => (
@@ -262,38 +261,42 @@ export function TripForm() {
         {/* ROW 2: Routing & Driver */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 rounded-3xl bg-white/[0.01] border border-white/[0.04]">
           <div className="md:col-span-4">
-            <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">Origin</label>
-            <div className="flex gap-2">
-              {sourceMode === "select" ? (
-                <select value={source} onChange={(e) => setSource(e.target.value)} className={`${compactInput} flex-1 bg-[#020203]`} required>
-                  <option value="">Select...</option>
-                  {historicalSources.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              ) : (
-                <input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Type..." className={`${compactInput} flex-1`} required />
-              )}
-              <button type="button" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="px-3.5 rounded-full bg-white/[0.03] border border-white/[0.08] text-white/60 font-bold hover:bg-white/[0.08] transition-all ios-spring" title="Toggle Manual">+</button>
+            <div className="flex justify-between items-end mb-1.5">
+              <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider">Origin</label>
+              <button type="button" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 transition-all uppercase tracking-wider ios-spring">
+                {sourceMode === "select" ? "+ New" : "≡ List"}
+              </button>
             </div>
-          </div>
-
-          <div className="md:col-span-4">
-            <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">Destination</label>
-            <div className="flex gap-2">
-              {destMode === "select" ? (
-                <select value={destination} onChange={(e) => setDestination(e.target.value)} className={`${compactInput} flex-1 bg-[#020203]`} required>
-                  <option value="">Select...</option>
-                  {historicalDestinations.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              ) : (
-                <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Type..." className={`${compactInput} flex-1`} required />
-              )}
-              <button type="button" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="px-3.5 rounded-full bg-white/[0.03] border border-white/[0.08] text-white/60 font-bold hover:bg-white/[0.08] transition-all ios-spring" title="Toggle Manual">+</button>
-            </div>
+            {sourceMode === "select" ? (
+              <select value={source} onChange={(e) => setSource(e.target.value)} className={`${compactInput} bg-[#020203]`} required>
+                <option value="">Select...</option>
+                {historicalSources.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            ) : (
+              <input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Type new origin..." className={compactInput} required />
+            )}
           </div>
 
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
-              <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Pilot</label>
+              <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider">Destination</label>
+              <button type="button" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 transition-all uppercase tracking-wider ios-spring">
+                {destMode === "select" ? "+ New" : "≡ List"}
+              </button>
+            </div>
+            {destMode === "select" ? (
+              <select value={destination} onChange={(e) => setDestination(e.target.value)} className={`${compactInput} bg-[#020203]`} required>
+                <option value="">Select...</option>
+                {historicalDestinations.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            ) : (
+              <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Type new destination..." className={compactInput} required />
+            )}
+          </div>
+
+          <div className="md:col-span-4">
+            <div className="flex justify-between items-end mb-1.5">
+              <label className="block text-[10px] font-semibold text-white/50 uppercase tracking-wider">Driver</label>
               <button type="button" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 transition-all uppercase tracking-wider ios-spring">
                 {driverMode === "select" ? "+ New" : "≡ List"}
               </button>
