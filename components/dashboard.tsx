@@ -151,7 +151,7 @@ export default function Dashboard() {
       {/* Global Ambient Refraction for Dashboard Cards */}
       <div className="fixed top-[-10%] right-[-5%] w-[50vw] h-[50vw] bg-orange-500/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen z-0" />
       <div className="fixed bottom-[-10%] left-[-5%] w-[60vw] h-[60vw] bg-blue-500/5 rounded-full blur-[150px] pointer-events-none mix-blend-screen z-0" />
-      <div className="relative z-10">
+      
       {/* Global Telemetry Grid */}
       <div className="fixed inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_80%_100%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none z-0" />
       {/* Ambient Orange Glow */}
