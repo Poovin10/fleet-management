@@ -1,314 +1,188 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ConfirmModal } from "@/components/ConfirmModal";
 
-export function TripForm({ onSuccess }: { onSuccess?: () => void }) {
- const supabase = createClient();
+export function TripForm() {
+  const supabase = createClient();
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
- const [vehicles, setVehicles] = useState<any[]>([]);
- const [drivers, setDrivers] = useState<any[]>([]);
- const [destinations, setDestinations] = useState<any[]>([]);
- const [isProcessing, setIsProcessing] = useState(false);
+  // Data states
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [historicalSources, setHistoricalSources] = useState<string[]>([]);
+  const [historicalDestinations, setHistoricalDestinations] = useState<string[]>([]);
 
- const [lrNumber, setLrNumber] = useState("");
- const [tripDate, setTripDate] = useState(new Date().toISOString().split('T')[0]);
- const [selectedTruckId, setSelectedTruckId] = useState("");
- const [selectedDriverId, setSelectedDriverId] = useState("");
- const [origin, setOrigin] = useState("COCHIN");
- const [destination, setDestination] = useState("");
- const [tonnage, setTonnage] = useState<number | "">("");
- const [spotRate, setSpotRate] = useState<number | "">("");
- const [dieselL, setDieselL] = useState<number | "">("");
- const [isTankFull, setIsTankFull] = useState(false);
- const [startKm, setStartKm] = useState<number | "">("");
- const [driverBata, setDriverBata] = useState<number | "">("");
- const [advanceIssued, setAdvanceIssued] = useState<number | "">("");
+  // Form states
+  const [cargoType, setCargoType] = useState("BULK");
+  const [truckSearch, setTruckSearch] = useState("");
+  
+  const [sourceMode, setSourceMode] = useState<"select" | "manual">("select");
+  const [source, setSource] = useState("");
+  
+  const [destMode, setDestMode] = useState<"select" | "manual">("select");
+  const [destination, setDestination] = useState("");
 
- const [modalConfig, setModalConfig] = useState({
- isOpen: false,
- title: "",
- message: "",
- isDanger: false,
- confirmText: "Authorize Dispatch",
- action: async () => {}
- });
+  const [freightRevenue, setFreightRevenue] = useState("");
+  const [driverBata, setDriverBata] = useState("");
 
- const triggerModal = (title: string, message: string, action: () => Promise<void>) =>
- setModalConfig({ isOpen: true, title, message, isDanger: false, confirmText: "Authorize Dispatch", action });
+  useEffect(() => {
+    async function fetchFormContext() {
+      // 1. Fetch active vehicles (all 21 units)
+      const { data: vData } = await supabase.from("vehicles").select("*").eq("is_active", true);
+      if (vData) setVehicles(vData);
 
- const closeModal = () => setModalConfig({ ...modalConfig, isOpen: false });
+      // 2. Fetch unique historical locations for dropdowns
+      const { data: tData } = await supabase.from("trips").select("source, destination").order("created_at", { ascending: false }).limit(300);
+      if (tData) {
+        const uniqueS = Array.from(new Set(tData.map(t => t.source).filter(Boolean))) as string[];
+        const uniqueD = Array.from(new Set(tData.map(t => t.destination).filter(Boolean))) as string[];
+        // Fallback to primary routes if database is sparse
+        setHistoricalSources(uniqueS.length ? uniqueS : ["Kochi", "Erode", "Chennai", "Coimbatore"]);
+        setHistoricalDestinations(uniqueD.length ? uniqueD : ["Kochi", "Erode", "Chennai", "Coimbatore"]);
+      }
+    }
+    fetchFormContext();
+  }, [supabase]);
 
- useEffect(() => {
- async function loadData() {
- const [vRes, dRes, rRes] = await Promise.all([
- supabase.from('vehicles').select('id, vehicle_number, carrying_capacity_tons').eq('is_active', true).order('vehicle_number'),
- supabase.from('drivers').select('driver_id, full_name, driver_code').eq('is_active', true).order('full_name'),
- supabase.from('destinations_freight_master').select('*').eq('is_active', true).order('destination_name')
- ]);
- if (vRes.data) setVehicles(vRes.data);
- if (dRes.data) setDrivers(dRes.data);
- if (rRes.data) setDestinations(rRes.data);
- }
- loadData();
- }, [supabase]);
+  // Filter trucks based on Cargo Type (Ready for your specific Bag/Bulk logic)
+  const filteredVehicles = useMemo(() => {
+    return vehicles; 
+  }, [vehicles, cargoType]);
 
- const handleDestinationChange = (destName: string) => {
- setDestination(destName);
- const matched = destinations.find(d => d.destination_name.toUpperCase() === destName.toUpperCase());
- if (matched && matched.freight_rate_per_ton) {
- setSpotRate(Number(matched.freight_rate_per_ton));
- }
- };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true); setSuccess(false);
 
- const grossFreight = Math.round((Number(tonnage) || 0) * (Number(spotRate) || 0) * 100) / 100;
+    // Map the typed truck number back to the database vehicle_id
+    const selectedVehicle = vehicles.find(v => v.vehicle_number === truckSearch);
+    if (!selectedVehicle) {
+      alert("Please select a valid truck number from the search list.");
+      setLoading(false);
+      return;
+    }
 
- const handleSubmit = (e: React.FormEvent) => {
- e.preventDefault();
- if (!lrNumber.trim() || !selectedTruckId || !destination) {
- alert("Please fill in all mandatory dispatch fields.");
- return;
- }
+    const tripData = {
+      vehicle_id: selectedVehicle.vehicle_id,
+      cargo_type: cargoType,
+      source: source,
+      destination: destination,
+      freight_revenue: Number(freightRevenue),
+      driver_bata: Number(driverBata),
+      trip_start_date: new Date().toISOString(),
+      trip_status: "IN_TRANSIT"
+    };
 
- triggerModal(
- "Confirm Waybill Dispatch",
- `Authorize dispatch for Waybill LR #${lrNumber.toUpperCase().trim()}?`,
- async () => {
- setIsProcessing(true);
- 
- let currentDieselRate = 95.0;
- const { data: dLog } = await supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).limit(1);
- if (dLog && dLog.length > 0) currentDieselRate = Number(dLog[0].diesel_rate_per_litre);
+    const { error } = await supabase.from("trips").insert([tripData]);
+    
+    if (!error) {
+      setSuccess(true);
+      setTruckSearch(""); setSource(""); setDestination(""); setFreightRevenue(""); setDriverBata("");
+    } else {
+      alert("Error dispatching trip: " + error.message);
+    }
+    setLoading(false);
+  };
 
- const fuelCost = Math.round((Number(dieselL) || 0) * currentDieselRate * 100) / 100;
+  return (
+    <div className="space-y-6">
+      <div className="border-b border-white/[0.08] pb-4">
+        <h2 className="text-lg font-bold text-white tracking-wide">Dispatch New Trip</h2>
+        <p className="text-xs text-white/50 mt-1">Unified single-screen logistics console</p>
+      </div>
 
- const tripPayload = {
- trip_number: lrNumber.toUpperCase().trim(),
- trip_start_date: tripDate,
- vehicle_id: Number(selectedTruckId),
- primary_driver_id: selectedDriverId ? Number(selectedDriverId) : null,
- origin: origin.toUpperCase().trim(),
- destination: destination.toUpperCase().trim(),
- tonnage_loaded: tonnage !== "" ? Number(tonnage) : null,
- freight_revenue: grossFreight,
- fuel_litres: dieselL !== "" ? Number(dieselL) : null,
- fuel_expense: fuelCost,
- is_tank_full: isTankFull,
- start_km: startKm !== "" ? Number(startKm) : null,
- driver_bata: driverBata !== "" ? Number(driverBata) : null,
- cash_advance_issued: advanceIssued !== "" ? Number(advanceIssued) : null,
- trip_status: "DISPATCHED",
- settlement_status: "PENDING"
- };
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* 1. Cargo Type Toggle */}
+        <div>
+          <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Cargo Type</label>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setCargoType("BULK")} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ios-spring ${cargoType === "BULK" ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)]" : "bg-white/[0.03] text-white/60 border border-white/[0.08]"}`}>
+              BULK CARGO
+            </button>
+            <button type="button" onClick={() => setCargoType("BAG")} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ios-spring ${cargoType === "BAG" ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)]" : "bg-white/[0.03] text-white/60 border border-white/[0.08]"}`}>
+              BAG CARGO
+            </button>
+          </div>
+        </div>
 
- const { data: insertedTrip, error: tripErr } = await supabase.from('trips').insert([tripPayload]).select('trip_id').single();
+        {/* 2. Searchable Truck Select */}
+        <div>
+          <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Truck Number (Filtered by {cargoType})</label>
+          <input 
+            list="trucks-datalist" 
+            placeholder="Search or select truck (e.g. TN...)" 
+            className="w-full liquid-input"
+            value={truckSearch}
+            onChange={(e) => setTruckSearch(e.target.value)}
+            required
+          />
+          <datalist id="trucks-datalist">
+            {filteredVehicles.map(v => (
+              <option key={v.vehicle_id} value={v.vehicle_number}>
+                {v.vehicle_number} ({v.carrying_capacity_tons} MT)
+              </option>
+            ))}
+          </datalist>
+        </div>
 
- if (tripErr) {
- alert("Dispatch Error: " + tripErr.message);
- setIsProcessing(false);
- } else {
- await supabase.from('vehicles').update({ current_status: 'IN_TRANSIT' }).eq('id', selectedTruckId);
+        {/* 3. Source Selection */}
+        <div>
+          <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Origin / Source</label>
+          <div className="flex gap-2">
+            {sourceMode === "select" ? (
+              <select value={source} onChange={(e) => setSource(e.target.value)} className="flex-1 liquid-input bg-[#020203]">
+                <option value="">Select historical source...</option>
+                {historicalSources.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            ) : (
+              <input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Type new source manually..." className="flex-1 liquid-input" />
+            )}
+            <button type="button" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="btn-glass px-4 rounded-xl text-xl font-bold pb-1" title="Toggle Manual Entry">
+              {sourceMode === "select" ? "+" : "≡"}
+            </button>
+          </div>
+        </div>
 
- if (Number(dieselL) > 0 && insertedTrip) {
- await supabase.from('diesel_fuel_logs').insert([{
- fuel_date: tripDate,
- vehicle_id: Number(selectedTruckId),
- trip_id: insertedTrip.trip_id,
- lr_number: lrNumber.toUpperCase().trim(),
- diesel_category: "TRIP_DIESEL",
- litres_filled: Number(dieselL),
- diesel_rate_per_litre: currentDieselRate,
- total_fuel_cost: fuelCost,
- filling_odometer_km: startKm !== "" ? Number(startKm) : null,
- is_tank_full: isTankFull
- }]);
- }
+        {/* 4. Destination Selection */}
+        <div>
+          <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Destination</label>
+          <div className="flex gap-2">
+            {destMode === "select" ? (
+              <select value={destination} onChange={(e) => setDestination(e.target.value)} className="flex-1 liquid-input bg-[#020203]">
+                <option value="">Select historical destination...</option>
+                {historicalDestinations.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            ) : (
+              <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Type new destination manually..." className="flex-1 liquid-input" />
+            )}
+            <button type="button" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="btn-glass px-4 rounded-xl text-xl font-bold pb-1" title="Toggle Manual Entry">
+              {destMode === "select" ? "+" : "≡"}
+            </button>
+          </div>
+        </div>
 
- alert("Waybill successfully authorized and dispatched!");
- setLrNumber(""); setTonnage(""); setSpotRate(""); setDieselL(""); setStartKm(""); setDriverBata(""); setAdvanceIssued("");
- setIsProcessing(false);
- closeModal();
- if (onSuccess) onSuccess();
- }
- }
- );
- };
+        {/* Financials - Single Row */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Freight Revenue (₹)</label>
+            <input type="number" value={freightRevenue} onChange={(e) => setFreightRevenue(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Driver Bata (₹)</label>
+            <input type="number" value={driverBata} onChange={(e) => setDriverBata(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
+          </div>
+        </div>
 
- return (
- <div className="animate-tab-focus bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 sm:p-10 max-w-5xl mx-auto shadow-2xl">
- <ConfirmModal
- isOpen={modalConfig.isOpen}
- title={modalConfig.title}
- message={modalConfig.message}
- isDanger={modalConfig.isDanger}
- confirmText={modalConfig.confirmText}
- onConfirm={modalConfig.action}
- onCancel={closeModal}
- isProcessing={isProcessing}
- />
+        {success && (
+          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm text-center font-bold">
+            Trip successfully dispatched!
+          </div>
+        )}
 
- <div className="border-b border-white/[0.06] pb-4 mb-8">
- <h3 className="text-sm font-semibold text-white  tracking-wider">New Trip Dispatch & Waybill Registration</h3>
- <p className="text-xs text-white/60 font-medium mt-0.5">Initialize logistics waybill, assign active fleet units, and lock in freight rates.</p>
- </div>
-
- <form onSubmit={handleSubmit} className="space-y-6">
- <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Waybill LR Number *</label>
- <input
- type="text"
- value={lrNumber}
- onChange={e => setLrNumber(e.target.value)}
- placeholder="e.g. LR-94021"
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white  font-semibold outline-none focus:border-[#FF5A00]"
- required
- />
- </div>
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Dispatch Date *</label>
- <input
- type="date"
- value={tripDate}
- onChange={e => setTripDate(e.target.value)}
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-bold outline-none focus:border-[#FF5A00]"
- required
- />
- </div>
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Assign Fleet Truck *</label>
- <select
- value={selectedTruckId}
- onChange={e => setSelectedTruckId(e.target.value)}
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white font-bold outline-none focus:border-[#FF5A00]"
- required
- >
- <option value="">Select available truck...</option>
- {vehicles.map(v => <option key={v.id} value={v.id}>{v.vehicle_number} [{v.carrying_capacity_tons} MT]</option>)}
- </select>
- </div>
- </div>
-
- <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Origin Hub</label>
- <input
- type="text"
- value={origin}
- onChange={e => setOrigin(e.target.value)}
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white  font-bold outline-none focus:border-[#FF5A00]"
- />
- </div>
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Destination *</label>
- <select
- value={destination}
- onChange={e => handleDestinationChange(e.target.value)}
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white  font-bold outline-none focus:border-[#FF5A00]"
- required
- >
- <option value="">Select destination...</option>
- {destinations.map(d => <option key={d.destination_id} value={d.destination_name}>{d.destination_name} ({d.freight_rate_per_ton}/MT)</option>)}
- </select>
- </div>
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Primary Driver</label>
- <select
- value={selectedDriverId}
- onChange={e => setSelectedDriverId(e.target.value)}
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white font-bold outline-none focus:border-[#FF5A00]"
- >
- <option value="">Assign driver...</option>
- {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
- </select>
- </div>
- </div>
-
- <div className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5 bg-white/[0.02] rounded-2xl border border-white/[0.05]">
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Loaded Tonnage (MT)</label>
- <input
- type="number"
- step="0.01"
- value={tonnage}
- onChange={e => setTonnage(e.target.value === "" ? "" : parseFloat(e.target.value))}
- placeholder="e.g. 35.0"
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white font-bold outline-none focus:border-[#FF5A00]"
- />
- </div>
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Freight Rate / MT ()</label>
- <input
- type="number"
- step="0.01"
- value={spotRate}
- onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))}
- placeholder="0.00"
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-emerald-400 font-bold outline-none focus:border-[#FF5A00]"
- />
- </div>
- <div>
- <label className="block text-[10px] font-semibold text-emerald-500  tracking-normal mb-2">Auto Gross Freight ()</label>
- <input
- type="text"
- value={`${grossFreight.toLocaleString('en-IN', {minimumFractionDigits: 2})}`}
- disabled
- className="w-full text-xs p-3.5 rounded-xl border border-emerald-900/50 bg-emerald-950/20 text-emerald-400 font-semibold outline-none font-mono cursor-not-allowed"
- />
- </div>
- </div>
-
- <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
- <div>
- <div className="flex justify-between items-center mb-2">
- <label className="text-[10px] font-semibold text-white/60  tracking-normal">Diesel Issued (L)</label>
- <label className="flex items-center gap-1.5 cursor-pointer select-none">
- <input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="w-3.5 h-3.5 rounded text-[#FF5A00] bg-white/[0.02] border-white/[0.08]" />
- <span className="text-[9px] font-semibold text-white ">Tank Full</span>
- </label>
- </div>
- <input
- type="number"
- step="0.1"
- value={dieselL}
- onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))}
- placeholder="0.0"
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]"
- />
- </div>
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Start Odometer (KM)</label>
- <input
- type="number"
- value={startKm}
- onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))}
- placeholder="e.g. 450200"
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-sky-400 font-bold outline-none focus:border-[#FF5A00]"
- />
- </div>
- <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Driver Bata ()</label>
- <input
- type="number"
- value={driverBata}
- onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))}
- placeholder="0.00"
- className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]"
- />
- </div>
- </div>
-
- <div className="pt-4 border-t border-white/[0.06] flex justify-end">
- <button
- type="submit"
- disabled={isProcessing}
- className="px-8 py-3.5 bg-gradient-to-r from-[#FF5A00] to-[#E04F00] text-white font-semibold text-xs rounded-xl  tracking-wider transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)] cursor-pointer"
- >
- {isProcessing ? "Authorizing Dispatch..." : "Authorize & Dispatch Waybill"}
- </button>
- </div>
- </form>
- </div>
- );
+        <button type="submit" disabled={loading} className="w-full btn-orange-glow py-4 rounded-xl text-sm font-bold tracking-wide mt-4">
+          {loading ? "Registering Trip..." : "Dispatch Trip"}
+        </button>
+      </form>
+    </div>
+  );
 }
