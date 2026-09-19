@@ -65,6 +65,10 @@ export function TripForm() {
       }
     }
     fetchFormContext();
+
+    // Pull the cached diesel rate into state on load
+    const savedRate = localStorage.getItem("kss_diesel_rate");
+    if (savedRate) setDieselRate(savedRate);
   }, [supabase]);
 
   useEffect(() => {
@@ -104,18 +108,22 @@ export function TripForm() {
     }
   };
 
-  const compactInput = "w-full bg-white/[0.02] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 focus:border-[#FF9F0A]/50 focus:bg-white/[0.05] transition-all outline-none font-medium";
+  const compactInput = "w-full bg-white/[0.02] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-[#FF9F0A]/50 focus:bg-white/[0.05] transition-all outline-none font-medium";
 
-  // Strict Financial Calculations
   const totalRevenue = Number(freightRevenue || 0);
   const fuelExpense = Number(dieselIssued || 0) * Number(dieselRate || 0);
   const totalExpense = Number(driverBata || 0) + Number(advance || 0) + fuelExpense;
   const netMargin = totalRevenue - totalExpense;
 
+  const handleRateChange = (val: string) => {
+    setDieselRate(val);
+    localStorage.setItem("kss_diesel_rate", val);
+  };
+
   const handleClear = () => {
     setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination(""); 
     setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance(""); 
-    setDieselIssued(""); setDieselRate(""); setStartKm(""); setTankFull(false); setSuccess(false);
+    setDieselIssued(""); setStartKm(""); setTankFull(false); setSuccess(false);
     if (driverMode === "manual") {
       setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
     }
@@ -178,11 +186,11 @@ export function TripForm() {
       
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
-          <div className="liquid-glass rounded-3xl p-6 sm:p-8 w-full max-w-md border border-white/[0.1] shadow-2xl scale-in-center">
+          <div className="liquid-glass rounded-[32px] p-6 sm:p-8 w-full max-w-md border border-white/[0.1] shadow-2xl scale-in-center">
             <h3 className="text-lg font-bold text-white mb-2">Confirm Trip Dispatch</h3>
             <p className="text-xs text-white/60 mb-6">Verify the calculated operational financials before locking this trip.</p>
             
-            <div className="space-y-3 mb-8 bg-black/30 p-4 rounded-xl border border-white/[0.05]">
+            <div className="space-y-3 mb-8 bg-black/30 p-4 rounded-2xl border border-white/[0.05]">
               <div className="flex justify-between text-xs">
                 <span className="text-white/50 uppercase tracking-wider font-semibold">LR Number:</span>
                 <span className="text-white font-bold">{lrNumber.toUpperCase()}</span>
@@ -205,8 +213,8 @@ export function TripForm() {
             </div>
 
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowConfirm(false)} className="px-5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white/70 font-bold hover:bg-white/[0.08] transition-all text-xs">Cancel</button>
-              <button onClick={confirmDispatch} disabled={loading} className="btn-orange-glow px-6 py-2.5 rounded-xl text-xs font-bold tracking-wide">
+              <button onClick={() => setShowConfirm(false)} className="px-6 py-3 rounded-full bg-white/[0.03] border border-white/[0.08] text-white/70 font-bold hover:bg-white/[0.08] transition-all text-xs ios-spring">Cancel</button>
+              <button onClick={confirmDispatch} disabled={loading} className="btn-orange-glow px-7 py-3 rounded-full text-xs font-bold tracking-wide">
                 {loading ? "Dispatching..." : "Confirm & Dispatch"}
               </button>
             </div>
@@ -235,9 +243,9 @@ export function TripForm() {
           </div>
           <div className="md:col-span-3">
             <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">Cargo Type</label>
-            <div className="flex gap-1">
-              <button type="button" onClick={() => { setCargoType("BULK"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ios-spring ${cargoType === "BULK" ? "bg-[#FF9F0A] text-black" : "bg-white/[0.02] text-white/50 border border-white/[0.06]"}`}>BULK</button>
-              <button type="button" onClick={() => { setCargoType("BAG"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ios-spring ${cargoType === "BAG" ? "bg-[#FF9F0A] text-black" : "bg-white/[0.02] text-white/50 border border-white/[0.06]"}`}>BAG</button>
+            <div className="flex gap-1.5">
+              <button type="button" onClick={() => { setCargoType("BULK"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-full text-[10px] font-bold transition-all ios-spring ${cargoType === "BULK" ? "bg-[#FF9F0A] text-black shadow-[0_0_10px_rgba(255,159,10,0.3)]" : "bg-white/[0.02] text-white/50 border border-white/[0.06]"}`}>BULK</button>
+              <button type="button" onClick={() => { setCargoType("BAG"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-full text-[10px] font-bold transition-all ios-spring ${cargoType === "BAG" ? "bg-[#FF9F0A] text-black shadow-[0_0_10px_rgba(255,159,10,0.3)]" : "bg-white/[0.02] text-white/50 border border-white/[0.06]"}`}>BAG</button>
             </div>
           </div>
           <div className="md:col-span-3">
@@ -252,10 +260,10 @@ export function TripForm() {
         </div>
 
         {/* ROW 2: Routing & Driver */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 rounded-2xl bg-white/[0.01] border border-white/[0.04]">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 rounded-3xl bg-white/[0.01] border border-white/[0.04]">
           <div className="md:col-span-4">
             <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">Origin</label>
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               {sourceMode === "select" ? (
                 <select value={source} onChange={(e) => setSource(e.target.value)} className={`${compactInput} flex-1 bg-[#020203]`} required>
                   <option value="">Select...</option>
@@ -264,13 +272,13 @@ export function TripForm() {
               ) : (
                 <input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Type..." className={`${compactInput} flex-1`} required />
               )}
-              <button type="button" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="px-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white/60 font-bold hover:bg-white/[0.08]" title="Toggle Manual">+</button>
+              <button type="button" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="px-3.5 rounded-full bg-white/[0.03] border border-white/[0.08] text-white/60 font-bold hover:bg-white/[0.08] transition-all ios-spring" title="Toggle Manual">+</button>
             </div>
           </div>
 
           <div className="md:col-span-4">
             <label className="block text-[10px] font-semibold text-white/50 mb-1.5 uppercase tracking-wider">Destination</label>
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               {destMode === "select" ? (
                 <select value={destination} onChange={(e) => setDestination(e.target.value)} className={`${compactInput} flex-1 bg-[#020203]`} required>
                   <option value="">Select...</option>
@@ -279,14 +287,16 @@ export function TripForm() {
               ) : (
                 <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Type..." className={`${compactInput} flex-1`} required />
               )}
-              <button type="button" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="px-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white/60 font-bold hover:bg-white/[0.08]" title="Toggle Manual">+</button>
+              <button type="button" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="px-3.5 rounded-full bg-white/[0.03] border border-white/[0.08] text-white/60 font-bold hover:bg-white/[0.08] transition-all ios-spring" title="Toggle Manual">+</button>
             </div>
           </div>
 
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
               <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Pilot</label>
-              <button type="button" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="text-[9px] font-bold text-white/50 hover:text-white transition-all uppercase">{driverMode === "select" ? "+ New" : "≡ List"}</button>
+              <button type="button" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 transition-all uppercase tracking-wider ios-spring">
+                {driverMode === "select" ? "+ New" : "≡ List"}
+              </button>
             </div>
             {driverMode === "select" ? (
               <select value={driverId} onChange={(e) => setDriverId(e.target.value)} className={`${compactInput} bg-[#020203]`} required>
@@ -328,19 +338,19 @@ export function TripForm() {
           </div>
           <div className="md:col-span-2">
             <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Diesel</label>
-            <div className="flex gap-1">
-              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30 w-1/2`} placeholder="Liters" required title="Diesel Issued (Litres)" />
-              <input type="number" {...strictNumberProps} step="0.01" value={dieselRate} onChange={(e) => setDieselRate(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30 w-1/2`} placeholder="₹/L" required title="Diesel Rate (₹/Litre)" />
+            <div className="flex gap-1.5">
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30 w-1/2`} placeholder="L" required title="Diesel Issued (Litres)" />
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselRate} onChange={(e) => handleRateChange(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30 w-1/2`} placeholder="₹/L" required title="Diesel Rate (₹/Litre)" />
             </div>
-            <div className="flex items-center mt-1.5 gap-1.5">
-              <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-3.5 h-3.5 rounded-sm bg-black/40 border border-[#FF9F0A]/50 text-[#FF9F0A] focus:ring-0 cursor-pointer appearance-none checked:bg-[#FF9F0A] flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
+            <div className="flex items-center mt-2 gap-2">
+              <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-4 h-4 rounded-full bg-black/40 border border-[#FF9F0A]/50 text-[#FF9F0A] focus:ring-0 cursor-pointer appearance-none checked:bg-[#FF9F0A] flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
               <span className="text-[9px] text-[#FF9F0A] uppercase tracking-wider font-bold">Tank Full</span>
             </div>
           </div>
         </div>
 
         {/* Live Calculation & Controls Bar */}
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
+        <div className="p-4 rounded-3xl bg-white/[0.02] border border-white/[0.06] flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
           <div className="flex items-center gap-6 overflow-x-auto pb-2 md:pb-0">
             <div>
               <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Total Revenue</p>
@@ -361,14 +371,20 @@ export function TripForm() {
           </div>
           
           <div className="flex justify-end gap-3 w-full md:w-auto">
-            <button type="button" onClick={handleClear} className="px-5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white/70 font-bold hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all text-xs ios-spring">
+            <button type="button" onClick={handleClear} className="px-6 py-3 rounded-full bg-white/[0.03] border border-white/[0.08] text-white/70 font-bold hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all text-xs ios-spring">
               Clear
             </button>
-            <button type="submit" disabled={loading} className="btn-orange-glow px-6 py-2.5 rounded-xl text-xs font-bold tracking-wide shadow-[0_0_15px_rgba(255,159,10,0.3)]">
+            <button type="submit" disabled={loading} className="btn-orange-glow px-7 py-3 rounded-full text-xs font-bold tracking-wide shadow-[0_0_15px_rgba(255,159,10,0.3)]">
               Review & Dispatch
             </button>
           </div>
         </div>
+
+        {success && (
+          <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs text-center font-bold">
+            Trip successfully registered and dispatched to live telemetry!
+          </div>
+        )}
       </form>
     </div>
   );
