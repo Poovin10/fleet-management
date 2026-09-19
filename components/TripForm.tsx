@@ -34,9 +34,12 @@ export function TripForm() {
   const [destMode, setDestMode] = useState<"select" | "manual">("select");
   const [destination, setDestination] = useState("");
 
-  // Financial States
+  // Financial & Operational States
+  const [tonnage, setTonnage] = useState("");
   const [freightRevenue, setFreightRevenue] = useState("");
   const [driverBata, setDriverBata] = useState("");
+  const [advance, setAdvance] = useState("");
+  const [dieselIssued, setDieselIssued] = useState("");
 
   useEffect(() => {
     async function fetchFormContext() {
@@ -60,11 +63,11 @@ export function TripForm() {
     fetchFormContext();
   }, [supabase]);
 
-  // Filter trucks based on Cargo Type (Assumes your DB truck_type includes 'BAG' or 'BULK')
+  // Filter trucks based on Cargo Type 
   const filteredVehicles = useMemo(() => {
     return vehicles.filter(v => {
       const type = (v.truck_type || v.cargo_type || "").toUpperCase();
-      return type.includes(cargoType) || type === ""; // Shows matching types, or uncategorized trucks
+      return type.includes(cargoType) || type === ""; 
     });
   }, [vehicles, cargoType]);
 
@@ -94,7 +97,7 @@ export function TripForm() {
       }]).select().single();
       
       if (driverErr) {
-        alert("Failed to register new driver to database. Check if phone/license columns match. Error: " + driverErr.message);
+        alert("Failed to register new driver to database. Error: " + driverErr.message);
         setLoading(false);
         return;
       }
@@ -110,8 +113,11 @@ export function TripForm() {
       primary_driver_id: finalDriverId,
       source: source,
       destination: destination,
+      tonnage_loaded: Number(tonnage),
       freight_revenue: Number(freightRevenue),
       driver_bata: Number(driverBata),
+      cash_advance_issued: Number(advance),
+      diesel_issued: Number(dieselIssued),
       trip_status: "WAITING_FOR_LOAD"
     };
 
@@ -119,7 +125,8 @@ export function TripForm() {
     
     if (!error) {
       setSuccess(true);
-      setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination(""); setFreightRevenue(""); setDriverBata("");
+      setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination(""); 
+      setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance(""); setDieselIssued("");
       if (driverMode === "manual") {
         setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
       }
@@ -152,32 +159,31 @@ export function TripForm() {
           </div>
         </div>
 
-        {/* ROW 2: Cargo Type */}
-        <div>
-          <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Cargo Type</label>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => { setCargoType("BULK"); setTruckId(""); }} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ios-spring ${cargoType === "BULK" ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)]" : "bg-white/[0.03] text-white/60 border border-white/[0.08]"}`}>
-              BULK CARGO
-            </button>
-            <button type="button" onClick={() => { setCargoType("BAG"); setTruckId(""); }} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ios-spring ${cargoType === "BAG" ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)]" : "bg-white/[0.03] text-white/60 border border-white/[0.08]"}`}>
-              BAG CARGO
-            </button>
+        {/* ROW 2: Cargo Type & Truck */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Cargo Type</label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setCargoType("BULK"); setTruckId(""); }} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ios-spring ${cargoType === "BULK" ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)]" : "bg-white/[0.03] text-white/60 border border-white/[0.08]"}`}>
+                BULK CARGO
+              </button>
+              <button type="button" onClick={() => { setCargoType("BAG"); setTruckId(""); }} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ios-spring ${cargoType === "BAG" ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)]" : "bg-white/[0.03] text-white/60 border border-white/[0.08]"}`}>
+                BAG CARGO
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Assign Truck (Filtered for {cargoType})</label>
+            <select value={truckId} onChange={(e) => setTruckId(e.target.value)} className="w-full liquid-input bg-[#020203]" required>
+              <option value="" className="text-white/40">Select an available truck...</option>
+              {filteredVehicles.map(v => (
+                <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} ({v.carrying_capacity_tons} MT)</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* ROW 3: Truck Dropdown (Filtered) */}
-        <div>
-          <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Assign Truck (Filtered for {cargoType})</label>
-          <select value={truckId} onChange={(e) => setTruckId(e.target.value)} className="w-full liquid-input bg-[#020203]" required>
-            <option value="" className="text-white/40">Select an available truck...</option>
-            {filteredVehicles.map(v => (
-              <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} ({v.carrying_capacity_tons} MT)</option>
-            ))}
-          </select>
-          {filteredVehicles.length === 0 && <p className="text-[10px] text-rose-400 mt-2 font-medium">No trucks currently match the '{cargoType}' configuration in your master settings.</p>}
-        </div>
-
-        {/* ROW 4: Driver Management */}
+        {/* ROW 3: Driver Management */}
         <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
           <div className="flex justify-between items-center mb-4">
             <label className="block text-[11px] font-semibold text-white/60 uppercase tracking-wider">Pilot / Driver Assignment</label>
@@ -203,7 +209,7 @@ export function TripForm() {
           )}
         </div>
 
-        {/* ROW 5: Routing */}
+        {/* ROW 4: Routing */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Origin</label>
@@ -236,15 +242,31 @@ export function TripForm() {
           </div>
         </div>
 
-        {/* ROW 6: Initial Financials */}
+        {/* ROW 5: Cargo Details */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Freight Revenue (₹)</label>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Tonnage (MT)</label>
+            <input type="number" step="0.01" value={tonnage} onChange={(e) => setTonnage(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Freight Rate (₹)</label>
             <input type="number" value={freightRevenue} onChange={(e) => setFreightRevenue(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
           </div>
+        </div>
+
+        {/* ROW 6: Allowances & Issues */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Driver Bata (₹)</label>
             <input type="number" value={driverBata} onChange={(e) => setDriverBata(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Advance (₹)</label>
+            <input type="number" value={advance} onChange={(e) => setAdvance(e.target.value)} className="w-full liquid-input" placeholder="0.00" required />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Diesel Issued</label>
+            <input type="number" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className="w-full liquid-input" placeholder="0" required />
           </div>
         </div>
 
