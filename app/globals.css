@@ -2,140 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --bg-deep: #050608;
-    --surface-base: #0B0D13;
-    --surface-elevated: #131722;
-    --surface-hover: #1A1F2E;
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-active: rgba(255, 90, 0, 0.4);
-    --primary: #FF5A00;
-    --primary-glow: rgba(255, 90, 0, 0.25);
-    --text-main: #F8FAFC;
-    --text-muted: #94A3B8;
-  }
-
-  body {
-    background-color: var(--bg-deep);
-    color: var(--text-main);
-    font-family: system-ui, -apple-system, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
-  }
-}
-
-.erp-card {
-  background: linear-gradient(135deg, rgba(19, 23, 34, 0.8) 0%, rgba(11, 13, 19, 0.9) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.erp-card:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
-}
-
-.erp-button-primary {
-  background: linear-gradient(135deg, #FF5A00 0%, #E04F00 100%);
-  color: #FFFFFF;
-  font-weight: 800;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 20px -2px rgba(255, 90, 0, 0.4);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.erp-button-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 25px 0 rgba(255, 90, 0, 0.6);
-}
-
-.erp-button-primary:active {
-  transform: translateY(0px) scale(0.98);
-}
-
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: #050608;
-}
-::-webkit-scrollbar-thumb {
-  background: #1E2538;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #FF5A00;
-}
-
-/* Tier-1 Aerospace Tab Content Animation */
-@keyframes tierOneTabEnter {
-  0% {
-    opacity: 0;
-    transform: translateY(8px) scale(0.995);
-    filter: blur(2px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
-  }
-}
-
-.animate-tab-focus {
-  animation: tierOneTabEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: transform, opacity, filter;
-}
-
-/* Force Native System Typography (iOS Standard) */
-body, input, button, select, textarea {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Global macOS Liquidglass Button Standard with Orange Accent */
-button:not(.unstyled), .btn-primary {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-button:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-@layer utilities {
-  /* The core iOS Frosted Glass Panel */
+@layer components {
+  /* 1. Liquid Glass Base (For layout cards, tables, panels) */
   .liquid-glass {
-    @apply bg-gradient-to-br from-white/[0.04] to-black/[0.2] backdrop-blur-[50px] border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.4)];
-    -webkit-backdrop-filter: blur(50px);
-  }
-  
-  /* Inputs & Alert Boxes */
-  .liquid-input {
-    @apply bg-black/40 border border-white/10 rounded-2xl px-5 py-4 backdrop-blur-xl text-white placeholder:text-white/30 outline-none focus:border-[#FF9F0A]/60 focus:bg-white/[0.03] transition-all duration-150 ease-out;
+    @apply bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.04] rounded-[32px] shadow-xl;
   }
 
-  /* The iOS Spring Animation for Interactions */
-  .ios-spring {
-    @apply transition-all duration-150 ease-out;
-  }
-  .ios-spring:active {
-    @apply scale-[0.98];
+  /* 2. Unified Form Inputs (For text fields, dropdowns, dates) */
+  .input-glass {
+    @apply w-full bg-white/[0.02] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-[#FF9F0A]/50 focus:bg-white/[0.05] transition-all outline-none font-medium;
   }
 
-  /* Core Buttons */
+  /* 3. Primary Action Buttons (The glowing orange signature button) */
   .btn-orange-glow {
-    background: linear-gradient(180deg, #FFB340 0%, #FF9F0A 100%);
-    box-shadow: 0 4px 20px rgba(255, 159, 10, 0.4), inset 0 1px 1px rgba(255,255,255,0.5);
-    @apply text-black font-bold border border-[#FF9F0A] ios-spring;
+    @apply bg-[#FF9F0A] text-black font-bold tracking-wide transition-all shadow-[0_0_15px_rgba(255,159,10,0.3)] hover:shadow-[0_0_25px_rgba(255,159,10,0.5)] hover:scale-[1.02] active:scale-95;
   }
-  
+
+  /* 4. Secondary Action Buttons (For cancel/clear actions) */
   .btn-glass {
-    @apply bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.1] text-white/80 hover:text-white ios-spring backdrop-blur-md;
+    @apply bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white transition-all active:scale-95;
+  }
+
+  /* 5. Fluid Animations (Universal smooth transitions) */
+  .ios-spring {
+    @apply transition-all duration-300 ease-out;
   }
 }
