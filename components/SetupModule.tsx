@@ -113,7 +113,7 @@ export function SetupModule() {
           <button
             key={sub}
             onClick={() => setActiveSubTab(sub)}
-            className={`px-5 py-2 rounded-full text-[11px] font-bold transition-all ios-spring ${activeSubTab === sub ? "bg-[#FF9F0A] text-black shadow-[0_0_15px_rgba(255,159,10,0.3)]" : "text-white/60 bg-white/[0.02] border border-white/[0.06] hover:text-white hover:bg-white/[0.08]"}`}
+            className={`px-5 py-2 rounded-full text-[11px] font-bold transition-all ios-spring ${activeSubTab === sub ? "btn-orange-glow rounded-full ios-spring "" : "text-white/60 bg-white/[0.02] border border-white/[0.06] hover:text-white hover:bg-white/[0.08]"}`}
           >
             {sub}
           </button>
