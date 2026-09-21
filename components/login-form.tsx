@@ -95,7 +95,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={isPending}
-            className="btn-orange-glow rounded-full ios-spring w-full mt-2 py-4 text-sm tracking-wide disabled:opacity-50""
+            className="btn-orange-glow rounded-full ios-spring w-full mt-2 py-4 text-sm tracking-wide disabled:opacity-50"
           >
             {isPending ? "Authorizing Session..." : "Authorize Access"}
           </button>
