@@ -20,7 +20,7 @@ export function TripForm() {
   const [lrNumber, setLrNumber] = useState("");
   const [cargoType, setCargoType] = useState("BULK");
   const [truckId, setTruckId] = useState("");
-  
+
   // Driver States
   const [driverMode, setDriverMode] = useState<"select" | "manual">("select");
   const [driverId, setDriverId] = useState("");
@@ -95,7 +95,7 @@ export function TripForm() {
   const filteredVehicles = useMemo(() => {
     return vehicles.filter(v => {
       const type = (v.truck_type || v.cargo_type || "").toUpperCase();
-      return type.includes(cargoType) || type === ""; 
+      return type.includes(cargoType) || type === "";
     });
   }, [vehicles, cargoType]);
 
@@ -106,8 +106,6 @@ export function TripForm() {
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
     }
   };
-
-  const compactInput = "w-full bg-white/[0.02] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-[#FF9F0A]/50 focus:bg-white/[0.05] transition-all outline-none font-medium";
 
   const totalRevenue = Number(freightRevenue || 0);
   const fuelExpense = Number(dieselIssued || 0) * Number(dieselRate || 0);
@@ -120,8 +118,8 @@ export function TripForm() {
   };
 
   const handleClear = () => {
-    setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination(""); 
-    setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance(""); 
+    setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination("");
+    setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance("");
     setDieselIssued(""); setStartKm(""); setTankFull(false); setSuccess(false);
     if (driverMode === "manual") {
       setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
@@ -129,7 +127,7 @@ export function TripForm() {
   };
 
   const handleReview = async (e: React.FormEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
     setLoading(true); setSuccess(false);
 
     if (Number(startKm) < 0 || Number(tonnage) < 0 || Number(freightRevenue) < 0 || Number(driverBata) < 0 || Number(advance) < 0 || Number(dieselIssued) < 0 || Number(dieselRate) < 0) {
@@ -144,7 +142,7 @@ export function TripForm() {
         alert(`SECURITY BLOCK: The LR Number "${lrNumber}" already exists.`); setLoading(false); return;
       }
     }
-    
+
     setLoading(false);
     setShowConfirm(true);
   };
@@ -156,7 +154,7 @@ export function TripForm() {
       const { data: newDriver, error: driverErr } = await supabase.from("drivers").insert([{
         name: newDriverName, phone_number: newDriverPhone, license_number: newDriverLicense, license_expiry: newDriverExpiry, is_active: true
       }]).select().single();
-      
+
       if (driverErr) { alert("Failed to register new driver. Error: " + driverErr.message); setLoading(false); setShowConfirm(false); return; }
       finalDriverId = newDriver.id || newDriver.driver_id;
     }
@@ -169,7 +167,7 @@ export function TripForm() {
     };
 
     const { error } = await supabase.from("trips").insert([tripData]);
-    
+
     if (!error) {
       setSuccess(true);
       setShowConfirm(false);
@@ -182,13 +180,13 @@ export function TripForm() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4 relative">
-      
+
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
-          <div className="liquid-glass rounded-[32px] p-6 sm:p-8 w-full max-w-md border border-white/[0.1] shadow-2xl scale-in-center">
+          <div className="liquid-glass p-6 sm:p-8 w-full max-w-md scale-in-center">
             <h3 className="text-lg font-bold text-white mb-2">Confirm Trip Dispatch</h3>
             <p className="text-xs text-white/60 mb-6">Verify the calculated operational financials before locking this trip.</p>
-            
+
             <div className="space-y-3 mb-8 bg-black/30 p-4 rounded-2xl border border-white/[0.05]">
               <div className="flex justify-between text-xs">
                 <span className="text-white/50 uppercase tracking-wider font-semibold">LR Number:</span>
@@ -212,8 +210,8 @@ export function TripForm() {
             </div>
 
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowConfirm(false)} className="px-6 py-3 rounded-full bg-white/[0.03] border border-white/[0.08] text-white/70 font-bold hover:bg-white/[0.08] transition-all text-xs ios-spring">Cancel</button>
-              <button onClick={confirmDispatch} disabled={loading} className="btn-orange-glow px-7 py-3 rounded-full text-xs font-bold tracking-wide">
+              <button onClick={() => setShowConfirm(false)} className="btn-glass px-6 py-3 rounded-full font-bold text-xs ios-spring">Cancel</button>
+              <button onClick={confirmDispatch} disabled={loading} className="btn-orange-glow px-7 py-3 rounded-full text-xs">
                 {loading ? "Dispatching..." : "Confirm & Dispatch"}
               </button>
             </div>
@@ -229,27 +227,27 @@ export function TripForm() {
       </div>
 
       <form onSubmit={handleReview} className="space-y-4">
-        
+
         {/* ROW 1: Core Identifiers */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           <div className="md:col-span-3">
             <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Trip Date</label>
-            <input type="date" value={tripDate} onChange={(e) => setTripDate(e.target.value)} className={compactInput} required />
+            <input type="date" value={tripDate} onChange={(e) => setTripDate(e.target.value)} className="input-glass" required />
           </div>
           <div className="md:col-span-3">
             <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">LR Number</label>
-            <input type="text" value={lrNumber} onChange={(e) => setLrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))} placeholder="KSS..." className={`${compactInput} uppercase font-mono`} required pattern="[A-Za-z0-9]+" />
+            <input type="text" value={lrNumber} onChange={(e) => setLrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))} placeholder="KSS..." className="input-glass uppercase font-mono" required pattern="[A-Za-z0-9]+" />
           </div>
           <div className="md:col-span-3">
             <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Cargo Type</label>
             <div className="flex gap-1.5">
-              <button type="button" onClick={() => { setCargoType("BULK"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-full text-[10px] font-bold transition-all ios-spring ${cargoType === "BULK" ? "bg-[#FF9F0A] text-black shadow-[0_0_10px_rgba(255,159,10,0.3)]" : "bg-white/[0.02] text-white/50 border border-white/[0.06]"}`}>BULK</button>
-              <button type="button" onClick={() => { setCargoType("BAG"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-full text-[10px] font-bold transition-all ios-spring ${cargoType === "BAG" ? "bg-[#FF9F0A] text-black shadow-[0_0_10px_rgba(255,159,10,0.3)]" : "bg-white/[0.02] text-white/50 border border-white/[0.06]"}`}>BAG</button>
+              <button type="button" onClick={() => { setCargoType("BULK"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-full text-[10px] font-bold ios-spring ${cargoType === "BULK" ? "btn-orange-glow" : "btn-glass"}`}>BULK</button>
+              <button type="button" onClick={() => { setCargoType("BAG"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-full text-[10px] font-bold ios-spring ${cargoType === "BAG" ? "btn-orange-glow" : "btn-glass"}`}>BAG</button>
             </div>
           </div>
           <div className="md:col-span-3">
             <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Assign Truck</label>
-            <select value={truckId} onChange={(e) => setTruckId(e.target.value)} className={`${compactInput} bg-[#020203]`} required>
+            <select value={truckId} onChange={(e) => setTruckId(e.target.value)} className="input-glass bg-[#020203]" required>
               <option value="" className="text-white/40">Select...</option>
               {filteredVehicles.map(v => (
                 <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>
@@ -263,46 +261,46 @@ export function TripForm() {
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
               <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Origin</label>
-              <button type="button" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 transition-all uppercase tracking-wider ios-spring">
+              <button type="button" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 uppercase tracking-wider ios-spring">
                 {sourceMode === "select" ? "+ New" : "≡ List"}
               </button>
             </div>
             {sourceMode === "select" ? (
-              <select value={source} onChange={(e) => setSource(e.target.value)} className={`${compactInput} bg-[#020203]`} required>
+              <select value={source} onChange={(e) => setSource(e.target.value)} className="input-glass bg-[#020203]" required>
                 <option value="">Select...</option>
                 {historicalSources.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             ) : (
-              <input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Type new origin..." className={compactInput} required />
+              <input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Type new origin..." className="input-glass" required />
             )}
           </div>
 
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
               <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Destination</label>
-              <button type="button" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 transition-all uppercase tracking-wider ios-spring">
+              <button type="button" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 uppercase tracking-wider ios-spring">
                 {destMode === "select" ? "+ New" : "≡ List"}
               </button>
             </div>
             {destMode === "select" ? (
-              <select value={destination} onChange={(e) => setDestination(e.target.value)} className={`${compactInput} bg-[#020203]`} required>
+              <select value={destination} onChange={(e) => setDestination(e.target.value)} className="input-glass bg-[#020203]" required>
                 <option value="">Select...</option>
                 {historicalDestinations.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             ) : (
-              <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Type new destination..." className={compactInput} required />
+              <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Type new destination..." className="input-glass" required />
             )}
           </div>
 
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
               <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Driver</label>
-              <button type="button" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 transition-all uppercase tracking-wider ios-spring">
+              <button type="button" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 uppercase tracking-wider ios-spring">
                 {driverMode === "select" ? "+ New" : "≡ List"}
               </button>
             </div>
             {driverMode === "select" ? (
-              <select value={driverId} onChange={(e) => setDriverId(e.target.value)} className={`${compactInput} bg-[#020203]`} required>
+              <select value={driverId} onChange={(e) => setDriverId(e.target.value)} className="input-glass bg-[#020203]" required>
                 <option value="">Select driver...</option>
                 {drivers.map(d => (
                   <option key={d.driver_id || d.id} value={d.driver_id || d.id}>{d.name}</option>
@@ -310,8 +308,8 @@ export function TripForm() {
               </select>
             ) : (
               <div className="flex gap-2">
-                <input type="text" placeholder="Name" value={newDriverName} onChange={e => setNewDriverName(e.target.value)} className={compactInput} required />
-                <input type="tel" placeholder="Phone" value={newDriverPhone} onChange={e => setNewDriverPhone(e.target.value)} className={compactInput} required />
+                <input type="text" placeholder="Name" value={newDriverName} onChange={e => setNewDriverName(e.target.value)} className="input-glass" required />
+                <input type="tel" placeholder="Phone" value={newDriverPhone} onChange={e => setNewDriverPhone(e.target.value)} className="input-glass" required />
               </div>
             )}
           </div>
@@ -321,29 +319,29 @@ export function TripForm() {
         <div className="grid grid-cols-2 md:grid-cols-12 gap-3">
           <div className="md:col-span-2">
             <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Tonnage (MT)</label>
-            <input type="number" {...strictNumberProps} step="0.01" value={tonnage} onChange={(e) => setTonnage(e.target.value)} className={compactInput} placeholder="0.00" required />
+            <input type="number" {...strictNumberProps} step="0.01" value={tonnage} onChange={(e) => setTonnage(e.target.value)} className="input-glass" placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
             <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Freight (₹)</label>
-            <input type="number" {...strictNumberProps} value={freightRevenue} onChange={(e) => setFreightRevenue(e.target.value)} className={compactInput} placeholder="0.00" required />
+            <input type="number" {...strictNumberProps} value={freightRevenue} onChange={(e) => setFreightRevenue(e.target.value)} className="input-glass" placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
             <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Bata (₹)</label>
-            <input type="number" {...strictNumberProps} value={driverBata} onChange={(e) => setDriverBata(e.target.value)} className={compactInput} placeholder="0.00" required />
+            <input type="number" {...strictNumberProps} value={driverBata} onChange={(e) => setDriverBata(e.target.value)} className="input-glass" placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
             <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Advance (₹)</label>
-            <input type="number" {...strictNumberProps} value={advance} onChange={(e) => setAdvance(e.target.value)} className={compactInput} placeholder="0.00" required />
+            <input type="number" {...strictNumberProps} value={advance} onChange={(e) => setAdvance(e.target.value)} className="input-glass" placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
             <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider" title={`Previous: ${previousKm ?? 'N/A'}`}>Start KM</label>
-            <input type="number" {...strictNumberProps} value={startKm} onChange={(e) => setStartKm(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30`} placeholder={previousKm ? String(previousKm) : "0"} required />
+            <input type="number" {...strictNumberProps} value={startKm} onChange={(e) => setStartKm(e.target.value)} className="input-glass font-mono border-[#FF9F0A]/30" placeholder={previousKm ? String(previousKm) : "0"} required />
           </div>
           <div className="md:col-span-2">
             <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Diesel</label>
             <div className="flex gap-1.5">
-              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30 w-1/2`} placeholder="L" required title="Diesel Issued (Litres)" />
-              <input type="number" {...strictNumberProps} step="0.01" value={dieselRate} onChange={(e) => handleRateChange(e.target.value)} className={`${compactInput} font-mono border-[#FF9F0A]/30 w-1/2`} placeholder="₹/L" required title="Diesel Rate (₹/Litre)" />
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className="input-glass font-mono border-[#FF9F0A]/30 w-1/2" placeholder="L" required title="Diesel Issued (Litres)" />
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselRate} onChange={(e) => handleRateChange(e.target.value)} className="input-glass font-mono border-[#FF9F0A]/30 w-1/2" placeholder="₹/L" required title="Diesel Rate (₹/Litre)" />
             </div>
             <div className="flex items-center mt-2 gap-2">
               <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-4 h-4 rounded-full bg-black/40 border border-[#FF9F0A]/50 text-[#FF9F0A] focus:ring-0 cursor-pointer appearance-none checked:bg-[#FF9F0A] flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
@@ -372,12 +370,12 @@ export function TripForm() {
               <p className="text-sm font-bold text-white">₹{netMargin.toLocaleString('en-IN')}</p>
             </div>
           </div>
-          
+
           <div className="flex justify-end gap-3 w-full md:w-auto">
-            <button type="button" onClick={handleClear} className="px-6 py-3 rounded-full bg-white/[0.03] border border-white/[0.08] text-white/70 font-bold hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all text-xs ios-spring">
+            <button type="button" onClick={handleClear} className="btn-glass px-6 py-3 rounded-full font-bold text-xs hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 ios-spring">
               Clear
             </button>
-            <button type="submit" disabled={loading} className="btn-orange-glow px-7 py-3 rounded-full text-xs font-bold tracking-wide shadow-[0_0_15px_rgba(255,159,10,0.3)]">
+            <button type="submit" disabled={loading} className="btn-orange-glow px-7 py-3 rounded-full text-xs">
               Review & Dispatch
             </button>
           </div>
