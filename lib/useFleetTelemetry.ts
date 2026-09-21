@@ -28,7 +28,7 @@ export function useFleetTelemetry() {
       const lastDay = `${year}-${monthStr}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
 
       const [vehiclesRes, activeTripsRes, pendingRes, monthTripsRes, dieselRes, workshopRes] = await Promise.all([
-        supabase.from('trucks').select('*'),
+        supabase.from('vehicles').select('*'),
         supabase.from('trips').select('*', { count: 'exact', head: true }).neq('trip_status', 'COMPLETED'),
         supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING'),
         supabase.from('trips').select('freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance').gte('trip_start_date', firstDay).lte('trip_start_date', lastDay),
