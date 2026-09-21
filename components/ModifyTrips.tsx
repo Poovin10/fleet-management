@@ -142,13 +142,13 @@ export function ModifyTrips() {
  <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
  
  <div className="liquid-glass p-6 sm:p-8 shadow-xl max-w-5xl mx-auto h-fit">
- <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-6">
+ <div className="flex justify-between items-center border-b border-white/[0.08] pb-3 mb-6">
  <h3 className="text-sm font-semibold text-white  tracking-wide">{currentTrip ? `Modify Trip: ${currentTrip.trip_number}` : "Modify Existing Trip"}</h3>
  {currentTrip && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg  tracking-normal animate-pulse">Editing Mode</span>}
  </div>
 
  {!currentTrip ? (
- <div className="py-12 text-center border-2 border-dashed border-[#272B36] rounded-xl bg-[#0F1117]"><p className="text-white/60 font-bold text-sm">Select a trip from the Search & Audit Log below to modify its details.</p></div>
+ <div className="py-12 text-center border-2 border-dashed border-white/[0.08] rounded-xl input-glass bg-white/[0.02]"><p className="text-white/60 font-bold text-sm">Select a trip from the Search & Audit Log below to modify its details.</p></div>
  ) : (
  <form onSubmit={handleUpdateTrip} className="space-y-5 animate-in slide-in-from-bottom-4">
  <div className="flex flex-wrap gap-4 bg-emerald-950/20 p-3 rounded-xl border border-emerald-900/50"><span className="text-xs text-emerald-500 font-bold  tracking-wider">Self-Healing Sync: Hitting save will automatically repair any missing Fuel Audit logs.</span></div>
@@ -162,13 +162,13 @@ export function ModifyTrips() {
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Destination</label><input type="text" value={destination} onChange={e => setDestination(e.target.value)} className="input-glass bg-[#020203] text-white  font-bold outline-none focus:border-[#FF5A00]" /></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Primary Driver</label><select value={driverId} onChange={e => setDriverId(e.target.value)} className="input-glass bg-[#020203] text-white font-bold outline-none focus:border-[#FF5A00]"><option value="">-- UNASSIGNED --</option>{drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}</select></div>
  </div>
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-[#0F1117] rounded-xl border border-[#272B36]">
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 input-glass bg-white/[0.02] rounded-xl border border-white/[0.08]">
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Loaded MT</label><input type="number" step="0.01" value={tonnage} onChange={e => setTonnage(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass bg-[#020203] text-white font-bold outline-none focus:border-[#FF5A00]" /></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Freight Rate / MT ()</label><input type="number" step="0.01" value={spotRate} onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass bg-[#020203] text-emerald-400 font-bold outline-none focus:border-[#FF5A00]" /></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Auto-Calc Gross Freight ()</label><input type="text" value={`${grossFreight.toLocaleString('en-IN', {minimumFractionDigits: 2})}`} disabled className="w-full text-sm p-3 rounded-xl border border-emerald-900/50 bg-emerald-950/20 text-emerald-400 font-semibold outline-none cursor-not-allowed" /></div>
  </div>
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div><div className="flex justify-between items-end mb-1"><label className="block text-[10px] font-bold text-white/60 ">Diesel Issued (L)</label><label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="w-3 h-3 rounded text-[#FF5A00] focus:ring-[#FF5A00] bg-[#1A1F2C] border-[#272B36]" /><span className="text-[9px] font-semibold text-white ">Tank Full</span></label></div><input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass bg-[#020203] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]" /></div>
+ <div><div className="flex justify-between items-end mb-1"><label className="block text-[10px] font-bold text-white/60 ">Diesel Issued (L)</label><label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="w-3 h-3 rounded text-[#FF5A00] focus:ring-[#FF5A00] input-glass bg-white/[0.02] border-white/[0.08]" /><span className="text-[9px] font-semibold text-white ">Tank Full</span></label></div><input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass bg-[#020203] text-[#FF5A00] font-bold outline-none focus:border-[#FF5A00]" /></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Start KM</label><input type="number" value={startKm} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass bg-[#020203] text-sky-400 font-bold outline-none focus:border-[#FF5A00]" /></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">End KM</label><input type="number" value={endKm} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass bg-[#020203] text-sky-400 font-bold outline-none focus:border-[#FF5A00]" /></div>
  </div>
@@ -182,7 +182,7 @@ export function ModifyTrips() {
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Unloaded MT</label><input type="number" step="0.01" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass bg-[#020203] text-white font-bold outline-none focus:border-[#FF5A00]" /></div>
  </div>
  <div className="pt-4 flex gap-3">
- <button type="button" onClick={clearForm} className="flex-1 py-3.5 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel Edit</button>
+ <button type="button" onClick={clearForm} className="flex-1 py-3.5 input-glass bg-white/[0.02] text-slate-300 font-bold rounded-xl border border-white/[0.08] hover:bg-[#272B36] transition-colors">Cancel Edit</button>
  <button type="submit" disabled={isProcessing} className="flex-[2] py-3.5 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Trip Updates</button>
  </div>
  </form>
@@ -190,8 +190,8 @@ export function ModifyTrips() {
  </div>
 
  <div className="liquid-glass overflow-hidden flex flex-col shadow-xl max-w-5xl mx-auto h-fit mt-6">
- <div className="bg-[#12141C] px-6 py-4 flex justify-between items-center border-b border-[#272B36]"><h3 className="text-sm font-semibold text-white  tracking-wide">Trip Audit & Search</h3></div>
- <div className="p-6 border-b border-[#272B36] bg-[#1A1F2C]">
+ <div className="input-glass bg-white/[0.02] px-6 py-4 flex justify-between items-center border-b border-white/[0.08]"><h3 className="text-sm font-semibold text-white  tracking-wide">Trip Audit & Search</h3></div>
+ <div className="p-6 border-b border-white/[0.08] input-glass bg-white/[0.02]">
  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Date Mode</label><select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="All Time">All Time</option><option value="Specific Date">Specific Date</option><option value="Date Range">Date Range</option></select></div>
  {auditDateMode === "Specific Date" && (<div><label className="block text-[10px] font-bold text-white/60  mb-1">Date</label><input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" /></div>)}
@@ -204,15 +204,15 @@ export function ModifyTrips() {
  <div className="flex-1"><label className="block text-[10px] font-bold text-white/60  mb-1">Search LR No</label><input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="input-glass text-white  outline-none focus:border-[#FF5A00] font-semibold" /></div>
  <div className="flex items-end gap-3">
  <button onClick={handleSearchTrips} disabled={isProcessing} className="px-8 py-3 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">{isProcessing ? "Searching..." : "Search Trips"}</button>
- <button onClick={exportTripsToCSV} className="px-6 py-3 bg-[#0F1117] hover:bg-[#12141C] border border-[#272B36] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95"><span className="text-lg leading-none">Export CSV</span></button>
+ <button onClick={exportTripsToCSV} className="px-6 py-3 input-glass bg-white/[0.02] hover:input-glass bg-white/[0.02] border border-white/[0.08] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95"><span className="text-lg leading-none">Export CSV</span></button>
  </div>
  </div>
  </div>
 
  <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
  <table className="min-w-full text-xs text-left whitespace-nowrap">
- <thead className="bg-[#0F1117] text-white/60  font-bold sticky top-0 z-10"><tr><th className="px-5 py-3 border-b border-[#272B36]">Date</th><th className="px-5 py-3 border-b border-[#272B36]">Trip LR</th><th className="px-5 py-3 border-b border-[#272B36]">Truck & Driver</th><th className="px-5 py-3 border-b border-[#272B36]">Route</th><th className="px-5 py-3 text-center border-b border-[#272B36]">Status</th></tr></thead>
- <tbody className="divide-y divide-[#272B36] bg-[#161922]">
+ <thead className="input-glass bg-white/[0.02] text-white/60  font-bold sticky top-0 z-10"><tr><th className="px-5 py-3 border-b border-white/[0.08]">Date</th><th className="px-5 py-3 border-b border-white/[0.08]">Trip LR</th><th className="px-5 py-3 border-b border-white/[0.08]">Truck & Driver</th><th className="px-5 py-3 border-b border-white/[0.08]">Route</th><th className="px-5 py-3 text-center border-b border-white/[0.08]">Status</th></tr></thead>
+ <tbody className="divide-y divide-[#272B36] liquid-glass">
  {tripsList.map(t => {
  const isEditing = editTripId === t.trip_id;
  return (

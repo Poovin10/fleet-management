@@ -79,12 +79,12 @@ export function AiInsightsDashboard() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="liquid-glass p-6 shadow-xl flex flex-col">
-            <div className="border-b border-[#222634] pb-4 mb-4">
+            <div className="border-b border-white/[0.08] pb-4 mb-4">
               <h3 className="text-xs font-semibold text-rose-400  tracking-wider">Fuel & Maintenance Flags ({latestAudit.anomalies?.length || 0})</h3>
             </div>
             <div className="space-y-4 flex-1">
               {latestAudit.anomalies?.map((item: any, idx: number) => (
-                <div key={idx} className="p-4 bg-[#161922] border border-[#272B36] rounded-xl space-y-3">
+                <div key={idx} className="p-4 liquid-glass border border-white/[0.08] rounded-xl space-y-3">
                   <div className="flex justify-between items-start gap-2">
                     <span className="text-xs font-semibold text-white whitespace-normal break-words">Truck: {item.truckNo || "General"}</span>
                     <span className="text-[9px] font-semibold  px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 shrink-0">{item.severity || 'MEDIUM'}</span>
@@ -102,12 +102,12 @@ export function AiInsightsDashboard() {
           </div>
 
           <div className="liquid-glass p-6 shadow-xl flex flex-col">
-            <div className="border-b border-[#222634] pb-4 mb-4">
+            <div className="border-b border-white/[0.08] pb-4 mb-4">
               <h3 className="text-xs font-semibold text-amber-400  tracking-wider">Cash Flow & Transit Bottlenecks ({latestAudit.efficiency_leaks?.length || 0})</h3>
             </div>
             <div className="space-y-4 flex-1">
               {latestAudit.efficiency_leaks?.map((item: any, idx: number) => (
-                <div key={idx} className="p-4 bg-[#161922] border border-[#272B36] rounded-xl space-y-3">
+                <div key={idx} className="p-4 liquid-glass border border-white/[0.08] rounded-xl space-y-3">
                   <h4 className="text-xs font-semibold text-white whitespace-normal break-words">{item.area}</h4>
                   <p className="text-xs text-slate-300 font-medium leading-relaxed whitespace-normal break-words">{item.details}</p>
                   {item.estimatedLoss && (
@@ -122,12 +122,12 @@ export function AiInsightsDashboard() {
           </div>
 
           <div className="liquid-glass p-6 shadow-xl flex flex-col">
-            <div className="border-b border-[#222634] pb-4 mb-4">
+            <div className="border-b border-white/[0.08] pb-4 mb-4">
               <h3 className="text-xs font-semibold text-sky-400  tracking-wider">Operational Recommendations ({latestAudit.retention_suggestions?.length || 0})</h3>
             </div>
             <div className="space-y-4 flex-1">
               {latestAudit.retention_suggestions?.map((item: any, idx: number) => (
-                <div key={idx} className="p-4 bg-[#161922] border border-[#272B36] rounded-xl space-y-3">
+                <div key={idx} className="p-4 liquid-glass border border-white/[0.08] rounded-xl space-y-3">
                   <span className="text-[10px] font-semibold  px-2.5 py-1 rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 inline-block">{item.category}</span>
                   <p className="text-xs text-slate-300 font-medium leading-relaxed whitespace-normal break-words mt-1">{item.suggestion}</p>
                 </div>

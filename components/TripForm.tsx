@@ -344,7 +344,7 @@ export function TripForm() {
               <input type="number" {...strictNumberProps} step="0.01" value={dieselRate} onChange={(e) => handleRateChange(e.target.value)} className="input-glass font-mono border-[#FF9F0A]/30 w-1/2" placeholder="₹/L" required title="Diesel Rate (₹/Litre)" />
             </div>
             <div className="flex items-center mt-2 gap-2">
-              <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-4 h-4 rounded-full bg-black/40 border border-[#FF9F0A]/50 text-[#FF9F0A] focus:ring-0 cursor-pointer appearance-none checked:bg-[#FF9F0A] flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
+              <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-4 h-4 rounded-full input-glass bg-white/[0.02] border border-[#FF9F0A]/50 text-[#FF9F0A] focus:ring-0 cursor-pointer appearance-none checked:bg-[#FF9F0A] flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
               <span className="text-[9px] text-[#FF9F0A] uppercase tracking-wider font-bold">Tank Full</span>
             </div>
           </div>

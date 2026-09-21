@@ -10,7 +10,7 @@ interface TableToolbarProps {
 
 export function TableToolbar({ title, searchQuery, setSearchQuery, exportData, exportFilename }: TableToolbarProps) {
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-center bg-[#12141C] p-4 border-b border-[#272B36] gap-4">
+    <div className="flex flex-col sm:flex-row justify-between items-center input-glass bg-white/[0.02] p-4 border-b border-white/[0.08] gap-4">
       <h3 className="text-sm font-black text-white uppercase tracking-wide">{title}</h3>
       <div className="flex items-center gap-3 w-full sm:w-auto">
         <div className="relative w-full sm:w-64">
@@ -19,7 +19,7 @@ export function TableToolbar({ title, searchQuery, setSearchQuery, exportData, e
             placeholder="Search records..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs p-2.5 pl-3 rounded-lg bg-[#0F1117] border border-[#2B3142] text-white focus:border-[#FF5A00] outline-none transition-all"
+            className="w-full text-xs p-2.5 pl-3 rounded-lg input-glass bg-white/[0.02] border border-white/[0.08] text-white focus:border-[#FF5A00] outline-none transition-all"
           />
         </div>
         <button 

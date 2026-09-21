@@ -74,7 +74,7 @@ export default function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="superadmin@kss.com"
               required
-              className="w-full px-4 py-3.5 rounded-xl bg-black/40 border border-white/[0.08] text-white/90 placeholder-white/20 text-sm font-medium focus:outline-none focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all shadow-inner"
+              className="w-full px-4 py-3.5 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-white/90 placeholder-white/20 text-sm font-medium focus:outline-none focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all shadow-inner"
             />
           </div>
 
@@ -88,7 +88,7 @@ export default function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
               required
-              className="w-full px-4 py-3.5 rounded-xl bg-black/40 border border-white/[0.08] text-white/90 placeholder-white/20 text-sm font-medium focus:outline-none focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all shadow-inner"
+              className="w-full px-4 py-3.5 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-white/90 placeholder-white/20 text-sm font-medium focus:outline-none focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all shadow-inner"
             />
           </div>
 

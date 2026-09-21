@@ -271,14 +271,14 @@ export function FuelAdvanceModule() {
  <div className="space-y-6 animate-in fade-in duration-300">
  <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
 
- <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#272B36] pb-4">
+ <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/[0.08] pb-4">
  <div>
  <h2 className="text-xl font-semibold text-white  tracking-tight">Fuel & Mileage</h2>
  <p className="text-xs text-white/60 mt-0.5">Manage diesel logs, full-to-full KMPL tracking, and fuel expense audits.</p>
  </div>
  <div className="flex flex-wrap gap-2">
  {[" Issue Diesel", " Fuel Audit", " Mileage Tracker"].map((tab) => (
- <button key={tab} onClick={() => setFaNav(tab)} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${faNav === tab ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20" : "bg-[#161922] text-white/60 hover:text-white hover:bg-[#1E222D] border border-[#272B36]"}`}>
+ <button key={tab} onClick={() => setFaNav(tab)} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${faNav === tab ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20" : "liquid-glass text-white/60 hover:text-white hover:bg-[#1E222D] border border-white/[0.08]"}`}>
  {tab}
  </button>
  ))}
@@ -291,13 +291,13 @@ export function FuelAdvanceModule() {
  
  {/* Inbox UI */}
  {!editLogId && pendingScans.length > 0 && (
- <div className="mb-6 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
+ <div className="mb-6 p-4 input-glass bg-white/[0.02] border border-white/[0.08] rounded-xl animate-in slide-in-from-top-4">
  <h4 className="text-xs font-semibold text-sky-400  tracking-wider flex items-center gap-2 mb-3"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span></span>Pending Fuel Slips ({pendingScans.length})</h4>
  <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
  {pendingScans.map(scan => {
  const data = scan.raw_json_result || {};
  return (
- <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-sky-500 bg-sky-500/10 ring-1 ring-sky-500' : 'border-[#2B3142] hover:border-slate-500 bg-[#12141C]'}`}>
+ <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-sky-500 bg-sky-500/10 ring-1 ring-sky-500' : 'border-white/[0.08] hover:border-slate-500 input-glass bg-white/[0.02]'}`}>
  <div className="animate-tab-focus flex justify-between items-start gap-4">
  <div>
  <p className="text-[10px] text-white/60 font-bold mb-1">Truck: <span className="text-white">{data.truckNo || "UNKNOWN"}</span></p>
@@ -311,7 +311,7 @@ export function FuelAdvanceModule() {
  </div>
  )}
 
- <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-5">
+ <div className="flex justify-between items-center border-b border-white/[0.08] pb-3 mb-5">
  <h3 className="text-sm font-semibold text-white  tracking-wide">{editLogId ? "Edit Diesel Log" : "Record Fuel Bill"}</h3>
  {editLogId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg  tracking-normal animate-pulse">Editing Mode</span>}
  </div>
@@ -328,9 +328,9 @@ export function FuelAdvanceModule() {
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Rate () *</label><input type="number" step="0.1" min="0.1" max="200" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="input-glass text-white outline-none focus:border-[#FF5A00] font-bold" required /></div>
  </div>
 
- <div className="flex justify-between items-center bg-[#0F1117] p-4 rounded-xl border border-[#272B36] mt-2">
+ <div className="flex justify-between items-center input-glass bg-white/[0.02] p-4 rounded-xl border border-white/[0.08] mt-2">
  <label className="flex items-center gap-3 cursor-pointer select-none">
- <input type="checkbox" checked={fIsTankFull} onChange={e => setFIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] bg-[#1A1F2C] border-[#272B36] focus:ring-[#FF5A00]" />
+ <input type="checkbox" checked={fIsTankFull} onChange={e => setFIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] input-glass bg-white/[0.02] border-white/[0.08] focus:ring-[#FF5A00]" />
  <span className="text-xs font-semibold text-white "> Tank Full</span>
  </label>
  <div className="text-right">
@@ -339,9 +339,9 @@ export function FuelAdvanceModule() {
  </div>
  </div>
 
- <div className="flex gap-3 pt-4 border-t border-[#272B36]">
+ <div className="flex gap-3 pt-4 border-t border-white/[0.08]">
  {editLogId && (
- <><button type="button" onClick={() => handleDeleteFuel(editLogId)} className="px-4 py-3 bg-rose-950/40 text-rose-500 hover:bg-rose-900 border border-rose-900/50 rounded-xl font-bold transition-colors">️</button><button type="button" onClick={clearFuelForm} className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button></>
+ <><button type="button" onClick={() => handleDeleteFuel(editLogId)} className="px-4 py-3 bg-rose-950/40 text-rose-500 hover:bg-rose-900 border border-rose-900/50 rounded-xl font-bold transition-colors">️</button><button type="button" onClick={clearFuelForm} className="flex-1 py-3 input-glass bg-white/[0.02] text-slate-300 font-bold rounded-xl border border-white/[0.08] hover:bg-[#272B36] transition-colors">Cancel</button></>
  )}
  <button type="submit" disabled={!fVehicleId || Number(fLitres) <= 0 || isProcessing} className="flex-[2] py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-semibold text-sm rounded-xl transition-all shadow-lg active:scale-95">
  {editLogId ? "Update Record" : "Record Diesel"}
@@ -354,7 +354,7 @@ export function FuelAdvanceModule() {
  <TableToolbar title="Recent Fuel Entries" searchQuery={recentSearch} setSearchQuery={setRecentSearch} exportData={exportRecent} exportFilename="Recent_Fuel_Logs" />
  <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
  <table className="min-w-full divide-y divide-[#272B36] whitespace-nowrap">
- <thead className="bg-[#0F1117] sticky top-0 z-10">
+ <thead className="input-glass bg-white/[0.02] sticky top-0 z-10">
  <tr className="text-[10px] font-bold text-white/60  tracking-wider">
  <th className="px-5 py-3 text-left">Date</th>
  <th className="px-5 py-3 text-left">Truck</th>
@@ -363,7 +363,7 @@ export function FuelAdvanceModule() {
  <th className="px-5 py-3 text-right">Cost ()</th>
  </tr>
  </thead>
- <tbody className="divide-y divide-[#272B36] text-xs bg-[#161922]">
+ <tbody className="divide-y divide-[#272B36] text-xs liquid-glass">
  {filteredRecent.map((log) => (
  <tr key={log.fuel_log_id} onClick={() => handleEditClick(log)} className={`cursor-pointer transition-colors ${editLogId === log.fuel_log_id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
  <td className="px-5 py-3.5 font-semibold text-slate-300">{formatDate(log.fuel_date)}</td>
@@ -383,7 +383,7 @@ export function FuelAdvanceModule() {
 
  {faNav === " Fuel Audit" && (
  <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
- <h3 className="text-sm font-semibold text-white  tracking-wide border-b border-[#272B36] pb-3 mb-5">Advanced Fuel Audit Engine</h3>
+ <h3 className="text-sm font-semibold text-white  tracking-wide border-b border-white/[0.08] pb-3 mb-5">Advanced Fuel Audit Engine</h3>
  
  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Date Mode</label><select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="All Time">All Time</option><option value="Specific Date">Specific Date</option><option value="Date Range">Date Range</option></select></div>
@@ -398,12 +398,12 @@ export function FuelAdvanceModule() {
  <button onClick={handleRunAudit} className="px-8 py-3 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg active:scale-95">Fetch Database Records</button>
  </div>
 
- <div className="border border-[#272B36] rounded-xl overflow-hidden">
+ <div className="border border-white/[0.08] rounded-xl overflow-hidden">
  <TableToolbar title="Audit Results" searchQuery={auditSearch} setSearchQuery={setAuditSearch} exportData={exportAudit} exportFilename="Fuel_Audit_Report" />
  <div className="overflow-x-auto w-full max-h-[500px] overflow-y-auto">
  <table className="min-w-full divide-y divide-[#272B36] text-xs whitespace-nowrap">
- <thead className="bg-[#0F1117] sticky top-0"><tr className="text-left font-bold text-white/60  tracking-wider text-[10px]"><th className="px-5 py-4">Log ID</th><th className="px-5 py-4">Date</th><th className="px-5 py-4">Truck</th><th className="px-5 py-4">Category</th><th className="px-5 py-4">LR No</th><th className="px-5 py-4 text-right">Odometer</th><th className="px-5 py-4 text-right">Litres</th><th className="px-5 py-4 text-right">Cost ()</th></tr></thead>
- <tbody className="bg-[#161922] divide-y divide-[#272B36]">
+ <thead className="input-glass bg-white/[0.02] sticky top-0"><tr className="text-left font-bold text-white/60  tracking-wider text-[10px]"><th className="px-5 py-4">Log ID</th><th className="px-5 py-4">Date</th><th className="px-5 py-4">Truck</th><th className="px-5 py-4">Category</th><th className="px-5 py-4">LR No</th><th className="px-5 py-4 text-right">Odometer</th><th className="px-5 py-4 text-right">Litres</th><th className="px-5 py-4 text-right">Cost ()</th></tr></thead>
+ <tbody className="liquid-glass divide-y divide-[#272B36]">
  {filteredAudit.map(l => (
  <tr key={l.fuel_log_id} onClick={() => handleEditClick(l)} className="hover:bg-[#1E222D] cursor-pointer transition-colors">
  <td className="px-5 py-3 font-bold text-white/40">#{l.fuel_log_id}</td>
@@ -426,13 +426,13 @@ export function FuelAdvanceModule() {
 
  {faNav === " Mileage Tracker" && (
  <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
- <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#272B36] pb-4 mb-6 gap-4">
+ <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/[0.08] pb-4 mb-6 gap-4">
  <div><h3 className="text-sm font-semibold text-white  tracking-wide">Vehicle Mileage (KMPL) Tracker</h3><p className="text-xs text-white/60 mt-1">Calculates true mileage using the "Full-to-Full" standard formula.</p></div>
- <div className="w-full md:w-64"><select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number}</option>))}</select></div>
+ <div className="w-full md:w-64"><select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] focus:border-[#FF5A00] outline-none font-bold text-white"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number}</option>))}</select></div>
  </div>
 
  {!kmplTruckId ? (
- <div className="p-12 text-center bg-[#0F1117] border border-[#272B36] rounded-xl flex flex-col items-center"><span className="text-4xl mb-4"></span><p className="text-sm font-bold text-white/40">Select a truck above to view its automated full-to-full mileage history.</p></div>
+ <div className="p-12 text-center input-glass bg-white/[0.02] border border-white/[0.08] rounded-xl flex flex-col items-center"><span className="text-4xl mb-4"></span><p className="text-sm font-bold text-white/40">Select a truck above to view its automated full-to-full mileage history.</p></div>
  ) : isProcessing ? (
  <div className="p-12 text-center"><p className="text-sm font-bold text-[#FF5A00] animate-pulse">Calculating algorithms...</p></div>
  ) : (
@@ -443,17 +443,17 @@ export function FuelAdvanceModule() {
  <div className="text-right"><p className="text-2xl font-semibold text-sky-400">{ongoingKmplSpan.accumulated_litres.toFixed(1)} L</p><p className="text-[10px] font-bold text-sky-500 ">Accumulated so far</p></div>
  </div>
  )}
- <div className="overflow-x-auto rounded-xl border border-[#272B36] w-full">
+ <div className="overflow-x-auto rounded-xl border border-white/[0.08] w-full">
  <TableToolbar title="KMPL History" searchQuery={kmplSearch} setSearchQuery={setKmplSearch} exportData={exportKmpl} exportFilename="KMPL_Report" />
  <table className="min-w-full divide-y divide-[#272B36] text-xs whitespace-nowrap">
- <thead className="bg-[#0F1117] sticky top-0"><tr className="text-left font-bold text-white/60  tracking-wider text-[10px]"><th className="px-5 py-4">Time Span (Full to Full)</th><th className="px-5 py-4 text-right">Distance</th><th className="px-5 py-4 text-right">Consumed</th><th className="px-5 py-4 text-right border-l border-[#272B36]">KMPL (Mileage)</th><th className="px-5 py-4 text-right">Cost / KM</th></tr></thead>
- <tbody className="bg-[#161922] divide-y divide-[#272B36]">
+ <thead className="input-glass bg-white/[0.02] sticky top-0"><tr className="text-left font-bold text-white/60  tracking-wider text-[10px]"><th className="px-5 py-4">Time Span (Full to Full)</th><th className="px-5 py-4 text-right">Distance</th><th className="px-5 py-4 text-right">Consumed</th><th className="px-5 py-4 text-right border-l border-white/[0.08]">KMPL (Mileage)</th><th className="px-5 py-4 text-right">Cost / KM</th></tr></thead>
+ <tbody className="liquid-glass divide-y divide-[#272B36]">
  {filteredKmpl.map((span, idx) => (
  <tr key={idx} className="hover:bg-[#1E222D] transition-colors">
  <td className="px-5 py-3"><p className="font-semibold text-slate-300">{formatDate(span.start_date)} <span className="text-slate-600"></span> {formatDate(span.end_date)}</p><p className="text-[10px] text-white/40 mt-0.5">Odo: {span.start_odo} {span.end_odo} <span className="text-[#FF5A00] ml-2 font-bold">({span.logs_count} fill-ups)</span></p></td>
  <td className="px-5 py-3 text-right font-semibold text-white">{span.distance} KM</td>
  <td className="px-5 py-3 text-right font-bold text-sky-400">{span.consumed_litres.toFixed(1)} L</td>
- <td className="px-5 py-3 text-right font-semibold text-emerald-400 text-base border-l border-[#272B36] bg-emerald-950/10">{span.kmpl}</td>
+ <td className="px-5 py-3 text-right font-semibold text-emerald-400 text-base border-l border-white/[0.08] bg-emerald-950/10">{span.kmpl}</td>
  <td className="px-5 py-3 text-right font-bold text-rose-400">{span.cost_per_km}</td>
  </tr>
  ))}

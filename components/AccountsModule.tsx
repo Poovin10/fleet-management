@@ -117,11 +117,11 @@ export function AccountsModule() {
 
  return (
  <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300">
- <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#272B36] pb-4">
+ <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/[0.08] pb-4">
  <div><h2 className="text-xl font-semibold text-white  tracking-tight">Finance & Accounts</h2><p className="text-xs text-white/60 mt-0.5">Manage cash advances, petty cash, and workshop ledgers.</p></div>
  <div className="flex flex-wrap gap-2">
  {[{ id: "advances", label: "Driver Advances" }, { id: "petty", label: "Petty Expenses" }, { id: "workshop", label: "Workshop Ledger" }].map((tab) => (
- <button key={tab.id} onClick={() => setActiveSubTab(tab.id as any)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeSubTab === tab.id ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20" : "bg-[#161922] text-white/60 hover:text-white hover:bg-[#1E222D] border border-[#272B36]"}`}>{tab.label}</button>
+ <button key={tab.id} onClick={() => setActiveSubTab(tab.id as any)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeSubTab === tab.id ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20" : "liquid-glass text-white/60 hover:text-white hover:bg-[#1E222D] border border-white/[0.08]"}`}>{tab.label}</button>
  ))}
  </div>
  </div>
@@ -129,7 +129,7 @@ export function AccountsModule() {
  {activeSubTab === "advances" && (
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
  <div className="lg:col-span-4 liquid-glass p-6 shadow-xl h-fit">
- <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-5"><h3 className="text-sm font-semibold text-white  tracking-wide">{editAdvId ? "Edit Advance" : "Issue Advance"}</h3>{editAdvId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg  tracking-normal animate-pulse">Editing</span>}</div>
+ <div className="flex justify-between items-center border-b border-white/[0.08] pb-3 mb-5"><h3 className="text-sm font-semibold text-white  tracking-wide">{editAdvId ? "Edit Advance" : "Issue Advance"}</h3>{editAdvId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg  tracking-normal animate-pulse">Editing</span>}</div>
  <form onSubmit={handleIssueAdvance} className="space-y-4">
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Advance Date *</label><input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" required /></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Driver *</label><select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-bold" required><option value="">-- SELECT --</option>{drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}</select></div>
@@ -137,7 +137,7 @@ export function AccountsModule() {
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Category</label><select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="GENERAL_ADVANCE">GENERAL ADVANCE</option><option value="BATA_ADVANCE">BATA ADVANCE</option><option value="SALARY_ADVANCE">SALARY ADVANCE</option></select></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={advRef} onChange={e => setAdvRef(e.target.value.toUpperCase())} placeholder="OPTIONAL REF" className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold " /></div>
  <div className="flex gap-2">
- {editAdvId && <button type="button" onClick={() => {setEditAdvId(null); setAdvAmount(""); setAdvRef("");}} className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button>}
+ {editAdvId && <button type="button" onClick={() => {setEditAdvId(null); setAdvAmount(""); setAdvRef("");}} className="flex-1 py-3 input-glass bg-white/[0.02] text-slate-300 font-bold rounded-xl border border-white/[0.08] hover:bg-[#272B36] transition-colors">Cancel</button>}
  <button type="submit" disabled={isProcessing} className="flex-[2] py-3 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg">{isProcessing ? "Processing..." : editAdvId ? "Update Advance" : "Log Advance"}</button>
  </div>
  </form>
@@ -146,8 +146,8 @@ export function AccountsModule() {
  <TableToolbar title="Advance History" searchQuery={advancesSearch} setSearchQuery={setAdvancesSearch} exportData={exportAdvances} exportFilename="Driver_Advances" />
  <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
  <table className="min-w-full divide-y divide-[#272B36] whitespace-nowrap text-xs">
- <thead className="bg-[#0F1117] sticky top-0 z-10"><tr className="text-[10px] font-bold text-white/60  tracking-wider"><th className="px-5 py-3.5 text-left">Date</th><th className="px-5 py-3.5 text-left">Driver</th><th className="px-5 py-3.5 text-left">Ref</th><th className="px-5 py-3.5 text-right">Amount ()</th><th className="px-5 py-3.5 text-center">Action</th></tr></thead>
- <tbody className="divide-y divide-[#272B36] bg-[#161922]">
+ <thead className="input-glass bg-white/[0.02] sticky top-0 z-10"><tr className="text-[10px] font-bold text-white/60  tracking-wider"><th className="px-5 py-3.5 text-left">Date</th><th className="px-5 py-3.5 text-left">Driver</th><th className="px-5 py-3.5 text-left">Ref</th><th className="px-5 py-3.5 text-right">Amount ()</th><th className="px-5 py-3.5 text-center">Action</th></tr></thead>
+ <tbody className="divide-y divide-[#272B36] liquid-glass">
  {filteredAdvances.map((adv) => (
  <tr key={adv.advance_id} onClick={() => handleEditAdvance(adv)} className={`cursor-pointer transition-colors ${editAdvId === adv.advance_id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
  <td className="px-5 py-3.5 font-semibold text-slate-300">{formatDate(adv.advance_date)}</td><td className="px-5 py-3.5 font-semibold text-white">{adv.drivers?.full_name}</td><td className="px-5 py-3.5 text-slate-300">{adv.advance_type}<br/><span className="text-[9px] text-white/40">{adv.reference_remarks || "-"}</span></td><td className="px-5 py-3.5 text-right font-semibold text-emerald-400">{(adv.amount_inr || 0).toLocaleString("en-IN")}</td><td className="px-5 py-3.5 text-center"><button onClick={(e) => {e.stopPropagation(); handleDeleteAdvance(adv.advance_id);}} className="text-rose-500 hover:text-white bg-rose-950/40 px-3 py-1 rounded text-xs font-bold transition-colors">Del</button></td>
@@ -164,20 +164,20 @@ export function AccountsModule() {
  {activeSubTab === "petty" && (
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
  <div className="lg:col-span-4 liquid-glass p-6 rounded-2xl shadow-xl h-fit">
- <h3 className="text-sm font-semibold text-white  tracking-wide border-b border-[#272B36] pb-3 mb-5">Record Petty Expense</h3>
+ <h3 className="text-sm font-semibold text-white  tracking-wide border-b border-white/[0.08] pb-3 mb-5">Record Petty Expense</h3>
  <form onSubmit={handleCreateExpense} className="space-y-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Expense Type</label><select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full text-xs p-3 rounded-xl bg-[#0F1117] border border-[#272B36] text-white font-bold outline-none focus:border-[#FF5A00]"><option value="TOLL_FASTAG">TOLL / FASTAG</option><option value="POLICE_RTO">RTO / PERMITS</option><option value="LOADING">HAMALI / LOADING</option><option value="OFFICE">OFFICE MISC</option></select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck (Optional)</label><select value={expVehicleId} onChange={e => setExpVehicleId(e.target.value)} className="w-full text-xs p-3 rounded-xl bg-[#0F1117] border border-[#272B36] text-white font-bold outline-none focus:border-[#FF5A00]"><option value="">-- GENERAL --</option>{trucksList.map(t => <option key={t.id} value={t.id}>{t.vehicle_number}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Amount () *</label><input type="number" min="1" max="100000" value={expAmount} onChange={e => setExpAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-xs p-3 rounded-xl bg-[#0F1117] border border-[#272B36] text-[#FF5A00] font-semibold outline-none focus:border-[#FF5A00]" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={expDescription} onChange={e => setExpDescription(e.target.value.toUpperCase())} className="w-full text-xs p-3 rounded-xl bg-[#0F1117] border border-[#272B36] text-white outline-none focus:border-[#FF5A00] " /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Expense Type</label><select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-white font-bold outline-none focus:border-[#FF5A00]"><option value="TOLL_FASTAG">TOLL / FASTAG</option><option value="POLICE_RTO">RTO / PERMITS</option><option value="LOADING">HAMALI / LOADING</option><option value="OFFICE">OFFICE MISC</option></select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck (Optional)</label><select value={expVehicleId} onChange={e => setExpVehicleId(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-white font-bold outline-none focus:border-[#FF5A00]"><option value="">-- GENERAL --</option>{trucksList.map(t => <option key={t.id} value={t.id}>{t.vehicle_number}</option>)}</select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Amount () *</label><input type="number" min="1" max="100000" value={expAmount} onChange={e => setExpAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-xs p-3 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-[#FF5A00] font-semibold outline-none focus:border-[#FF5A00]" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={expDescription} onChange={e => setExpDescription(e.target.value.toUpperCase())} className="w-full text-xs p-3 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-white outline-none focus:border-[#FF5A00] " /></div>
  <button type="submit" disabled={isProcessing} className="w-full py-3 btn-orange-glow py-3 rounded-full text-xs  transition-all shadow-lg">{isProcessing ? "Saving..." : "Log Expense"}</button>
  </form>
  </div>
  <div className="lg:col-span-8 liquid-glass overflow-hidden flex flex-col shadow-xl">
  <TableToolbar title="Petty Expense Ledger" searchQuery={pettySearch} setSearchQuery={setPettySearch} exportData={exportPetty} exportFilename="Petty_Expenses" />
  <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
- <table className="min-w-full divide-y divide-[#272B36] text-left text-xs whitespace-nowrap"><thead className="bg-[#0F1117] sticky top-0 text-white/60  font-semibold text-[10px] tracking-wider z-10"><tr><th className="px-5 py-3.5">Date</th><th className="px-5 py-3.5">Category</th><th className="px-5 py-3.5">Truck</th><th className="px-5 py-3.5">Description</th><th className="px-5 py-3.5 text-right">Amount ()</th></tr></thead>
- <tbody className="divide-y divide-[#272B36] bg-[#161922]">{filteredPetty.map(b => (<tr key={b.bill_id} className="hover:bg-[#1E222D]"><td className="px-5 py-3.5 text-slate-300">{formatDate(b.bill_date)}</td><td className="px-5 py-3.5 text-white font-bold">{b.vendor_name}</td><td className="px-5 py-3.5 font-bold text-white/60">{b.vehicles?.vehicle_number || "-"}</td><td className="px-5 py-3.5 text-white/60">{b.service_description || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00]">{(b.bill_amount || 0).toLocaleString("en-IN")}</td></tr>))}
+ <table className="min-w-full divide-y divide-[#272B36] text-left text-xs whitespace-nowrap"><thead className="input-glass bg-white/[0.02] sticky top-0 text-white/60  font-semibold text-[10px] tracking-wider z-10"><tr><th className="px-5 py-3.5">Date</th><th className="px-5 py-3.5">Category</th><th className="px-5 py-3.5">Truck</th><th className="px-5 py-3.5">Description</th><th className="px-5 py-3.5 text-right">Amount ()</th></tr></thead>
+ <tbody className="divide-y divide-[#272B36] liquid-glass">{filteredPetty.map(b => (<tr key={b.bill_id} className="hover:bg-[#1E222D]"><td className="px-5 py-3.5 text-slate-300">{formatDate(b.bill_date)}</td><td className="px-5 py-3.5 text-white font-bold">{b.vendor_name}</td><td className="px-5 py-3.5 font-bold text-white/60">{b.vehicles?.vehicle_number || "-"}</td><td className="px-5 py-3.5 text-white/60">{b.service_description || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00]">{(b.bill_amount || 0).toLocaleString("en-IN")}</td></tr>))}
  {filteredPetty.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-white/40 font-medium">No petty expenses recorded.</td></tr>}</tbody></table>
  </div>
  </div>
@@ -189,8 +189,8 @@ export function AccountsModule() {
  <TableToolbar title="Workshop Ledger" searchQuery={workshopSearch} setSearchQuery={setWorkshopSearch} exportData={exportWorkshop} exportFilename="Workshop_Ledger" />
  <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
  <table className="min-w-full divide-y divide-[#272B36] text-left text-xs whitespace-nowrap">
- <thead className="bg-[#0F1117] sticky top-0 text-white/60  font-semibold text-[10px] tracking-wider z-10"><tr><th className="px-5 py-3.5">Bill Date</th><th className="px-5 py-3.5">Truck</th><th className="px-5 py-3.5">Vendor</th><th className="px-5 py-3.5">Description</th><th className="px-5 py-3.5 text-right">Amount ()</th></tr></thead>
- <tbody className="divide-y divide-[#272B36] bg-[#161922]">
+ <thead className="input-glass bg-white/[0.02] sticky top-0 text-white/60  font-semibold text-[10px] tracking-wider z-10"><tr><th className="px-5 py-3.5">Bill Date</th><th className="px-5 py-3.5">Truck</th><th className="px-5 py-3.5">Vendor</th><th className="px-5 py-3.5">Description</th><th className="px-5 py-3.5 text-right">Amount ()</th></tr></thead>
+ <tbody className="divide-y divide-[#272B36] liquid-glass">
  {filteredWorkshop.map((b) => (
  <tr key={b.bill_id} className="hover:bg-[#1E222D]"><td className="px-5 py-3.5 text-slate-300">{formatDate(b.bill_date)}</td><td className="px-5 py-3.5 font-bold text-white">{b.vehicles?.vehicle_number || "-"}</td><td className="px-5 py-3.5 text-slate-300 font-semibold">{b.vendor_name}</td><td className="px-5 py-3.5 text-white/60">{b.service_description || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-rose-400">{(b.bill_amount || 0).toLocaleString("en-IN")}</td></tr>
  ))}

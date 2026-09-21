@@ -147,7 +147,7 @@ export function LiveAlertsWidget() {
 
  return (
  <div className="animate-tab-focus liquid-glass shadow-sm overflow-hidden flex flex-col h-[500px]">
- <div className="bg-[#161922] border-b border-[#222634] px-5 py-4 flex justify-between items-center shrink-0">
+ <div className="liquid-glass border-b border-white/[0.08] px-5 py-4 flex justify-between items-center shrink-0">
  <div className="flex items-center gap-2.5">
  <span className="text-base"></span>
  <h3 className="text-white font-semibold  text-xs tracking-wider">Notifications</h3>
@@ -164,8 +164,8 @@ export function LiveAlertsWidget() {
  </div>
  ) : (
  notifications.map((item) => (
- <div key={item.id} className="bg-[#1A1F2C] border border-[#2B3142] rounded-2xl p-3.5 flex items-start gap-3 shadow-sm hover:border-[#FF5A00]/40 transition-all animate-in slide-in-from-right-4 duration-300">
- <div className="w-9 h-9 rounded-xl bg-[#0F1117] border border-[#222634] flex items-center justify-center text-base shrink-0">{item.icon}</div>
+ <div key={item.id} className="input-glass bg-white/[0.02] border border-white/[0.08] rounded-2xl p-3.5 flex items-start gap-3 shadow-sm hover:border-[#FF5A00]/40 transition-all animate-in slide-in-from-right-4 duration-300">
+ <div className="w-9 h-9 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] flex items-center justify-center text-base shrink-0">{item.icon}</div>
  <div className="flex-1 min-w-0">
  <div className="flex justify-between items-center mb-1">
  <span className="text-[11px] font-semibold  text-white tracking-tight truncate">{item.title}</span>

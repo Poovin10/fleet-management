@@ -108,23 +108,23 @@ export function ApprovalQueue() {
 
  {approveData.isOpen && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
- <div className="bg-[#12141C] border border-[#272B36] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+ <div className="input-glass bg-white/[0.02] border border-white/[0.08] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
  <form onSubmit={executeApprove}>
  <div className="p-6">
  <h3 className="text-lg font-semibold text-white  tracking-wide mb-1">Approve Fuel Request</h3>
  <p className="text-xs text-white/60 mb-6">Review the details and confirm the final bill amount.</p>
  
- <div className="bg-[#1A1F2C] p-4 rounded-xl border border-[#272B36] mb-6 space-y-3 text-sm">
+ <div className="input-glass bg-white/[0.02] p-4 rounded-xl border border-white/[0.08] mb-6 space-y-3 text-sm">
  <div className="flex justify-between items-center"><span className="text-[10px] text-white/60 font-bold  tracking-wider">Truck</span> <span className="text-white font-semibold">{approveData.req?.truck_number}</span></div>
  <div className="flex justify-between items-center"><span className="text-[10px] text-white/60 font-bold  tracking-wider">Driver</span> <span className="text-slate-300 font-bold">{approveData.req?.driver_code}</span></div>
- <div className="flex justify-between items-center pt-2 border-t border-[#272B36]"><span className="text-[10px] text-white/60 font-bold  tracking-wider">Requested Litres</span> <span className="text-[#FF5A00] font-semibold text-lg">{approveData.req?.litres} L</span></div>
+ <div className="flex justify-between items-center pt-2 border-t border-white/[0.08]"><span className="text-[10px] text-white/60 font-bold  tracking-wider">Requested Litres</span> <span className="text-[#FF5A00] font-semibold text-lg">{approveData.req?.litres} L</span></div>
  </div>
 
  <label className="block text-[10px] font-bold text-emerald-500  mb-2">Final Bill Amount () *</label>
- <input type="number" step="0.01" required value={approveData.amount} onChange={e => setApproveData({...approveData, amount: e.target.value})} className="w-full text-xl p-4 rounded-xl border border-[#272B36] bg-[#0F1117] text-white font-semibold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+ <input type="number" step="0.01" required value={approveData.amount} onChange={e => setApproveData({...approveData, amount: e.target.value})} className="w-full text-xl p-4 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white font-semibold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
  </div>
  <div className="flex gap-3 p-6 pt-0">
- <button type="button" onClick={() => setApproveData({isOpen: false, req: null, amount: ""})} disabled={isProcessing} className="flex-1 py-3.5 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button>
+ <button type="button" onClick={() => setApproveData({isOpen: false, req: null, amount: ""})} disabled={isProcessing} className="flex-1 py-3.5 input-glass bg-white/[0.02] text-slate-300 font-bold rounded-xl border border-white/[0.08] hover:bg-[#272B36] transition-colors">Cancel</button>
  <button type="submit" disabled={isProcessing} className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-emerald-900/20 disabled:bg-slate-700 disabled:shadow-none">
  {isProcessing ? "Processing..." : "Approve & Log Expense"}
  </button>
@@ -134,25 +134,25 @@ export function ApprovalQueue() {
  </div>
  )}
 
- <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-6">
+ <div className="flex justify-between items-center border-b border-white/[0.08] pb-3 mb-6">
  <h3 className="text-sm font-semibold text-white  tracking-wide">Driver Submissions Approval Queue</h3>
  <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg  tracking-normal">{queue.length} Pending</span>
  </div>
 
  <div className="overflow-x-auto w-full">
  <table className="min-w-full text-xs text-left whitespace-nowrap">
- <thead className="bg-[#0F1117] text-white/60  font-bold">
+ <thead className="input-glass bg-white/[0.02] text-white/60  font-bold">
  <tr>
- <th className="p-4 border-b border-[#272B36]">Submitted At</th>
- <th className="p-4 border-b border-[#272B36]">Driver / Truck</th>
- <th className="p-4 border-b border-[#272B36]">Request Details</th>
- <th className="p-4 border-b border-[#272B36]">Driver Remarks</th>
- <th className="p-4 border-b border-[#272B36] text-right">Actions</th>
+ <th className="p-4 border-b border-white/[0.08]">Submitted At</th>
+ <th className="p-4 border-b border-white/[0.08]">Driver / Truck</th>
+ <th className="p-4 border-b border-white/[0.08]">Request Details</th>
+ <th className="p-4 border-b border-white/[0.08]">Driver Remarks</th>
+ <th className="p-4 border-b border-white/[0.08] text-right">Actions</th>
  </tr>
  </thead>
- <tbody className="divide-y divide-[#272B36] bg-[#12141C]">
+ <tbody className="divide-y divide-[#272B36] input-glass bg-white/[0.02]">
  {queue.map(req => (
- <tr key={req.entry_id} className="hover:bg-[#1A1F2C] transition-colors">
+ <tr key={req.entry_id} className="hover:input-glass bg-white/[0.02] transition-colors">
  <td className="p-4 font-semibold text-slate-300">{formatDateTime(req.submitted_at)}</td>
  <td className="p-4"><span className="font-semibold text-white">{req.truck_number}</span><br/><span className="text-[10px] font-bold text-[#FF5A00]">{req.driver_code}</span></td>
  <td className="p-4">
