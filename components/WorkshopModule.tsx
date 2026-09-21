@@ -63,7 +63,7 @@ export function WorkshopModule() {
  const { data: vData } = await supabase.from('vehicles').select('*').order('vehicle_number');
  if (vData) setVehicles(vData);
 
- const { data: tData } = await supabase.from('fleet_tyres').select('*, vehicles(vehicle_number)').order('mounted_date', { ascending: false });
+ const { data: tData } = await supabase.from('fleet_tyres').select('*, vehicles(vehicle_number)').order('recorded_date', { ascending: false });
  if (tData) setActiveTyres(tData);
 
  const { data: bData } = await supabase.from('workshop_spares_bills').select('*, vehicles(vehicle_number)').order('bill_date', { ascending: false });
@@ -85,8 +85,8 @@ export function WorkshopModule() {
  serial_number: serialNo.toUpperCase().trim(),
  brand_model: brand.toUpperCase().trim(),
  placement_position: regMode === "MOUNTED" ? position : null,
- tyre_condition: condition,
- nsd_depth_mm: Number(nsdMm) || 0,
+ condition_status: condition,
+ nsd_measurement: Number(nsdMm) || 0,
  mounted_date: new Date().toISOString().split('T')[0],
  tyre_status: regMode,
  total_km_run: 0,
@@ -110,7 +110,7 @@ export function WorkshopModule() {
  const newTotalKm = (Number(t.total_km_run) || 0) + kmRunThisStint;
  await supabase.from('fleet_tyres').update({
  tyre_status: nextState, vehicle_id: null, placement_position: null,
- total_km_run: newTotalKm, nsd_depth_mm: actionNsd || t.nsd_depth_mm
+ total_km_run: newTotalKm, nsd_measurement: actionNsd || t.nsd_measurement
  }).eq('tyre_id', t.tyre_id);
  }
  else if (actionModal.mode === "MOUNT") {
@@ -122,7 +122,7 @@ export function WorkshopModule() {
  }
  else if (actionModal.mode === "RECEIVE_RETREAD") {
  await supabase.from('fleet_tyres').update({
- tyre_status: 'IN_STORE', tyre_condition: 'RETREADED', nsd_depth_mm: actionNsd || t.nsd_depth_mm
+ tyre_status: 'IN_STORE', condition_status: 'RETREADED', nsd_measurement: actionNsd || t.nsd_measurement
  }).eq('tyre_id', t.tyre_id);
  }
  else if (actionModal.mode === "SCRAP_FROM_STORE") {
@@ -157,7 +157,7 @@ export function WorkshopModule() {
  const exportMounted = filteredMounted.map(t => ({ "Truck": t.vehicles?.vehicle_number || "-", "Serial": t.serial_number, "Brand": t.brand_model, "Position": t.placement_position, "Mounted Date": formatDate(t.mounted_date), "Current KM Run": t.total_km_run || 0 }));
 
  const filteredStore = storeTyres.filter(t => (t.serial_number || "").toLowerCase().includes(storeSearch.toLowerCase()) || (t.brand_model || "").toLowerCase().includes(storeSearch.toLowerCase()));
- const exportStore = filteredStore.map(t => ({ "Serial": t.serial_number, "Brand": t.brand_model, "Status": t.tyre_status || "IN_STORE", "Condition": t.tyre_condition, "Total Lifetime KM": t.total_km_run || 0 }));
+ const exportStore = filteredStore.map(t => ({ "Serial": t.serial_number, "Brand": t.brand_model, "Status": t.tyre_status || "IN_STORE", "Condition": t.condition_status, "Total Lifetime KM": t.total_km_run || 0 }));
 
  const filteredScrap = scrapTyres.filter(t => (t.serial_number || "").toLowerCase().includes(scrapSearch.toLowerCase()));
  const exportScrap = filteredScrap.map(t => ({ "Serial": t.serial_number, "Brand": t.brand_model, "Status": t.tyre_status, "Total Lifetime KM": t.total_km_run || 0 }));
@@ -192,7 +192,7 @@ export function WorkshopModule() {
  {actionModal.mode === "UNMOUNT" && (
  <>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck Odo at Unmount (KM) *</label><input type="number" min="0" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#12141C] text-white focus:border-[#FF5A00] outline-none font-bold" placeholder={`Was mounted at ${actionModal.tyre?.last_mount_odo || 0} KM`} /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Current NSD (mm)</label><input type="number" step="0.1" min="0" max="30" value={actionNsd} onChange={e=>setActionNsd(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#12141C] text-white focus:border-[#FF5A00] outline-none font-bold" placeholder={`${actionModal.tyre?.nsd_depth_mm || 0} mm`} /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Current NSD (mm)</label><input type="number" step="0.1" min="0" max="30" value={actionNsd} onChange={e=>setActionNsd(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#12141C] text-white focus:border-[#FF5A00] outline-none font-bold" placeholder={`${actionModal.tyre?.nsd_measurement || 0} mm`} /></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Next Destination</label><select value={nextState} onChange={e=>setNextState(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#12141C] text-white focus:border-[#FF5A00] outline-none font-bold"><option value="IN_STORE">Store / Inventory</option><option value="RETREADING">Send to Retreading</option><option value="SCRAPPED">Scrap Yard</option><option value="REJECTED">Rejected / Burst</option></select></div>
  </>
  )}
@@ -287,7 +287,7 @@ export function WorkshopModule() {
  <tr key={t.tyre_id} className="hover:bg-[#1E222D]">
  <td className="px-5 py-3.5"><span className={`px-2 py-1 rounded text-[10px] font-semibold ${t.tyre_status === 'RETREADING' ? 'bg-amber-950/50 text-amber-500 border border-amber-900' : 'bg-[#0F1117] text-white border border-[#272B36]'}`}>{t.tyre_status || 'IN_STORE'}</span></td>
  <td className="px-5 py-3.5 font-mono font-bold text-white">{t.serial_number} <br/><span className="font-sans font-semibold text-[10px] text-white/60">{t.brand_model}</span></td>
- <td className="px-5 py-3.5 text-slate-300 font-bold">{t.tyre_condition}</td>
+ <td className="px-5 py-3.5 text-slate-300 font-bold">{t.condition_status}</td>
  <td className="px-5 py-3.5 font-semibold text-sky-400">{t.total_km_run || 0} km</td>
  <td className="px-5 py-3.5 text-center">
  {t.tyre_status === 'RETREADING' ? (

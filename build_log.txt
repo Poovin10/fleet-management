@@ -1,0 +1,22 @@
+
+> build
+> next build
+
+▲ Next.js 16.3.4 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 360ms
+- Cache Components enabled
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.3min
+  Running TypeScript ...
+components/ApprovalQueue.tsx(35,42): error TS2339: Property 'id' does not exist on type '{ vehicle_id: any; vehicle_number: any; }'.
+components/FinancialsModule.tsx(159,50): error TS2339: Property 'id' does not exist on type '{ vehicle_id: any; primary_driver_id: any; trip_status: any; total_km_run: any; loaded_weight_mt: any; tonnage_loaded: any; freight_revenue: any; driver_bata: any; halt_bata: any; enroute_repairs_maintenance: any; fuel_litres: any; }'.
+components/FinancialsModule.tsx(159,59): error TS2339: Property 'id' does not exist on type '{ vehicle_id: any; vehicle_number: any; truck_type: any; }'.
+components/FinancialsModule.tsx(160,50): error TS2339: Property 'id' does not exist on type '{ vehicle_id: any; litres_filled: any; total_fuel_cost: any; }'.
+components/FinancialsModule.tsx(160,59): error TS2339: Property 'id' does not exist on type '{ vehicle_id: any; vehicle_number: any; truck_type: any; }'.
+components/SetupModule.tsx(359,17): error TS2304: Cannot find name 'res'.
+components/SetupModule.tsx(391,17): error TS2304: Cannot find name 'res'.
+components/TripForm.tsx(109,109): error TS2339: Property 'id' does not exist on type '{ vehicle_id: any; trip_number: any; }'.
+Failed to type check.
+
