@@ -1,0 +1,916 @@
+
+============================================================
+FILE: app/globals.css
+============================================================
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* 1. Liquid Glass Base (For layout cards, tables, panels) */
+  .liquid-glass {
+    @apply bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.04] rounded-[32px] shadow-xl;
+  }
+
+  /* 2. Unified Form Inputs (For text fields, dropdowns, dates) */
+  .input-glass {
+    @apply w-full bg-white/[0.02] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-[#FF9F0A]/50 focus:bg-white/[0.05] transition-all outline-none font-medium;
+  }
+
+  /* 3. Primary Action Buttons (The glowing orange signature button) */
+  .btn-orange-glow {
+    @apply bg-[#FF9F0A] text-black font-bold tracking-wide transition-all shadow-[0_0_15px_rgba(255,159,10,0.3)] hover:shadow-[0_0_25px_rgba(255,159,10,0.5)] hover:scale-[1.02] active:scale-95;
+  }
+
+  /* 4. Secondary Action Buttons (For cancel/clear actions) */
+  .btn-glass {
+    @apply bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white transition-all active:scale-95;
+  }
+
+  /* 5. Fluid Animations (Universal smooth transitions) */
+  .ios-spring {
+    @apply transition-all duration-300 ease-out;
+  }
+}
+
+============================================================
+FILE: app/layout.tsx
+============================================================
+import LiquidGlassProvider from "@/components/LiquidGlassProvider";
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "KSS Roadways ERP",
+  description: "KSS Roadways Fleet Management Portal",
+  themeColor: "#050507",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "KSS Roadways",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className="antialiased">
+        <LiquidGlassProvider>
+        {children}
+        
+        {/* PWA Service Worker Registration Script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                  }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
+              </LiquidGlassProvider>
+      </body>
+    </html>
+  );
+}
+
+============================================================
+FILE: app/page.tsx
+============================================================
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import Dashboard from "@/components/dashboard";
+
+async function DashboardWrapper() {
+  const supabase = await createClient();
+  
+  // The server securely checks the cookie before loading the dashboard
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/login");
+  }
+
+  return <Dashboard />;
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#050507]" />}>
+      <DashboardWrapper />
+    </Suspense>
+  );
+}
+
+============================================================
+FILE: app/protected/layout.tsx
+============================================================
+import { DeployButton } from "@/components/deploy-button";
+import { EnvVarWarning } from "@/components/env-var-warning";
+import { AuthButton } from "@/components/auth-button";
+import { ThemeSwitcher } from "@/components/theme-switcher";
+import { hasEnvVars } from "@/lib/utils";
+import Link from "next/link";
+import { Suspense } from "react";
+
+export default function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <main className="min-h-screen flex flex-col items-center">
+      <div className="flex-1 w-full flex flex-col gap-20 items-center">
+        <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
+          <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
+            <div className="flex gap-5 items-center font-semibold">
+              <Link href={"/"}>Next.js Supabase Starter</Link>
+              <div className="flex items-center gap-2">
+                <DeployButton />
+              </div>
+            </div>
+            {!hasEnvVars ? (
+              <EnvVarWarning />
+            ) : (
+              <Suspense>
+                <AuthButton />
+              </Suspense>
+            )}
+          </div>
+        </nav>
+        <div className="flex-1 flex flex-col gap-20 max-w-5xl p-5">
+          {children}
+        </div>
+
+        <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
+          <p>
+            Powered by{" "}
+            <a
+              href="https://supabase.com/?utm_source=create-next-app&utm_medium=template&utm_term=nextjs"
+              target="_blank"
+              className="font-bold hover:underline"
+              rel="noreferrer"
+            >
+              Supabase
+            </a>
+          </p>
+          <ThemeSwitcher />
+        </footer>
+      </div>
+    </main>
+  );
+}
+
+============================================================
+FILE: app/protected/page.tsx
+============================================================
+import { redirect } from "next/navigation";
+
+export default function ProtectedPage() {
+  // Boilerplate tutorial page removed. Redirecting to the main ERP dashboard.
+  redirect("/");
+}
+
+============================================================
+FILE: components/LiquidGlassProvider.tsx
+============================================================
+"use client";
+
+import { useEffect, useState } from "react";
+
+export default function LiquidGlassProvider({ children }: { children: React.ReactNode }) {
+  const [alerts, setAlerts] = useState<{ id: number; message: string; type: string }[]>([]);
+
+  useEffect(() => {
+    // Intercept standard browser alerts globally
+    const originalAlert = window.alert;
+    window.alert = (message: string) => {
+      const type = message.toLowerCase().includes("fail") || message.toLowerCase().includes("error") 
+        ? "error" 
+        : message.toLowerCase().includes("success") 
+        ? "success" 
+        : "info";
+      
+      const id = Date.now();
+      setAlerts((prev) => [...prev, { id, message, type }]);
+      setTimeout(() => {
+        setAlerts((prev) => prev.filter((a) => a.id !== id));
+      }, 4000);
+    };
+
+    return () => {
+      window.alert = originalAlert;
+    };
+  }, []);
+
+  return (
+    <>
+      {children}
+      {/* iOS Liquidglass Toast Container */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-3 pointer-events-none w-full max-w-sm px-4">
+        {alerts.map((alert) => (
+          <div
+            key={alert.id}
+            className="animate-tab-focus flex items-center gap-3 p-4 rounded-2xl bg-[#1C1C1E]/70 backdrop-blur-3xl saturate-200 border border-white/[0.12] shadow-[0_16px_32px_rgba(0,0,0,0.4)] pointer-events-auto"
+          >
+            {alert.type === "success" && (
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
+            {alert.type === "error" && (
+              <div className="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center shrink-0 border border-rose-500/30">
+                <svg className="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            )}
+            {alert.type === "info" && (
+              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 border border-blue-500/30">
+                <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            )}
+            <p className="text-sm font-medium text-white/90 tracking-tight leading-snug">
+              {alert.message}
+            </p>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+============================================================
+FILE: components/dashboard.tsx
+============================================================
+"use client";
+
+import TelemetryHUD from "./TelemetryHUD";
+import { useState, useEffect } from "react";
+import { LogoutButton } from "@/components/LogoutButton";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+import { TripForm } from "@/components/TripForm";
+import { PodClosure } from "@/components/PodClosure";
+import { ModifyTrips } from "@/components/ModifyTrips";
+import { AccountsModule } from "@/components/AccountsModule";
+import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
+import { FinancialsModule } from "@/components/FinancialsModule";
+import { ProfitLossModule } from "@/components/ProfitLossModule";
+import { WorkshopModule } from "@/components/WorkshopModule";
+import { SetupModule } from "@/components/SetupModule";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { ApprovalQueue } from "@/components/ApprovalQueue";
+import { DriverPortal } from "@/components/DriverPortal";
+import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
+import { AiInsightsDashboard } from "@/components/AiInsightsDashboard";
+import { DriverSettlementModule } from "@/components/DriverSettlementModule";
+
+const KssLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <rect width="200" height="200" fill="#FF9F0A" />
+    <rect x="15" y="15" width="170" height="170" fill="#020203" />
+    <path d="M 50 35 L 50 165" stroke="#FF9F0A" strokeWidth="24" strokeLinecap="square" />
+    <path d="M 50 110 L 140 35" stroke="#FF9F0A" strokeWidth="24" strokeLinecap="square" />
+    <path d="M 85 85 C 130 95, 145 130, 145 165" stroke="#FF9F0A" strokeWidth="24" fill="none" />
+  </svg>
+);
+
+export default function Dashboard() {
+  const router = useRouter();
+  const [supabase, setSupabase] = useState<any>(null);
+
+  useEffect(() => { try { setSupabase(createClient()); } catch (err) { console.error(err); } }, []);
+
+  const [isDriverRoute, setIsDriverRoute] = useState(false);
+  const [isCheckingRoute, setIsCheckingRoute] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<string>("VIEWER");
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+  const [activeTab, setActiveTab] = useState("Dashboard");
+  const [opSubTab, setOpSubTab] = useState("Trips");
+
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [currentMonthText, setCurrentMonthText] = useState("");
+  const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
+  const [monthTripsCount, setMonthTripsCount] = useState<number>(0);
+  const [monthFreight, setMonthFreight] = useState<number>(0);
+  const [monthDieselCost, setMonthDieselCost] = useState<number>(0);
+  const [monthNetRetention, setMonthNetRetention] = useState<number>(0);
+  const [activeTripCount, setActiveTripCount] = useState<number>(0);
+  const [pendingDriverCount, setPendingDriverCount] = useState<number>(0);
+  const [statusCounts, setStatusCounts] = useState({ "Plant Loading": 0, "In Transit": 0, "Workshop / Repairs": 0, "No Driver / Leave": 0 });
+
+  const [qsTruckId, setQsTruckId] = useState("");
+  const [qsStatus, setQsStatus] = useState("WAITING_FOR_LOAD");
+  const [qsRemarks, setQsRemarks] = useState("");
+
+  const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Driver Approvals"];
+  const formatAmt = (amt: number) => (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") { if (window.location.pathname.startsWith('/driver')) setIsDriverRoute(true); }
+    setIsCheckingRoute(false);
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    const checkAuth = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (user && !error) {
+        setIsAuthenticated(true);
+        const sessionUsername = user.email?.split('@')[0];
+        if (sessionUsername) {
+          const { data: userData } = await supabase.from('app_users').select('role').eq('username', sessionUsername).maybeSingle();
+          if (userData && userData.role) { setUserRole(userData.role.toUpperCase()); } else { setUserRole("ADMIN"); }
+        }
+        setIsAuthLoading(false);
+      } else {
+        setIsAuthenticated(false); setUserRole("VIEWER");
+        if (!isDriverRoute) { router.replace("/auth/login"); }
+      }
+    };
+    if (!isDriverRoute) { checkAuth(); } else { setIsAuthLoading(false); }
+  }, [supabase, router, isDriverRoute]);
+
+  const executeLogout = async () => {
+    if (!supabase) return; await supabase.auth.signOut(); setIsLogoutModalOpen(false); router.replace("/auth/login");
+  };
+
+  const extractStatus = (v: any) => String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
+
+  const fetchDashboardData = async () => {
+    if (!supabase) return;
+    const { data: vehiclesData } = await supabase.from('vehicles').select('*');
+    if (vehiclesData && vehiclesData.length > 0) {
+      setLiveVehicles(vehiclesData);
+      setStatusCounts({
+        "Plant Loading": vehiclesData.filter((v: any) => extractStatus(v) === 'WAITING_FOR_LOAD' || extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
+        "In Transit": vehiclesData.filter((v: any) => extractStatus(v) === 'IN_TRANSIT').length,
+        "Workshop / Repairs": vehiclesData.filter((v: any) => extractStatus(v) === 'WORKSHOP_MAINTENANCE').length,
+        "No Driver / Leave": vehiclesData.filter((v: any) => extractStatus(v) === 'DRIVER_UNAVAILABLE').length
+      });
+    }
+
+    const { count: activeCount } = await supabase.from('trips').select('*', { count: 'exact', head: true }).neq('trip_status', 'COMPLETED');
+    setActiveTripCount(activeCount || 0);
+
+    const { count: driverPendingCount } = await supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
+    setPendingDriverCount(driverPendingCount || 0);
+
+    const firstDay = "2026-09-01"; 
+
+    const [tripsRes, dieselRes, workshopRes] = await Promise.all([
+      supabase.from('trips').select('freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance').gte('trip_start_date', firstDay),
+      supabase.from('diesel_fuel_logs').select('total_fuel_cost').gte('fuel_date', firstDay),
+      supabase.from('workshop_spares_bills').select('bill_amount').gte('bill_date', firstDay)
+    ]);
+
+    if (tripsRes.data && dieselRes.data) {
+      setMonthTripsCount(tripsRes.data.length);
+      let totalFreight = 0; let nonFuelExpenses = 0; let totalDieselCost = 0; let totalWorkshop = 0;
+      tripsRes.data.forEach((t: any) => { totalFreight += Number(t.freight_revenue) || 0; nonFuelExpenses += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0) + (Number(t.enroute_repairs_maintenance) || 0); });
+      dieselRes.data.forEach((d: any) => { totalDieselCost += Number(d.total_fuel_cost) || 0; });
+      if (workshopRes.data) workshopRes.data.forEach((w: any) => { totalWorkshop += Number(w.bill_amount) || 0; });
+      setMonthFreight(totalFreight); setMonthDieselCost(totalDieselCost);
+      setMonthNetRetention(totalFreight - totalDieselCost - nonFuelExpenses - totalWorkshop);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && supabase) {
+      setCurrentMonthText(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
+      fetchDashboardData();
+    }
+  }, [activeTab, opSubTab, isAuthenticated, supabase]);
+
+  if (isCheckingRoute || isAuthLoading || !supabase) return <div className="min-h-screen bg-[#020203]" />;
+
+  if (isDriverRoute) {
+    return (
+      <div className="min-h-screen bg-[#020203] text-white relative font-sans overflow-x-hidden">
+        <div className="fixed top-[-10%] right-[-5%] w-[50vw] h-[50vw] bg-[#FF9F0A]/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="fixed bottom-[-10%] left-[-5%] w-[60vw] h-[60vw] bg-[#FFB340]/10 rounded-full blur-[150px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '12s' }} />
+        <div className="relative z-10">
+          <div className="max-w-md mx-auto mb-6 text-center mt-8">
+            <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white">KSS Roadways</h1>
+            <p className="text-xs text-[#FF9F0A] tracking-wide font-medium mt-1">Driver Highway Portal</p>
+          </div>
+          <DriverPortal/>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) return null;
+
+  const erpNavigation = [
+    { category: "Command & Operations", items: ["Dashboard", "Operations", "Fuel", "Workshop & Tyres"] },
+    { category: "Finance & Analytics", items: ["Driver Settlement", "Accounts", "Fleet Analytics", "P&L Statement"] },
+    { category: "System", items: ["Insights", "Master"] }
+  ];
+
+  const allowedCategories = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? erpNavigation : [ { category: "Overview", items: ["Dashboard"] }, { category: "Finance", items: ["Fleet Analytics", "P&L Statement", "Insights"] } ];
+
+  return (
+    <div className="min-h-screen bg-[#020203] text-slate-100 font-sans selection:bg-[#FF9F0A]/30 selection:text-[#FF9F0A] relative overflow-hidden">
+      
+      {/* Global Ambient Refraction for Liquid Glass */}
+      <div className="fixed top-[-15%] right-[-10%] w-[60vw] h-[60vw] bg-[#FF9F0A]/15 rounded-full blur-[140px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '10s' }} />
+      <div className="fixed bottom-[-15%] left-[-10%] w-[70vw] h-[70vw] bg-[#FFB340]/10 rounded-full blur-[160px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '14s' }} />
+      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none z-0" />
+
+      <div className="relative z-10">
+        <ConfirmModal isOpen={isLogoutModalOpen} title="Secure Sign Out" message="Terminate active secure session?" isDanger={true} confirmText="Sign Out" onConfirm={executeLogout} onCancel={() => setIsLogoutModalOpen(false)} />
+
+        {/* Hyper-Modern Floating Glass Header */}
+        <header className="sticky top-4 z-50 max-w-[1600px] mx-auto px-6">
+          <div className="liquid-glass rounded-3xl px-6 py-4 flex items-center justify-between shadow-[0_8px_32px_0_rgba(0,0,0,0.5)]">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#121622] to-[#080A10] border border-white/[0.1] flex items-center justify-center shadow-inner">
+                <KssLogo className="w-5 h-5"/>
+              </div>
+              <div>
+                <h1 className="text-sm font-semibold tracking-wide text-white">KSS Roadways</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]"></span>
+                  <span className="text-[10px] font-medium text-white/60 tracking-wide">Cochin Node {liveVehicles.length} Active Units</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl liquid-glass text-[11px] font-semibold font-mono border-white/[0.05]">
+                <span className="text-white/40">ROLE:</span>
+                <span className="text-[#FF9F0A] font-bold">{userRole}</span>
+              </div>
+              <button onClick={() => setIsLogoutModalOpen(true)} className="btn-glass px-5 py-2 rounded-xl text-xs font-semibold">
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-[1600px] mx-auto px-6 py-8 space-y-6">
+
+          {/* Sleek Minimalist Glass Navigation Bar */}
+          <div className="flex flex-col lg:flex-row gap-3 p-2 liquid-glass rounded-[28px]">
+            {allowedCategories.map((group) => (
+              <div key={group.category} className="flex-1 flex flex-col xl:flex-row xl:items-center gap-2 p-1.5 bg-white/[0.02] rounded-2xl border border-white/[0.03]">
+                <span className="text-[10px] font-semibold text-white/40 px-3 hidden xl:inline uppercase tracking-widest">{group.category}</span>
+                <div className="flex flex-wrap gap-1.5 flex-1">
+                  {group.items.map((item) => (
+                    <button key={item} onClick={() => setActiveTab(item)} className={`flex-1 px-4 py-2.5 text-[11.5px] rounded-xl transition-all tracking-wide ios-spring ${activeTab === item ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)] font-bold" : "text-white/70 hover:text-white hover:bg-white/[0.06] font-medium"}`}>
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="ios-spring">
+            {activeTab === "Dashboard" && <TelemetryHUD />}
+
+            {activeTab === "Operations" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
+              <div className="liquid-glass rounded-[32px] p-6 sm:p-8 min-h-[60vh]">
+                <div className="flex flex-wrap gap-2 border-b border-white/[0.08] pb-6 mb-8">
+                  {opTabs.map((sub) => (
+                    <button key={sub} onClick={() => setOpSubTab(sub)} className={`px-5 py-2.5 rounded-xl text-xs transition-all ios-spring ${opSubTab === sub ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)] font-bold" : "text-white/60 hover:text-white hover:bg-white/[0.06] font-semibold"}`}>
+                      {sub}
+                    </button>
+                  ))}
+                </div>
+                
+                {opSubTab === "Trips" && <TripForm />}
+                {opSubTab === "POD Closure" && <PodClosure />}
+                {opSubTab === "Modify Trips" && <ModifyTrips />}
+                {opSubTab === "Driver Approvals" && <ApprovalQueue/>}
+                {opSubTab === "Quick Status" && (
+                  <div className="liquid-glass rounded-3xl p-8 max-w-xl border border-white/[0.1]">
+                    <h3 className="text-sm font-semibold text-white mb-6 tracking-wide border-b border-white/[0.08] pb-4">Manual Status Override</h3>
+                    <form onSubmit={async (e) => {
+                      e.preventDefault(); if (!supabase || !qsTruckId) return;
+                      const { error } = await supabase.from('vehicles').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('id', qsTruckId);
+                      if (error) alert("Error: " + error.message); else { alert("Status updated!"); setQsTruckId(""); setQsRemarks(""); fetchDashboardData(); }
+                    }} className="space-y-5">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Select Truck</label>
+                        <select value={qsTruckId} onChange={(e) => setQsTruckId(e.target.value)} className="w-full liquid-input">
+                          <option value="" className="bg-[#020203]">Select vehicle...</option>
+                          {liveVehicles.map(v => (<option key={v.id} value={v.id} className="bg-[#020203]">{v.vehicle_number} ({v.carrying_capacity_tons}MT)</option>))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Status</label>
+                        <select value={qsStatus} onChange={(e) => setQsStatus(e.target.value)} className="w-full liquid-input">
+                          <option value="WAITING_FOR_LOAD" className="bg-[#020203]">Plant Loading</option>
+                          <option value="IN_TRANSIT" className="bg-[#020203]">In Transit</option>
+                          <option value="WORKSHOP_MAINTENANCE" className="bg-[#020203]">Workshop / Repairs</option>
+                          <option value="DRIVER_UNAVAILABLE" className="bg-[#020203]">No Driver / Leave</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Remarks</label>
+                        <input type="text" value={qsRemarks} onChange={(e) => setQsRemarks(e.target.value)} placeholder="Location or repair notes" className="w-full liquid-input" />
+                      </div>
+                      <button type="submit" className="w-full py-4 btn-orange-glow rounded-2xl text-[14px] mt-4">Update Fleet Status</button>
+                    </form>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "Driver Settlement" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><DriverSettlementModule /></div>}
+            {activeTab === "Accounts" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><AccountsModule /></div>}
+            {activeTab === "Fuel" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><FuelAdvanceModule /></div>}
+            {activeTab === "Workshop & Tyres" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><WorkshopModule /></div>}
+            {activeTab === "Fleet Analytics" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><FinancialsModule /></div>}
+            {activeTab === "P&L Statement" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><ProfitLossModule /></div>}
+            {activeTab === "Insights" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><AiInsightsDashboard /></div>}
+            {activeTab === "Master" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><SetupModule /></div>}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+============================================================
+FILE: components/ui/button.tsx
+============================================================
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "cn"
+import { Slot } from "radix-ui"
+
+const buttonVariants = cva(
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        outline:
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        ghost:
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        destructive:
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default:
+          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        icon: "size-8",
+        "icon-xs":
+          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm":
+          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+        "icon-lg": "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  }) {
+  const Comp = asChild ? Slot.Root : "button"
+
+  return (
+    <Comp
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }
+
+============================================================
+FILE: components/ui/card.tsx
+============================================================
+import { ReactNode, HTMLAttributes } from 'react';
+
+/* Base Card — themed to dark/orange tokens */
+export function Card({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`bg-surface border border-border rounded-lg shadow-card ${className}`}
+      {...props}
+    />
+  );
+}
+
+/* Sub-components your auth pages (login, sign-up, forgot-password,
+   update-password, error) already import — kept so nothing breaks */
+export function CardHeader({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={`p-6 pb-0 ${className}`} {...props} />;
+}
+
+export function CardTitle({ className = '', ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return <h3 className={`text-lg font-semibold text-fg ${className}`} {...props} />;
+}
+
+export function CardDescription({ className = '', ...props }: HTMLAttributes<HTMLParagraphElement>) {
+  return <p className={`text-sm text-fg-secondary mt-1 ${className}`} {...props} />;
+}
+
+export function CardContent({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={`p-6 ${className}`} {...props} />;
+}
+
+export function CardFooter({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={`p-6 pt-0 flex items-center ${className}`} {...props} />;
+}
+
+/* New addition for P&L / financial line items */
+type StatRowProps = {
+  label: string;
+  sublabel?: string;
+  value: string;
+  tone?: 'default' | 'success' | 'danger' | 'accent';
+};
+
+export function StatRow({ label, sublabel, value, tone = 'default' }: StatRowProps) {
+  const toneClass = {
+    default: 'text-fg',
+    success: 'text-success',
+    danger: 'text-danger',
+    accent: 'text-accent',
+  }[tone];
+
+  return (
+    <div className="flex items-start justify-between py-3 border-b border-border last:border-0">
+      <div>
+        <div className="text-sm font-medium text-fg">{label}</div>
+        {sublabel && <div className="text-xs text-fg-muted mt-0.5">{sublabel}</div>}
+      </div>
+      <div className={`font-nums text-sm font-semibold ${toneClass}`}>{value}</div>
+    </div>
+  );
+}
+============================================================
+FILE: components/ui/input.tsx
+============================================================
+import * as React from "react";
+
+import { cn } from "@/lib/utils";
+
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          className,
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  },
+);
+Input.displayName = "Input";
+
+export { Input };
+
+============================================================
+FILE: components/ui/badge.tsx
+============================================================
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+
+import { cn } from "@/lib/utils";
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
+        outline: "text-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+);
+
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  );
+}
+
+export { Badge, badgeVariants };
+
+============================================================
+FILE: components/ui/TabBar.tsx
+============================================================
+'use client';
+
+import { useState } from 'react';
+
+export type Tab = {
+  key: string;
+  label: string;
+};
+
+type TabBarProps = {
+  tabs: Tab[];
+  active: string;
+  onChange: (key: string) => void;
+};
+
+export function TabBar({ tabs, active, onChange }: TabBarProps) {
+  return (
+    <nav className="flex items-center gap-1 border-b border-border bg-surface px-2 h-12">
+      {tabs.map((tab) => {
+        const isActive = tab.key === active;
+        return (
+          <button
+            key={tab.key}
+            onClick={() => onChange(tab.key)}
+            className={[
+              'relative h-9 px-4 rounded-md text-sm font-medium',
+              'transition-colors duration-base ease-out',
+              isActive
+                ? 'bg-accent text-accent-fg'
+                : 'text-fg-secondary hover:text-fg hover:bg-surface-raised',
+            ].join(' ')}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+============================================================
+FILE: components/ui/TableToolbar.tsx
+============================================================
+import { exportToCSV } from "@/lib/utils/exportManager";
+
+interface TableToolbarProps {
+  title: string;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  exportData: any[];
+  exportFilename: string;
+}
+
+export function TableToolbar({ title, searchQuery, setSearchQuery, exportData, exportFilename }: TableToolbarProps) {
+  return (
+    <div className="flex flex-col sm:flex-row justify-between items-center input-glass bg-white/[0.02] p-4 border-b border-white/[0.08] gap-4">
+      <h3 className="text-sm font-black text-white uppercase tracking-wide">{title}</h3>
+      <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="relative w-full sm:w-64">
+          <input 
+            type="text" 
+            placeholder="Search records..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full text-xs p-2.5 pl-3 rounded-lg input-glass bg-white/[0.02] border border-white/[0.08] text-white focus:border-[#FF5A00] outline-none transition-all"
+          />
+        </div>
+        <button 
+          onClick={() => exportToCSV(exportData, exportFilename)}
+          className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-all border border-slate-600 flex-shrink-0"
+        >
+          Export CSV
+        </button>
+      </div>
+    </div>
+  );
+}
+
+============================================================
+FILE: components/theme-switcher.tsx
+============================================================
+"use client";
+
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Laptop, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+
+const ThemeSwitcher = () => {
+  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme } = useTheme();
+
+  // useEffect only runs on the client, so now we can safely show the UI
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  const ICON_SIZE = 16;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size={"sm"}>
+          {theme === "light" ? (
+            <Sun
+              key="light"
+              size={ICON_SIZE}
+              className={"text-muted-foreground"}
+            />
+          ) : theme === "dark" ? (
+            <Moon
+              key="dark"
+              size={ICON_SIZE}
+              className={"text-muted-foreground"}
+            />
+          ) : (
+            <Laptop
+              key="system"
+              size={ICON_SIZE}
+              className={"text-muted-foreground"}
+            />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="animate-tab-focus w-content" align="start">
+        <DropdownMenuRadioGroup
+          value={theme}
+          onValueChange={(e) => setTheme(e)}
+        >
+          <DropdownMenuRadioItem className="flex gap-2" value="light">
+            <Sun size={ICON_SIZE} className="text-muted-foreground" />{" "}
+            <span>Light</span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem className="flex gap-2" value="dark">
+            <Moon size={ICON_SIZE} className="text-muted-foreground" />{" "}
+            <span>Dark</span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem className="flex gap-2" value="system">
+            <Laptop size={ICON_SIZE} className="text-muted-foreground" />{" "}
+            <span>System</span>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+export { ThemeSwitcher };

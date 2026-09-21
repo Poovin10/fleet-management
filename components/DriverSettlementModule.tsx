@@ -3,6 +3,10 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export function DriverSettlementModule() {
  const supabase = createClient();
@@ -106,32 +110,49 @@ export function DriverSettlementModule() {
 
  return (
  <div className="space-y-6">
- <div className="border-b border-white/[0.06] pb-4">
- <h2 className="text-xl font-semibold text-white  tracking-tight">Driver Accounting & Settlements</h2>
- <p className="text-xs text-white/60 font-medium mt-0.5">Generate multi-truck ledgers, calculate net balances, and export statements.</p>
+ <div className="border-b border-border pb-4">
+ <h2 className="text-xl font-semibold text-fg  tracking-tight">Driver Accounting & Settlements</h2>
+ <p className="text-xs text-fg-secondary font-medium mt-0.5">Generate multi-truck ledgers, calculate net balances, and export statements.</p>
  </div>
 
  <div className="liquid-glass p-6 sm:p-8 shadow-2xl">
  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
  <div className="md:col-span-2">
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Select Driver *</label>
- <select value={selectedDriverId} onChange={(e) => { setSelectedDriverId(e.target.value); setHasSearched(false); }} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white outline-none focus:border-[#FF5A00] font-bold">
+ <label className="block text-[10px] font-semibold text-fg-secondary  tracking-normal mb-2">Select Driver *</label>
+ <Select
+ value={selectedDriverId}
+ onChange={(e) => {
+   setSelectedDriverId(e.target.value);
+   setHasSearched(false);
+ }}
+ className="h-auto py-3.5 text-xs font-bold"
+>
  <option value="">-- SELECT DRIVER --</option>
  {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
- </select>
+ </Select>
  </div>
  <div>
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">From Date *</label>
- <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-semibold outline-none" />
+ <label className="block text-[10px] font-semibold text-fg-secondary  tracking-normal mb-2">From Date *</label>
+ <Input
+ type="date"
+ value={fromDate}
+ onChange={e => setFromDate(e.target.value)}
+ className="h-auto py-3.5 text-xs font-semibold"
+ />
  </div>
  <div className="flex items-end">
  <div className="w-full">
- <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">To Date *</label>
+ <label className="block text-[10px] font-semibold text-fg-secondary  tracking-normal mb-2">To Date *</label>
  <div className="flex gap-2">
- <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-semibold outline-none" />
- <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 py-3.5 btn-orange-glow ios-spring">
+ <Input
+ type="date"
+ value={toDate}
+ onChange={e => setToDate(e.target.value)}
+ className="h-auto py-3.5 text-xs font-semibold"
+ />
+ <Button type="button" onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} size="lg">
  Load
- </button>
+ </Button>
  </div>
  </div>
  </div>
@@ -140,66 +161,80 @@ export function DriverSettlementModule() {
  {hasSearched && (
  <div className="space-y-8 animate-slide-up">
  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
- <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5"><p className="text-[9px] font-semibold text-white/60  tracking-normal">Total Trips</p><p className="text-2xl font-semibold text-white mt-2 font-mono">{driverTrips.length}</p></div>
- <div className="bg-emerald-950/20 border border-emerald-900/40 rounded-2xl p-5"><p className="text-[9px] font-semibold text-emerald-400  tracking-normal">Gross Bata Earned</p><p className="text-2xl font-semibold text-emerald-300 mt-2 font-mono">{formatAmt(grandTotalBata)}</p></div>
- <div className="bg-rose-950/20 border border-rose-900/40 rounded-2xl p-5"><p className="text-[9px] font-semibold text-rose-400  tracking-normal">Total Deductions</p><p className="text-2xl font-semibold text-rose-300 mt-2 font-mono">{formatAmt(grandTotalTripAdv + directAdvTotal)}</p></div>
- <div className="bg-[#FF5A00]/10 border border-[#FF5A00]/30 rounded-2xl p-5 shadow-sm"><p className="text-[9px] font-semibold text-[#FF5A00]  tracking-normal">Net Payable</p><p className="text-2xl sm:text-3xl font-semibold text-[#FF5A00] mt-2 font-mono">{formatAmt(finalBalancePayable)}</p></div>
+ <div className="bg-surface-raised/50 border border-border-subtle rounded-2xl p-5"><p className="text-[9px] font-semibold text-fg-secondary  tracking-normal">Total Trips</p><p className="text-2xl font-semibold text-fg mt-2 font-mono">{driverTrips.length}</p></div>
+ <div className="bg-success-soft border border-success/30 rounded-2xl p-5"><p className="text-[9px] font-semibold text-success  tracking-normal">Gross Bata Earned</p><p className="text-2xl font-semibold text-success mt-2 font-mono">{formatAmt(grandTotalBata)}</p></div>
+ <div className="bg-danger-soft border border-danger/30 rounded-2xl p-5"><p className="text-[9px] font-semibold text-danger  tracking-normal">Total Deductions</p><p className="text-2xl font-semibold text-danger mt-2 font-mono">{formatAmt(grandTotalTripAdv + directAdvTotal)}</p></div>
+ <div className="bg-accent-soft border border-accent/30 rounded-2xl p-5 shadow-sm"><p className="text-[9px] font-semibold text-accent  tracking-normal">Net Payable</p><p className="text-2xl sm:text-3xl font-semibold text-accent mt-2 font-mono">{formatAmt(finalBalancePayable)}</p></div>
  </div>
 
  <div className="space-y-6">
  {Object.entries(tripsByTruck).map(([truckNo, tArr]: any) => {
  let trFreight = 0; let trBata = 0; let trAdv = 0;
  return (
- <div key={truckNo} className="border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm bg-white/[0.01]">
- <div className="bg-white/[0.03] px-6 py-3.5 border-b border-white/[0.06] flex justify-between items-center"><h4 className="text-xs font-semibold text-[#FF5A00]  tracking-wide">TRUCK: {truckNo}</h4></div>
+ <div key={truckNo} className="border border-border rounded-2xl overflow-hidden shadow-sm bg-surface/50">
+ <div className="bg-surface-raised/70 px-6 py-3.5 border-b border-border flex justify-between items-center"><h4 className="text-xs font-semibold text-accent  tracking-wide">TRUCK: {truckNo}</h4></div>
  <div className="overflow-x-auto w-full max-h-80 overflow-y-auto">
- <table className="min-w-full divide-y divide-white/[0.06] text-xs whitespace-nowrap">
- <thead className="bg-[#030407] sticky top-0"><tr className="text-left font-bold text-white/60  tracking-wider text-[9px]"><th className="px-5 py-3 border-b border-white/[0.06]">Date / LR No</th><th className="px-5 py-3 border-b border-white/[0.06]">Route</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Freight ()</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Bata ()</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Trip Adv ()</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Balance ()</th><th className="px-5 py-3 text-center border-b border-white/[0.06]">Status</th></tr></thead>
- <tbody className="divide-y divide-white/[0.05]">
+ <Table className="text-xs whitespace-nowrap">
+ <TableHeader className="sticky top-0 z-10"><TableRow className="text-left font-bold text-fg-secondary  tracking-wider text-[9px]"><TableHead className="px-5 py-3 border-b border-border">Date / LR No</TableHead><TableHead className="px-5 py-3 border-b border-border">Route</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Freight ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Bata ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Trip Adv ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Balance ()</TableHead><TableHead className="px-5 py-3 text-center border-b border-border">Status</TableHead></TableRow></TableHeader>
+ <TableBody className="">
  {tArr.map((t: any) => {
  const tb = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0); const ta = Number(t.cash_advance_issued) || 0;
  trFreight += Number(t.freight_revenue) || 0; trBata += tb; trAdv += ta;
  return (
- <tr key={t.trip_id} className="animate-tab-focus hover:bg-white/[0.02]">
- <td className="px-5 py-3.5 font-semibold text-white">{formatDate(t.trip_start_date)}<br/><span className="text-white/40 font-semibold text-[9px] font-mono">{t.trip_number || "-"}</span></td>
- <td className="px-5 py-3.5 text-slate-300 font-bold"><span className="text-xs">{t.origin} {t.destination}</span></td>
- <td className="px-5 py-3.5 text-right font-semibold text-slate-300 font-mono">{formatAmt(t.freight_revenue)}</td>
- <td className="px-5 py-3.5 text-right font-semibold text-emerald-400 font-mono">{formatAmt(tb)}</td>
- <td className="px-5 py-3.5 text-right font-semibold text-rose-400 font-mono">{formatAmt(ta)}</td>
- <td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00] font-mono">{formatAmt(tb - ta)}</td>
- <td className="px-5 py-3.5 text-center"><span className={`px-2.5 py-1 rounded-md text-[9px] font-semibold  tracking-wider ${t.settlement_status === 'SETTLED' ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/40' : 'bg-amber-950/40 text-amber-400 border border-amber-900/40'}`}>{t.settlement_status || "PENDING"}</span></td>
- </tr>
+ <TableRow key={t.trip_id} className="animate-tab-focus hover:bg-surface-raised/50">
+ <TableCell className="px-5 py-3.5 font-semibold text-fg">{formatDate(t.trip_start_date)}<br/><span className="text-fg-muted font-semibold text-[9px] font-mono">{t.trip_number || "-"}</span></TableCell>
+ <TableCell className="px-5 py-3.5 text-fg-secondary font-bold"><span className="text-xs">{t.origin} {t.destination}</span></TableCell>
+ <TableCell className="px-5 py-3.5 text-right font-semibold text-fg-secondary font-mono">{formatAmt(t.freight_revenue)}</TableCell>
+ <TableCell className="px-5 py-3.5 text-right font-semibold text-success font-mono">{formatAmt(tb)}</TableCell>
+ <TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(ta)}</TableCell>
+ <TableCell className="px-5 py-3.5 text-right font-semibold text-accent font-mono">{formatAmt(tb - ta)}</TableCell>
+ <TableCell className="px-5 py-3.5 text-center"><span className={`px-2.5 py-1 rounded-md text-[9px] font-semibold  tracking-wider ${t.settlement_status === 'SETTLED' ? 'bg-success-soft text-success border border-success/30' : 'bg-warning-soft text-warning border border-warning/30'}`}>{t.settlement_status || "PENDING"}</span></TableCell>
+ </TableRow>
  );
  })}
- <tr className="bg-[#030407]"><td colSpan={2} className="px-5 py-3.5 text-right font-semibold text-white/60  tracking-normal text-[9px]">Truck Subtotal</td><td className="px-5 py-3.5 text-right font-semibold text-white font-mono">{formatAmt(trFreight)}</td><td className="px-5 py-3.5 text-right font-semibold text-emerald-400 font-mono">{formatAmt(trBata)}</td><td className="px-5 py-3.5 text-right font-semibold text-rose-400 font-mono">{formatAmt(trAdv)}</td><td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00] font-mono">{formatAmt(trBata - trAdv)}</td><td className="px-5 py-3.5"></td></tr>
- </tbody>
- </table>
+ <TableRow className="bg-surface-raised"><TableCell colSpan={2} className="px-5 py-3.5 text-right font-semibold text-fg-secondary  tracking-normal text-[9px]">Truck Subtotal</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-fg font-mono">{formatAmt(trFreight)}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-success font-mono">{formatAmt(trBata)}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(trAdv)}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-accent font-mono">{formatAmt(trBata - trAdv)}</TableCell><TableCell className="px-5 py-3.5"></TableCell></TableRow>
+ </TableBody>
+ </Table>
  </div>
  </div>
  );
  })}
 
  {driverAdvances.length > 0 && (
- <div className="border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm bg-white/[0.01]">
- <div className="bg-white/[0.03] px-6 py-3.5 border-b border-white/[0.06]"><h4 className="text-xs font-semibold text-rose-400  tracking-wide">Direct Cash Advances</h4></div>
+ <div className="border border-border rounded-2xl overflow-hidden shadow-sm bg-surface/50">
+ <div className="bg-surface-raised/70 px-6 py-3.5 border-b border-border"><h4 className="text-xs font-semibold text-danger  tracking-wide">Direct Cash Advances</h4></div>
  <div className="overflow-x-auto w-full max-h-60 overflow-y-auto">
- <table className="min-w-full divide-y divide-white/[0.06] text-xs whitespace-nowrap">
- <thead className="bg-[#030407] sticky top-0"><tr className="text-left font-bold text-white/60  tracking-wider text-[9px]"><th className="px-5 py-3 border-b border-white/[0.06]">Date</th><th className="px-5 py-3 border-b border-white/[0.06]">Category</th><th className="px-5 py-3 border-b border-white/[0.06]">Remarks</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Amount ()</th></tr></thead>
- <tbody className="divide-y divide-white/[0.05]">
- {driverAdvances.map(a => (<tr key={a.advance_id} className="hover:bg-white/[0.02]"><td className="px-5 py-3.5 font-semibold text-white">{formatDate(a.advance_date)}</td><td className="px-5 py-3.5 text-slate-300 font-bold">{a.advance_type}</td><td className="px-5 py-3.5 text-white/40">{a.reference_remarks || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-rose-400 font-mono">{formatAmt(a.amount_inr)}</td></tr>))}
- <tr className="bg-[#030407]"><td colSpan={3} className="px-5 py-3.5 text-right font-semibold text-white/60  tracking-normal text-[9px]">Advance Subtotal</td><td className="px-5 py-3.5 text-right font-semibold text-rose-400 font-mono">{formatAmt(directAdvTotal)}</td></tr>
- </tbody>
- </table>
+ <Table className="text-xs whitespace-nowrap">
+ <TableHeader className="sticky top-0 z-10"><TableRow className="text-left font-bold text-fg-secondary  tracking-wider text-[9px]"><TableHead className="px-5 py-3 border-b border-border">Date</TableHead><TableHead className="px-5 py-3 border-b border-border">Category</TableHead><TableHead className="px-5 py-3 border-b border-border">Remarks</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Amount ()</TableHead></TableRow></TableHeader>
+ <TableBody className="">
+ {driverAdvances.map(a => (<TableRow key={a.advance_id} className=""><TableCell className="px-5 py-3.5 font-semibold text-fg">{formatDate(a.advance_date)}</TableCell><TableCell className="px-5 py-3.5 text-fg-secondary font-bold">{a.advance_type}</TableCell><TableCell className="px-5 py-3.5 text-fg-muted">{a.reference_remarks || "-"}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(a.amount_inr)}</TableCell></TableRow>))}
+ <TableRow className="bg-surface-raised"><TableCell colSpan={3} className="px-5 py-3.5 text-right font-semibold text-fg-secondary  tracking-normal text-[9px]">Advance Subtotal</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(directAdvTotal)}</TableCell></TableRow>
+ </TableBody>
+ </Table>
  </div>
  </div>
  )}
  </div>
 
- <div className="pt-6 border-t border-white/[0.06] flex flex-wrap justify-between items-center gap-4">
- <button onClick={exportToPDF} disabled={isProcessing} className="px-6 py-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-[#FF5A00] font-semibold text-xs rounded-xl transition-all  tracking-wider cursor-pointer">Export PDF Statement</button>
- <button onClick={handleMarkSettled} disabled={isProcessing} className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl  tracking-wider transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] cursor-pointer">
+ <div className="pt-6 border-t border-border flex flex-wrap justify-between items-center gap-4">
+ <Button
+ type="button"
+ variant="glass"
+ size="lg"
+ onClick={exportToPDF}
+ disabled={isProcessing}
+>
+ Export PDF Statement
+</Button>
+ <Button
+ type="button"
+ variant="secondary"
+ size="lg"
+ onClick={handleMarkSettled}
+ disabled={isProcessing}
+>
  Mark Period as Settled
- </button>
+ </Button>
  </div>
  </div>
  )}

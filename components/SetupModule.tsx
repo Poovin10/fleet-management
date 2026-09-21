@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 export function SetupModule() {
   const supabase = createClient();
@@ -103,70 +107,71 @@ export function SetupModule() {
 
   return (
     <div className="animate-tab-focus space-y-6">
-      <div className="border-b border-white/[0.06] pb-4">
-        <h2 className="text-xl font-semibold text-white tracking-tight">Master Database Configuration</h2>
-        <p className="text-xs text-white/60 font-medium mt-0.5">Manage enterprise assets, active fleet units, driver rosters, and operational rates.</p>
+      <div className="border-b border-border pb-4">
+        <h2 className="text-xl font-semibold text-fg tracking-tight">Master Database Configuration</h2>
+        <p className="text-xs text-fg-secondary font-medium mt-0.5">Manage enterprise assets, active fleet units, driver rosters, and operational rates.</p>
       </div>
 
-      <div className="flex flex-wrap gap-2.5 border-b border-white/[0.06] pb-4">
+      <div className="flex flex-wrap gap-2.5 border-b border-border pb-4">
         {subTabs.map((sub) => (
-          <button
+          <Button
             key={sub}
             onClick={() => setActiveSubTab(sub)}
-            className={`px-5 py-2 rounded-full text-[11px] font-bold transition-all ios-spring ${activeSubTab === sub ? "btn-orange-glow" : "btn-glass"}`}>
+            variant={activeSubTab === sub ? "default" : "glass"}
+            size="sm">
             {sub}
-          </button>
+          </Button>
         ))}
       </div>
 
       {activeSubTab === "Trucks" && (
         <div className="space-y-6">
           <div className="liquid-glass p-6 shadow-xl max-w-xl">
-            <h3 className="text-xs font-bold text-white tracking-wider mb-4">{editTruckId ? "Edit Truck Record" : "Add New Fleet Truck"}</h3>
+            <h3 className="text-xs font-bold text-fg tracking-wider mb-4">{editTruckId ? "Edit Truck Record" : "Add New Fleet Truck"}</h3>
             <form onSubmit={handleSaveTruck} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Truck No *</label>
-                <input type="text" value={truckNo} onChange={e => setTruckNo(e.target.value)} placeholder="e.g. TN 56 F 0452" className="input-glass" required />
+                <label className="block text-[10px] font-semibold text-accent mb-1.5 uppercase tracking-wider">Truck No *</label>
+                <Input type="text" value={truckNo} onChange={e => setTruckNo(e.target.value)} placeholder="e.g. TN 56 F 0452" className="input-glass" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Variant</label>
-                  <select value={truckType} onChange={e => setTruckType(e.target.value)} className={`input-glass bg-[#020203]`}>
+                  <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Variant</label>
+                  <Select value={truckType} onChange={e => setTruckType(e.target.value)}>
                     <option value="Bulks">Bulks</option><option value="16-Wheel Multi-Axle">16-Wheel Multi-Axle</option><option value="14-Wheel Heavy Duty">14-Wheel Heavy Duty</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Capacity (MT)</label>
-                  <select value={capacity} onChange={e => setCapacity(e.target.value)} className={`input-glass bg-[#020203]`}>
+                  <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Capacity (MT)</label>
+                  <Select value={capacity} onChange={e => setCapacity(e.target.value)}>
                     <option value="30">30 MT</option><option value="35">35 MT</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
-              <button type="submit" className="w-full py-3 btn-orange-glow text-xs font-bold rounded-full tracking-wide transition-all ios-spring shadow-[0_0_15px_rgba(255,159,10,0.3)] mt-2">
+              <Button type="submit" className="w-full mt-2">
                 {editTruckId ? "Update Truck" : "Save Truck"}
-              </button>
+              </Button>
             </form>
           </div>
 
           <div className="liquid-glass p-6 shadow-xl">
-            <h3 className="text-xs font-bold text-white tracking-wider mb-4">Registered Fleet ({trucks.length} Units)</h3>
+            <h3 className="text-xs font-bold text-fg tracking-wider mb-4">Registered Fleet ({trucks.length} Units)</h3>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-white/[0.06] text-xs">
-                <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Truck No</th><th className="px-4 py-3">Variant</th><th className="px-4 py-3">Capacity</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
-                <tbody className="divide-y divide-white/[0.05]">
+              <Table className="min-w-full divide-y divide-border text-xs">
+                <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Truck No</TableHead><TableHead className="px-4 py-3">Variant</TableHead><TableHead className="px-4 py-3">Capacity</TableHead><TableHead className="px-4 py-3">Status</TableHead><TableHead className="px-4 py-3 text-right">Actions</TableHead></TableRow></TableHeader>
+                <TableBody className="divide-y divide-border">
                   {trucks.map(t => (
-                    <tr key={t.vehicle_id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3.5 font-bold text-white font-mono">{t.vehicle_number}</td>
-                      <td className="px-4 py-3.5 text-white/70 font-semibold">{t.truck_type}</td>
-                      <td className="px-4 py-3.5 text-white/70 font-mono">{t.carrying_capacity_tons} MT</td>
-                      <td className="px-4 py-3.5"><span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md text-[9px] font-bold font-mono uppercase">{t.current_status || "ACTIVE"}</span></td>
-                      <td className="px-4 py-3.5 text-right">
-                        <button onClick={() => { setTruckNo(t.vehicle_number); setTruckType(t.truck_type); setCapacity(String(t.carrying_capacity_tons)); setEditTruckId(t.vehicle_id); }} className="px-4 py-1.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white rounded-full text-[10px] font-bold transition-all ios-spring">Edit</button>
-                      </td>
-                    </tr>
+                    <TableRow key={t.vehicle_id} className="hover:bg-white/[0.02] transition-colors">
+                      <TableCell className="px-4 py-3.5 font-bold text-fg font-mono">{t.vehicle_number}</TableCell>
+                      <TableCell className="px-4 py-3.5 text-fg-secondary font-semibold">{t.truck_type}</TableCell>
+                      <TableCell className="px-4 py-3.5 text-fg-secondary font-mono">{t.carrying_capacity_tons} MT</TableCell>
+                      <TableCell className="px-4 py-3.5"><span className="px-2.5 py-1 bg-success-soft text-success border border-border rounded-md text-[9px] font-bold font-mono uppercase">{t.current_status || "ACTIVE"}</span></TableCell>
+                      <TableCell className="px-4 py-3.5 text-right">
+                        <Button onClick={() => { setTruckNo(t.vehicle_number); setTruckType(t.truck_type); setCapacity(String(t.carrying_capacity_tons)); setEditTruckId(t.vehicle_id); }} variant="glass" size="xs">Edit</Button>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </div>
         </div>
@@ -175,47 +180,47 @@ export function SetupModule() {
       {activeSubTab === "Drivers" && (
         <div className="space-y-6">
           <div className="liquid-glass p-6 shadow-xl max-w-xl">
-            <h3 className="text-xs font-bold text-white tracking-wider mb-4">{editDriverId ? "Edit Driver Record" : "Register New Driver"}</h3>
+            <h3 className="text-xs font-bold text-fg tracking-wider mb-4">{editDriverId ? "Edit Driver Record" : "Register New Driver"}</h3>
             <form onSubmit={handleSaveDriver} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Full Name *</label>
-                <input type="text" value={driverName} onChange={e => setDriverName(e.target.value)} placeholder="e.g. Aneesh CR" className="input-glass" required />
+                <label className="block text-[10px] font-semibold text-accent mb-1.5 uppercase tracking-wider">Full Name *</label>
+                <Input type="text" value={driverName} onChange={e => setDriverName(e.target.value)} placeholder="e.g. Aneesh CR" className="input-glass" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Phone Number</label>
-                  <input type="text" value={driverPhone} onChange={e => setDriverPhone(e.target.value)} placeholder="10-digit mobile" className={`input-glass font-mono`} />
+                  <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Phone Number</label>
+                  <Input type="text" value={driverPhone} onChange={e => setDriverPhone(e.target.value)} placeholder="10-digit mobile" className={`input-glass font-mono`} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">License Expiry</label>
-                  <input type="date" value={licenseExp} onChange={e => setLicenseExp(e.target.value)} className={`input-glass font-mono`} />
+                  <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">License Expiry</label>
+                  <Input type="date" value={licenseExp} onChange={e => setLicenseExp(e.target.value)} className={`input-glass font-mono`} />
                 </div>
               </div>
-              <button type="submit" className="w-full py-3 btn-orange-glow text-xs font-bold rounded-full tracking-wide transition-all ios-spring shadow-[0_0_15px_rgba(255,159,10,0.3)] mt-2">
+              <Button type="submit" className="w-full mt-2">
                 {editDriverId ? "Update Driver" : "Register Driver"}
-              </button>
+              </Button>
             </form>
           </div>
 
           <div className="liquid-glass p-6 shadow-xl">
-            <h3 className="text-xs font-bold text-white tracking-wider mb-4">Active Driver Roster ({drivers.length} Drivers)</h3>
+            <h3 className="text-xs font-bold text-fg tracking-wider mb-4">Active Driver Roster ({drivers.length} Drivers)</h3>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-white/[0.06] text-xs">
-                <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Code</th><th className="px-4 py-3">Full Name</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">License Expiry</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
-                <tbody className="divide-y divide-white/[0.05]">
+              <Table className="min-w-full divide-y divide-border text-xs">
+                <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Code</TableHead><TableHead className="px-4 py-3">Full Name</TableHead><TableHead className="px-4 py-3">Phone</TableHead><TableHead className="px-4 py-3">License Expiry</TableHead><TableHead className="px-4 py-3 text-right">Actions</TableHead></TableRow></TableHeader>
+                <TableBody className="divide-y divide-border">
                   {drivers.map(d => (
-                    <tr key={d.driver_id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3.5 font-bold text-[#FF9F0A] font-mono">{d.driver_code}</td>
-                      <td className="px-4 py-3.5 font-bold text-white">{d.full_name}</td>
-                      <td className="px-4 py-3.5 text-white/70 font-mono">{d.phone_number || "-"}</td>
-                      <td className="px-4 py-3.5 text-white/70 font-mono">{d.license_expiry_date || "-"}</td>
-                      <td className="px-4 py-3.5 text-right">
-                        <button onClick={() => { setDriverName(d.full_name); setDriverPhone(d.phone_number || ""); setLicenseNo(d.license_number || ""); setLicenseExp(d.license_expiry_date || ""); setEditDriverId(d.driver_id); }} className="px-4 py-1.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white rounded-full text-[10px] font-bold transition-all ios-spring">Edit</button>
-                      </td>
-                    </tr>
+                    <TableRow key={d.driver_id} className="hover:bg-white/[0.02] transition-colors">
+                      <TableCell className="px-4 py-3.5 font-bold text-accent font-mono">{d.driver_code}</TableCell>
+                      <TableCell className="px-4 py-3.5 font-bold text-fg">{d.full_name}</TableCell>
+                      <TableCell className="px-4 py-3.5 text-fg-secondary font-mono">{d.phone_number || "-"}</TableCell>
+                      <TableCell className="px-4 py-3.5 text-fg-secondary font-mono">{d.license_expiry_date || "-"}</TableCell>
+                      <TableCell className="px-4 py-3.5 text-right">
+                        <Button onClick={() => { setDriverName(d.full_name); setDriverPhone(d.phone_number || ""); setLicenseNo(d.license_number || ""); setLicenseExp(d.license_expiry_date || ""); setEditDriverId(d.driver_id); }} variant="glass" size="xs">Edit</Button>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </div>
         </div>
@@ -223,58 +228,58 @@ export function SetupModule() {
 
       {activeSubTab === "Freight Slabs" && (
         <div className="liquid-glass p-6 shadow-xl">
-          <h3 className="text-xs font-bold text-white tracking-wider mb-4">Destinations & Freight Master Slabs ({destinations.length})</h3>
+          <h3 className="text-xs font-bold text-fg tracking-wider mb-4">Destinations & Freight Master Slabs ({destinations.length})</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-white/[0.06] text-xs">
-              <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3">Origin</th><th className="px-4 py-3 text-right">Rate / MT (₹)</th></tr></thead>
-              <tbody className="divide-y divide-white/[0.05]">
+            <Table className="min-w-full divide-y divide-border text-xs">
+              <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Destination</TableHead><TableHead className="px-4 py-3">Origin</TableHead><TableHead className="px-4 py-3 text-right">Rate / MT (₹)</TableHead></TableRow></TableHeader>
+              <TableBody className="divide-y divide-border">
                 {destinations.map((d) => (
-                  <tr key={d.destination_id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3.5 font-bold text-white">{d.destination_name}</td>
-                    <td className="px-4 py-3.5 text-white/70">{d.origin || "COCHIN"}</td>
-                    <td className="px-4 py-3.5 text-right font-bold text-emerald-400 font-mono">{(Number(d.freight_rate_per_ton)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                  </tr>
+                  <TableRow key={d.destination_id} className="hover:bg-white/[0.02] transition-colors">
+                    <TableCell className="px-4 py-3.5 font-bold text-fg">{d.destination_name}</TableCell>
+                    <TableCell className="px-4 py-3.5 text-fg-secondary">{d.origin || "COCHIN"}</TableCell>
+                    <TableCell className="px-4 py-3.5 text-right font-bold text-success font-mono">{(Number(d.freight_rate_per_ton)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}
 
       {activeSubTab === "Bata" && (
         <div className="liquid-glass p-6 shadow-xl">
-          <h3 className="text-xs font-bold text-white tracking-wider mb-4">Driver Bata Rules ({bataRules.length})</h3>
+          <h3 className="text-xs font-bold text-fg tracking-wider mb-4">Driver Bata Rules ({bataRules.length})</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-white/[0.06] text-xs">
-              <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3 text-right">Standard Bata (₹)</th></tr></thead>
-              <tbody className="divide-y divide-white/[0.05]">
+            <Table className="min-w-full divide-y divide-border text-xs">
+              <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Destination</TableHead><TableHead className="px-4 py-3 text-right">Standard Bata (₹)</TableHead></TableRow></TableHeader>
+              <TableBody className="divide-y divide-border">
                 {bataRules.map((b) => (
-                  <tr key={b.bata_rule_id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3.5 font-bold text-white">{b.destination_name || "Unknown"}</td>
-                    <td className="px-4 py-3.5 text-right font-bold text-[#FF9F0A] font-mono">{(Number(b.standard_bata_inr)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                  </tr>
+                  <TableRow key={b.bata_rule_id} className="hover:bg-white/[0.02] transition-colors">
+                    <TableCell className="px-4 py-3.5 font-bold text-fg">{b.destination_name || "Unknown"}</TableCell>
+                    <TableCell className="px-4 py-3.5 text-right font-bold text-accent font-mono">{(Number(b.standard_bata_inr)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}
 
       {activeSubTab === "User Control" && (
         <div className="liquid-glass p-6 shadow-xl">
-          <h3 className="text-xs font-bold text-white tracking-wider mb-4">App Users & Roles ({appUsers.length})</h3>
+          <h3 className="text-xs font-bold text-fg tracking-wider mb-4">App Users & Roles ({appUsers.length})</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-white/[0.06] text-xs">
-              <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Username / Email</th><th className="px-4 py-3">Role</th></tr></thead>
-              <tbody className="divide-y divide-white/[0.05]">
+            <Table className="min-w-full divide-y divide-border text-xs">
+              <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Username / Email</TableHead><TableHead className="px-4 py-3">Role</TableHead></TableRow></TableHeader>
+              <TableBody className="divide-y divide-border">
                 {appUsers.map((u) => (
-                  <tr key={u.user_id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3.5 font-bold text-white font-mono">{u.username || "-"}</td>
-                    <td className="px-4 py-3.5"><span className="px-2.5 py-1 bg-[#FF9F0A]/10 text-[#FF9F0A] border border-[#FF9F0A]/20 rounded-md text-[9px] font-bold font-mono uppercase">{u.role || "USER"}</span></td>
-                  </tr>
+                  <TableRow key={u.user_id} className="hover:bg-white/[0.02] transition-colors">
+                    <TableCell className="px-4 py-3.5 font-bold text-fg font-mono">{u.username || "-"}</TableCell>
+                    <TableCell className="px-4 py-3.5"><span className="px-2.5 py-1 bg-accent-soft text-accent border border-accent rounded-md text-[9px] font-bold font-mono uppercase">{u.role || "USER"}</span></TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}

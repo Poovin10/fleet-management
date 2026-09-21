@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -10,8 +11,13 @@ export function LogoutButton() {
     router.push("/auth/login"); router.refresh();
   };
   return (
-    <button onClick={handleLogout} className="px-5 py-2.5 rounded-full btn-glass text-[13px] tracking-wide font-medium">
+    <Button
+      type="button"
+      variant="glass"
+      onClick={handleLogout}
+      className="h-auto rounded-full px-5 py-2.5 text-[13px] font-medium tracking-wide"
+    >
       Sign Out
-    </button>
+    </Button>
   );
 }

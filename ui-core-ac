@@ -1,0 +1,300 @@
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  }) {
+  const Comp = asChild ? Slot.Root : "button"
+
+  return (
+    <Comp
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }
+
+============================================================
+FILE: components/ui/card.tsx
+============================================================
+import { ReactNode, HTMLAttributes } from 'react';
+
+/* Base Card — themed to dark/orange tokens */
+export function Card({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`bg-surface border border-border rounded-lg shadow-card ${className}`}
+      {...props}
+    />
+  );
+}
+
+/* Sub-components your auth pages (login, sign-up, forgot-password,
+   update-password, error) already import — kept so nothing breaks */
+export function CardHeader({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={`p-6 pb-0 ${className}`} {...props} />;
+}
+
+export function CardTitle({ className = '', ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return <h3 className={`text-lg font-semibold text-fg ${className}`} {...props} />;
+}
+
+export function CardDescription({ className = '', ...props }: HTMLAttributes<HTMLParagraphElement>) {
+  return <p className={`text-sm text-fg-secondary mt-1 ${className}`} {...props} />;
+}
+
+export function CardContent({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={`p-6 ${className}`} {...props} />;
+}
+
+export function CardFooter({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={`p-6 pt-0 flex items-center ${className}`} {...props} />;
+}
+
+/* New addition for P&L / financial line items */
+type StatRowProps = {
+  label: string;
+  sublabel?: string;
+  value: string;
+  tone?: 'default' | 'success' | 'danger' | 'accent';
+};
+
+export function StatRow({ label, sublabel, value, tone = 'default' }: StatRowProps) {
+  const toneClass = {
+    default: 'text-fg',
+    success: 'text-success',
+    danger: 'text-danger',
+    accent: 'text-accent',
+  }[tone];
+
+  return (
+    <div className="flex items-start justify-between py-3 border-b border-border last:border-0">
+      <div>
+        <div className="text-sm font-medium text-fg">{label}</div>
+        {sublabel && <div className="text-xs text-fg-muted mt-0.5">{sublabel}</div>}
+      </div>
+      <div className={`font-nums text-sm font-semibold ${toneClass}`}>{value}</div>
+    </div>
+  );
+}
+============================================================
+FILE: components/ui/input.tsx
+============================================================
+import * as React from "react";
+
+import { cn } from "@/lib/utils";
+
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          className,
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  },
+);
+Input.displayName = "Input";
+
+export { Input };
+
+============================================================
+FILE: components/ui/badge.tsx
+============================================================
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+
+import { cn } from "@/lib/utils";
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
+        outline: "text-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+);
+
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  );
+}
+
+export { Badge, badgeVariants };
+
+============================================================
+FILE: components/ui/TabBar.tsx
+============================================================
+'use client';
+
+import { useState } from 'react';
+
+export type Tab = {
+  key: string;
+  label: string;
+};
+
+type TabBarProps = {
+  tabs: Tab[];
+  active: string;
+  onChange: (key: string) => void;
+};
+
+export function TabBar({ tabs, active, onChange }: TabBarProps) {
+  return (
+    <nav className="flex items-center gap-1 border-b border-border bg-surface px-2 h-12">
+      {tabs.map((tab) => {
+        const isActive = tab.key === active;
+        return (
+          <button
+            key={tab.key}
+            onClick={() => onChange(tab.key)}
+            className={[
+              'relative h-9 px-4 rounded-md text-sm font-medium',
+              'transition-colors duration-base ease-out',
+              isActive
+                ? 'bg-accent text-accent-fg'
+                : 'text-fg-secondary hover:text-fg hover:bg-surface-raised',
+            ].join(' ')}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+============================================================
+FILE: components/ui/TableToolbar.tsx
+============================================================
+import { exportToCSV } from "@/lib/utils/exportManager";
+
+interface TableToolbarProps {
+  title: string;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  exportData: any[];
+  exportFilename: string;
+}
+
+export function TableToolbar({ title, searchQuery, setSearchQuery, exportData, exportFilename }: TableToolbarProps) {
+  return (
+    <div className="flex flex-col sm:flex-row justify-between items-center input-glass bg-white/[0.02] p-4 border-b border-white/[0.08] gap-4">
+      <h3 className="text-sm font-black text-white uppercase tracking-wide">{title}</h3>
+      <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="relative w-full sm:w-64">
+          <input 
+            type="text" 
+            placeholder="Search records..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full text-xs p-2.5 pl-3 rounded-lg input-glass bg-white/[0.02] border border-white/[0.08] text-white focus:border-[#FF5A00] outline-none transition-all"
+          />
+        </div>
+        <button 
+          onClick={() => exportToCSV(exportData, exportFilename)}
+          className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-all border border-slate-600 flex-shrink-0"
+        >
+          Export CSV
+        </button>
+      </div>
+    </div>
+  );
+}
+
+============================================================
+FILE: components/theme-switcher.tsx
+============================================================
+"use client";
+
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Laptop, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+
+const ThemeSwitcher = () => {
+  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme } = useTheme();
+
+  // useEffect only runs on the client, so now we can safely show the UI
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  const ICON_SIZE = 16;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size={"sm"}>
+          {theme === "light" ? (
+            <Sun
+              key="light"
+              size={ICON_SIZE}
+              className={"text-muted-foreground"}
+            />
+          ) : theme === "dark" ? (
+            <Moon
+              key="dark"
+              size={ICON_SIZE}
+              className={"text-muted-foreground"}
+            />
+          ) : (
+            <Laptop
+              key="system"
+              size={ICON_SIZE}
+              className={"text-muted-foreground"}
+            />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="animate-tab-focus w-content" align="start">
+        <DropdownMenuRadioGroup
+          value={theme}
+          onValueChange={(e) => setTheme(e)}
+        >
+          <DropdownMenuRadioItem className="flex gap-2" value="light">
+            <Sun size={ICON_SIZE} className="text-muted-foreground" />{" "}
+            <span>Light</span>

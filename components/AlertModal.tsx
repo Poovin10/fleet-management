@@ -1,59 +1,123 @@
-// components/AlertModal.tsx
-import React from 'react';
+"use client";
+
+import React from "react";
+import { Button } from "@/components/ui/button";
 
 interface AlertModalProps {
   isOpen: boolean;
   title: string;
   message: string;
-  type?: 'success' | 'error' | 'info';
+  type?: "success" | "error" | "info";
   onClose: () => void;
 }
 
-export function AlertModal({ isOpen, title, message, type = 'info', onClose }: AlertModalProps) {
+export function AlertModal({
+  isOpen,
+  title,
+  message,
+  type = "info",
+  onClose,
+}: AlertModalProps) {
   if (!isOpen) return null;
 
-  const isSuccess = type === 'success';
-  const isError = type === 'error';
+  const styles = {
+    success: {
+      icon: "border-success/20 bg-success-soft text-success",
+      button: "success",
+    },
+    error: {
+      icon: "border-danger/20 bg-danger-soft text-danger",
+      button: "destructive",
+    },
+    info: {
+      icon: "border-info/20 bg-info-soft text-info",
+      button: "default",
+    },
+  }[type];
 
   return (
-    <div className="animate-tab-focus fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-border">
-        
-        <div className="p-6 sm:p-8 text-center">
-          {/* Dynamic Icon */}
-          <div className={`mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-5 shadow-inner ${
-            isSuccess ? 'bg-emerald-100 text-emerald-600' : 
-            isError ? 'bg-rose-100 text-rose-600' : 
-            'bg-blue-100 text-blue-600'
-          }`}>
-            {isSuccess && (
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="alert-modal-title"
+    >
+      <div className="liquid-glass w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="p-6 text-center sm:p-8">
+          <div
+            className={`mx-auto mb-5 flex size-16 items-center justify-center rounded-2xl border ${styles.icon}`}
+          >
+            {type === "success" && (
+              <svg
+                className="size-8"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
             )}
-            {isError && (
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+
+            {type === "error" && (
+              <svg
+                className="size-8"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
             )}
-            {!isSuccess && !isError && (
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+
+            {type === "info" && (
+              <svg
+                className="size-8"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
             )}
           </div>
-          
-          <h3 className="text-xl font-bold text-fg mb-2 tracking-tight">{title}</h3>
-          <p className="text-sm font-semibold text-fg-secondary leading-relaxed">{message}</p>
-        </div>
-        
-        <div className="p-4 bg-app border-t border-border">
-          <button
-            onClick={onClose}
-            className={`w-full py-4 text-white font-bold text-sm rounded-2xl transition-all shadow-md active:scale-95 ${
-              isSuccess ? 'bg-emerald-600 hover:bg-emerald-700' : 
-              isError ? 'bg-rose-600 hover:bg-rose-700' : 
-              'bg-[#FF5A00] hover:bg-[#e04f00]'
-            }`}
+
+          <h3
+            id="alert-modal-title"
+            className="mb-2 text-xl font-semibold tracking-tight text-fg"
           >
-            {isSuccess ? "Awesome, thanks!" : "OK, Got it"}
-          </button>
+            {title}
+          </h3>
+
+          <p className="text-sm leading-relaxed text-fg-secondary">
+            {message}
+          </p>
         </div>
 
+        <div className="border-t border-border bg-surface/60 p-4">
+          <Button
+            type="button"
+            variant={styles.button as "default" | "destructive"}
+            onClick={onClose}
+            className="h-11 w-full rounded-xl"
+          >
+            {type === "success" ? "Awesome, thanks!" : "OK, Got it"}
+          </Button>
+        </div>
       </div>
     </div>
   );

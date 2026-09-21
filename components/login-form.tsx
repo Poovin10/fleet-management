@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -34,26 +36,26 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#05070B] font-sans selection:bg-[#FF5A00] selection:text-white">
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-app font-sans selection:bg-accent selection:text-accent-fg">
       
       {/* Immersive Fleet Telemetry Background Grid & Glows */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(255,90,0,0.15),rgba(255,255,255,0))]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293d15_1px,transparent_1px),linear-gradient(to_bottom,#1f293d15_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
 
       {/* Floating Ambient Orbs */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#FF5A00]/10 rounded-full blur-[128px] pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-accent/10 rounded-full blur-[128px] pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-600/10 rounded-full blur-[128px] pointer-events-none" />
 
       {/* iOS Liquidglass Authentication Card */}
-      <div className="relative z-10 w-full max-w-md p-8 sm:p-10 mx-4 rounded-3xl bg-[#121622]/60 backdrop-blur-3xl saturate-200 border border-white/[0.12] shadow-[0_24px_64px_rgba(0,0,0,0.6)] animate-tab-focus">
+      <div className="relative z-10 w-full max-w-md p-8 sm:p-10 mx-4 rounded-3xl bg-surface-raised/70 backdrop-blur-3xl saturate-200 border border-border-strong shadow-[0_24px_64px_rgba(0,0,0,0.6)] animate-tab-focus">
         
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF5A00] to-[#C93B00] flex items-center justify-center shadow-[0_0_32px_rgba(255,90,0,0.4)] mb-4 border border-white/20">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center shadow-orange mb-4 border border-border-strong">
             <span className="text-2xl font-bold text-white tracking-wider font-mono">K</span>
           </div>
-          <h1 className="text-xl font-semibold text-white/95 tracking-tight">KSS ROADWAYS ERP</h1>
-          <p className="text-xs text-white/50 mt-1 font-medium">Enterprise Fleet Intelligence & Logistics Suite</p>
+          <h1 className="text-xl font-semibold text-fg tracking-tight">KSS ROADWAYS ERP</h1>
+          <p className="text-xs text-fg-muted mt-1 font-medium">Enterprise Fleet Intelligence & Logistics Suite</p>
         </div>
 
         {/* Login Form */}
@@ -65,46 +67,47 @@ export default function LoginForm() {
           )}
 
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-white/60 tracking-wide uppercase">
+            <label className="block text-[11px] font-medium text-fg-secondary tracking-wide uppercase">
               Corporate Username / Email
             </label>
-            <input
+            <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="superadmin@kss.com"
               required
-              className="w-full px-4 py-3.5 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-white/90 placeholder-white/20 text-sm font-medium focus:outline-none focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all shadow-inner"
+              className="h-auto rounded-xl px-4 py-3.5"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-white/60 tracking-wide uppercase">
+            <label className="block text-[11px] font-medium text-fg-secondary tracking-wide uppercase">
               Secure Passcode
             </label>
-            <input
+            <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
               required
-              className="w-full px-4 py-3.5 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-white/90 placeholder-white/20 text-sm font-medium focus:outline-none focus:border-[#FF5A00] focus:ring-2 focus:ring-[#FF5A00]/20 transition-all shadow-inner"
+              className="h-auto rounded-xl px-4 py-3.5"
             />
           </div>
 
-          <button
+          <Button
             type="submit"
+            variant="default"
             disabled={isPending}
-            className="btn-orange-glow rounded-full ios-spring w-full mt-2 py-4 text-sm tracking-wide disabled:opacity-50"
+            className="w-full mt-2 h-auto rounded-full py-4 text-sm tracking-wide"
           >
             {isPending ? "Authorizing Session..." : "Authorize Access"}
-          </button>
+          </Button>
         </form>
 
         {/* Ultrafleet Watermark */}
-        <div className="mt-8 pt-6 border-t border-white/[0.06] text-center">
-          <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase block">
-            Powered by <strong className="text-white/70 font-semibold">Ultrafleet Solutions</strong>
+        <div className="mt-8 pt-6 border-t border-border-subtle text-center">
+          <span className="text-[10px] font-medium text-fg-muted tracking-wider uppercase block">
+            Powered by <strong className="text-fg-secondary font-semibold">Ultrafleet Solutions</strong>
           </span>
         </div>
 

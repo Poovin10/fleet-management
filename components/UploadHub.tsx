@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 
 export function UploadHub() {
  const supabase = createClient();
@@ -64,61 +66,65 @@ export function UploadHub() {
 
  return (
  <div className="animate-tab-focus space-y-6 max-w-4xl mx-auto">
- <div className="liquid-glass border border-white/[0.08] rounded-2xl p-6 shadow-xl">
- <h3 className="text-sm font-semibold text-white  tracking-wider mb-4">Manual Document Entry Hub</h3>
+ <div className="liquid-glass border border-border rounded-2xl p-6 shadow-xl">
+ <h3 className="text-sm font-semibold text-fg  tracking-wider mb-4">Manual Document Entry Hub</h3>
  
  <div className="mb-4">
- <label className="block text-xs font-bold text-white/60 mb-1">Select Document Type</label>
- <select 
- value={documentType} 
+ <label className="block text-xs font-bold text-fg-secondary mb-1">Select Document Type</label>
+ <Select
+ value={documentType}
  onChange={(e) => setDocumentType(e.target.value)}
- className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white font-bold outline-none focus:border-[#FF5A00]"
+ className="h-auto rounded-xl px-3 py-3 font-bold"
  >
  <option value="TRIP_INVOICE">Trip Invoice (JSW / UltraTech / ACC)</option>
  <option value="FUEL_SLIP">Diesel / Fuel Slip</option>
  <option value="POD_CLOSURE">POD Weighment Slip</option>
- </select>
+ </Select>
  </div>
 
  <div className="mb-4">
- <label className="block text-xs font-bold text-white/60 mb-1">Enter Details (Vehicle, LR, Tonnage, etc.)</label>
+ <label className="block text-xs font-bold text-fg-secondary mb-1">Enter Details (Vehicle, LR, Tonnage, etc.)</label>
  <textarea 
  rows={4}
  value={rawText}
  onChange={(e) => setRawText(e.target.value)}
  placeholder="Type details e.g., VEHICLE: TN88K8413, LR: 687/2026, QTY: 34.400 MT..."
- className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white font-mono outline-none focus:border-[#FF5A00]"
+ className="w-full text-sm p-3 rounded-xl border border-border input-glass bg-surface-raised/50 text-fg font-mono outline-none focus:border-accent"
  />
  </div>
 
- <button 
+ <Button
+ type="button"
+ variant="default"
  onClick={handleParseText}
  disabled={isProcessing}
- className="px-6 py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-semibold text-xs  tracking-wider rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20"
+ className="h-auto rounded-xl px-6 py-3 text-xs font-semibold tracking-wider"
  >
  {isProcessing ? "Processing..." : " Process Entry"}
- </button>
+ </Button>
  </div>
 
  {parsedResult && (
- <div className="liquid-glass border border-white/[0.08] rounded-2xl p-6 shadow-xl animate-in fade-in">
- <h4 className="text-xs font-semibold text-emerald-400  tracking-wider mb-4">Processed Fields Preview</h4>
+ <div className="liquid-glass border border-border rounded-2xl p-6 shadow-xl animate-in fade-in">
+ <h4 className="text-xs font-semibold text-success  tracking-wider mb-4">Processed Fields Preview</h4>
  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
  {Object.entries(parsedResult).map(([key, value]) => (
- <div key={key} className="input-glass bg-white/[0.02] border border-white/[0.08] p-3 rounded-xl">
- <p className="text-[10px] font-bold text-white/60 ">{key}</p>
- <p className="text-sm font-semibold text-white mt-1">{String(value)}</p>
+ <div key={key} className="input-glass bg-surface-raised/50 border border-border p-3 rounded-xl">
+ <p className="text-[10px] font-bold text-fg-secondary ">{key}</p>
+ <p className="text-sm font-semibold text-fg mt-1">{String(value)}</p>
  </div>
  ))}
  </div>
 
- <button 
+ <Button
+ type="button"
+ variant="default"
  onClick={handleSaveToDatabase}
  disabled={isSaving}
- className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs  tracking-wider rounded-xl transition-all shadow-lg"
+ className="w-full h-auto rounded-xl py-3 text-xs font-semibold tracking-wider"
  >
  {isSaving ? "Saving..." : " Confirm & Push to ERP Queue"}
- </button>
+ </Button>
  </div>
  )}
  </div>

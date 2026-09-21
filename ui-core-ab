@@ -1,46 +1,3 @@
-"use client";
-
-import TelemetryHUD from "./TelemetryHUD";
-import { useState, useEffect } from "react";
-import { LogoutButton } from "@/components/LogoutButton";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-
-import { TripForm } from "@/components/TripForm";
-import { PodClosure } from "@/components/PodClosure";
-import { ModifyTrips } from "@/components/ModifyTrips";
-import { AccountsModule } from "@/components/AccountsModule";
-import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
-import { FinancialsModule } from "@/components/FinancialsModule";
-import { ProfitLossModule } from "@/components/ProfitLossModule";
-import { WorkshopModule } from "@/components/WorkshopModule";
-import { SetupModule } from "@/components/SetupModule";
-import { ConfirmModal } from "@/components/ConfirmModal";
-import { ApprovalQueue } from "@/components/ApprovalQueue";
-import { DriverPortal } from "@/components/DriverPortal";
-import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
-import { AiInsightsDashboard } from "@/components/AiInsightsDashboard";
-import { DriverSettlementModule } from "@/components/DriverSettlementModule";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-
-const KssLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <rect width="200" height="200" fill="var(--accent)" />
-    <rect x="15" y="15" width="170" height="170" fill="var(--accent-fg)" />
-    <path d="M 50 35 L 50 165" stroke="var(--accent)" strokeWidth="24" strokeLinecap="square" />
-    <path d="M 50 110 L 140 35" stroke="var(--accent)" strokeWidth="24" strokeLinecap="square" />
-    <path d="M 85 85 C 130 95, 145 130, 145 165" stroke="var(--accent)" strokeWidth="24" fill="none" />
-  </svg>
-);
-
-export default function Dashboard() {
-  const router = useRouter();
-  const [supabase, setSupabase] = useState<any>(null);
-
-  useEffect(() => { try { setSupabase(createClient()); } catch (err) { console.error(err); } }, []);
-
   const [isDriverRoute, setIsDriverRoute] = useState(false);
   const [isCheckingRoute, setIsCheckingRoute] = useState(true);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -119,7 +76,7 @@ export default function Dashboard() {
     const { count: driverPendingCount } = await supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
     setPendingDriverCount(driverPendingCount || 0);
 
-    const firstDay = "2026-09-01";
+    const firstDay = "2026-09-01"; 
 
     const [tripsRes, dieselRes, workshopRes] = await Promise.all([
       supabase.from('trips').select('freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance').gte('trip_start_date', firstDay),
@@ -145,17 +102,17 @@ export default function Dashboard() {
     }
   }, [activeTab, opSubTab, isAuthenticated, supabase]);
 
-  if (isCheckingRoute || isAuthLoading || !supabase) return <div className="min-h-screen bg-app" />;
+  if (isCheckingRoute || isAuthLoading || !supabase) return <div className="min-h-screen bg-[#020203]" />;
 
   if (isDriverRoute) {
     return (
-      <div className="min-h-screen bg-app text-fg relative font-sans overflow-x-hidden">
-        <div className="fixed top-[-10%] right-[-5%] w-[50vw] h-[50vw] bg-accent/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '8s' }} />
-        <div className="fixed bottom-[-10%] left-[-5%] w-[60vw] h-[60vw] bg-accent-hover/10 rounded-full blur-[150px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '12s' }} />
+      <div className="min-h-screen bg-[#020203] text-white relative font-sans overflow-x-hidden">
+        <div className="fixed top-[-10%] right-[-5%] w-[50vw] h-[50vw] bg-[#FF9F0A]/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="fixed bottom-[-10%] left-[-5%] w-[60vw] h-[60vw] bg-[#FFB340]/10 rounded-full blur-[150px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '12s' }} />
         <div className="relative z-10">
           <div className="max-w-md mx-auto mb-6 text-center mt-8">
-            <h1 className="text-2xl font-semibold tracking-[-0.03em] text-fg">KSS Roadways</h1>
-            <p className="text-xs text-accent tracking-wide font-medium mt-1">Driver Highway Portal</p>
+            <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white">KSS Roadways</h1>
+            <p className="text-xs text-[#FF9F0A] tracking-wide font-medium mt-1">Driver Highway Portal</p>
           </div>
           <DriverPortal/>
         </div>
@@ -174,11 +131,11 @@ export default function Dashboard() {
   const allowedCategories = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? erpNavigation : [ { category: "Overview", items: ["Dashboard"] }, { category: "Finance", items: ["Fleet Analytics", "P&L Statement", "Insights"] } ];
 
   return (
-    <div className="min-h-screen bg-app text-fg font-sans selection:bg-accent/30 selection:text-accent relative overflow-hidden">
-
+    <div className="min-h-screen bg-[#020203] text-slate-100 font-sans selection:bg-[#FF9F0A]/30 selection:text-[#FF9F0A] relative overflow-hidden">
+      
       {/* Global Ambient Refraction for Liquid Glass */}
-      <div className="fixed top-[-15%] right-[-10%] w-[60vw] h-[60vw] bg-accent/15 rounded-full blur-[140px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '10s' }} />
-      <div className="fixed bottom-[-15%] left-[-10%] w-[70vw] h-[70vw] bg-accent-hover/10 rounded-full blur-[160px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '14s' }} />
+      <div className="fixed top-[-15%] right-[-10%] w-[60vw] h-[60vw] bg-[#FF9F0A]/15 rounded-full blur-[140px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '10s' }} />
+      <div className="fixed bottom-[-15%] left-[-10%] w-[70vw] h-[70vw] bg-[#FFB340]/10 rounded-full blur-[160px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '14s' }} />
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none z-0" />
 
       <div className="relative z-10">
@@ -188,31 +145,26 @@ export default function Dashboard() {
         <header className="sticky top-4 z-50 max-w-[1600px] mx-auto px-6">
           <div className="liquid-glass rounded-3xl px-6 py-4 flex items-center justify-between shadow-[0_8px_32px_0_rgba(0,0,0,0.5)]">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-surface-elevated to-surface border border-border-strong flex items-center justify-center shadow-inner">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#121622] to-[#080A10] border border-white/[0.1] flex items-center justify-center shadow-inner">
                 <KssLogo className="w-5 h-5"/>
               </div>
               <div>
-                <h1 className="text-sm font-semibold tracking-wide text-fg">KSS Roadways</h1>
+                <h1 className="text-sm font-semibold tracking-wide text-white">KSS Roadways</h1>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]"></span>
-                  <span className="text-[10px] font-medium text-fg/60 tracking-wide">Cochin Node {liveVehicles.length} Active Units</span>
+                  <span className="text-[10px] font-medium text-white/60 tracking-wide">Cochin Node {liveVehicles.length} Active Units</span>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl liquid-glass text-[11px] font-semibold font-mono border-border-subtle">
-                <span className="text-fg/40">ROLE:</span>
-                <span className="text-accent font-bold">{userRole}</span>
+              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl liquid-glass text-[11px] font-semibold font-mono border-white/[0.05]">
+                <span className="text-white/40">ROLE:</span>
+                <span className="text-[#FF9F0A] font-bold">{userRole}</span>
               </div>
-              <Button
-                type="button"
-                variant="glass"
-                onClick={() => setIsLogoutModalOpen(true)}
-                className="h-auto rounded-xl px-5 py-2 text-xs font-semibold"
-              >
+              <button onClick={() => setIsLogoutModalOpen(true)} className="btn-glass px-5 py-2 rounded-xl text-xs font-semibold">
                 Sign Out
-              </Button>
+              </button>
             </div>
           </div>
         </header>
@@ -222,106 +174,65 @@ export default function Dashboard() {
           {/* Sleek Minimalist Glass Navigation Bar */}
           <div className="flex flex-col lg:flex-row gap-3 p-2 liquid-glass rounded-[28px]">
             {allowedCategories.map((group) => (
-              <div key={group.category} className="flex-1 flex flex-col xl:flex-row xl:items-center gap-2 p-1.5 bg-surface-raised/50 rounded-2xl border border-border-subtle">
-                <span className="text-[10px] font-semibold text-fg/40 px-3 hidden xl:inline uppercase tracking-widest">{group.category}</span>
+              <div key={group.category} className="flex-1 flex flex-col xl:flex-row xl:items-center gap-2 p-1.5 bg-white/[0.02] rounded-2xl border border-white/[0.03]">
+                <span className="text-[10px] font-semibold text-white/40 px-3 hidden xl:inline uppercase tracking-widest">{group.category}</span>
                 <div className="flex flex-wrap gap-1.5 flex-1">
                   {group.items.map((item) => (
-                    <Button
-                      key={item}
-                      type="button"
-                      variant={activeTab === item ? "default" : "ghost"}
-                      onClick={() => setActiveTab(item)}
-                      className={`flex-1 h-auto rounded-xl px-4 py-2.5 text-[11.5px] tracking-wide ${
-                        activeTab === item
-                          ? "font-bold"
-                          : "text-fg-secondary hover:text-fg hover:bg-surface-raised font-medium"
-                      }`}
-                    >
+                    <button key={item} onClick={() => setActiveTab(item)} className={`flex-1 px-4 py-2.5 text-[11.5px] rounded-xl transition-all tracking-wide ios-spring ${activeTab === item ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)] font-bold" : "text-white/70 hover:text-white hover:bg-white/[0.06] font-medium"}`}>
                       {item}
-                    </Button>
+                    </button>
                   ))}
                 </div>
               </div>
             ))}
           </div>
 
-          <div>
+          <div className="ios-spring">
             {activeTab === "Dashboard" && <TelemetryHUD />}
 
             {activeTab === "Operations" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
               <div className="liquid-glass rounded-[32px] p-6 sm:p-8 min-h-[60vh]">
-                <div className="flex flex-wrap gap-2 border-b border-border pb-6 mb-8">
+                <div className="flex flex-wrap gap-2 border-b border-white/[0.08] pb-6 mb-8">
                   {opTabs.map((sub) => (
-                    <Button
-                      key={sub}
-                      type="button"
-                      variant={opSubTab === sub ? "default" : "ghost"}
-                      onClick={() => setOpSubTab(sub)}
-                      className={`h-auto rounded-xl px-5 py-2.5 text-xs ${
-                        opSubTab === sub
-                          ? "font-bold"
-                          : "text-fg-secondary hover:text-fg hover:bg-surface-raised font-semibold"
-                      }`}
-                    >
+                    <button key={sub} onClick={() => setOpSubTab(sub)} className={`px-5 py-2.5 rounded-xl text-xs transition-all ios-spring ${opSubTab === sub ? "bg-gradient-to-r from-[#FFB340] to-[#FF9F0A] text-black shadow-[0_4px_15px_rgba(255,159,10,0.4)] font-bold" : "text-white/60 hover:text-white hover:bg-white/[0.06] font-semibold"}`}>
                       {sub}
-                    </Button>
+                    </button>
                   ))}
                 </div>
-
+                
                 {opSubTab === "Trips" && <TripForm />}
                 {opSubTab === "POD Closure" && <PodClosure />}
                 {opSubTab === "Modify Trips" && <ModifyTrips />}
                 {opSubTab === "Driver Approvals" && <ApprovalQueue/>}
                 {opSubTab === "Quick Status" && (
-                  <div className="liquid-glass rounded-3xl p-8 max-w-xl border border-border-strong">
-                    <h3 className="text-sm font-semibold text-fg mb-6 tracking-wide border-b border-border pb-4">Manual Status Override</h3>
+                  <div className="liquid-glass rounded-3xl p-8 max-w-xl border border-white/[0.1]">
+                    <h3 className="text-sm font-semibold text-white mb-6 tracking-wide border-b border-white/[0.08] pb-4">Manual Status Override</h3>
                     <form onSubmit={async (e) => {
                       e.preventDefault(); if (!supabase || !qsTruckId) return;
                       const { error } = await supabase.from('vehicles').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('id', qsTruckId);
                       if (error) alert("Error: " + error.message); else { alert("Status updated!"); setQsTruckId(""); setQsRemarks(""); fetchDashboardData(); }
                     }} className="space-y-5">
                       <div>
-                        <label className="block text-[11px] font-semibold text-fg-secondary mb-2 uppercase tracking-wider">Select Truck</label>
-                        <Select
-                          value={qsTruckId}
-                          onChange={(e) => setQsTruckId(e.target.value)}
-                        >
-                          <option value="">Select vehicle...</option>
-                          {liveVehicles.map(v => (
-                            <option key={v.id} value={v.id}>
-                              {v.vehicle_number} ({v.carrying_capacity_tons}MT)
-                            </option>
-                          ))}
-                        </Select>
+                        <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Select Truck</label>
+                        <select value={qsTruckId} onChange={(e) => setQsTruckId(e.target.value)} className="w-full liquid-input">
+                          <option value="" className="bg-[#020203]">Select vehicle...</option>
+                          {liveVehicles.map(v => (<option key={v.id} value={v.id} className="bg-[#020203]">{v.vehicle_number} ({v.carrying_capacity_tons}MT)</option>))}
+                        </select>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-fg-secondary mb-2 uppercase tracking-wider">Status</label>
-                        <Select
-                          value={qsStatus}
-                          onChange={(e) => setQsStatus(e.target.value)}
-                        >
-                          <option value="WAITING_FOR_LOAD">Plant Loading</option>
-                          <option value="IN_TRANSIT">In Transit</option>
-                          <option value="WORKSHOP_MAINTENANCE">Workshop / Repairs</option>
-                          <option value="DRIVER_UNAVAILABLE">No Driver / Leave</option>
-                        </Select>
+                        <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Status</label>
+                        <select value={qsStatus} onChange={(e) => setQsStatus(e.target.value)} className="w-full liquid-input">
+                          <option value="WAITING_FOR_LOAD" className="bg-[#020203]">Plant Loading</option>
+                          <option value="IN_TRANSIT" className="bg-[#020203]">In Transit</option>
+                          <option value="WORKSHOP_MAINTENANCE" className="bg-[#020203]">Workshop / Repairs</option>
+                          <option value="DRIVER_UNAVAILABLE" className="bg-[#020203]">No Driver / Leave</option>
+                        </select>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-fg-secondary mb-2 uppercase tracking-wider">Remarks</label>
-                        <Input
-                          type="text"
-                          value={qsRemarks}
-                          onChange={(e) => setQsRemarks(e.target.value)}
-                          placeholder="Location or repair notes"
-                        />
+                        <label className="block text-[11px] font-semibold text-white/60 mb-2 uppercase tracking-wider">Remarks</label>
+                        <input type="text" value={qsRemarks} onChange={(e) => setQsRemarks(e.target.value)} placeholder="Location or repair notes" className="w-full liquid-input" />
                       </div>
-                      <Button
-                        type="submit"
-                        variant="default"
-                        className="w-full h-auto rounded-2xl py-4 text-[14px] mt-4"
-                      >
-                        Update Fleet Status
-                      </Button>
+                      <button type="submit" className="w-full py-4 btn-orange-glow rounded-2xl text-[14px] mt-4">Update Fleet Status</button>
                     </form>
                   </div>
                 )}
@@ -342,3 +253,48 @@ export default function Dashboard() {
     </div>
   );
 }
+
+============================================================
+FILE: components/ui/button.tsx
+============================================================
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "cn"
+import { Slot } from "radix-ui"
+
+const buttonVariants = cva(
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        outline:
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        ghost:
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        destructive:
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default:
+          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        icon: "size-8",
+        "icon-xs":
+          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm":
+          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+        "icon-lg": "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)

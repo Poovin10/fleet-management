@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { TableToolbar } from "@/components/ui/TableToolbar";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 
 export function AccountsModule() {
  const supabase = createClient();
@@ -117,11 +119,11 @@ export function AccountsModule() {
 
  return (
  <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300">
- <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/[0.08] pb-4">
- <div><h2 className="text-xl font-semibold text-white  tracking-tight">Finance & Accounts</h2><p className="text-xs text-white/60 mt-0.5">Manage cash advances, petty cash, and workshop ledgers.</p></div>
+ <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
+ <div><h2 className="text-xl font-semibold text-fg  tracking-tight">Finance & Accounts</h2><p className="text-xs text-fg/60 mt-0.5">Manage cash advances, petty cash, and workshop ledgers.</p></div>
  <div className="flex flex-wrap gap-2">
  {[{ id: "advances", label: "Driver Advances" }, { id: "petty", label: "Petty Expenses" }, { id: "workshop", label: "Workshop Ledger" }].map((tab) => (
- <button key={tab.id} onClick={() => setActiveSubTab(tab.id as any)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeSubTab === tab.id ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20" : "liquid-glass text-white/60 hover:text-white hover:bg-[#1E222D] border border-white/[0.08]"}`}>{tab.label}</button>
+ <Button key={tab.id} type="button" onClick={() => setActiveSubTab(tab.id as any)} variant={activeSubTab === tab.id ? "default" : "glass"} size="sm">{tab.label}</Button>
  ))}
  </div>
  </div>
@@ -129,33 +131,92 @@ export function AccountsModule() {
  {activeSubTab === "advances" && (
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
  <div className="lg:col-span-4 liquid-glass p-6 shadow-xl h-fit">
- <div className="flex justify-between items-center border-b border-white/[0.08] pb-3 mb-5"><h3 className="text-sm font-semibold text-white  tracking-wide">{editAdvId ? "Edit Advance" : "Issue Advance"}</h3>{editAdvId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg  tracking-normal animate-pulse">Editing</span>}</div>
+ <div className="flex justify-between items-center border-b border-border pb-3 mb-5"><h3 className="text-sm font-semibold text-fg  tracking-wide">{editAdvId ? "Edit Advance" : "Issue Advance"}</h3>{editAdvId && <span className="px-3 py-1 bg-warning-soft text-warning text-[10px] font-bold rounded-lg  tracking-normal animate-pulse">Editing</span>}</div>
  <form onSubmit={handleIssueAdvance} className="space-y-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Advance Date *</label><input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Driver *</label><select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-bold" required><option value="">-- SELECT --</option>{drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Amount () *</label><input type="number" min="1" max="500000" value={advAmount} onChange={e => setAdvAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass outline-none focus:border-[#FF5A00] font-semibold text-emerald-400" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Category</label><select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="GENERAL_ADVANCE">GENERAL ADVANCE</option><option value="BATA_ADVANCE">BATA ADVANCE</option><option value="SALARY_ADVANCE">SALARY ADVANCE</option></select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={advRef} onChange={e => setAdvRef(e.target.value.toUpperCase())} placeholder="OPTIONAL REF" className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold " /></div>
+ <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Advance Date *</label><input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="input-glass text-fg outline-none focus:border-accent font-semibold" required /></div>
+ <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Driver *</label><select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="input-glass text-fg outline-none focus:border-accent font-bold" required><option value="">-- SELECT --</option>{drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}</select></div>
+ <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Amount () *</label><input type="number" min="1" max="500000" value={advAmount} onChange={e => setAdvAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass outline-none focus:border-accent font-semibold text-success" required /></div>
+ <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Category</label><select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="input-glass text-fg outline-none focus:border-accent font-semibold"><option value="GENERAL_ADVANCE">GENERAL ADVANCE</option><option value="BATA_ADVANCE">BATA ADVANCE</option><option value="SALARY_ADVANCE">SALARY ADVANCE</option></select></div>
+ <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Remarks</label><input type="text" maxLength={60} value={advRef} onChange={e => setAdvRef(e.target.value.toUpperCase())} placeholder="OPTIONAL REF" className="input-glass text-fg outline-none focus:border-accent font-semibold " /></div>
  <div className="flex gap-2">
- {editAdvId && <button type="button" onClick={() => {setEditAdvId(null); setAdvAmount(""); setAdvRef("");}} className="flex-1 py-3 input-glass bg-white/[0.02] text-slate-300 font-bold rounded-xl border border-white/[0.08] hover:bg-[#272B36] transition-colors">Cancel</button>}
- <button type="submit" disabled={isProcessing} className="flex-[2] py-3 btn-orange-glow text-xs transition-all shadow-lg">{isProcessing ? "Processing..." : editAdvId ? "Update Advance" : "Log Advance"}</button>
+ {editAdvId && <Button type="button" variant="glass" size="lg" onClick={() => {setEditAdvId(null); setAdvAmount(""); setAdvRef("");}} className="flex-1">Cancel</Button>}
+ <Button type="submit" variant="default" size="lg" disabled={isProcessing} className="flex-[2]">{isProcessing ? "Processing..." : editAdvId ? "Update Advance" : "Log Advance"}</Button>
  </div>
  </form>
  </div>
  <div className="lg:col-span-8 liquid-glass overflow-hidden flex flex-col shadow-xl">
  <TableToolbar title="Advance History" searchQuery={advancesSearch} setSearchQuery={setAdvancesSearch} exportData={exportAdvances} exportFilename="Driver_Advances" />
  <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
- <table className="min-w-full divide-y divide-[#272B36] whitespace-nowrap text-xs">
- <thead className="input-glass bg-white/[0.02] sticky top-0 z-10"><tr className="text-[10px] font-bold text-white/60  tracking-wider"><th className="px-5 py-3.5 text-left">Date</th><th className="px-5 py-3.5 text-left">Driver</th><th className="px-5 py-3.5 text-left">Ref</th><th className="px-5 py-3.5 text-right">Amount ()</th><th className="px-5 py-3.5 text-center">Action</th></tr></thead>
- <tbody className="divide-y divide-[#272B36] liquid-glass">
- {filteredAdvances.map((adv) => (
- <tr key={adv.advance_id} onClick={() => handleEditAdvance(adv)} className={`cursor-pointer transition-colors ${editAdvId === adv.advance_id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
- <td className="px-5 py-3.5 font-semibold text-slate-300">{formatDate(adv.advance_date)}</td><td className="px-5 py-3.5 font-semibold text-white">{adv.drivers?.full_name}</td><td className="px-5 py-3.5 text-slate-300">{adv.advance_type}<br/><span className="text-[9px] text-white/40">{adv.reference_remarks || "-"}</span></td><td className="px-5 py-3.5 text-right font-semibold text-emerald-400">{(adv.amount_inr || 0).toLocaleString("en-IN")}</td><td className="px-5 py-3.5 text-center"><button onClick={(e) => {e.stopPropagation(); handleDeleteAdvance(adv.advance_id);}} className="text-rose-500 hover:text-white bg-rose-950/40 px-3 py-1 rounded text-xs font-bold transition-colors">Del</button></td>
- </tr>
- ))}
- {filteredAdvances.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-white/40 font-medium">No records match.</td></tr>}
- </tbody>
- </table>
+ <Table className="min-w-full whitespace-nowrap text-xs">
+ <TableHeader className="sticky top-0 z-10">
+   <TableRow>
+     <TableHead className="px-5 py-3.5 text-left">Date</TableHead>
+     <TableHead className="px-5 py-3.5 text-left">Driver</TableHead>
+     <TableHead className="px-5 py-3.5 text-left">Ref</TableHead>
+     <TableHead className="px-5 py-3.5 text-right">Amount ()</TableHead>
+     <TableHead className="px-5 py-3.5 text-center">Action</TableHead>
+   </TableRow>
+ </TableHeader>
+
+ <TableBody>
+   {filteredAdvances.map((adv) => (
+     <TableRow
+       key={adv.advance_id}
+       onClick={() => handleEditAdvance(adv)}
+       className={`cursor-pointer border-l-2 ${
+         editAdvId === adv.advance_id
+           ? "border-l-accent bg-accent/10"
+           : "border-l-transparent"
+       }`}
+     >
+       <TableCell className="px-5 py-3.5 font-semibold text-fg-secondary">
+         {formatDate(adv.advance_date)}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 font-semibold text-fg">
+         {adv.drivers?.full_name}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 text-fg-secondary">
+         {adv.advance_type}
+         <br />
+         <span className="text-[9px] text-fg-muted">
+           {adv.reference_remarks || "-"}
+         </span>
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 text-right font-semibold text-success">
+         {(adv.amount_inr || 0).toLocaleString("en-IN")}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 text-center">
+         <Button
+           type="button"
+           variant="destructive"
+           size="xs"
+           onClick={(e) => {
+             e.stopPropagation();
+             handleDeleteAdvance(adv.advance_id);
+           }}
+         >
+           Del
+         </Button>
+       </TableCell>
+     </TableRow>
+   ))}
+
+   {filteredAdvances.length === 0 && (
+     <TableRow>
+       <TableCell
+         colSpan={5}
+         className="p-8 text-center font-medium text-fg-muted"
+       >
+         No records match.
+       </TableCell>
+     </TableRow>
+   )}
+ </TableBody>
+ </Table>
  </div>
  </div>
  </div>
@@ -164,21 +225,66 @@ export function AccountsModule() {
  {activeSubTab === "petty" && (
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
  <div className="lg:col-span-4 liquid-glass p-6 rounded-2xl shadow-xl h-fit">
- <h3 className="text-sm font-semibold text-white  tracking-wide border-b border-white/[0.08] pb-3 mb-5">Record Petty Expense</h3>
+ <h3 className="text-sm font-semibold text-fg  tracking-wide border-b border-border pb-3 mb-5">Record Petty Expense</h3>
  <form onSubmit={handleCreateExpense} className="space-y-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Expense Type</label><select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass"><option value="TOLL_FASTAG">TOLL / FASTAG</option><option value="POLICE_RTO">RTO / PERMITS</option><option value="LOADING">HAMALI / LOADING</option><option value="OFFICE">OFFICE MISC</option></select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck (Optional)</label><select value={expVehicleId} onChange={e => setExpVehicleId(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass"><option value="">-- GENERAL --</option>{trucksList.map(t => <option key={t.id} value={t.id}>{t.vehicle_number}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Amount () *</label><input type="number" min="1" max="100000" value={expAmount} onChange={e => setExpAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-xs p-3 rounded-xl input-glass" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={expDescription} onChange={e => setExpDescription(e.target.value.toUpperCase())} className="w-full text-xs p-3 rounded-xl input-glass" /></div>
- <button type="submit" disabled={isProcessing} className="w-full py-3 btn-orange-glow text-xs  transition-all shadow-lg">{isProcessing ? "Saving..." : "Log Expense"}</button>
+ <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Expense Type</label><select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass"><option value="TOLL_FASTAG">TOLL / FASTAG</option><option value="POLICE_RTO">RTO / PERMITS</option><option value="LOADING">HAMALI / LOADING</option><option value="OFFICE">OFFICE MISC</option></select></div>
+ <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Truck (Optional)</label><select value={expVehicleId} onChange={e => setExpVehicleId(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass"><option value="">-- GENERAL --</option>{trucksList.map(t => <option key={t.id} value={t.id}>{t.vehicle_number}</option>)}</select></div>
+ <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Amount () *</label><input type="number" min="1" max="100000" value={expAmount} onChange={e => setExpAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-xs p-3 rounded-xl input-glass" required /></div>
+ <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Remarks</label><input type="text" maxLength={60} value={expDescription} onChange={e => setExpDescription(e.target.value.toUpperCase())} className="w-full text-xs p-3 rounded-xl input-glass" /></div>
+ <Button type="submit" variant="default" size="lg" disabled={isProcessing} className="w-full">{isProcessing ? "Saving..." : "Log Expense"}</Button>
  </form>
  </div>
  <div className="lg:col-span-8 liquid-glass overflow-hidden flex flex-col shadow-xl">
  <TableToolbar title="Petty Expense Ledger" searchQuery={pettySearch} setSearchQuery={setPettySearch} exportData={exportPetty} exportFilename="Petty_Expenses" />
  <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
- <table className="min-w-full divide-y divide-[#272B36] text-left text-xs whitespace-nowrap"><thead className="input-glass bg-white/[0.02] sticky top-0 text-white/60  font-semibold text-[10px] tracking-wider z-10"><tr><th className="px-5 py-3.5">Date</th><th className="px-5 py-3.5">Category</th><th className="px-5 py-3.5">Truck</th><th className="px-5 py-3.5">Description</th><th className="px-5 py-3.5 text-right">Amount ()</th></tr></thead>
- <tbody className="divide-y divide-[#272B36] liquid-glass">{filteredPetty.map(b => (<tr key={b.bill_id} className="hover:bg-[#1E222D]"><td className="px-5 py-3.5 text-slate-300">{formatDate(b.bill_date)}</td><td className="px-5 py-3.5 text-white font-bold">{b.vendor_name}</td><td className="px-5 py-3.5 font-bold text-white/60">{b.vehicles?.vehicle_number || "-"}</td><td className="px-5 py-3.5 text-white/60">{b.service_description || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00]">{(b.bill_amount || 0).toLocaleString("en-IN")}</td></tr>))}
- {filteredPetty.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-white/40 font-medium">No petty expenses recorded.</td></tr>}</tbody></table>
+ <Table className="min-w-full whitespace-nowrap text-xs">
+ <TableHeader className="sticky top-0 z-10">
+   <TableRow>
+     <TableHead className="px-5 py-3.5 text-left">Date</TableHead>
+     <TableHead className="px-5 py-3.5 text-left">Category</TableHead>
+     <TableHead className="px-5 py-3.5 text-left">Truck</TableHead>
+     <TableHead className="px-5 py-3.5 text-left">Description</TableHead>
+     <TableHead className="px-5 py-3.5 text-right">Amount ()</TableHead>
+   </TableRow>
+ </TableHeader>
+
+ <TableBody>
+   {filteredPetty.map((b) => (
+     <TableRow key={b.bill_id}>
+       <TableCell className="px-5 py-3.5 font-semibold text-fg-secondary">
+         {formatDate(b.bill_date)}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 font-semibold text-fg">
+         {b.vendor_name}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 font-semibold text-fg-secondary">
+         {b.vehicles?.vehicle_number || "-"}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 text-fg-secondary">
+         {b.service_description || "-"}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 text-right font-semibold text-accent">
+         {(b.bill_amount || 0).toLocaleString("en-IN")}
+       </TableCell>
+     </TableRow>
+   ))}
+
+   {filteredPetty.length === 0 && (
+     <TableRow>
+       <TableCell
+         colSpan={5}
+         className="p-8 text-center font-medium text-fg-muted"
+       >
+         No petty expenses recorded.
+       </TableCell>
+     </TableRow>
+   )}
+ </TableBody>
+ </Table>
  </div>
  </div>
  </div>
@@ -188,15 +294,54 @@ export function AccountsModule() {
  <div className="liquid-glass overflow-hidden shadow-xl animate-in fade-in">
  <TableToolbar title="Workshop Ledger" searchQuery={workshopSearch} setSearchQuery={setWorkshopSearch} exportData={exportWorkshop} exportFilename="Workshop_Ledger" />
  <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
- <table className="min-w-full divide-y divide-[#272B36] text-left text-xs whitespace-nowrap">
- <thead className="input-glass bg-white/[0.02] sticky top-0 text-white/60  font-semibold text-[10px] tracking-wider z-10"><tr><th className="px-5 py-3.5">Bill Date</th><th className="px-5 py-3.5">Truck</th><th className="px-5 py-3.5">Vendor</th><th className="px-5 py-3.5">Description</th><th className="px-5 py-3.5 text-right">Amount ()</th></tr></thead>
- <tbody className="divide-y divide-[#272B36] liquid-glass">
- {filteredWorkshop.map((b) => (
- <tr key={b.bill_id} className="hover:bg-[#1E222D]"><td className="px-5 py-3.5 text-slate-300">{formatDate(b.bill_date)}</td><td className="px-5 py-3.5 font-bold text-white">{b.vehicles?.vehicle_number || "-"}</td><td className="px-5 py-3.5 text-slate-300 font-semibold">{b.vendor_name}</td><td className="px-5 py-3.5 text-white/60">{b.service_description || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-rose-400">{(b.bill_amount || 0).toLocaleString("en-IN")}</td></tr>
- ))}
- {filteredWorkshop.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-white/40 font-medium">No workshop bills match your search.</td></tr>}
- </tbody>
- </table>
+ <Table className="min-w-full whitespace-nowrap text-xs">
+ <TableHeader className="sticky top-0 z-10">
+   <TableRow>
+     <TableHead className="px-5 py-3.5 text-left">Bill Date</TableHead>
+     <TableHead className="px-5 py-3.5 text-left">Truck</TableHead>
+     <TableHead className="px-5 py-3.5 text-left">Vendor</TableHead>
+     <TableHead className="px-5 py-3.5 text-left">Description</TableHead>
+     <TableHead className="px-5 py-3.5 text-right">Amount ()</TableHead>
+   </TableRow>
+ </TableHeader>
+
+ <TableBody>
+   {filteredWorkshop.map((b) => (
+     <TableRow key={b.bill_id}>
+       <TableCell className="px-5 py-3.5 font-semibold text-fg-secondary">
+         {formatDate(b.bill_date)}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 font-bold text-fg">
+         {b.vehicles?.vehicle_number || "-"}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 font-semibold text-fg">
+         {b.vendor_name}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 text-fg-secondary">
+         {b.service_description || "-"}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 text-right font-semibold text-danger">
+         {(b.bill_amount || 0).toLocaleString("en-IN")}
+       </TableCell>
+     </TableRow>
+   ))}
+
+   {filteredWorkshop.length === 0 && (
+     <TableRow>
+       <TableCell
+         colSpan={5}
+         className="p-8 text-center font-medium text-fg-muted"
+       >
+         No workshop bills match your search.
+       </TableCell>
+     </TableRow>
+   )}
+ </TableBody>
+ </Table>
  </div>
  </div>
  )}

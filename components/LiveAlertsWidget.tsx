@@ -147,31 +147,31 @@ export function LiveAlertsWidget() {
 
  return (
  <div className="animate-tab-focus liquid-glass shadow-sm overflow-hidden flex flex-col h-[500px]">
- <div className="liquid-glass border-b border-white/[0.08] px-5 py-4 flex justify-between items-center shrink-0">
+ <div className="liquid-glass border-b border-border px-5 py-4 flex justify-between items-center shrink-0">
  <div className="flex items-center gap-2.5">
  <span className="text-base"></span>
  <h3 className="text-white font-semibold  text-xs tracking-wider">Notifications</h3>
- {notifications.length > 0 && <span className="bg-[#FF5A00] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">{notifications.length}</span>}
+ {notifications.length > 0 && <span className="bg-accent text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">{notifications.length}</span>}
  </div>
- <button onClick={() => setIsMuted(!isMuted)} className="text-white/60 hover:text-white transition-colors text-sm" title={isMuted ? "Unmute Alerts" : "Mute Alerts"}>{isMuted ? "" : ""}</button>
+ <button onClick={() => setIsMuted(!isMuted)} className="text-fg-secondary hover:text-fg transition-colors text-sm" title={isMuted ? "Unmute Alerts" : "Mute Alerts"}>{isMuted ? "" : ""}</button>
  </div>
 
- <div className="overflow-y-auto p-4 space-y-2.5 flex-1 bg-[#050507]/40">
+ <div className="overflow-y-auto p-4 space-y-2.5 flex-1 bg-app/40">
  {notifications.length === 0 ? (
- <div className="flex flex-col items-center justify-center h-full text-white/40">
+ <div className="flex flex-col items-center justify-center h-full text-fg-muted">
  <span className="text-2xl mb-2"></span>
  <p className="text-[11px] font-bold  tracking-wider">No new notifications</p>
  </div>
  ) : (
  notifications.map((item) => (
- <div key={item.id} className="input-glass bg-white/[0.02] border border-white/[0.08] rounded-2xl p-3.5 flex items-start gap-3 shadow-sm hover:border-[#FF5A00]/40 transition-all animate-in slide-in-from-right-4 duration-300">
- <div className="w-9 h-9 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] flex items-center justify-center text-base shrink-0">{item.icon}</div>
+ <div key={item.id} className="input-glass bg-surface-raised/50 border border-border rounded-2xl p-3.5 flex items-start gap-3 shadow-sm hover:border-accent/40 transition-all animate-in slide-in-from-right-4 duration-300">
+ <div className="w-9 h-9 rounded-xl input-glass bg-surface-raised/50 border border-border flex items-center justify-center text-base shrink-0">{item.icon}</div>
  <div className="flex-1 min-w-0">
  <div className="flex justify-between items-center mb-1">
- <span className="text-[11px] font-semibold  text-white tracking-tight truncate">{item.title}</span>
- <span className="text-[9px] font-bold text-white/60  tracking-wide whitespace-nowrap ml-2">{timeAgo(item.timestamp)}</span>
+ <span className="text-[11px] font-semibold  text-fg tracking-tight truncate">{item.title}</span>
+ <span className="text-[9px] font-bold text-fg-secondary  tracking-wide whitespace-nowrap ml-2">{timeAgo(item.timestamp)}</span>
  </div>
- <p className="text-xs font-semibold text-slate-300 leading-snug break-words">{item.message}</p>
+ <p className="text-xs font-semibold text-fg-secondary leading-snug break-words">{item.message}</p>
  </div>
  </div>
  ))

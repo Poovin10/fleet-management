@@ -1,0 +1,533 @@
+ <div className="border-b border-white/[0.06] pb-4">
+ <h2 className="text-xl font-semibold text-white  tracking-tight">Driver Accounting & Settlements</h2>
+ <p className="text-xs text-white/60 font-medium mt-0.5">Generate multi-truck ledgers, calculate net balances, and export statements.</p>
+ </div>
+
+ <div className="liquid-glass p-6 sm:p-8 shadow-2xl">
+ <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+ <div className="md:col-span-2">
+ <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Select Driver *</label>
+ <select value={selectedDriverId} onChange={(e) => { setSelectedDriverId(e.target.value); setHasSearched(false); }} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-[#080A10] text-white outline-none focus:border-[#FF5A00] font-bold">
+ <option value="">-- SELECT DRIVER --</option>
+ {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
+ </select>
+ </div>
+ <div>
+ <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">From Date *</label>
+ <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-semibold outline-none" />
+ </div>
+ <div className="flex items-end">
+ <div className="w-full">
+ <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">To Date *</label>
+ <div className="flex gap-2">
+ <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-semibold outline-none" />
+ <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 py-3.5 btn-orange-glow ios-spring">
+ Load
+ </button>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ {hasSearched && (
+ <div className="space-y-8 animate-slide-up">
+ <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+ <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5"><p className="text-[9px] font-semibold text-white/60  tracking-normal">Total Trips</p><p className="text-2xl font-semibold text-white mt-2 font-mono">{driverTrips.length}</p></div>
+ <div className="bg-emerald-950/20 border border-emerald-900/40 rounded-2xl p-5"><p className="text-[9px] font-semibold text-emerald-400  tracking-normal">Gross Bata Earned</p><p className="text-2xl font-semibold text-emerald-300 mt-2 font-mono">{formatAmt(grandTotalBata)}</p></div>
+ <div className="bg-rose-950/20 border border-rose-900/40 rounded-2xl p-5"><p className="text-[9px] font-semibold text-rose-400  tracking-normal">Total Deductions</p><p className="text-2xl font-semibold text-rose-300 mt-2 font-mono">{formatAmt(grandTotalTripAdv + directAdvTotal)}</p></div>
+ <div className="bg-[#FF5A00]/10 border border-[#FF5A00]/30 rounded-2xl p-5 shadow-sm"><p className="text-[9px] font-semibold text-[#FF5A00]  tracking-normal">Net Payable</p><p className="text-2xl sm:text-3xl font-semibold text-[#FF5A00] mt-2 font-mono">{formatAmt(finalBalancePayable)}</p></div>
+ </div>
+
+ <div className="space-y-6">
+ {Object.entries(tripsByTruck).map(([truckNo, tArr]: any) => {
+ let trFreight = 0; let trBata = 0; let trAdv = 0;
+ return (
+ <div key={truckNo} className="border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm bg-white/[0.01]">
+ <div className="bg-white/[0.03] px-6 py-3.5 border-b border-white/[0.06] flex justify-between items-center"><h4 className="text-xs font-semibold text-[#FF5A00]  tracking-wide">TRUCK: {truckNo}</h4></div>
+ <div className="overflow-x-auto w-full max-h-80 overflow-y-auto">
+ <table className="min-w-full divide-y divide-white/[0.06] text-xs whitespace-nowrap">
+ <thead className="bg-[#030407] sticky top-0"><tr className="text-left font-bold text-white/60  tracking-wider text-[9px]"><th className="px-5 py-3 border-b border-white/[0.06]">Date / LR No</th><th className="px-5 py-3 border-b border-white/[0.06]">Route</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Freight ()</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Bata ()</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Trip Adv ()</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Balance ()</th><th className="px-5 py-3 text-center border-b border-white/[0.06]">Status</th></tr></thead>
+ <tbody className="divide-y divide-white/[0.05]">
+ {tArr.map((t: any) => {
+ const tb = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0); const ta = Number(t.cash_advance_issued) || 0;
+ trFreight += Number(t.freight_revenue) || 0; trBata += tb; trAdv += ta;
+ return (
+ <tr key={t.trip_id} className="animate-tab-focus hover:bg-white/[0.02]">
+ <td className="px-5 py-3.5 font-semibold text-white">{formatDate(t.trip_start_date)}<br/><span className="text-white/40 font-semibold text-[9px] font-mono">{t.trip_number || "-"}</span></td>
+ <td className="px-5 py-3.5 text-slate-300 font-bold"><span className="text-xs">{t.origin} {t.destination}</span></td>
+ <td className="px-5 py-3.5 text-right font-semibold text-slate-300 font-mono">{formatAmt(t.freight_revenue)}</td>
+ <td className="px-5 py-3.5 text-right font-semibold text-emerald-400 font-mono">{formatAmt(tb)}</td>
+ <td className="px-5 py-3.5 text-right font-semibold text-rose-400 font-mono">{formatAmt(ta)}</td>
+ <td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00] font-mono">{formatAmt(tb - ta)}</td>
+ <td className="px-5 py-3.5 text-center"><span className={`px-2.5 py-1 rounded-md text-[9px] font-semibold  tracking-wider ${t.settlement_status === 'SETTLED' ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/40' : 'bg-amber-950/40 text-amber-400 border border-amber-900/40'}`}>{t.settlement_status || "PENDING"}</span></td>
+ </tr>
+ );
+ })}
+ <tr className="bg-[#030407]"><td colSpan={2} className="px-5 py-3.5 text-right font-semibold text-white/60  tracking-normal text-[9px]">Truck Subtotal</td><td className="px-5 py-3.5 text-right font-semibold text-white font-mono">{formatAmt(trFreight)}</td><td className="px-5 py-3.5 text-right font-semibold text-emerald-400 font-mono">{formatAmt(trBata)}</td><td className="px-5 py-3.5 text-right font-semibold text-rose-400 font-mono">{formatAmt(trAdv)}</td><td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00] font-mono">{formatAmt(trBata - trAdv)}</td><td className="px-5 py-3.5"></td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ );
+ })}
+
+ {driverAdvances.length > 0 && (
+ <div className="border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm bg-white/[0.01]">
+ <div className="bg-white/[0.03] px-6 py-3.5 border-b border-white/[0.06]"><h4 className="text-xs font-semibold text-rose-400  tracking-wide">Direct Cash Advances</h4></div>
+ <div className="overflow-x-auto w-full max-h-60 overflow-y-auto">
+ <table className="min-w-full divide-y divide-white/[0.06] text-xs whitespace-nowrap">
+ <thead className="bg-[#030407] sticky top-0"><tr className="text-left font-bold text-white/60  tracking-wider text-[9px]"><th className="px-5 py-3 border-b border-white/[0.06]">Date</th><th className="px-5 py-3 border-b border-white/[0.06]">Category</th><th className="px-5 py-3 border-b border-white/[0.06]">Remarks</th><th className="px-5 py-3 text-right border-b border-white/[0.06]">Amount ()</th></tr></thead>
+ <tbody className="divide-y divide-white/[0.05]">
+ {driverAdvances.map(a => (<tr key={a.advance_id} className="hover:bg-white/[0.02]"><td className="px-5 py-3.5 font-semibold text-white">{formatDate(a.advance_date)}</td><td className="px-5 py-3.5 text-slate-300 font-bold">{a.advance_type}</td><td className="px-5 py-3.5 text-white/40">{a.reference_remarks || "-"}</td><td className="px-5 py-3.5 text-right font-semibold text-rose-400 font-mono">{formatAmt(a.amount_inr)}</td></tr>))}
+ <tr className="bg-[#030407]"><td colSpan={3} className="px-5 py-3.5 text-right font-semibold text-white/60  tracking-normal text-[9px]">Advance Subtotal</td><td className="px-5 py-3.5 text-right font-semibold text-rose-400 font-mono">{formatAmt(directAdvTotal)}</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ )}
+ </div>
+
+ <div className="pt-6 border-t border-white/[0.06] flex flex-wrap justify-between items-center gap-4">
+ <button onClick={exportToPDF} disabled={isProcessing} className="px-6 py-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-[#FF5A00] font-semibold text-xs rounded-xl transition-all  tracking-wider cursor-pointer">Export PDF Statement</button>
+ <button onClick={handleMarkSettled} disabled={isProcessing} className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl  tracking-wider transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] cursor-pointer">
+ Mark Period as Settled
+ </button>
+ </div>
+ </div>
+ )}
+ </div>
+ </div>
+ );
+}
+
+============================================================
+FILE: components/SetupModule.tsx
+============================================================
+"use client";
+
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+export function SetupModule() {
+  const supabase = createClient();
+  const [activeSubTab, setActiveSubTab] = useState("Trucks");
+
+  const [trucks, setTrucks] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [destinations, setDestinations] = useState<any[]>([]);
+  const [bataRules, setBataRules] = useState<any[]>([]);
+  const [appUsers, setAppUsers] = useState<any[]>([]);
+
+  // Form states for Trucks
+  const [truckNo, setTruckNo] = useState("");
+  const [truckType, setTruckType] = useState("Bulks");
+  const [capacity, setCapacity] = useState("35");
+  const [editTruckId, setEditTruckId] = useState<string | null>(null);
+
+  // Form states for Drivers
+  const [driverName, setDriverName] = useState("");
+  const [driverPhone, setDriverPhone] = useState("");
+  const [licenseNo, setLicenseNo] = useState("");
+  const [licenseExp, setLicenseExp] = useState("");
+  const [editDriverId, setEditDriverId] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    const [tRes, dRes, destRes, bRes, uRes] = await Promise.all([
+      supabase.from('vehicles').select('*').order('vehicle_number'),
+      supabase.from('drivers').select('*').order('full_name'),
+      supabase.from('destinations_freight_master').select('*').order('destination_name'),
+      supabase.from('driver_bata_master').select('*').order('destination_name'),
+      supabase.from('app_users').select('*').order('username')
+    ]);
+
+    if (tRes.data) setTrucks(tRes.data);
+    if (dRes.data) setDrivers(dRes.data);
+    if (destRes.data) setDestinations(destRes.data);
+    if (bRes.data) setBataRules(bRes.data);
+    if (uRes.data) setAppUsers(uRes.data);
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  
+  const handleSaveTruck = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!truckNo.trim()) return alert("Please enter a truck number.");
+    const payload = {
+      vehicle_number: truckNo.toUpperCase().trim(),
+      truck_type: truckType,
+      carrying_capacity_tons: parseFloat(capacity) || 35.00,
+      is_active: true
+    };
+
+    if (editTruckId) {
+      await supabase.from('vehicles').update(payload).eq('vehicle_id', editTruckId);
+      alert("Truck updated successfully!");
+    } else {
+      await supabase.from('vehicles').insert([{ ...payload, current_status: "WAITING_FOR_LOAD" }]);
+      alert("New truck registered successfully!");
+    }
+    setTruckNo(""); setEditTruckId(null); fetchData();
+  };
+
+  const handleSaveDriver = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!driverName.trim()) return alert("Please enter driver name.");
+
+    let autoGenCode = "DRV-001";
+    if (drivers.length > 0) {
+      const maxId = drivers.reduce((max, d) => {
+        const numMatch = (d.driver_code || "").match(/\d+/);
+        const num = numMatch ? parseInt(numMatch[0]) : 0;
+        return Math.max(max, num);
+      }, 0);
+      autoGenCode = `DRV-${String(maxId + 1).padStart(3, '0')}`;
+    }
+
+    const payload = {
+      full_name: driverName.toUpperCase().trim(),
+      phone_number: driverPhone,
+      license_number: licenseNo,
+      license_expiry_date: licenseExp || null,
+      is_active: true
+    };
+
+    if (editDriverId) {
+      await supabase.from('drivers').update(payload).eq('driver_id', editDriverId);
+      alert("Driver updated successfully!");
+    } else {
+      await supabase.from('drivers').insert([{ ...payload, driver_code: autoGenCode, pin: "1234" }]);
+      alert(`Driver registered successfully with code ${autoGenCode}!`);
+    }
+    setDriverName(""); setDriverPhone(""); setLicenseNo(""); setLicenseExp(""); setEditDriverId(null); fetchData();
+  };
+
+  const subTabs = ["Trucks", "Drivers", "Freight Slabs", "Bata", "User Control"];
+
+  return (
+    <div className="animate-tab-focus space-y-6">
+      <div className="border-b border-white/[0.06] pb-4">
+        <h2 className="text-xl font-semibold text-white tracking-tight">Master Database Configuration</h2>
+        <p className="text-xs text-white/60 font-medium mt-0.5">Manage enterprise assets, active fleet units, driver rosters, and operational rates.</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2.5 border-b border-white/[0.06] pb-4">
+        {subTabs.map((sub) => (
+          <button
+            key={sub}
+            onClick={() => setActiveSubTab(sub)}
+            className={`px-5 py-2 rounded-full text-[11px] font-bold transition-all ios-spring ${activeSubTab === sub ? "btn-orange-glow" : "btn-glass"}`}>
+            {sub}
+          </button>
+        ))}
+      </div>
+
+      {activeSubTab === "Trucks" && (
+        <div className="space-y-6">
+          <div className="liquid-glass p-6 shadow-xl max-w-xl">
+            <h3 className="text-xs font-bold text-white tracking-wider mb-4">{editTruckId ? "Edit Truck Record" : "Add New Fleet Truck"}</h3>
+            <form onSubmit={handleSaveTruck} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Truck No *</label>
+                <input type="text" value={truckNo} onChange={e => setTruckNo(e.target.value)} placeholder="e.g. TN 56 F 0452" className="input-glass" required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Variant</label>
+                  <select value={truckType} onChange={e => setTruckType(e.target.value)} className={`input-glass bg-[#020203]`}>
+                    <option value="Bulks">Bulks</option><option value="16-Wheel Multi-Axle">16-Wheel Multi-Axle</option><option value="14-Wheel Heavy Duty">14-Wheel Heavy Duty</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Capacity (MT)</label>
+                  <select value={capacity} onChange={e => setCapacity(e.target.value)} className={`input-glass bg-[#020203]`}>
+                    <option value="30">30 MT</option><option value="35">35 MT</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" className="w-full py-3 btn-orange-glow text-xs font-bold rounded-full tracking-wide transition-all ios-spring shadow-[0_0_15px_rgba(255,159,10,0.3)] mt-2">
+                {editTruckId ? "Update Truck" : "Save Truck"}
+              </button>
+            </form>
+          </div>
+
+          <div className="liquid-glass p-6 shadow-xl">
+            <h3 className="text-xs font-bold text-white tracking-wider mb-4">Registered Fleet ({trucks.length} Units)</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+                <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Truck No</th><th className="px-4 py-3">Variant</th><th className="px-4 py-3">Capacity</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
+                <tbody className="divide-y divide-white/[0.05]">
+                  {trucks.map(t => (
+                    <tr key={t.vehicle_id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-4 py-3.5 font-bold text-white font-mono">{t.vehicle_number}</td>
+                      <td className="px-4 py-3.5 text-white/70 font-semibold">{t.truck_type}</td>
+                      <td className="px-4 py-3.5 text-white/70 font-mono">{t.carrying_capacity_tons} MT</td>
+                      <td className="px-4 py-3.5"><span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md text-[9px] font-bold font-mono uppercase">{t.current_status || "ACTIVE"}</span></td>
+                      <td className="px-4 py-3.5 text-right">
+                        <button onClick={() => { setTruckNo(t.vehicle_number); setTruckType(t.truck_type); setCapacity(String(t.carrying_capacity_tons)); setEditTruckId(t.vehicle_id); }} className="px-4 py-1.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white rounded-full text-[10px] font-bold transition-all ios-spring">Edit</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === "Drivers" && (
+        <div className="space-y-6">
+          <div className="liquid-glass p-6 shadow-xl max-w-xl">
+            <h3 className="text-xs font-bold text-white tracking-wider mb-4">{editDriverId ? "Edit Driver Record" : "Register New Driver"}</h3>
+            <form onSubmit={handleSaveDriver} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Full Name *</label>
+                <input type="text" value={driverName} onChange={e => setDriverName(e.target.value)} placeholder="e.g. Aneesh CR" className="input-glass" required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Phone Number</label>
+                  <input type="text" value={driverPhone} onChange={e => setDriverPhone(e.target.value)} placeholder="10-digit mobile" className={`input-glass font-mono`} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">License Expiry</label>
+                  <input type="date" value={licenseExp} onChange={e => setLicenseExp(e.target.value)} className={`input-glass font-mono`} />
+                </div>
+              </div>
+              <button type="submit" className="w-full py-3 btn-orange-glow text-xs font-bold rounded-full tracking-wide transition-all ios-spring shadow-[0_0_15px_rgba(255,159,10,0.3)] mt-2">
+                {editDriverId ? "Update Driver" : "Register Driver"}
+              </button>
+            </form>
+          </div>
+
+          <div className="liquid-glass p-6 shadow-xl">
+            <h3 className="text-xs font-bold text-white tracking-wider mb-4">Active Driver Roster ({drivers.length} Drivers)</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+                <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Code</th><th className="px-4 py-3">Full Name</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">License Expiry</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
+                <tbody className="divide-y divide-white/[0.05]">
+                  {drivers.map(d => (
+                    <tr key={d.driver_id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-4 py-3.5 font-bold text-[#FF9F0A] font-mono">{d.driver_code}</td>
+                      <td className="px-4 py-3.5 font-bold text-white">{d.full_name}</td>
+                      <td className="px-4 py-3.5 text-white/70 font-mono">{d.phone_number || "-"}</td>
+                      <td className="px-4 py-3.5 text-white/70 font-mono">{d.license_expiry_date || "-"}</td>
+                      <td className="px-4 py-3.5 text-right">
+                        <button onClick={() => { setDriverName(d.full_name); setDriverPhone(d.phone_number || ""); setLicenseNo(d.license_number || ""); setLicenseExp(d.license_expiry_date || ""); setEditDriverId(d.driver_id); }} className="px-4 py-1.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white rounded-full text-[10px] font-bold transition-all ios-spring">Edit</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === "Freight Slabs" && (
+        <div className="liquid-glass p-6 shadow-xl">
+          <h3 className="text-xs font-bold text-white tracking-wider mb-4">Destinations & Freight Master Slabs ({destinations.length})</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+              <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3">Origin</th><th className="px-4 py-3 text-right">Rate / MT (₹)</th></tr></thead>
+              <tbody className="divide-y divide-white/[0.05]">
+                {destinations.map((d) => (
+                  <tr key={d.destination_id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3.5 font-bold text-white">{d.destination_name}</td>
+                    <td className="px-4 py-3.5 text-white/70">{d.origin || "COCHIN"}</td>
+                    <td className="px-4 py-3.5 text-right font-bold text-emerald-400 font-mono">{(Number(d.freight_rate_per_ton)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === "Bata" && (
+        <div className="liquid-glass p-6 shadow-xl">
+          <h3 className="text-xs font-bold text-white tracking-wider mb-4">Driver Bata Rules ({bataRules.length})</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+              <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3 text-right">Standard Bata (₹)</th></tr></thead>
+              <tbody className="divide-y divide-white/[0.05]">
+                {bataRules.map((b) => (
+                  <tr key={b.bata_rule_id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3.5 font-bold text-white">{b.destination_name || "Unknown"}</td>
+                    <td className="px-4 py-3.5 text-right font-bold text-[#FF9F0A] font-mono">{(Number(b.standard_bata_inr)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === "User Control" && (
+        <div className="liquid-glass p-6 shadow-xl">
+          <h3 className="text-xs font-bold text-white tracking-wider mb-4">App Users & Roles ({appUsers.length})</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+              <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Username / Email</th><th className="px-4 py-3">Role</th></tr></thead>
+              <tbody className="divide-y divide-white/[0.05]">
+                {appUsers.map((u) => (
+                  <tr key={u.user_id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3.5 font-bold text-white font-mono">{u.username || "-"}</td>
+                    <td className="px-4 py-3.5"><span className="px-2.5 py-1 bg-[#FF9F0A]/10 text-[#FF9F0A] border border-[#FF9F0A]/20 rounded-md text-[9px] font-bold font-mono uppercase">{u.role || "USER"}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+============================================================
+FILE: components/ConfirmModal.tsx
+============================================================
+"use client";
+
+export function ConfirmModal({
+  isOpen,
+  title,
+  message,
+  confirmText = "Confirm",
+  isDanger = false,
+  onConfirm,
+  onCancel,
+  isProcessing = false
+}: {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  isDanger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isProcessing?: boolean;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="animate-tab-focus fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+        
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`p-2 rounded-full ${isDanger ? 'bg-rose-100 text-rose-600' : 'bg-orange-100 text-orange-600'}`}>
+              {isDanger ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              )}
+            </div>
+            <h3 className="text-xl font-bold text-fg">{title}</h3>
+          </div>
+          <p className="text-sm text-fg-secondary font-medium leading-relaxed">
+            {message}
+          </p>
+        </div>
+
+        <div className="p-4 bg-app border-t border-border flex justify-end gap-3">
+          <button 
+            onClick={onCancel}
+            disabled={isProcessing}
+            className="px-5 py-2.5 text-sm font-bold text-fg-secondary hover:text-fg hover:bg-surface-raised bg-surface border border-border rounded-xl transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={onConfirm}
+            disabled={isProcessing}
+            className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 min-w-[120px] ${
+              isDanger 
+                ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800" 
+                : "bg-orange-600 hover:bg-orange-700 active:bg-orange-800"
+            } disabled:opacity-70`}
+          >
+            {isProcessing ? (
+               <>
+                 <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                 </svg> 
+                 Processing...
+               </>
+            ) : (
+               confirmText
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+============================================================
+FILE: components/AlertModal.tsx
+============================================================
+// components/AlertModal.tsx
+import React from 'react';
+
+interface AlertModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  type?: 'success' | 'error' | 'info';
+  onClose: () => void;
+}
+
+export function AlertModal({ isOpen, title, message, type = 'info', onClose }: AlertModalProps) {
+  if (!isOpen) return null;
+
+  const isSuccess = type === 'success';
+  const isError = type === 'error';
+
+  return (
+    <div className="animate-tab-focus fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-border">
+        
+        <div className="p-6 sm:p-8 text-center">
+          {/* Dynamic Icon */}
+          <div className={`mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-5 shadow-inner ${
+            isSuccess ? 'bg-emerald-100 text-emerald-600' : 
+            isError ? 'bg-rose-100 text-rose-600' : 
+            'bg-blue-100 text-blue-600'
+          }`}>
+            {isSuccess && (
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+            )}
+            {isError && (
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+            )}
+            {!isSuccess && !isError && (
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            )}
+          </div>
+          
+          <h3 className="text-xl font-bold text-fg mb-2 tracking-tight">{title}</h3>
+          <p className="text-sm font-semibold text-fg-secondary leading-relaxed">{message}</p>
+        </div>
+        
+        <div className="p-4 bg-app border-t border-border">
+          <button
+            onClick={onClose}
+            className={`w-full py-4 text-white font-bold text-sm rounded-2xl transition-all shadow-md active:scale-95 ${
+              isSuccess ? 'bg-emerald-600 hover:bg-emerald-700' : 
+              isError ? 'bg-rose-600 hover:bg-rose-700' : 
+              'bg-[#FF5A00] hover:bg-[#e04f00]'
+            }`}
+          >
+            {isSuccess ? "Awesome, thanks!" : "OK, Got it"}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}

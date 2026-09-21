@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
+import { Button } from "@/components/ui/button";
 import { BackgroundGeolocation } from "@capgo/background-geolocation";
 import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
 
@@ -18,11 +19,11 @@ const TRIP_ACTIONS = [
 
 const KssLogo = ({ className }: { className?: string }) => (
  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
- <rect width="200" height="200" fill="#FF5A00" />
+ <rect width="200" height="200" fill="var(--accent)" />
  <rect x="15" y="15" width="170" height="170" fill="#FFFFFF" />
- <path d="M 50 35 L 50 165" stroke="#FF5A00" strokeWidth="24" strokeLinecap="square" />
- <path d="M 50 110 L 140 35" stroke="#FF5A00" strokeWidth="24" strokeLinecap="square" />
- <path d="M 85 85 C 130 95, 145 130, 145 165" stroke="#FF5A00" strokeWidth="24" fill="none" />
+ <path d="M 50 35 L 50 165" stroke="var(--accent)" strokeWidth="24" strokeLinecap="square" />
+ <path d="M 50 110 L 140 35" stroke="var(--accent)" strokeWidth="24" strokeLinecap="square" />
+ <path d="M 85 85 C 130 95, 145 130, 145 165" stroke="var(--accent)" strokeWidth="24" fill="none" />
  </svg>
 );
 
@@ -342,17 +343,17 @@ export function DriverPortal() {
  setAlertConfig({ isOpen: true, title: "Deleted", message: "Request cancelled.", type: "success" });
  };
 
- const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FF5A00] focus-visible:border-[#FF5A00]";
+ const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:border-accent";
  const labelStyle = "text-xs font-bold text-fg-secondary  tracking-wide leading-none mb-1";
  const numProps = { onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur() };
 
  return (
- <div className="w-full max-w-sm rounded-2xl border border-border bg-surface text-slate-950 shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: 'light' }}>
+ <div className="kss-driver-portal w-full max-w-sm rounded-2xl border border-border bg-surface shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: "light" }}>
 
- <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
+ <div className="bg-[var(--portal-dark)] px-6 py-4 flex items-center justify-between">
  <div className="flex items-center gap-3">
  <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm bg-surface"><KssLogo className="w-full h-full" /></div>
- <div><h1 className="text-sm font-bold text-white tracking-tight leading-none">KSS Roadways</h1><p className="text-[9px] text-[#FF5A00] font-bold  tracking-normal mt-0.5">Driver Portal</p></div>
+ <div><h1 className="text-sm font-bold text-[var(--portal-text-on-dark)] tracking-tight leading-none">KSS Roadways</h1><p className="text-[9px] text-accent font-bold  tracking-normal mt-0.5">Driver Portal</p></div>
  </div>
  </div>
 
@@ -364,23 +365,23 @@ export function DriverPortal() {
  <div className="p-6 pt-0 grid gap-5">
  <div className="grid gap-1.5"><label className={labelStyle}>Driver Name</label><select value={driverCode} onChange={e => handleDriverChange(e.target.value)} className={inputStyle} required><option value="">Select your profile...</option>{drivers.map(d => (<option key={d.driver_id} value={d.driver_code}>{d.full_name} ({d.driver_code})</option>))}</select></div>
  {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
- <div className="flex flex-col items-center justify-center py-2"><button type="button" onClick={handleManualFingerprint} className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95"><div className="absolute inset-0 rounded-full bg-[#FF5A00]/30 animate-ping opacity-75" style={{ animationDuration: '2.5s' }}></div><div className="absolute inset-1.5 rounded-full bg-[#FF5A00]/10 group-hover:bg-[#FF5A00]/20 border border-[#FF5A00]/20 transition-all duration-300 shadow-[0_0_15px_rgba(255,90,0,0.1)]"></div><FingerprintIcon className="w-8 h-8 text-[#FF5A00] relative z-10 drop-shadow-sm group-hover:scale-105 transition-transform" /></button></div>
+ <div className="flex flex-col items-center justify-center py-2"><Button type="button" variant="ghost" onClick={handleManualFingerprint} className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95 p-0"><div className="absolute inset-0 rounded-full bg-accent/30 animate-ping opacity-75" style={{ animationDuration: '2.5s' }}></div><div className="absolute inset-1.5 rounded-full bg-accent/10 group-hover:bg-accent/20 border border-accent/20 transition-all duration-300 shadow-[0_0_15px_var(--accent-glow)]"></div><FingerprintIcon className="w-8 h-8 text-accent relative z-10 drop-shadow-sm group-hover:scale-105 transition-transform" /></Button></div>
  )}
  <div className="grid gap-1.5 relative mt-2"><label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Security PIN"}</label><input type="password" maxLength={4} value={driverPin} onChange={e => setDriverPin(e.target.value)} placeholder="" className={inputStyle} required={isFirstTimeSetup} /></div>
  {isFirstTimeSetup && <div className="grid gap-1.5"><label className={labelStyle}>Confirm 4-Digit PIN</label><input type="password" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value)} placeholder="" className={inputStyle} required /></div>}
- <button type="submit" className="inline-flex items-center justify-center rounded-lg text-sm font-bold bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-10 px-4 py-2 w-full mt-2">{isFirstTimeSetup ? "Save & Lock Device" : "Verify & Login with PIN"}</button>
+ <Button type="submit" variant="default" className="w-full mt-2 h-10 rounded-lg text-sm font-bold bg-[var(--portal-accent)] text-[var(--portal-text-on-dark)] shadow-md hover:bg-[var(--portal-accent-hover)]">{isFirstTimeSetup ? "Save & Lock Device" : "Verify & Login with PIN"}</Button>
  </div>
  </form>
  ) : (
  <div className="flex flex-col pb-4">
  <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-app">
  <div><p className="text-[10px] text-fg-secondary font-bold ">Active Driver</p><span className="text-sm font-bold text-fg">{displayDriverName}</span></div>
- <button type="button" onClick={handleResetDriver} className="text-xs font-bold text-[#FF5A00] hover:text-[#e04f00] underline transition-colors">Switch</button>
+ <Button type="button" variant="ghost" size="xs" onClick={handleResetDriver} className="text-xs font-bold text-[var(--portal-accent)] hover:text-[var(--portal-accent-hover)] underline transition-colors p-0 h-auto">Switch</Button>
  </div>
 
  <div className="flex border-b border-border">
- <button onClick={() => setActiveTab("STATUS")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "STATUS" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>Status</button>
- <button onClick={() => setActiveTab("LEDGER")} className={`flex-1 py-3 text-[13px] font-bold ${activeTab === "LEDGER" ? "border-b-2 border-[#FF5A00] text-[#FF5A00]" : "text-fg-muted hover:text-fg"}`}>Ledger</button>
+ <Button type="button" variant="ghost" onClick={() => setActiveTab("STATUS")} className={`flex-1 rounded-none py-3 h-auto text-[13px] font-bold ${activeTab === "STATUS" ? "border-b-2 border-accent text-accent" : "text-fg-muted hover:text-fg"}`}>Status</Button>
+ <Button type="button" variant="ghost" onClick={() => setActiveTab("LEDGER")} className={`flex-1 rounded-none py-3 h-auto text-[13px] font-bold ${activeTab === "LEDGER" ? "border-b-2 border-accent text-accent" : "text-fg-muted hover:text-fg"}`}>Ledger</Button>
  </div>
 
  {activeTab === "STATUS" && (
@@ -394,14 +395,14 @@ export function DriverPortal() {
  </div>
 
  {currentTrip ? (
- <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-2">
- <div className="flex justify-between items-center"><span className="text-xs font-bold text-orange-900">Active LR: {currentTrip.trip_number}</span><span className="text-[10px] font-bold px-2 py-0.5 bg-orange-200 text-orange-900 rounded-full">{currentTrip.trip_status}</span></div>
+ <div className="p-4 bg-[var(--portal-surface-accent)] border border-[var(--portal-border-accent)] rounded-2xl space-y-2">
+ <div className="flex justify-between items-center"><span className="text-xs font-bold text-[var(--portal-accent-strong)]">Active LR: {currentTrip.trip_number}</span><span className="text-[10px] font-bold px-2 py-0.5 bg-[var(--portal-accent-soft)] text-[var(--portal-accent-strong)] rounded-full">{currentTrip.trip_status}</span></div>
  <p className="text-xs font-bold text-fg">{currentTrip.origin} {currentTrip.destination}</p>
  </div>
  ) : (
- <div className="p-4 bg-slate-100 border border-slate-200 rounded-2xl text-center">
- <p className="text-xs font-bold text-white/40">No active trip dispatched by office.</p>
- <p className="text-[11px] font-bold text-[#FF5A00] mt-1">Hit 'Start Trip' to create a Draft Trip.</p>
+ <div className="p-4 bg-[var(--portal-surface-muted)] border border-[var(--portal-border)] rounded-2xl text-center">
+ <p className="text-xs font-bold text-[var(--portal-text-on-dark)]/40">No active trip dispatched by office.</p>
+ <p className="text-[11px] font-bold text-accent mt-1">Hit 'Start Trip' to create a Draft Trip.</p>
  </div>
  )}
 
@@ -411,12 +412,12 @@ export function DriverPortal() {
  {TRIP_ACTIONS.map((item, idx, arr) => {
  const isStarted = item.id === "START_TRIP" && currentTrip && currentTrip.start_km > 0;
  return (
- <button
+ <Button
  type="button" key={item.id} onClick={() => !isStarted && setActionType(item.id)} disabled={isStarted}
- className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${isStarted ? 'opacity-40 cursor-not-allowed bg-surface text-fg-muted border-border' : actionType === item.id ? 'bg-[#FF5A00] border-[#FF5A00] text-white shadow-md' : 'bg-surface text-fg border-border hover:bg-app'} ${idx === arr.length - 1 ? 'col-span-2' : ''}`}
+ className={`inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all h-10 px-2 text-center border ${isStarted ? 'opacity-40 cursor-not-allowed bg-surface text-fg-muted border-border' : actionType === item.id ? 'bg-accent border-accent text-[var(--portal-text-on-dark)] shadow-md' : 'bg-surface text-fg border-border hover:bg-app'} ${idx === arr.length - 1 ? 'col-span-2' : ''}`}
  >
  {isStarted ? "Started" : item.label}
- </button>
+ </Button>
  );
  })}
  </div>
@@ -428,40 +429,40 @@ export function DriverPortal() {
  )}
  {actionType === "FUEL" && <div className="grid gap-1.5"><label className={labelStyle}>Litres Filled</label><input type="number" step="any" min="0.1" value={fuelLitres} onChange={e => setFuelLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className={inputStyle} required {...numProps}/></div>}
  {actionType === "UNLOADED" && (
- <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl space-y-3">
+ <div className="bg-[var(--portal-surface-accent)] border border-[var(--portal-border-accent)] p-3 rounded-xl space-y-3">
  {isBulk ? (
- <><div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 ">Unloaded Weight (MT)</label><input type="number" step="any" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} {...numProps}/></div>
- <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={noWeighment} onChange={(e) => setNoWeighment(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] focus:ring-[#FF5A00] border-orange-300" /><span className="text-xs font-bold text-orange-800">No weighment facility</span></label></>
- ) : ( <div className="grid gap-1.5"><label className="text-xs font-bold text-orange-900 ">Damaged Bags Count</label><input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required {...numProps}/></div> )}
+ <><div className="grid gap-1.5"><label className="text-xs font-bold text-[var(--portal-accent-strong)] ">Unloaded Weight (MT)</label><input type="number" step="any" min="0" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={noWeighment} placeholder={noWeighment ? "N/A" : "e.g. 30.50"} className={inputStyle} required={!noWeighment} {...numProps}/></div>
+ <label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={noWeighment} onChange={(e) => setNoWeighment(e.target.checked)} className="w-4 h-4 rounded text-accent focus:ring-accent border-border-strong" /><span className="text-xs font-bold text-warning">No weighment facility</span></label></>
+ ) : ( <div className="grid gap-1.5"><label className="text-xs font-bold text-[var(--portal-accent-strong)] ">Damaged Bags Count</label><input type="number" min="0" value={damagedBags} onChange={e => setDamagedBags(e.target.value === "" ? "" : parseInt(e.target.value))} placeholder="0" className={inputStyle} required {...numProps}/></div> )}
  </div>
  )}
  {(actionType === "BREAKDOWN" || actionType === "UNLOADED") && <div className="grid gap-1.5"><label className={labelStyle}>Remarks</label><input type="text" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Optional details..." className={inputStyle} required={actionType === "BREAKDOWN"} /></div>}
- <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-lg text-sm font-bold transition-colors bg-[#FF5A00] text-white shadow-md hover:bg-[#e04f00] h-12 px-4 py-2 w-full mt-2 disabled:opacity-50">
+ <Button type="submit" variant="default" disabled={isSubmitting} className="w-full mt-2 h-12 rounded-lg text-sm font-bold bg-[var(--portal-accent)] text-[var(--portal-text-on-dark)] shadow-md hover:bg-[var(--portal-accent-hover)] disabled:opacity-50">
  {isSubmitting ? "Updating..." : `Confirm Status Update`}
- </button>
+ </Button>
  </div>
  </form>
  )}
 
  {activeTab === "LEDGER" && (
  <div className="p-6 grid gap-6 bg-app min-h-[400px] animate-in fade-in">
- <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-sm space-y-3">
+ <div className="p-4 bg-[var(--portal-dark)] text-[var(--portal-text-on-dark)] rounded-2xl shadow-sm space-y-3">
  <div>
- <p className="text-[10px] font-bold  tracking-normal text-white/60">Current Month Net Balance</p>
- <div className="flex justify-between items-baseline mt-1"><span className={`text-2xl font-bold ${currentMonthNetBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span><span className="text-[10px] text-white/60">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span></div>
+ <p className="text-[10px] font-bold  tracking-normal text-[var(--portal-dark-muted)]">Current Month Net Balance</p>
+ <div className="flex justify-between items-baseline mt-1"><span className={`text-2xl font-bold ${currentMonthNetBalance >= 0 ? 'text-[var(--portal-success)]' : 'text-[var(--portal-danger)]'}`}>{currentMonthNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span><span className="text-[10px] text-[var(--portal-dark-muted)]">{currentMonthNetBalance >= 0 ? 'Net Payable' : 'Deficit'}</span></div>
  </div>
- <div className="pt-3 border-t border-slate-800 grid grid-cols-2 text-[11px] text-slate-300">
- <div>Earned Bata: <strong className="text-white">{monthEarnedBata}</strong></div><div>Halt Bata (Exp): <strong className="text-amber-400">{monthHaltBata}</strong></div>
- <div className="col-span-2 mt-1">Total Deductions (Advances): <strong className="text-rose-400">{totalMonthDeductions}</strong></div>
+ <div className="pt-3 border-t border-[var(--portal-dark-border)] grid grid-cols-2 text-[11px] text-[var(--portal-dark-muted)]">
+ <div>Earned Bata: <strong className="text-[var(--portal-text-on-dark)]">{monthEarnedBata}</strong></div><div>Halt Bata (Exp): <strong className="text-[var(--portal-warning)]">{monthHaltBata}</strong></div>
+ <div className="col-span-2 mt-1">Total Deductions (Advances): <strong className="text-[var(--portal-danger)]">{totalMonthDeductions}</strong></div>
  </div>
 
- <button
+ <Button
  type="button"
  onClick={handleDownloadPortalLedger}
- className="w-full mt-2 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2  tracking-wide"
+ className="w-full mt-2 bg-[var(--portal-accent)] hover:bg-[var(--portal-accent-hover)] text-[var(--portal-text-on-dark)] font-bold text-xs py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2  tracking-wide"
  >
  Download Statement PDF
- </button>
+ </Button>
  </div>
 
  {pendingRequests.length > 0 && (
@@ -472,9 +473,9 @@ export function DriverPortal() {
  <div key={r.entry_id} className="p-3 bg-surface border border-border rounded-xl shadow-sm">
  <div className="flex justify-between items-start mb-1">
  <span className="text-xs font-bold text-fg">{r.entry_type} - {r.entry_type === 'FUEL' ? `${r.litres}L` : r.entry_type === 'START_TRIP' ? `${r.odometer_km} KM` : `${r.amount_inr}`}</span>
- <span className="text-[9px] font-bold  px-2 py-0.5 rounded bg-amber-100 text-amber-800">{r.status}</span>
+ <span className="text-[9px] font-bold  px-2 py-0.5 rounded bg-[var(--portal-accent-soft)] text-[var(--portal-accent-strong)]">{r.status}</span>
  </div>
- <div className="flex justify-end mt-2"><button onClick={() => handleCancelRequest(r.entry_id)} className="px-2.5 py-1 text-[10px] font-bold text-rose-600 bg-surface border border-rose-200 rounded-lg transition-colors">Cancel Request</button></div>
+ <div className="flex justify-end mt-2"><Button type="button" variant="ghost" size="xs" onClick={() => handleCancelRequest(r.entry_id)} className="px-2.5 py-1 h-auto text-[10px] font-bold text-[var(--portal-danger)] bg-[var(--portal-surface)] border border-[var(--portal-border)] rounded-lg transition-colors">Cancel Request</Button></div>
  </div>
  ))}
  </div>
@@ -496,7 +497,7 @@ export function DriverPortal() {
  <span className="text-[10px] font-bold px-2 py-0.5 bg-surface-raised text-fg rounded">{formatDate(t.trip_start_date)}</span>
  </div>
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 text-[11px] text-fg-secondary">
- <div>Bata: <strong className="text-emerald-600">{tripBata}</strong></div><div>Halt: <strong className="text-amber-600">{halt}</strong></div><div>Adv: <strong className="text-rose-600">{adv}</strong></div>
+ <div>Bata: <strong className="text-[var(--portal-success)]">{tripBata}</strong></div><div>Halt: <strong className="text-[var(--portal-warning)]">{halt}</strong></div><div>Adv: <strong className="text-[var(--portal-danger)]">{adv}</strong></div>
  </div>
  </div>
  );

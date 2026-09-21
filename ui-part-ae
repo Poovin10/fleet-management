@@ -1,0 +1,1000 @@
+  const subTabs = ["Trucks", "Drivers", "Freight Slabs", "Bata", "User Control"];
+
+  return (
+    <div className="animate-tab-focus space-y-6">
+      <div className="border-b border-white/[0.06] pb-4">
+        <h2 className="text-xl font-semibold text-white tracking-tight">Master Database Configuration</h2>
+        <p className="text-xs text-white/60 font-medium mt-0.5">Manage enterprise assets, active fleet units, driver rosters, and operational rates.</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2.5 border-b border-white/[0.06] pb-4">
+        {subTabs.map((sub) => (
+          <button
+            key={sub}
+            onClick={() => setActiveSubTab(sub)}
+            className={`px-5 py-2 rounded-full text-[11px] font-bold transition-all ios-spring ${activeSubTab === sub ? "btn-orange-glow" : "btn-glass"}`}>
+            {sub}
+          </button>
+        ))}
+      </div>
+
+      {activeSubTab === "Trucks" && (
+        <div className="space-y-6">
+          <div className="liquid-glass p-6 shadow-xl max-w-xl">
+            <h3 className="text-xs font-bold text-white tracking-wider mb-4">{editTruckId ? "Edit Truck Record" : "Add New Fleet Truck"}</h3>
+            <form onSubmit={handleSaveTruck} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Truck No *</label>
+                <input type="text" value={truckNo} onChange={e => setTruckNo(e.target.value)} placeholder="e.g. TN 56 F 0452" className="input-glass" required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Variant</label>
+                  <select value={truckType} onChange={e => setTruckType(e.target.value)} className={`input-glass bg-[#020203]`}>
+                    <option value="Bulks">Bulks</option><option value="16-Wheel Multi-Axle">16-Wheel Multi-Axle</option><option value="14-Wheel Heavy Duty">14-Wheel Heavy Duty</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Capacity (MT)</label>
+                  <select value={capacity} onChange={e => setCapacity(e.target.value)} className={`input-glass bg-[#020203]`}>
+                    <option value="30">30 MT</option><option value="35">35 MT</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" className="w-full py-3 btn-orange-glow text-xs font-bold rounded-full tracking-wide transition-all ios-spring shadow-[0_0_15px_rgba(255,159,10,0.3)] mt-2">
+                {editTruckId ? "Update Truck" : "Save Truck"}
+              </button>
+            </form>
+          </div>
+
+          <div className="liquid-glass p-6 shadow-xl">
+            <h3 className="text-xs font-bold text-white tracking-wider mb-4">Registered Fleet ({trucks.length} Units)</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+                <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Truck No</th><th className="px-4 py-3">Variant</th><th className="px-4 py-3">Capacity</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
+                <tbody className="divide-y divide-white/[0.05]">
+                  {trucks.map(t => (
+                    <tr key={t.vehicle_id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-4 py-3.5 font-bold text-white font-mono">{t.vehicle_number}</td>
+                      <td className="px-4 py-3.5 text-white/70 font-semibold">{t.truck_type}</td>
+                      <td className="px-4 py-3.5 text-white/70 font-mono">{t.carrying_capacity_tons} MT</td>
+                      <td className="px-4 py-3.5"><span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md text-[9px] font-bold font-mono uppercase">{t.current_status || "ACTIVE"}</span></td>
+                      <td className="px-4 py-3.5 text-right">
+                        <button onClick={() => { setTruckNo(t.vehicle_number); setTruckType(t.truck_type); setCapacity(String(t.carrying_capacity_tons)); setEditTruckId(t.vehicle_id); }} className="px-4 py-1.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white rounded-full text-[10px] font-bold transition-all ios-spring">Edit</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === "Drivers" && (
+        <div className="space-y-6">
+          <div className="liquid-glass p-6 shadow-xl max-w-xl">
+            <h3 className="text-xs font-bold text-white tracking-wider mb-4">{editDriverId ? "Edit Driver Record" : "Register New Driver"}</h3>
+            <form onSubmit={handleSaveDriver} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Full Name *</label>
+                <input type="text" value={driverName} onChange={e => setDriverName(e.target.value)} placeholder="e.g. Aneesh CR" className="input-glass" required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Phone Number</label>
+                  <input type="text" value={driverPhone} onChange={e => setDriverPhone(e.target.value)} placeholder="10-digit mobile" className={`input-glass font-mono`} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">License Expiry</label>
+                  <input type="date" value={licenseExp} onChange={e => setLicenseExp(e.target.value)} className={`input-glass font-mono`} />
+                </div>
+              </div>
+              <button type="submit" className="w-full py-3 btn-orange-glow text-xs font-bold rounded-full tracking-wide transition-all ios-spring shadow-[0_0_15px_rgba(255,159,10,0.3)] mt-2">
+                {editDriverId ? "Update Driver" : "Register Driver"}
+              </button>
+            </form>
+          </div>
+
+          <div className="liquid-glass p-6 shadow-xl">
+            <h3 className="text-xs font-bold text-white tracking-wider mb-4">Active Driver Roster ({drivers.length} Drivers)</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+                <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Code</th><th className="px-4 py-3">Full Name</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">License Expiry</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
+                <tbody className="divide-y divide-white/[0.05]">
+                  {drivers.map(d => (
+                    <tr key={d.driver_id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-4 py-3.5 font-bold text-[#FF9F0A] font-mono">{d.driver_code}</td>
+                      <td className="px-4 py-3.5 font-bold text-white">{d.full_name}</td>
+                      <td className="px-4 py-3.5 text-white/70 font-mono">{d.phone_number || "-"}</td>
+                      <td className="px-4 py-3.5 text-white/70 font-mono">{d.license_expiry_date || "-"}</td>
+                      <td className="px-4 py-3.5 text-right">
+                        <button onClick={() => { setDriverName(d.full_name); setDriverPhone(d.phone_number || ""); setLicenseNo(d.license_number || ""); setLicenseExp(d.license_expiry_date || ""); setEditDriverId(d.driver_id); }} className="px-4 py-1.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white rounded-full text-[10px] font-bold transition-all ios-spring">Edit</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === "Freight Slabs" && (
+        <div className="liquid-glass p-6 shadow-xl">
+          <h3 className="text-xs font-bold text-white tracking-wider mb-4">Destinations & Freight Master Slabs ({destinations.length})</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+              <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3">Origin</th><th className="px-4 py-3 text-right">Rate / MT (₹)</th></tr></thead>
+              <tbody className="divide-y divide-white/[0.05]">
+                {destinations.map((d) => (
+                  <tr key={d.destination_id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3.5 font-bold text-white">{d.destination_name}</td>
+                    <td className="px-4 py-3.5 text-white/70">{d.origin || "COCHIN"}</td>
+                    <td className="px-4 py-3.5 text-right font-bold text-emerald-400 font-mono">{(Number(d.freight_rate_per_ton)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === "Bata" && (
+        <div className="liquid-glass p-6 shadow-xl">
+          <h3 className="text-xs font-bold text-white tracking-wider mb-4">Driver Bata Rules ({bataRules.length})</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+              <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3 text-right">Standard Bata (₹)</th></tr></thead>
+              <tbody className="divide-y divide-white/[0.05]">
+                {bataRules.map((b) => (
+                  <tr key={b.bata_rule_id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3.5 font-bold text-white">{b.destination_name || "Unknown"}</td>
+                    <td className="px-4 py-3.5 text-right font-bold text-[#FF9F0A] font-mono">{(Number(b.standard_bata_inr)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === "User Control" && (
+        <div className="liquid-glass p-6 shadow-xl">
+          <h3 className="text-xs font-bold text-white tracking-wider mb-4">App Users & Roles ({appUsers.length})</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-white/[0.06] text-xs">
+              <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Username / Email</th><th className="px-4 py-3">Role</th></tr></thead>
+              <tbody className="divide-y divide-white/[0.05]">
+                {appUsers.map((u) => (
+                  <tr key={u.user_id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3.5 font-bold text-white font-mono">{u.username || "-"}</td>
+                    <td className="px-4 py-3.5"><span className="px-2.5 py-1 bg-[#FF9F0A]/10 text-[#FF9F0A] border border-[#FF9F0A]/20 rounded-md text-[9px] font-bold font-mono uppercase">{u.role || "USER"}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+============================================================
+FILE: components/TelemetryHUD.tsx
+============================================================
+"use client";
+
+import { useState, useEffect, useTransition } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+export default function TelemetryHUD() {
+ const supabase = createClient();
+ const [isPending, startTransition] = useTransition();
+
+ // Telemetry & Metrics State
+ const [totalTripsCount, setTotalTripsCount] = useState(0);
+ const [pendingPodsCount, setPendingPodsCount] = useState(0);
+ const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
+ const [monthlyRevenue, setMonthlyRevenue] = useState(0);
+ const [monthlyExpenses, setMonthlyExpenses] = useState(0);
+ const [netRetention, setNetRetention] = useState(0);
+
+ // Fleet Units Breakdown State
+ const [vehicles, setVehicles] = useState<any[]>([]);
+ const [statusDistribution, setStatusDistribution] = useState({
+ plantLoading: 0,
+ inTransit: 0,
+ workshop: 0,
+ noDriver: 0,
+ waitingForLoad: 0,
+ });
+
+ // Quick Status Override Modal State
+ const [selectedTruckId, setSelectedTruckId] = useState("");
+ const [overrideStatus, setOverrideStatus] = useState("WAITING_FOR_LOAD");
+ const [overrideRemarks, setOverrideRemarks] = useState("");
+ const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+ // Live Alerts & Feed State
+ const [liveAlerts, setLiveAlerts] = useState<any[]>([]);
+
+ // Formatters
+ const formatINR = (val: number) =>
+ (Number(val) || 0).toLocaleString("en-IN", {
+ minimumFractionDigits: 2,
+ maximumFractionDigits: 2,
+ });
+
+ const fetchDashboardData = async () => {
+ const today = new Date();
+ const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+ .toISOString()
+ .split("T")[0];
+ const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+ .toISOString()
+ .split("T")[0];
+
+ const [
+ trucksRes,
+ allTripsCountRes,
+ pendingPodsRes,
+ pendingQueueRes,
+ tripsFinRes,
+ fuelFinRes,
+ sparesFinRes,
+ driversRes,
+ ] = await Promise.all([
+ supabase.from('vehicles').select("*").order("vehicle_number"),
+ supabase
+ .from("trips")
+ .select("*", { count: "exact", head: true })
+ .gte("trip_start_date", firstDay)
+ .lte("trip_start_date", lastDay),
+ supabase
+ .from("trips")
+ .select("*", { count: "exact", head: true })
+ .neq("trip_status", "COMPLETED"),
+ supabase
+ .from("driver_pending_entries")
+ .select("*", { count: "exact", head: true })
+ .eq("status", "PENDING"),
+ supabase
+ .from("trips")
+ .select("freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance")
+ .gte("trip_start_date", firstDay)
+ .lte("trip_start_date", lastDay),
+ supabase
+ .from("diesel_fuel_logs")
+ .select("total_fuel_cost")
+ .gte("fuel_date", firstDay)
+ .lte("fuel_date", lastDay),
+ supabase
+ .from("workshop_spares_bills")
+ .select("bill_amount")
+ .gte("bill_date", firstDay)
+ .lte("bill_date", lastDay),
+ supabase
+ .from("drivers")
+ .select("driver_code, full_name, license_expiry_date")
+ .eq("is_active", true),
+ ]);
+
+ const trucks = trucksRes.data || [];
+ setVehicles(trucks);
+
+ const dist = {
+ plantLoading: 0,
+ inTransit: 0,
+ workshop: 0,
+ noDriver: 0,
+ waitingForLoad: 0,
+ };
+
+ trucks.forEach((t: any) => {
+ const s = (t.current_status || "WAITING_FOR_LOAD").toUpperCase();
+ if (s.includes("PLANT") || s.includes("LOADING")) dist.plantLoading++;
+ else if (s.includes("TRANSIT")) dist.inTransit++;
+ else if (s.includes("WORKSHOP") || s.includes("REPAIR")) dist.workshop++;
+ else if (s.includes("LEAVE") || s.includes("NO_DRIVER")) dist.noDriver++;
+ else dist.waitingForLoad++;
+ });
+ setStatusDistribution(dist);
+
+ setTotalTripsCount(allTripsCountRes.count || 0);
+ setPendingPodsCount(pendingPodsRes.count || 0);
+ setPendingApprovalsCount(pendingQueueRes.count || 0);
+
+ let grossRev = 0;
+ let otherOpex = 0;
+ (tripsFinRes.data || []).forEach((tr: any) => {
+ grossRev += Number(tr.freight_revenue) || 0;
+ otherOpex +=
+ (Number(tr.driver_bata) || 0) +
+ (Number(tr.halt_bata) || 0) +
+ (Number(tr.enroute_repairs_maintenance) || 0);
+ });
+
+ let dieselCost = 0;
+ (fuelFinRes.data || []).forEach((f: any) => {
+ dieselCost += Number(f.total_fuel_cost) || 0;
+ });
+
+ let workshopCost = 0;
+ (sparesFinRes.data || []).forEach((w: any) => {
+ workshopCost += Number(w.bill_amount) || 0;
+ });
+
+ const totalExp = otherOpex + dieselCost + workshopCost;
+ setMonthlyRevenue(grossRev);
+ setMonthlyExpenses(totalExp);
+ setNetRetention(grossRev - totalExp);
+
+ const alerts: any[] = [];
+ const thirtyDaysAhead = new Date();
+ thirtyDaysAhead.setDate(thirtyDaysAhead.getDate() + 30);
+ 
+ (driversRes.data || []).forEach((d: any) => {
+ if (d.license_expiry_date) {
+ const exp = new Date(d.license_expiry_date);
+ if (exp <= thirtyDaysAhead) {
+ alerts.push({
+ id: `lic-${d.driver_code}`,
+ type: "EXPIRY",
+ title: "License Expiring",
+ desc: `${d.full_name} (${d.driver_code}) - ${d.license_expiry_date}`,
+ severity: "HIGH",
+ });
+ }
+ }
+ });
+
+ if (pendingPodsRes.count && pendingPodsRes.count > 0) {
+ alerts.push({
+ id: "pod-backlog",
+ type: "POD",
+ title: "Unsettled PODs",
+ desc: `${pendingPodsRes.count} Waybills require closure.`,
+ severity: "MEDIUM",
+ });
+ }
+
+ setLiveAlerts(alerts);
+ };
+
+ useEffect(() => {
+ fetchDashboardData();
+ }, [supabase]);
+
+ const handleUpdateStatus = async (e: React.FormEvent) => {
+ e.preventDefault();
+ if (!selectedTruckId) return alert("Select a vehicle to update.");
+ setIsUpdatingStatus(true);
+ const { error } = await supabase
+ .from('vehicles')
+ .update({
+ current_status: overrideStatus,
+ status_remarks: overrideRemarks || null,
+ status_updated_at: new Date().toISOString(),
+ })
+ .eq("id", selectedTruckId);
+
+ setIsUpdatingStatus(false);
+ if (error) alert("Status update failed: " + error.message);
+ else {
+ setOverrideRemarks("");
+ fetchDashboardData();
+ }
+ };
+
+ const currentMonthName = new Date().toLocaleString("default", { month: "long", year: "numeric" });
+ const retentionMargin = monthlyRevenue > 0 ? ((netRetention / monthlyRevenue) * 100).toFixed(1) : "0.0";
+
+ return (
+ <div className="animate-tab-focus space-y-6 text-white/90">
+ 
+ {/* Enterprise Header */}
+ <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-4 border-b border-white/[0.08] gap-4">
+ <div>
+ <h2 className="text-xl font-semibold text-white tracking-tight flex items-center gap-3">
+ Cochin Hub Command Center
+ <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] font-medium tracking-wide border border-emerald-500/20">
+ {vehicles.length} Units Online
+ </span>
+ </h2>
+ <p className="text-sm text-white/40 mt-1">Enterprise Fleet Telemetry & Real-Time Logistics Operations</p>
+ </div>
+ <div className="flex items-center gap-4">
+ <div className="text-right hidden sm:block">
+ <div className="text-[10px] font-medium text-white/40  tracking-normal">Operating Cycle</div>
+ <div className="text-sm font-semibold text-white tracking-wide">{currentMonthName}</div>
+ </div>
+ <button
+ onClick={() => fetchDashboardData()}
+ className="px-4 py-2 bg-[#11141D] hover:bg-[#1A1E2B] border border-white/[0.08] rounded-lg text-xs font-medium text-white transition-colors flex items-center gap-2"
+ >
+ <svg className="w-3.5 h-3.5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+ </svg>
+ Sync
+ </button>
+ </div>
+ </div>
+
+ {/* KPI Grid */}
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+ {/* Total Trips */}
+ <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-5 flex flex-col justify-between h-32 hover:border-white/[0.12] transition-colors">
+ <div className="flex justify-between items-start">
+ <span className="text-xs font-medium text-white/60">Total Completed Trips</span>
+ </div>
+ <div>
+ <div className="text-2xl font-semibold text-white tracking-tight">{totalTripsCount}</div>
+ <div className="text-[11px] text-white/40 mt-0.5">Dispatches logged this cycle</div>
+ </div>
+ </div>
+
+ {/* PODs Pending */}
+ <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-5 flex flex-col justify-between h-32 hover:border-white/[0.12] transition-colors">
+ <div className="flex justify-between items-start">
+ <span className="text-xs font-medium text-white/60">PODs Pending Closure</span>
+ </div>
+ <div>
+ <div className="text-2xl font-semibold text-rose-400 tracking-tight">{pendingPodsCount}</div>
+ <div className="text-[11px] text-white/40 mt-0.5">Awaiting physical sign-off</div>
+ </div>
+ </div>
+
+ {/* Freight Revenue */}
+ <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-5 flex flex-col justify-between h-32 hover:border-white/[0.12] transition-colors">
+ <div className="flex justify-between items-start">
+ <span className="text-xs font-medium text-white/60">Gross Freight Revenue</span>
+ </div>
+ <div>
+ <div className="text-2xl font-semibold text-emerald-400 tracking-tight">{formatINR(monthlyRevenue)}</div>
+ <div className="text-[11px] text-white/40 mt-0.5">Total billed tonnage income</div>
+ </div>
+ </div>
+
+ {/* Net Retention */}
+ <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-5 flex flex-col justify-between h-32 hover:border-white/[0.12] transition-colors">
+ <div className="flex justify-between items-start">
+ <span className="text-xs font-medium text-white/60">Net Operating Margin</span>
+ <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#FF5A00]/10 text-[#FF5A00] border border-[#FF5A00]/20">
+ {retentionMargin}%
+ </span>
+ </div>
+ <div>
+ <div className="text-2xl font-semibold text-[#FF5A00] tracking-tight">{formatINR(netRetention)}</div>
+ <div className="text-[11px] text-white/40 mt-0.5">OPEX: {formatINR(monthlyExpenses)}</div>
+ </div>
+ </div>
+ </div>
+
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+ {/* Fleet Status Distribution */}
+ <div className="lg:col-span-2 space-y-4">
+ <h3 className="text-sm font-medium text-white tracking-tight">Fleet Status Deployment</h3>
+ <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+ <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-4 flex flex-col items-start hover:border-white/[0.12] transition-colors">
+ <span className="w-2 h-2 rounded-full bg-amber-400 mb-2" />
+ <div className="text-xl font-semibold text-white tracking-tight">{statusDistribution.plantLoading}</div>
+ <div className="text-[11px] font-medium text-white/60 mt-1">Plant Loading</div>
+ </div>
+ <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-4 flex flex-col items-start hover:border-white/[0.12] transition-colors">
+ <span className="w-2 h-2 rounded-full bg-sky-400 mb-2" />
+ <div className="text-xl font-semibold text-white tracking-tight">{statusDistribution.inTransit}</div>
+ <div className="text-[11px] font-medium text-white/60 mt-1">In Transit</div>
+ </div>
+ <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-4 flex flex-col items-start hover:border-white/[0.12] transition-colors">
+ <span className="w-2 h-2 rounded-full bg-rose-400 mb-2" />
+ <div className="text-xl font-semibold text-white tracking-tight">{statusDistribution.workshop}</div>
+ <div className="text-[11px] font-medium text-white/60 mt-1">Workshop Repairs</div>
+ </div>
+ <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-4 flex flex-col items-start hover:border-white/[0.12] transition-colors">
+ <span className="w-2 h-2 rounded-full bg-emerald-400 mb-2" />
+ <div className="text-xl font-semibold text-white tracking-tight">{statusDistribution.waitingForLoad}</div>
+ <div className="text-[11px] font-medium text-white/60 mt-1">Ready For Dispatch</div>
+ </div>
+ </div>
+
+ {/* Quick Override Tool */}
+ <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-5 mt-4">
+ <h4 className="text-sm font-medium text-white tracking-tight mb-4">Rapid Status Override</h4>
+ <form onSubmit={handleUpdateStatus} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+ <div className="sm:col-span-1">
+ <label className="block text-[11px] font-medium text-white/60 mb-1.5">Vehicle</label>
+ <select
+ value={selectedTruckId}
+ onChange={(e) => setSelectedTruckId(e.target.value)}
+ className="w-full text-sm p-2.5 rounded-lg border border-white/[0.08] bg-[#11141D] text-white focus:border-white/[0.2] focus:outline-none transition-colors"
+ required
+ >
+ <option value="">Select...</option>
+ {vehicles.map((v) => (
+ <option key={v.id} value={v.id}>{v.vehicle_number}</option>
+ ))}
+ </select>
+ </div>
+ <div className="sm:col-span-1">
+ <label className="block text-[11px] font-medium text-white/60 mb-1.5">Status</label>
+ <select
+ value={overrideStatus}
+ onChange={(e) => setOverrideStatus(e.target.value)}
+ className="w-full text-sm p-2.5 rounded-lg border border-white/[0.08] bg-[#11141D] text-white focus:border-white/[0.2] focus:outline-none transition-colors"
+ >
+ <option value="PLANT_LOADING">Plant Loading</option>
+ <option value="IN_TRANSIT">In Transit</option>
+ <option value="WORKSHOP_MAINTENANCE">Workshop / Repairs</option>
+ <option value="WAITING_FOR_LOAD">Ready For Load</option>
+ </select>
+ </div>
+ <div className="sm:col-span-1">
+ <label className="block text-[11px] font-medium text-white/60 mb-1.5">Remarks</label>
+ <input
+ type="text"
+ value={overrideRemarks}
+ onChange={(e) => setOverrideRemarks(e.target.value)}
+ placeholder="Optional note"
+ className="w-full text-sm p-2.5 rounded-lg border border-white/[0.08] bg-[#11141D] text-white focus:border-white/[0.2] focus:outline-none transition-colors placeholder-slate-600"
+ />
+ </div>
+ <div className="sm:col-span-1 flex items-end">
+ <button
+ type="submit"
+ disabled={isUpdatingStatus}
+ className="w-full py-2.5 bg-white text-black font-medium text-sm rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50"
+ >
+ {isUpdatingStatus ? "Updating..." : "Apply Status"}
+ </button>
+ </div>
+ </form>
+ </div>
+ </div>
+
+ {/* Telemetry Radar */}
+ <div className="space-y-4">
+ <h3 className="text-sm font-medium text-white tracking-tight">Active Alerts</h3>
+ <div className="bg-[#0B0D13] border border-white/[0.06] rounded-xl p-1 max-h-[340px] overflow-y-auto">
+ {liveAlerts.length === 0 ? (
+ <div className="p-6 text-center">
+ <div className="text-[13px] font-medium text-white/60">No active alerts</div>
+ <div className="text-[11px] text-white/40 mt-1">All systems operating normally</div>
+ </div>
+ ) : (
+ <div className="flex flex-col gap-1 p-1">
+ {liveAlerts.map((alert) => (
+ <div key={alert.id} className="p-3 rounded-lg hover:bg-white/[0.02] transition-colors flex items-start gap-3">
+ <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${alert.severity === "HIGH" || alert.severity === "URGENT" ? "bg-rose-400" : "bg-amber-400"}`} />
+ <div>
+ <div className="text-[13px] font-medium text-white">{alert.title}</div>
+ <div className="text-[11px] text-white/40 mt-0.5">{alert.desc}</div>
+ </div>
+ </div>
+ ))}
+ </div>
+ )}
+ </div>
+ </div>
+ </div>
+ </div>
+ );
+}
+
+
+============================================================
+FILE: components/TripForm.tsx
+============================================================
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+export function TripForm() {
+  const supabase = createClient();
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  // Core Data States
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [historicalSources, setHistoricalSources] = useState<string[]>([]);
+  const [historicalDestinations, setHistoricalDestinations] = useState<string[]>([]);
+
+  // Trip Form States
+  const [tripDate, setTripDate] = useState(new Date().toISOString().split("T")[0]);
+  const [lrNumber, setLrNumber] = useState("");
+  const [cargoType, setCargoType] = useState("BULK");
+  const [truckId, setTruckId] = useState("");
+
+  // Driver States
+  const [driverMode, setDriverMode] = useState<"select" | "manual">("select");
+  const [driverId, setDriverId] = useState("");
+  const [newDriverName, setNewDriverName] = useState("");
+  const [newDriverPhone, setNewDriverPhone] = useState("");
+  const [newDriverLicense, setNewDriverLicense] = useState("");
+  const [newDriverExpiry, setNewDriverExpiry] = useState("");
+
+  // Location States
+  const [sourceMode, setSourceMode] = useState<"select" | "manual">("select");
+  const [source, setSource] = useState("");
+  const [destMode, setDestMode] = useState<"select" | "manual">("select");
+  const [destination, setDestination] = useState("");
+
+  // Operational & Financial States
+  const [tonnage, setTonnage] = useState("");
+  const [freightRevenue, setFreightRevenue] = useState("");
+  const [driverBata, setDriverBata] = useState("");
+  const [advance, setAdvance] = useState("");
+  const [dieselIssued, setDieselIssued] = useState("");
+  const [dieselRate, setDieselRate] = useState("");
+  const [tankFull, setTankFull] = useState(false);
+
+  // KM Tracking States
+  const [startKm, setStartKm] = useState("");
+  const [previousKm, setPreviousKm] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function fetchFormContext() {
+      const { data: vData } = await supabase.from("vehicles").select("*").eq("is_active", true);
+      if (vData) setVehicles(vData);
+
+      const { data: dData } = await supabase.from("drivers").select("*").eq("is_active", true);
+      if (dData) setDrivers(dData);
+
+      const { data: tData } = await supabase.from("trips").select("source, destination").order("created_at", { ascending: false }).limit(300);
+      if (tData) {
+        const uniqueS = Array.from(new Set(tData.map(t => t.source).filter(Boolean))) as string[];
+        const uniqueD = Array.from(new Set(tData.map(t => t.destination).filter(Boolean))) as string[];
+        setHistoricalSources(uniqueS.length ? uniqueS : ["Kochi", "Erode", "Chennai"]);
+        setHistoricalDestinations(uniqueD.length ? uniqueD : ["Kochi", "Erode", "Chennai"]);
+      }
+    }
+    fetchFormContext();
+
+    const savedRate = localStorage.getItem("kss_diesel_rate");
+    if (savedRate) setDieselRate(savedRate);
+  }, [supabase]);
+
+  useEffect(() => {
+    async function getPreviousKm() {
+      if (!truckId) {
+        setPreviousKm(null); setStartKm(""); return;
+      }
+      const { data } = await supabase.from("trips")
+        .select("end_km")
+        .eq("vehicle_id", truckId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data && data.end_km) {
+        setPreviousKm(Number(data.end_km));
+        setStartKm(String(data.end_km));
+      } else {
+        setPreviousKm(0);
+      }
+    }
+    getPreviousKm();
+  }, [truckId, supabase]);
+
+  const filteredVehicles = useMemo(() => {
+    return vehicles.filter(v => {
+      const type = (v.truck_type || v.cargo_type || "").toUpperCase();
+      return type.includes(cargoType) || type === "";
+    });
+  }, [vehicles, cargoType]);
+
+  const strictNumberProps = {
+    min: "0",
+    onWheel: (e: any) => e.currentTarget.blur(),
+    onKeyDown: (e: any) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+    }
+  };
+
+  const totalRevenue = Number(freightRevenue || 0);
+  const fuelExpense = Number(dieselIssued || 0) * Number(dieselRate || 0);
+  const totalExpense = Number(driverBata || 0) + Number(advance || 0) + fuelExpense;
+  const netMargin = totalRevenue - totalExpense;
+
+  const handleRateChange = (val: string) => {
+    setDieselRate(val);
+    localStorage.setItem("kss_diesel_rate", val);
+  };
+
+  const handleClear = () => {
+    setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination("");
+    setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance("");
+    setDieselIssued(""); setStartKm(""); setTankFull(false); setSuccess(false);
+    if (driverMode === "manual") {
+      setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
+    }
+  };
+
+  const handleReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true); setSuccess(false);
+
+    if (Number(startKm) < 0 || Number(tonnage) < 0 || Number(freightRevenue) < 0 || Number(driverBata) < 0 || Number(advance) < 0 || Number(dieselIssued) < 0 || Number(dieselRate) < 0) {
+      alert("SECURITY BLOCK: Negative values are strictly prohibited."); setLoading(false); return;
+    }
+    if (previousKm !== null && Number(startKm) <= previousKm) {
+      alert(`SECURITY BLOCK: Starting KM (${startKm}) must be strictly LARGER than the previous recorded end KM (${previousKm}).`); setLoading(false); return;
+    }
+    if (lrNumber) {
+      const { data: existingLR } = await supabase.from("trips").select("lr_number").eq("lr_number", lrNumber).maybeSingle();
+      if (existingLR) {
+        alert(`SECURITY BLOCK: The LR Number "${lrNumber}" already exists.`); setLoading(false); return;
+      }
+    }
+
+    setLoading(false);
+    setShowConfirm(true);
+  };
+
+  const confirmDispatch = async () => {
+    setLoading(true);
+    let finalDriverId = driverId;
+    if (driverMode === "manual") {
+      const { data: newDriver, error: driverErr } = await supabase.from("drivers").insert([{
+        name: newDriverName, phone_number: newDriverPhone, license_number: newDriverLicense, license_expiry: newDriverExpiry, is_active: true
+      }]).select().single();
+
+      if (driverErr) { alert("Failed to register new driver. Error: " + driverErr.message); setLoading(false); setShowConfirm(false); return; }
+      finalDriverId = newDriver.id || newDriver.driver_id;
+    }
+
+    const tripData = {
+      trip_start_date: tripDate, lr_number: lrNumber.toUpperCase(), cargo_type: cargoType, vehicle_id: truckId,
+      primary_driver_id: finalDriverId, source: source, destination: destination, tonnage_loaded: Number(tonnage),
+      freight_revenue: Number(freightRevenue), driver_bata: Number(driverBata), cash_advance_issued: Number(advance),
+      diesel_issued: Number(dieselIssued), start_km: Number(startKm), is_tank_full: tankFull, trip_status: "WAITING_FOR_LOAD"
+    };
+
+    const { error } = await supabase.from("trips").insert([tripData]);
+
+    if (!error) {
+      setSuccess(true);
+      setShowConfirm(false);
+      handleClear();
+    } else {
+      alert("Error dispatching trip: " + error.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-4 relative">
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
+          <div className="liquid-glass p-6 sm:p-8 w-full max-w-md scale-in-center">
+            <h3 className="text-lg font-bold text-white mb-2">Confirm Trip Dispatch</h3>
+            <p className="text-xs text-white/60 mb-6">Verify the calculated operational financials before locking this trip.</p>
+
+            <div className="space-y-3 mb-8 bg-black/30 p-4 rounded-2xl border border-white/[0.05]">
+              <div className="flex justify-between text-xs">
+                <span className="text-white/50 uppercase tracking-wider font-semibold">LR Number:</span>
+                <span className="text-white font-bold">{lrNumber.toUpperCase()}</span>
+              </div>
+              <div className="flex justify-between text-xs pt-2 border-t border-white/[0.05]">
+                <span className="text-white/50 uppercase tracking-wider font-semibold">Total Revenue (Freight):</span>
+                <span className="text-emerald-400 font-bold">₹{totalRevenue.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-white/50 uppercase tracking-wider font-semibold">Total Expenses:</span>
+                <span className="text-rose-400 font-bold">₹{totalExpense.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-white/40 pl-2">
+                <span>(Advance + Bata + Fuel Cost)</span>
+              </div>
+              <div className="flex justify-between text-sm pt-2 border-t border-white/[0.05]">
+                <span className="text-white/70 uppercase tracking-wider font-bold">Expected Margin:</span>
+                <span className="text-white font-bold">₹{netMargin.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowConfirm(false)} className="btn-glass px-6 py-3 rounded-full font-bold text-xs ios-spring">Cancel</button>
+              <button onClick={confirmDispatch} disabled={loading} className="btn-orange-glow px-7 py-3 rounded-full text-xs">
+                {loading ? "Dispatching..." : "Confirm & Dispatch"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-between items-end mb-4">
+        <div>
+          <h2 className="text-sm font-semibold text-white tracking-wide">Dispatch New Trip</h2>
+          <p className="text-[11px] text-white/50 mt-0.5">Unified strict-validation logistics console</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleReview} className="space-y-4">
+
+        {/* ROW 1: Core Identifiers */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+          <div className="md:col-span-3">
+            <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Trip Date</label>
+            <input type="date" value={tripDate} onChange={(e) => setTripDate(e.target.value)} className="input-glass" required />
+          </div>
+          <div className="md:col-span-3">
+            <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">LR Number</label>
+            <input type="text" value={lrNumber} onChange={(e) => setLrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))} placeholder="KSS..." className="input-glass uppercase font-mono" required pattern="[A-Za-z0-9]+" />
+          </div>
+          <div className="md:col-span-3">
+            <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Cargo Type</label>
+            <div className="flex gap-1.5">
+              <button type="button" onClick={() => { setCargoType("BULK"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-full text-[10px] font-bold ios-spring ${cargoType === "BULK" ? "btn-orange-glow" : "btn-glass"}`}>BULK</button>
+              <button type="button" onClick={() => { setCargoType("BAG"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className={`flex-1 py-2 rounded-full text-[10px] font-bold ios-spring ${cargoType === "BAG" ? "btn-orange-glow" : "btn-glass"}`}>BAG</button>
+            </div>
+          </div>
+          <div className="md:col-span-3">
+            <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Assign Truck</label>
+            <select value={truckId} onChange={(e) => setTruckId(e.target.value)} className="input-glass bg-[#020203]" required>
+              <option value="" className="text-white/40">Select...</option>
+              {filteredVehicles.map(v => (
+                <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* ROW 2: Routing & Driver */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 rounded-3xl bg-white/[0.01] border border-white/[0.04]">
+          <div className="md:col-span-4">
+            <div className="flex justify-between items-end mb-1.5">
+              <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Origin</label>
+              <button type="button" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 uppercase tracking-wider ios-spring">
+                {sourceMode === "select" ? "+ New" : "≡ List"}
+              </button>
+            </div>
+            {sourceMode === "select" ? (
+              <select value={source} onChange={(e) => setSource(e.target.value)} className="input-glass bg-[#020203]" required>
+                <option value="">Select...</option>
+                {historicalSources.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            ) : (
+              <input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Type new origin..." className="input-glass" required />
+            )}
+          </div>
+
+          <div className="md:col-span-4">
+            <div className="flex justify-between items-end mb-1.5">
+              <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Destination</label>
+              <button type="button" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 uppercase tracking-wider ios-spring">
+                {destMode === "select" ? "+ New" : "≡ List"}
+              </button>
+            </div>
+            {destMode === "select" ? (
+              <select value={destination} onChange={(e) => setDestination(e.target.value)} className="input-glass bg-[#020203]" required>
+                <option value="">Select...</option>
+                {historicalDestinations.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            ) : (
+              <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Type new destination..." className="input-glass" required />
+            )}
+          </div>
+
+          <div className="md:col-span-4">
+            <div className="flex justify-between items-end mb-1.5">
+              <label className="block text-[10px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Driver</label>
+              <button type="button" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="px-2 py-0.5 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] text-[9px] font-bold hover:bg-[#FF9F0A]/20 uppercase tracking-wider ios-spring">
+                {driverMode === "select" ? "+ New" : "≡ List"}
+              </button>
+            </div>
+            {driverMode === "select" ? (
+              <select value={driverId} onChange={(e) => setDriverId(e.target.value)} className="input-glass bg-[#020203]" required>
+                <option value="">Select driver...</option>
+                {drivers.map(d => (
+                  <option key={d.driver_id || d.id} value={d.driver_id || d.id}>{d.name}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="flex gap-2">
+                <input type="text" placeholder="Name" value={newDriverName} onChange={e => setNewDriverName(e.target.value)} className="input-glass" required />
+                <input type="tel" placeholder="Phone" value={newDriverPhone} onChange={e => setNewDriverPhone(e.target.value)} className="input-glass" required />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ROW 3: Financials & Telemetry */}
+        <div className="grid grid-cols-2 md:grid-cols-12 gap-3">
+          <div className="md:col-span-2">
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Tonnage (MT)</label>
+            <input type="number" {...strictNumberProps} step="0.01" value={tonnage} onChange={(e) => setTonnage(e.target.value)} className="input-glass" placeholder="0.00" required />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Freight (₹)</label>
+            <input type="number" {...strictNumberProps} value={freightRevenue} onChange={(e) => setFreightRevenue(e.target.value)} className="input-glass" placeholder="0.00" required />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Bata (₹)</label>
+            <input type="number" {...strictNumberProps} value={driverBata} onChange={(e) => setDriverBata(e.target.value)} className="input-glass" placeholder="0.00" required />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Advance (₹)</label>
+            <input type="number" {...strictNumberProps} value={advance} onChange={(e) => setAdvance(e.target.value)} className="input-glass" placeholder="0.00" required />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider" title={`Previous: ${previousKm ?? 'N/A'}`}>Start KM</label>
+            <input type="number" {...strictNumberProps} value={startKm} onChange={(e) => setStartKm(e.target.value)} className="input-glass font-mono border-[#FF9F0A]/30" placeholder={previousKm ? String(previousKm) : "0"} required />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-[9px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Diesel</label>
+            <div className="flex gap-1.5">
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className="input-glass font-mono border-[#FF9F0A]/30 w-1/2" placeholder="L" required title="Diesel Issued (Litres)" />
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselRate} onChange={(e) => handleRateChange(e.target.value)} className="input-glass font-mono border-[#FF9F0A]/30 w-1/2" placeholder="₹/L" required title="Diesel Rate (₹/Litre)" />
+            </div>
+            <div className="flex items-center mt-2 gap-2">
+              <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-4 h-4 rounded-full input-glass bg-white/[0.02] border border-[#FF9F0A]/50 text-[#FF9F0A] focus:ring-0 cursor-pointer appearance-none checked:bg-[#FF9F0A] flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
+              <span className="text-[9px] text-[#FF9F0A] uppercase tracking-wider font-bold">Tank Full</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Calculation & Controls Bar */}
+        <div className="p-4 rounded-3xl bg-white/[0.02] border border-white/[0.06] flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
+          <div className="flex items-center gap-6 overflow-x-auto pb-2 md:pb-0">
+            <div>
+              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Total Revenue</p>
+              <p className="text-sm font-bold text-emerald-400">₹{totalRevenue.toLocaleString('en-IN')}</p>
+            </div>
+            <div className="w-px h-8 bg-white/[0.08]"></div>
+            <div>
+              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Total Expenses</p>
+              <p className="text-sm font-bold text-rose-400" title={`Bata (₹${driverBata || 0}) + Advance (₹${advance || 0}) + Fuel (₹${fuelExpense || 0})`}>
+                ₹{totalExpense.toLocaleString('en-IN')}
+              </p>
+            </div>
+            <div className="w-px h-8 bg-white/[0.08]"></div>
+            <div>
+              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Expected Margin</p>
+              <p className="text-sm font-bold text-white">₹{netMargin.toLocaleString('en-IN')}</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 w-full md:w-auto">
+            <button type="button" onClick={handleClear} className="btn-glass px-6 py-3 rounded-full font-bold text-xs hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 ios-spring">
+              Clear
+            </button>
+            <button type="submit" disabled={loading} className="btn-orange-glow px-7 py-3 rounded-full text-xs">
+              Review & Dispatch
+            </button>
+          </div>
+        </div>
+
+        {success && (
+          <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs text-center font-bold">
+            Trip successfully registered and dispatched to live telemetry!
+          </div>
+        )}
+      </form>
+    </div>
+  );
+}
+
+
+============================================================
+FILE: components/UploadHub.tsx
+============================================================
+"use client";
+
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+export function UploadHub() {
+ const supabase = createClient();
+ const [documentType, setDocumentType] = useState("TRIP_INVOICE");
+ const [rawText, setRawText] = useState("");
+ const [parsedResult, setParsedResult] = useState<any>(null);
+ const [isProcessing, setIsProcessing] = useState(false);
+ const [isSaving, setIsSaving] = useState(false);
+
+ const handleParseText = async () => {

@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 // --- CUSTOM SEARCHABLE SELECT COMPONENT ---
 function SearchableSelect({ options, value, onChange, placeholder, disabled }: { options: {label: string, value: string}[], value: string, onChange: (val: string) => void, placeholder: string, disabled?: boolean }) {
@@ -23,22 +25,22 @@ function SearchableSelect({ options, value, onChange, placeholder, disabled }: {
  return (
  <div ref={containerRef} className="relative w-full">
  <div 
- className={`w-full text-sm p-3 rounded-xl border ${isOpen ? 'border-[#FF5A00] ring-1 ring-[#FF5A00]' : 'border-white/[0.08]'} input-glass text-white flex justify-between items-center cursor-pointer font-bold ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+ className={`w-full text-sm p-3 rounded-xl border ${isOpen ? 'border-accent ring-1 ring-accent' : 'border-border'} input-glass text-fg flex justify-between items-center cursor-pointer font-bold ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
  onClick={() => !disabled && setIsOpen(!isOpen)}
  >
  <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
- <span className="text-[10px] text-white/60">▼</span>
+ <span className="text-[10px] text-fg-secondary">▼</span>
  </div>
  {isOpen && (
- <div className="absolute z-50 w-full mt-1 input-glass border border-white/[0.08] rounded-xl shadow-2xl max-h-60 overflow-y-auto">
- <div className="p-2 sticky top-0 input-glass bg-[#080A10]">
- <input 
- type="text" 
- className="w-full text-xs p-2.5 rounded-lg input-glass text-white outline-none focus:border-[#FF5A00]" 
- placeholder="Search LR..." 
- value={search} 
- onChange={(e) => setSearch(e.target.value)} 
- onClick={(e) => e.stopPropagation()} 
+ <div className="absolute z-50 w-full mt-1 input-glass border border-border rounded-xl shadow-2xl max-h-60 overflow-y-auto">
+ <div className="p-2 sticky top-0 input-glass bg-surface-raised">
+ <Input
+ type="text"
+ className="text-xs p-2.5"
+ placeholder="Search LR..."
+ value={search}
+ onChange={(e) => setSearch(e.target.value)}
+ onClick={(e) => e.stopPropagation()}
  autoFocus
  />
  </div>
@@ -46,14 +48,14 @@ function SearchableSelect({ options, value, onChange, placeholder, disabled }: {
  {options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())).map(o => (
  <div 
  key={o.value} 
- className="p-2.5 text-xs font-bold text-slate-300 hover:bg-[#FF5A00]/20 hover:text-white rounded-lg cursor-pointer truncate"
+ className="p-2.5 text-xs font-bold text-fg-secondary hover:bg-accent/20 hover:text-fg rounded-lg cursor-pointer truncate"
  onClick={() => { onChange(o.value); setIsOpen(false); setSearch(""); }}
  >
  {o.label}
  </div>
  ))}
  {options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())).length === 0 && (
- <div className="p-3 text-xs text-white/40 text-center font-bold">No matches found</div>
+ <div className="p-3 text-xs text-fg-muted text-center font-bold">No matches found</div>
  )}
  </div>
  </div>
@@ -275,22 +277,22 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  <div className="lg:col-span-7 liquid-glass p-6 shadow-sm">
  
  {pendingScans.length > 0 && (
- <div className="mb-6 p-4 input-glass border border-white/[0.08] rounded-xl">
- <h4 className="text-xs font-semibold text-emerald-400 tracking-wider flex items-center gap-2 mb-3">
- <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+ <div className="mb-6 p-4 input-glass border border-border rounded-xl">
+ <h4 className="text-xs font-semibold text-success tracking-wider flex items-center gap-2 mb-3">
+ <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span></span>
  Pending POD Entries Inbox ({pendingScans.length})
  </h4>
  <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
  {pendingScans.map(scan => {
  const data = scan.raw_json_result || {};
  return (
- <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500' : 'border-white/[0.08] hover:border-slate-500 input-glass'}`}>
+ <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-success bg-success/10 ring-1 ring-success' : 'border-border hover:border-border-strong input-glass'}`}>
  <div className="flex justify-between items-start gap-4">
  <div>
- <p className="text-[10px] text-white/60 font-bold mb-1">LR: <span className="text-white">{data.lrNo || "UNKNOWN"}</span></p>
- <p className="text-xs font-semibold text-white truncate">Shortage: <span className={data.shortageKg > 0 ? "text-rose-400" : "text-emerald-400"}>{data.shortageKg || 0} kg</span></p>
+ <p className="text-[10px] text-fg-secondary font-bold mb-1">LR: <span className="text-fg">{data.lrNo || "UNKNOWN"}</span></p>
+ <p className="text-xs font-semibold text-fg truncate">Shortage: <span className={data.shortageKg > 0 ? "text-danger" : "text-success"}>{data.shortageKg || 0} kg</span></p>
  </div>
- <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-white/40 hover:text-rose-500 input-glass p-1.5 rounded border border-white/[0.08] transition-colors" title="Delete entry">🗑️</div>
+ <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-fg-muted hover:text-danger input-glass p-1.5 rounded border border-border transition-colors" title="Delete entry">🗑️</div>
  </div>
  </button>
  );
@@ -299,87 +301,92 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  </div>
  )}
 
- <div className="border-b border-white/[0.08] pb-4 mb-6">
- <h3 className="text-base font-semibold text-white tracking-tight">Record POD & Settle Trip</h3>
- <p className="text-xs text-white/60 mt-1">Select an active LR or pick a pending POD entry from the inbox to autofill.</p>
+ <div className="border-b border-border pb-4 mb-6">
+ <h3 className="text-base font-semibold text-fg tracking-tight">Record POD & Settle Trip</h3>
+ <p className="text-xs text-fg-secondary mt-1">Select an active LR or pick a pending POD entry from the inbox to autofill.</p>
  </div>
 
  {activeTrips.length === 0 && !isLoading ? (
- <div className="p-8 text-center bg-emerald-950/20 border border-emerald-900/50 rounded-xl">
- <p className="text-sm font-bold text-emerald-400">All PODs are settled! No active trips pending closure.</p>
+ <div className="p-8 text-center bg-success/10 border border-success/20 rounded-xl">
+ <p className="text-sm font-bold text-success">All PODs are settled! No active trips pending closure.</p>
  </div>
  ) : (
  <form onSubmit={handleSettlePod} className="space-y-5">
  <div>
- <label className="block text-[10px] font-bold text-white/60 mb-1">Search & Select Active LR *</label>
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Search & Select Active LR *</label>
  <SearchableSelect options={lrOptions} value={selectedLr} onChange={setSelectedLr} placeholder="-- SELECT LR TO CLOSE --" disabled={isLoading} />
  </div>
 
  {currentTrip && (
  <>
- <div className="p-4 input-glass border border-white/[0.08] rounded-xl flex flex-wrap gap-4 justify-between text-xs text-slate-300">
- <span><strong className="text-white/40">DRIVER:</strong> <br/><span className="font-bold text-white">{currentTrip.drivers?.full_name || "Unassigned"}</span></span>
- <span><strong className="text-white/40">ROUTE:</strong> <br/><span className="font-bold text-white">{currentTrip.origin} &rarr; {currentTrip.destination}</span></span>
- <span><strong className="text-white/40">DISPATCHED:</strong> <br/><span className="font-semibold text-[#FF9F0A]">{currentTrip.loaded_weight_mt} MT</span></span>
+ <div className="p-4 input-glass border border-border rounded-xl flex flex-wrap gap-4 justify-between text-xs text-fg-secondary">
+ <span><strong className="text-fg-muted">DRIVER:</strong> <br/><span className="font-bold text-fg">{currentTrip.drivers?.full_name || "Unassigned"}</span></span>
+ <span><strong className="text-fg-muted">ROUTE:</strong> <br/><span className="font-bold text-fg">{currentTrip.origin} &rarr; {currentTrip.destination}</span></span>
+ <span><strong className="text-fg-muted">DISPATCHED:</strong> <br/><span className="font-semibold text-accent">{currentTrip.loaded_weight_mt} MT</span></span>
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
  <div>
- <label className="block text-[10px] font-bold text-white/60 mb-1">POD No *</label>
- <input type="text" value={podNo} onChange={(e) => setPodNo(e.target.value)} placeholder="e.g. POD-8821" className="input-glass font-bold" required />
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">POD No *</label>
+ <Input type="text" value={podNo} onChange={(e) => setPodNo(e.target.value)} placeholder="e.g. POD-8821" className="font-bold" required />
  </div>
  <div>
- <label className="block text-[10px] font-bold text-white/60 mb-1">Closing Date *</label>
- <input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="input-glass font-semibold" required />
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Closing Date *</label>
+ <Input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="font-semibold" required />
  </div>
  <div>
- <label className="block text-[10px] font-bold text-white/60 mb-1">Unloaded MT</label>
- <input type="number" {...numProps} value={unloadedMt} onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`input-glass font-semibold ${noSpinClass}`} />
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Unloaded MT</label>
+ <Input type="number" {...numProps} value={unloadedMt} onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`font-semibold ${noSpinClass}`} />
  </div>
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
  <div>
- <label className="block text-[10px] font-bold text-white/60 mb-1">Closing KM *</label>
- <input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder={`Start: ${currentTrip.start_km || 0}`} className={`input-glass text-sky-400 font-bold ${noSpinClass}`} required />
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Closing KM *</label>
+ <Input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder={`Start: ${currentTrip.start_km || 0}`} className={`text-info font-bold ${noSpinClass}`} required />
  </div>
  <div>
- <label className="block text-[10px] font-bold text-white/60 mb-1">Halt Bata (₹)</label>
- <input type="number" {...numProps} value={haltBata} onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`input-glass text-[#FF9F0A] font-semibold ${noSpinClass}`} />
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Halt Bata (₹)</label>
+ <Input type="number" {...numProps} value={haltBata} onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`text-accent font-semibold ${noSpinClass}`} />
  </div>
  <div>
- <label className="block text-[10px] font-bold text-white/60 mb-1">Claims / Repairs (₹)</label>
- <input type="number" {...numProps} value={claims} onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`input-glass text-rose-400 font-semibold ${noSpinClass}`} />
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Claims / Repairs (₹)</label>
+ <Input type="number" {...numProps} value={claims} onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`text-danger font-semibold ${noSpinClass}`} />
  </div>
  </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/[0.08] pt-5 items-center">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-border pt-5 items-center">
  <div>
- <label className="block text-[10px] font-bold text-white/60 mb-1">Closing Diesel Top-up (L)</label>
- <input type="number" {...numProps} value={closingDiesel} onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0 Litres" className={`input-glass text-[#FF9F0A] font-semibold ${noSpinClass}`} />
- <span className="text-[10px] text-white/40 font-bold mt-1 block">Valued at current rate: ₹{dieselRate}/L</span>
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Closing Diesel Top-up (L)</label>
+ <Input type="number" {...numProps} value={closingDiesel} onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0 Litres" className={`text-accent font-semibold ${noSpinClass}`} />
+ <span className="text-[10px] text-fg-muted font-bold mt-1 block">Valued at current rate: ₹{dieselRate}/L</span>
  </div>
  <div className="pt-2">
- <label className="flex items-center gap-3 cursor-pointer select-none input-glass p-3 rounded-xl border border-white/[0.08] w-fit">
- <input type="checkbox" checked={isTankFull} onChange={(e) => setIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-[#FF9F0A] focus:ring-[#FF9F0A] input-glass border-white/[0.08]" />
- <span className="text-xs font-semibold text-white">Mark Tank Full</span>
+ <label className="flex items-center gap-3 cursor-pointer select-none input-glass p-3 rounded-xl border border-border w-fit">
+ <input type="checkbox" checked={isTankFull} onChange={(e) => setIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-accent focus:ring-accent input-glass border-border" />
+ <span className="text-xs font-semibold text-fg">Mark Tank Full</span>
  </label>
  </div>
  </div>
 
  {complianceWarnings.length > 0 && (
- <div className="bg-rose-950/20 border border-rose-900/50 p-4 rounded-xl mt-4 mb-2">
- <h4 className="text-[10px] font-semibold text-rose-500 mb-2 flex items-center gap-2">⚠️ Compliance Warnings (Closing Allowed)</h4>
+ <div className="bg-danger/10 border border-danger/20 p-4 rounded-xl mt-4 mb-2">
+ <h4 className="text-[10px] font-semibold text-danger mb-2 flex items-center gap-2">⚠️ Compliance Warnings (Closing Allowed)</h4>
  {complianceWarnings.map((w, i) => (
- <p key={i} className={`text-xs font-bold ${w.isUrgent ? 'text-rose-500' : 'text-amber-500'}`}>• {w.name} {w.docName} expiring on {w.date}</p>
+ <p key={i} className={`text-xs font-bold ${w.isUrgent ? 'text-danger' : 'text-warning'}`}>• {w.name} {w.docName} expiring on {w.date}</p>
  ))}
  </div>
  )}
 
- <div className="pt-6 border-t border-white/[0.08] flex justify-end">
- <button type="submit" disabled={isSubmitting} className="w-full md:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-emerald-900/20 active:scale-95 disabled:bg-slate-700 disabled:shadow-none">
+ <div className="pt-6 border-t border-border flex justify-end">
+ <Button
+ type="submit"
+ disabled={isSubmitting}
+ variant="secondary"
+ className="w-full md:w-auto px-8 py-3.5 rounded-xl text-sm bg-success hover:bg-success/90 text-fg border-success/40 shadow-none"
+>
  {isSubmitting ? "Settling..." : "✅ Settle & Close POD"}
- </button>
+</Button>
  </div>
  </>
  )}
@@ -389,34 +396,34 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
  {/* RIGHT PANEL: Pending POD List */}
  <div className="lg:col-span-5 liquid-glass overflow-hidden flex flex-col shadow-sm h-fit">
- <div className="px-5 py-4 flex justify-between items-center border-b border-white/[0.08]">
- <h4 className="text-xs font-semibold text-white tracking-wider">Pending POD List ({activeTrips.length})</h4>
- <span className="text-[9px] font-bold px-2.5 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg tracking-normal">Awaiting</span>
+ <div className="px-5 py-4 flex justify-between items-center border-b border-border">
+ <h4 className="text-xs font-semibold text-fg tracking-wider">Pending POD List ({activeTrips.length})</h4>
+ <span className="text-[9px] font-bold px-2.5 py-1 bg-danger/10 text-danger border border-danger/20 rounded-lg tracking-normal">Awaiting</span>
  </div>
  <div className="overflow-x-auto overflow-y-auto max-h-[600px] w-full">
  <table className="w-full text-left border-collapse whitespace-nowrap">
- <thead className="input-glass bg-[#080A10] sticky top-0 z-10">
+ <thead className="input-glass bg-surface-raised sticky top-0 z-10">
  <tr>
- <th className="py-3 px-5 text-[10px] font-bold text-white/40 tracking-wider border-b border-white/[0.08]">LR No</th>
- <th className="py-3 px-5 text-[10px] font-bold text-white/40 tracking-wider border-b border-white/[0.08]">Date</th>
- <th className="py-3 px-5 text-[10px] font-bold text-white/40 tracking-wider border-b border-white/[0.08]">Truck</th>
- <th className="py-3 px-5 text-[10px] font-bold text-white/40 tracking-wider border-b border-white/[0.08] text-right">Aging</th>
+ <th className="py-3 px-5 text-[10px] font-bold text-fg-muted tracking-wider border-b border-border">LR No</th>
+ <th className="py-3 px-5 text-[10px] font-bold text-fg-muted tracking-wider border-b border-border">Date</th>
+ <th className="py-3 px-5 text-[10px] font-bold text-fg-muted tracking-wider border-b border-border">Truck</th>
+ <th className="py-3 px-5 text-[10px] font-bold text-fg-muted tracking-wider border-b border-border text-right">Aging</th>
  </tr>
  </thead>
- <tbody className="divide-y divide-[#222634] input-glass">
+ <tbody className="divide-y divide-border-subtle input-glass">
  {activeTrips.map((t) => {
  const days = getDaysPending(t.trip_start_date);
  const isSelected = selectedLr === t.trip_number;
  return (
- <tr key={t.trip_id} onClick={() => setSelectedLr(t.trip_number)} className={`cursor-pointer transition-all ${isSelected ? 'bg-[#FF9F0A]/10 border-l-2 border-l-[#FF9F0A]' : 'border-l-2 border-l-transparent hover:bg-white/[0.02]'}`}>
- <td className={`py-3.5 px-5 text-xs font-semibold ${isSelected ? 'text-[#FF9F0A]' : 'text-white'}`}>{t.trip_number}</td>
- <td className="py-3.5 px-5 text-xs font-semibold text-white/60">{formatDate(t.trip_start_date)}</td>
- <td className="py-3.5 px-5 text-xs font-bold text-slate-300">{t.vehicles?.vehicle_number || "-"}</td>
- <td className={`py-3.5 px-5 text-xs font-semibold text-right ${days >= 2 ? 'text-rose-400' : 'text-amber-500'}`}>{days}d</td>
+ <tr key={t.trip_id} onClick={() => setSelectedLr(t.trip_number)} className={`cursor-pointer transition-all ${isSelected ? 'bg-accent/10 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent hover:bg-surface-raised/50'}`}>
+ <td className={`py-3.5 px-5 text-xs font-semibold ${isSelected ? 'text-accent' : 'text-fg'}`}>{t.trip_number}</td>
+ <td className="py-3.5 px-5 text-xs font-semibold text-fg-secondary">{formatDate(t.trip_start_date)}</td>
+ <td className="py-3.5 px-5 text-xs font-bold text-fg-secondary">{t.vehicles?.vehicle_number || "-"}</td>
+ <td className={`py-3.5 px-5 text-xs font-semibold text-right ${days >= 2 ? 'text-danger' : 'text-warning'}`}>{days}d</td>
  </tr>
  );
  })}
- {activeTrips.length === 0 && (<tr><td colSpan={4} className="py-8 text-center text-white/40 text-xs font-medium">No pending PODs found.</td></tr>)}
+ {activeTrips.length === 0 && (<tr><td colSpan={4} className="py-8 text-center text-fg-muted text-xs font-medium">No pending PODs found.</td></tr>)}
  </tbody>
  </table>
  </div>

@@ -1,4 +1,6 @@
 import { exportToCSV } from "@/lib/utils/exportManager";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface TableToolbarProps {
   title: string;
@@ -8,26 +10,39 @@ interface TableToolbarProps {
   exportFilename: string;
 }
 
-export function TableToolbar({ title, searchQuery, setSearchQuery, exportData, exportFilename }: TableToolbarProps) {
+export function TableToolbar({
+  title,
+  searchQuery,
+  setSearchQuery,
+  exportData,
+  exportFilename,
+}: TableToolbarProps) {
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-center input-glass bg-white/[0.02] p-4 border-b border-white/[0.08] gap-4">
-      <h3 className="text-sm font-black text-white uppercase tracking-wide">{title}</h3>
-      <div className="flex items-center gap-3 w-full sm:w-auto">
-        <div className="relative w-full sm:w-64">
-          <input 
-            type="text" 
-            placeholder="Search records..." 
+    <div className="flex flex-col items-center justify-between gap-3 border-b border-border bg-white/[0.015] p-4 sm:flex-row">
+      <h3 className="text-sm font-semibold tracking-wide text-fg">
+        {title}
+      </h3>
+
+      <div className="flex w-full items-center gap-2 sm:w-auto">
+        <div className="w-full sm:w-64">
+          <Input
+            type="text"
+            placeholder="Search records..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs p-2.5 pl-3 rounded-lg input-glass bg-white/[0.02] border border-white/[0.08] text-white focus:border-[#FF5A00] outline-none transition-all"
+            className="h-9 text-xs"
           />
         </div>
-        <button 
+
+        <Button
+          type="button"
+          variant="glass"
+          size="sm"
           onClick={() => exportToCSV(exportData, exportFilename)}
-          className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-all border border-slate-600 flex-shrink-0"
+          className="shrink-0"
         >
           Export CSV
-        </button>
+        </Button>
       </div>
     </div>
   );

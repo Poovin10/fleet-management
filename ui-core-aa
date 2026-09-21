@@ -1,0 +1,300 @@
+
+============================================================
+FILE: app/globals.css
+============================================================
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* 1. Liquid Glass Base (For layout cards, tables, panels) */
+  .liquid-glass {
+    @apply bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.04] rounded-[32px] shadow-xl;
+  }
+
+  /* 2. Unified Form Inputs (For text fields, dropdowns, dates) */
+  .input-glass {
+    @apply w-full bg-white/[0.02] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-[#FF9F0A]/50 focus:bg-white/[0.05] transition-all outline-none font-medium;
+  }
+
+  /* 3. Primary Action Buttons (The glowing orange signature button) */
+  .btn-orange-glow {
+    @apply bg-[#FF9F0A] text-black font-bold tracking-wide transition-all shadow-[0_0_15px_rgba(255,159,10,0.3)] hover:shadow-[0_0_25px_rgba(255,159,10,0.5)] hover:scale-[1.02] active:scale-95;
+  }
+
+  /* 4. Secondary Action Buttons (For cancel/clear actions) */
+  .btn-glass {
+    @apply bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white transition-all active:scale-95;
+  }
+
+  /* 5. Fluid Animations (Universal smooth transitions) */
+  .ios-spring {
+    @apply transition-all duration-300 ease-out;
+  }
+}
+
+============================================================
+FILE: app/layout.tsx
+============================================================
+import LiquidGlassProvider from "@/components/LiquidGlassProvider";
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "KSS Roadways ERP",
+  description: "KSS Roadways Fleet Management Portal",
+  themeColor: "#050507",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "KSS Roadways",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className="antialiased">
+        <LiquidGlassProvider>
+        {children}
+        
+        {/* PWA Service Worker Registration Script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                  }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
+              </LiquidGlassProvider>
+      </body>
+    </html>
+  );
+}
+
+============================================================
+FILE: app/page.tsx
+============================================================
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import Dashboard from "@/components/dashboard";
+
+async function DashboardWrapper() {
+  const supabase = await createClient();
+  
+  // The server securely checks the cookie before loading the dashboard
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/login");
+  }
+
+  return <Dashboard />;
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#050507]" />}>
+      <DashboardWrapper />
+    </Suspense>
+  );
+}
+
+============================================================
+FILE: app/protected/layout.tsx
+============================================================
+import { DeployButton } from "@/components/deploy-button";
+import { EnvVarWarning } from "@/components/env-var-warning";
+import { AuthButton } from "@/components/auth-button";
+import { ThemeSwitcher } from "@/components/theme-switcher";
+import { hasEnvVars } from "@/lib/utils";
+import Link from "next/link";
+import { Suspense } from "react";
+
+export default function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <main className="min-h-screen flex flex-col items-center">
+      <div className="flex-1 w-full flex flex-col gap-20 items-center">
+        <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
+          <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
+            <div className="flex gap-5 items-center font-semibold">
+              <Link href={"/"}>Next.js Supabase Starter</Link>
+              <div className="flex items-center gap-2">
+                <DeployButton />
+              </div>
+            </div>
+            {!hasEnvVars ? (
+              <EnvVarWarning />
+            ) : (
+              <Suspense>
+                <AuthButton />
+              </Suspense>
+            )}
+          </div>
+        </nav>
+        <div className="flex-1 flex flex-col gap-20 max-w-5xl p-5">
+          {children}
+        </div>
+
+        <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
+          <p>
+            Powered by{" "}
+            <a
+              href="https://supabase.com/?utm_source=create-next-app&utm_medium=template&utm_term=nextjs"
+              target="_blank"
+              className="font-bold hover:underline"
+              rel="noreferrer"
+            >
+              Supabase
+            </a>
+          </p>
+          <ThemeSwitcher />
+        </footer>
+      </div>
+    </main>
+  );
+}
+
+============================================================
+FILE: app/protected/page.tsx
+============================================================
+import { redirect } from "next/navigation";
+
+export default function ProtectedPage() {
+  // Boilerplate tutorial page removed. Redirecting to the main ERP dashboard.
+  redirect("/");
+}
+
+============================================================
+FILE: components/LiquidGlassProvider.tsx
+============================================================
+"use client";
+
+import { useEffect, useState } from "react";
+
+export default function LiquidGlassProvider({ children }: { children: React.ReactNode }) {
+  const [alerts, setAlerts] = useState<{ id: number; message: string; type: string }[]>([]);
+
+  useEffect(() => {
+    // Intercept standard browser alerts globally
+    const originalAlert = window.alert;
+    window.alert = (message: string) => {
+      const type = message.toLowerCase().includes("fail") || message.toLowerCase().includes("error") 
+        ? "error" 
+        : message.toLowerCase().includes("success") 
+        ? "success" 
+        : "info";
+      
+      const id = Date.now();
+      setAlerts((prev) => [...prev, { id, message, type }]);
+      setTimeout(() => {
+        setAlerts((prev) => prev.filter((a) => a.id !== id));
+      }, 4000);
+    };
+
+    return () => {
+      window.alert = originalAlert;
+    };
+  }, []);
+
+  return (
+    <>
+      {children}
+      {/* iOS Liquidglass Toast Container */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-3 pointer-events-none w-full max-w-sm px-4">
+        {alerts.map((alert) => (
+          <div
+            key={alert.id}
+            className="animate-tab-focus flex items-center gap-3 p-4 rounded-2xl bg-[#1C1C1E]/70 backdrop-blur-3xl saturate-200 border border-white/[0.12] shadow-[0_16px_32px_rgba(0,0,0,0.4)] pointer-events-auto"
+          >
+            {alert.type === "success" && (
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
+            {alert.type === "error" && (
+              <div className="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center shrink-0 border border-rose-500/30">
+                <svg className="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            )}
+            {alert.type === "info" && (
+              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 border border-blue-500/30">
+                <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            )}
+            <p className="text-sm font-medium text-white/90 tracking-tight leading-snug">
+              {alert.message}
+            </p>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+============================================================
+FILE: components/dashboard.tsx
+============================================================
+"use client";
+
+import TelemetryHUD from "./TelemetryHUD";
+import { useState, useEffect } from "react";
+import { LogoutButton } from "@/components/LogoutButton";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+import { TripForm } from "@/components/TripForm";
+import { PodClosure } from "@/components/PodClosure";
+import { ModifyTrips } from "@/components/ModifyTrips";
+import { AccountsModule } from "@/components/AccountsModule";
+import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
+import { FinancialsModule } from "@/components/FinancialsModule";
+import { ProfitLossModule } from "@/components/ProfitLossModule";
+import { WorkshopModule } from "@/components/WorkshopModule";
+import { SetupModule } from "@/components/SetupModule";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { ApprovalQueue } from "@/components/ApprovalQueue";
+import { DriverPortal } from "@/components/DriverPortal";
+import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
+import { AiInsightsDashboard } from "@/components/AiInsightsDashboard";
+import { DriverSettlementModule } from "@/components/DriverSettlementModule";
+
+const KssLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <rect width="200" height="200" fill="#FF9F0A" />
+    <rect x="15" y="15" width="170" height="170" fill="#020203" />
+    <path d="M 50 35 L 50 165" stroke="#FF9F0A" strokeWidth="24" strokeLinecap="square" />
+    <path d="M 50 110 L 140 35" stroke="#FF9F0A" strokeWidth="24" strokeLinecap="square" />
+    <path d="M 85 85 C 130 95, 145 130, 145 165" stroke="#FF9F0A" strokeWidth="24" fill="none" />
+  </svg>
+);
+
+export default function Dashboard() {
+  const router = useRouter();
+  const [supabase, setSupabase] = useState<any>(null);
+
+  useEffect(() => { try { setSupabase(createClient()); } catch (err) { console.error(err); } }, []);
+

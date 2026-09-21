@@ -2,29 +2,271 @@
 @tailwind components;
 @tailwind utilities;
 
+
+/* ============================================================
+   KSS DRIVER PORTAL — LIGHT THEME TOKENS
+   Scoped so the main ERP dark theme is unaffected.
+   ============================================================ */
+
+.kss-driver-portal {
+  --portal-bg: #f8fafc;
+  --portal-surface: #ffffff;
+  --portal-surface-muted: #f1f5f9;
+  --portal-surface-accent: #fff7ed;
+
+  --portal-text: #0f172a;
+  --portal-text-secondary: #475569;
+  --portal-text-muted: #64748b;
+  --portal-text-on-dark: #ffffff;
+
+  --portal-border: #e2e8f0;
+  --portal-border-accent: #fed7aa;
+
+  --portal-accent: var(--accent);
+  --portal-accent-hover: var(--accent-hover);
+  --portal-accent-soft: #ffedd5;
+  --portal-accent-strong: #c2410c;
+
+  --portal-success: #059669;
+  --portal-warning: #d97706;
+  --portal-danger: #e11d48;
+  --portal-info: #2563eb;
+
+  --portal-dark: #0f172a;
+  --portal-dark-border: #1e293b;
+  --portal-dark-muted: #cbd5e1;
+}
+
+.kss-driver-portal {
+  background: var(--portal-bg);
+  color: var(--portal-text);
+}
+
+/* ============================================================
+   KSS ROADWAYS — CENTRAL DESIGN SYSTEM
+   Liquid Glass / High Contrast Orange
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* ---------- Core surfaces ---------- */
+    --bg-app: #050507;
+    --bg-surface: #0b0d13;
+    --bg-surface-raised: #11141d;
+    --bg-surface-elevated: #171b25;
+
+    /* ---------- Text ---------- */
+    --text-primary: #f8fafc;
+    --text-secondary: #a7afbf;
+    --text-muted: #6f7888;
+
+    /* ---------- KSS Orange ---------- */
+    --accent: #ff9f0a;
+    --accent-hover: #ffb340;
+    --accent-fg: #050507;
+    --accent-soft: rgba(255, 159, 10, 0.12);
+    --accent-border: rgba(255, 159, 10, 0.30);
+    --accent-glow: rgba(255, 159, 10, 0.30);
+
+    /* ---------- Semantic states ---------- */
+    --success: #34d399;
+    --success-soft: rgba(52, 211, 153, 0.12);
+
+    --danger: #fb7185;
+    --danger-soft: rgba(251, 113, 133, 0.12);
+
+    --warning: #fbbf24;
+    --warning-soft: rgba(251, 191, 36, 0.12);
+
+    --info: #60a5fa;
+    --info-soft: rgba(96, 165, 250, 0.12);
+
+    /* ---------- Borders ---------- */
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.12);
+    --border-subtle: rgba(255, 255, 255, 0.04);
+
+    /* ---------- Glass ---------- */
+    --glass-bg: rgba(11, 13, 19, 0.78);
+    --glass-bg-hover: rgba(255, 255, 255, 0.055);
+    --glass-border: rgba(255, 255, 255, 0.07);
+    --glass-highlight: rgba(255, 255, 255, 0.045);
+    --glass-blur: 24px;
+
+  /* Input tokens */
+  --input-bg: rgba(255, 255, 255, 0.025);
+  --input-bg-focus: rgba(255, 255, 255, 0.045);
+  --input-border-hover: rgba(255, 255, 255, 0.16);
+
+    /* ---------- Radius ---------- */
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 28px;
+    --radius-2xl: 32px;
+
+    /* ---------- Shadows ---------- */
+    --shadow-card:
+      0 10px 30px rgba(0, 0, 0, 0.22);
+
+    --shadow-raised:
+      0 18px 50px rgba(0, 0, 0, 0.32);
+
+    --shadow-glass:
+      0 18px 50px rgba(0, 0, 0, 0.28);
+
+    --shadow-orange:
+      0 0 18px rgba(255, 159, 10, 0.28);
+
+    --shadow-orange-hover:
+      0 0 30px rgba(255, 159, 10, 0.45);
+
+    /* ---------- Motion ---------- */
+    --duration-fast: 120ms;
+    --duration-base: 180ms;
+    --duration-normal: 260ms;
+    --duration-slow: 400ms;
+
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+
+    /* ---------- Typography ---------- */
+    --font-size-label: 0.6875rem;
+    --font-size-caption: 0.75rem;
+    --font-size-body: 0.875rem;
+    --font-size-title: 1.125rem;
+    --font-size-heading: 1.5rem;
+  }
+
+  html {
+    background: var(--bg-app);
+    color: var(--text-primary);
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg-app);
+    color: var(--text-primary);
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================================
+   KSS COMPONENT PRIMITIVES
+   ============================================================ */
+
 @layer components {
-  /* 1. Liquid Glass Base (For layout cards, tables, panels) */
+
+  /* ---------- Liquid Glass ---------- */
+
   .liquid-glass {
-    @apply bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.04] rounded-[32px] shadow-xl;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-glass);
   }
 
-  /* 2. Unified Form Inputs (For text fields, dropdowns, dates) */
+  .liquid-glass-soft {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border-radius: var(--radius-xl);
+  }
+
+  .liquid-glass-hover {
+    transition:
+      background var(--duration-normal) var(--ease-standard),
+      border-color var(--duration-normal) var(--ease-standard),
+      transform var(--duration-normal) var(--ease-spring),
+      box-shadow var(--duration-normal) var(--ease-standard);
+  }
+
+  .liquid-glass-hover:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
+
+  /* ---------- Inputs ---------- */
+
   .input-glass {
-    @apply w-full bg-white/[0.02] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-[#FF9F0A]/50 focus:bg-white/[0.05] transition-all outline-none font-medium;
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: 0.625rem 0.875rem;
+    color: var(--text-primary);
+    font-size: var(--font-size-body);
+    font-weight: 500;
+    outline: none;
+
+    transition:
+      background var(--duration-base) var(--ease-standard),
+      border-color var(--duration-base) var(--ease-standard),
+      box-shadow var(--duration-base) var(--ease-standard);
   }
 
-  /* 3. Primary Action Buttons (The glowing orange signature button) */
-  .btn-orange-glow {
-    @apply bg-[#FF9F0A] text-black font-bold tracking-wide transition-all shadow-[0_0_15px_rgba(255,159,10,0.3)] hover:shadow-[0_0_25px_rgba(255,159,10,0.5)] hover:scale-[1.02] active:scale-95;
+  .input-glass::placeholder {
+    color: var(--text-muted);
   }
 
-  /* 4. Secondary Action Buttons (For cancel/clear actions) */
-  .btn-glass {
-    @apply bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white transition-all active:scale-95;
+  .input-glass:hover {
+    border-color: var(--input-border-hover);
   }
 
-  /* 5. Fluid Animations (Universal smooth transitions) */
-  .ios-spring {
-    @apply transition-all duration-300 ease-out;
+  .input-glass:focus {
+    background: var(--input-bg-focus);
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .input-glass:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ---------- Primary Button ---------- */
+
+
+  /* ---------- Standard KSS panel ---------- */
+
+  .kss-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* ---------- Standard divider ---------- */
+
+  .kss-divider {
+    border-color: var(--border);
+  }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { AlertModal } from "@/components/AlertModal";
+import { Button } from "@/components/ui/button";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export function ApprovalQueue() {
  const supabase = createClient();
@@ -111,70 +113,70 @@ export function ApprovalQueue() {
  <div className="input-glass">
  <form onSubmit={executeApprove}>
  <div className="p-6">
- <h3 className="text-lg font-semibold text-white  tracking-wide mb-1">Approve Fuel Request</h3>
- <p className="text-xs text-white/60 mb-6">Review the details and confirm the final bill amount.</p>
+ <h3 className="text-lg font-semibold text-fg  tracking-wide mb-1">Approve Fuel Request</h3>
+ <p className="text-xs text-fg-secondary mb-6">Review the details and confirm the final bill amount.</p>
  
- <div className="input-glass bg-white/[0.02] p-4 rounded-xl border border-white/[0.08] mb-6 space-y-3 text-sm">
- <div className="flex justify-between items-center"><span className="text-[10px] text-white/60 font-bold  tracking-wider">Truck</span> <span className="text-white font-semibold">{approveData.req?.truck_number}</span></div>
- <div className="flex justify-between items-center"><span className="text-[10px] text-white/60 font-bold  tracking-wider">Driver</span> <span className="text-slate-300 font-bold">{approveData.req?.driver_code}</span></div>
- <div className="flex justify-between items-center pt-2 border-t border-white/[0.08]"><span className="text-[10px] text-white/60 font-bold  tracking-wider">Requested Litres</span> <span className="text-[#FF5A00] font-semibold text-lg">{approveData.req?.litres} L</span></div>
+ <div className="input-glass bg-white/[0.015] p-4 rounded-xl border border-border mb-6 space-y-3 text-sm">
+ <div className="flex justify-between items-center"><span className="text-[10px] text-fg-secondary font-bold  tracking-wider">Truck</span> <span className="text-fg font-semibold">{approveData.req?.truck_number}</span></div>
+ <div className="flex justify-between items-center"><span className="text-[10px] text-fg-secondary font-bold  tracking-wider">Driver</span> <span className="text-fg-secondary font-bold">{approveData.req?.driver_code}</span></div>
+ <div className="flex justify-between items-center pt-2 border-t border-border"><span className="text-[10px] text-fg-secondary font-bold  tracking-wider">Requested Litres</span> <span className="text-accent font-semibold text-lg">{approveData.req?.litres} L</span></div>
  </div>
 
- <label className="block text-[10px] font-bold text-emerald-500  mb-2">Final Bill Amount () *</label>
- <input type="number" step="0.01" required value={approveData.amount} onChange={e => setApproveData({...approveData, amount: e.target.value})} className="w-full text-xl p-4 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white font-semibold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+ <label className="block text-[10px] font-bold text-success  mb-2">Final Bill Amount () *</label>
+ <input type="number" step="0.01" required value={approveData.amount} onChange={e => setApproveData({...approveData, amount: e.target.value})} className="w-full text-xl p-4 rounded-xl border border-border input-glass bg-white/[0.015] text-fg font-semibold outline-none focus:border-success focus:ring-1 focus:ring-success transition-all" />
  </div>
  <div className="flex gap-3 p-6 pt-0">
- <button type="button" onClick={() => setApproveData({isOpen: false, req: null, amount: ""})} disabled={isProcessing} className="flex-1 py-3.5 input-glass bg-white/[0.02] text-slate-300 font-bold rounded-xl border border-white/[0.08] hover:bg-[#272B36] transition-colors">Cancel</button>
- <button type="submit" disabled={isProcessing} className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-emerald-900/20 disabled:bg-slate-700 disabled:shadow-none">
+ <Button type="button" variant="glass" className="flex-1" onClick={() => setApproveData({isOpen: false, req: null, amount: ""})} disabled={isProcessing}>Cancel</Button>
+ <Button type="submit" variant="default" size="lg" className="flex-[2]" disabled={isProcessing}>
  {isProcessing ? "Processing..." : "Approve & Log Expense"}
- </button>
+ </Button>
  </div>
  </form>
  </div>
  </div>
  )}
 
- <div className="flex justify-between items-center border-b border-white/[0.08] pb-3 mb-6">
- <h3 className="text-sm font-semibold text-white  tracking-wide">Driver Submissions Approval Queue</h3>
- <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg  tracking-normal">{queue.length} Pending</span>
+ <div className="flex justify-between items-center border-b border-border pb-3 mb-6">
+ <h3 className="text-sm font-semibold text-fg  tracking-wide">Driver Submissions Approval Queue</h3>
+ <span className="px-3 py-1 bg-warning-soft text-warning text-[10px] font-bold rounded-lg  tracking-normal">{queue.length} Pending</span>
  </div>
 
  <div className="overflow-x-auto w-full">
- <table className="min-w-full text-xs text-left whitespace-nowrap">
- <thead className="input-glass bg-white/[0.02] text-white/60  font-bold">
- <tr>
- <th className="p-4 border-b border-white/[0.08]">Submitted At</th>
- <th className="p-4 border-b border-white/[0.08]">Driver / Truck</th>
- <th className="p-4 border-b border-white/[0.08]">Request Details</th>
- <th className="p-4 border-b border-white/[0.08]">Driver Remarks</th>
- <th className="p-4 border-b border-white/[0.08] text-right">Actions</th>
- </tr>
- </thead>
- <tbody className="divide-y divide-[#272B36] input-glass bg-white/[0.02]">
+ <Table className="min-w-full text-xs text-left whitespace-nowrap">
+ <TableHeader className="text-fg-secondary font-bold">
+ <TableRow>
+ <TableHead className="p-4 border-b border-border">Submitted At</TableHead>
+ <TableHead className="p-4 border-b border-border">Driver / Truck</TableHead>
+ <TableHead className="p-4 border-b border-border">Request Details</TableHead>
+ <TableHead className="p-4 border-b border-border">Driver Remarks</TableHead>
+ <TableHead className="p-4 border-b border-border text-right">Actions</TableHead>
+ </TableRow>
+ </TableHeader>
+ <TableBody className="">
  {queue.map(req => (
- <tr key={req.entry_id} className="hover:input-glass bg-white/[0.02] transition-colors">
- <td className="p-4 font-semibold text-slate-300">{formatDateTime(req.submitted_at)}</td>
- <td className="p-4"><span className="font-semibold text-white">{req.truck_number}</span><br/><span className="text-[10px] font-bold text-[#FF5A00]">{req.driver_code}</span></td>
- <td className="p-4">
- <span className="px-2 py-1 rounded bg-sky-950/50 text-sky-400 font-semibold text-[10px]  mr-2">{req.entry_type}</span>
- <span className="font-bold text-white/90">
+ <TableRow key={req.entry_id} className="">
+ <TableCell className="p-4 font-semibold text-fg-secondary">{formatDateTime(req.submitted_at)}</TableCell>
+ <TableCell className="p-4"><span className="font-semibold text-fg">{req.truck_number}</span><br/><span className="text-[10px] font-bold text-accent">{req.driver_code}</span></TableCell>
+ <TableCell className="p-4">
+ <span className="px-2 py-1 rounded bg-info-soft text-info font-semibold text-[10px]  mr-2">{req.entry_type}</span>
+ <span className="font-bold text-fg/90">
  {req.entry_type === 'FUEL' ? `${req.litres} Litres (Odo: ${req.odometer_km})` : `${req.odometer_km} KM logged`}
  </span>
- </td>
- <td className="p-4 text-white/60 italic text-[11px] max-w-[200px] truncate" title={req.receipt_remarks}>{req.receipt_remarks || "No remarks"}</td>
- <td className="p-4 text-right space-x-2">
- <button onClick={() => setRejectId(req.entry_id)} className="px-4 py-2 bg-rose-950/40 text-rose-500 hover:text-white hover:bg-rose-900 border border-rose-900/50 rounded-lg font-bold transition-colors">Reject</button>
- <button onClick={() => handleApproveClick(req)} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-emerald-900/20">
+ </TableCell>
+ <TableCell className="p-4 text-fg-secondary italic text-[11px] max-w-[200px] truncate" title={req.receipt_remarks}>{req.receipt_remarks || "No remarks"}</TableCell>
+ <TableCell className="p-4 text-right space-x-2">
+ <Button type="button" variant="destructive" size="sm" onClick={() => setRejectId(req.entry_id)}>Reject</Button>
+ <Button type="button" variant="secondary" size="sm" onClick={() => handleApproveClick(req)}>
  {req.entry_type === 'FUEL' ? 'Approve' : 'Acknowledge'}
- </button>
- </td>
- </tr>
+ </Button>
+ </TableCell>
+ </TableRow>
  ))}
  {queue.length === 0 && !isLoading && (
- <tr><td colSpan={5} className="p-8 text-center text-white/40 font-medium">All driver requests have been processed. The queue is currently empty.</td></tr>
+ <TableRow><TableCell colSpan={5} className="p-8 text-center text-fg-muted font-medium">All driver requests have been processed. The queue is currently empty.</TableCell></TableRow>
  )}
- </tbody>
- </table>
+ </TableBody>
+ </Table>
  </div>
  </div>
  );

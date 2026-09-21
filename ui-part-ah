@@ -1,0 +1,1000 @@
+const DropdownMenuSeparator = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Separator
+    ref={ref}
+    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+    {...props}
+  />
+));
+DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
+
+const DropdownMenuShortcut = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLSpanElement>) => {
+  return (
+    <span
+      className={cn("ml-auto text-xs tracking-widest opacity-60", className)}
+      {...props}
+    />
+  );
+};
+DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
+
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+};
+
+
+============================================================
+FILE: components/ui/input.tsx
+============================================================
+import * as React from "react";
+
+import { cn } from "@/lib/utils";
+
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          className,
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  },
+);
+Input.displayName = "Input";
+
+export { Input };
+
+
+============================================================
+FILE: components/ui/label.tsx
+============================================================
+"use client";
+
+import * as React from "react";
+import * as LabelPrimitive from "@radix-ui/react-label";
+import { cva, type VariantProps } from "class-variance-authority";
+
+import { cn } from "@/lib/utils";
+
+const labelVariants = cva(
+  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+);
+
+const Label = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
+    VariantProps<typeof labelVariants>
+>(({ className, ...props }, ref) => (
+  <LabelPrimitive.Root
+    ref={ref}
+    className={cn(labelVariants(), className)}
+    {...props}
+  />
+));
+Label.displayName = LabelPrimitive.Root.displayName;
+
+export { Label };
+
+
+============================================================
+FILE: components/update-password-form.tsx
+============================================================
+"use client";
+
+import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+export function UpdatePasswordForm({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<"div">) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const supabase = createClient();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      // Update this route to redirect to an authenticated route. The user already has an active session.
+      router.push("/protected");
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Card>
+        <CardHeader>
+          <CardTitle className="animate-tab-focus text-2xl">Reset Your Password</CardTitle>
+          <CardDescription>
+            Please enter your new password below.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleForgotPassword}>
+            <div className="flex flex-col gap-6">
+              <div className="grid gap-2">
+                <Label htmlFor="password">New password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="New password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              {error && <p className="text-sm text-red-500">{error}</p>}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save new password"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
+============================================================
+FILE: lib/database.types.ts
+============================================================
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  public: {
+    Tables: {
+      app_users: {
+        Row: {
+          created_at: string | null
+          password: string
+          role: string
+          user_id: number
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          password: string
+          role?: string
+          user_id?: number
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          password?: string
+          role?: string
+          user_id?: number
+          username?: string
+        }
+        Relationships: []
+      }
+      branches: {
+        Row: {
+          branch_code: string
+          branch_id: number
+          branch_name: string
+          created_at: string | null
+          is_active: boolean | null
+          location: string | null
+        }
+        Insert: {
+          branch_code: string
+          branch_id?: number
+          branch_name: string
+          created_at?: string | null
+          is_active?: boolean | null
+          location?: string | null
+        }
+        Update: {
+          branch_code?: string
+          branch_id?: number
+          branch_name?: string
+          created_at?: string | null
+          is_active?: boolean | null
+          location?: string | null
+        }
+        Relationships: []
+      }
+      daily_ai_audits: {
+        Row: {
+          anomalies: Json | null
+          audit_date: string
+          audit_id: string
+          created_at: string | null
+          efficiency_leaks: Json | null
+          retention_suggestions: Json | null
+        }
+        Insert: {
+          anomalies?: Json | null
+          audit_date?: string
+          audit_id?: string
+          created_at?: string | null
+          efficiency_leaks?: Json | null
+          retention_suggestions?: Json | null
+        }
+        Update: {
+          anomalies?: Json | null
+          audit_date?: string
+          audit_id?: string
+          created_at?: string | null
+          efficiency_leaks?: Json | null
+          retention_suggestions?: Json | null
+        }
+        Relationships: []
+      }
+      destinations_freight_master: {
+        Row: {
+          capacity_tons: string
+          cargo_category: string | null
+          cargo_type: string
+          created_at: string | null
+          destination_id: number
+          destination_name: string
+          freight_rate_per_ton: number
+          is_active: boolean | null
+          origin: string
+          standard_km: number | null
+        }
+        Insert: {
+          capacity_tons?: string
+          cargo_category?: string | null
+          cargo_type: string
+          created_at?: string | null
+          destination_id?: number
+          destination_name: string
+          freight_rate_per_ton: number
+          is_active?: boolean | null
+          origin: string
+          standard_km?: number | null
+        }
+        Update: {
+          capacity_tons?: string
+          cargo_category?: string | null
+          cargo_type?: string
+          created_at?: string | null
+          destination_id?: number
+          destination_name?: string
+          freight_rate_per_ton?: number
+          is_active?: boolean | null
+          origin?: string
+          standard_km?: number | null
+        }
+        Relationships: []
+      }
+      diesel_fuel_logs: {
+        Row: {
+          created_at: string | null
+          diesel_category: string
+          diesel_rate_per_litre: number
+          filling_odometer_km: number | null
+          fuel_date: string
+          fuel_log_id: number
+          fuel_station_vendor: string | null
+          is_tank_full: boolean | null
+          litres_filled: number
+          lr_number: string | null
+          remarks: string | null
+          total_fuel_cost: number
+          trip_id: number | null
+          vehicle_id: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          diesel_category?: string
+          diesel_rate_per_litre: number
+          filling_odometer_km?: number | null
+          fuel_date?: string
+          fuel_log_id?: number
+          fuel_station_vendor?: string | null
+          is_tank_full?: boolean | null
+          litres_filled?: number
+          lr_number?: string | null
+          remarks?: string | null
+          total_fuel_cost: number
+          trip_id?: number | null
+          vehicle_id?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          diesel_category?: string
+          diesel_rate_per_litre?: number
+          filling_odometer_km?: number | null
+          fuel_date?: string
+          fuel_log_id?: number
+          fuel_station_vendor?: string | null
+          is_tank_full?: boolean | null
+          litres_filled?: number
+          lr_number?: string | null
+          remarks?: string | null
+          total_fuel_cost?: number
+          trip_id?: number | null
+          vehicle_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diesel_fuel_logs_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "diesel_fuel_logs_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "trucks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_advances: {
+        Row: {
+          advance_date: string
+          advance_id: number
+          amount: number
+          created_at: string | null
+          driver_id: number | null
+          payment_mode: string | null
+          remarks: string | null
+          trip_id: number | null
+        }
+        Insert: {
+          advance_date?: string
+          advance_id?: never
+          amount?: number
+          created_at?: string | null
+          driver_id?: number | null
+          payment_mode?: string | null
+          remarks?: string | null
+          trip_id?: number | null
+        }
+        Update: {
+          advance_date?: string
+          advance_id?: never
+          amount?: number
+          created_at?: string | null
+          driver_id?: number | null
+          payment_mode?: string | null
+          remarks?: string | null
+          trip_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_advances_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "driver_advances_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["trip_id"]
+          },
+        ]
+      }
+      driver_bata_master: {
+        Row: {
+          bata_rule_id: number
+          capacity_tons: string | null
+          cargo_type: string | null
+          created_at: string | null
+          destination_name: string
+          origin: string | null
+          standard_bata_inr: number
+          vehicle_id: number | null
+        }
+        Insert: {
+          bata_rule_id?: number
+          capacity_tons?: string | null
+          cargo_type?: string | null
+          created_at?: string | null
+          destination_name: string
+          origin?: string | null
+          standard_bata_inr?: number
+          vehicle_id?: number | null
+        }
+        Update: {
+          bata_rule_id?: number
+          capacity_tons?: string | null
+          cargo_type?: string | null
+          created_at?: string | null
+          destination_name?: string
+          origin?: string | null
+          standard_bata_inr?: number
+          vehicle_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_bata_master_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["vehicle_id"]
+          },
+          {
+            foreignKeyName: "driver_bata_master_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "view_corporate_fleet_retention"
+            referencedColumns: ["vehicle_id"]
+          },
+        ]
+      }
+      driver_direct_advances: {
+        Row: {
+          advance_date: string
+          advance_id: number
+          advance_type: string | null
+          amount_inr: number
+          created_at: string | null
+          driver_id: number
+          is_settled: boolean | null
+          payment_mode: string | null
+          reference_remarks: string | null
+          settled_at: string | null
+        }
+        Insert: {
+          advance_date?: string
+          advance_id?: number
+          advance_type?: string | null
+          amount_inr: number
+          created_at?: string | null
+          driver_id: number
+          is_settled?: boolean | null
+          payment_mode?: string | null
+          reference_remarks?: string | null
+          settled_at?: string | null
+        }
+        Update: {
+          advance_date?: string
+          advance_id?: number
+          advance_type?: string | null
+          amount_inr?: number
+          created_at?: string | null
+          driver_id?: number
+          is_settled?: boolean | null
+          payment_mode?: string | null
+          reference_remarks?: string | null
+          settled_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_direct_advances_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["driver_id"]
+          },
+        ]
+      }
+      driver_pending_entries: {
+        Row: {
+          amount_inr: number
+          created_at: string | null
+          driver_code: string | null
+          entry_id: number
+          entry_type: string
+          litres: number | null
+          odometer_km: number | null
+          receipt_remarks: string | null
+          rejection_reason: string | null
+          status: string | null
+          submitted_at: string | null
+          vehicle_id: number | null
+        }
+        Insert: {
+          amount_inr: number
+          created_at?: string | null
+          driver_code?: string | null
+          entry_id?: number
+          entry_type: string
+          litres?: number | null
+          odometer_km?: number | null
+          receipt_remarks?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          vehicle_id?: number | null
+        }
+        Update: {
+          amount_inr?: number
+          created_at?: string | null
+          driver_code?: string | null
+          entry_id?: number
+          entry_type?: string
+          litres?: number | null
+          odometer_km?: number | null
+          receipt_remarks?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          vehicle_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_pending_entries_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["vehicle_id"]
+          },
+          {
+            foreignKeyName: "driver_pending_entries_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "view_corporate_fleet_retention"
+            referencedColumns: ["vehicle_id"]
+          },
+        ]
+      }
+      drivers: {
+        Row: {
+          branch_id: number | null
+          created_at: string | null
+          driver_code: string
+          driver_id: number
+          full_name: string
+          is_active: boolean | null
+          license_expiry_date: string | null
+          license_number: string
+          phone_number: string
+          pin: string | null
+        }
+        Insert: {
+          branch_id?: number | null
+          created_at?: string | null
+          driver_code: string
+          driver_id?: number
+          full_name: string
+          is_active?: boolean | null
+          license_expiry_date?: string | null
+          license_number: string
+          phone_number: string
+          pin?: string | null
+        }
+        Update: {
+          branch_id?: number | null
+          created_at?: string | null
+          driver_code?: string
+          driver_id?: number
+          full_name?: string
+          is_active?: boolean | null
+          license_expiry_date?: string | null
+          license_number?: string
+          phone_number?: string
+          pin?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drivers_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["branch_id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          description: string | null
+          expense_date: string
+          expense_id: number
+          vehicle_id: number | null
+        }
+        Insert: {
+          amount?: number
+          category: string
+          created_at?: string | null
+          description?: string | null
+          expense_date?: string
+          expense_id?: never
+          vehicle_id?: number | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          expense_date?: string
+          expense_id?: never
+          vehicle_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["vehicle_id"]
+          },
+          {
+            foreignKeyName: "expenses_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "view_corporate_fleet_retention"
+            referencedColumns: ["vehicle_id"]
+          },
+        ]
+      }
+      fleet_tyres: {
+        Row: {
+          brand_model: string | null
+          condition_status: string | null
+          last_mount_odo: number | null
+          nsd_measurement: number | null
+          placement_position: string | null
+          recorded_date: string | null
+          serial_number: string | null
+          total_km_run: number | null
+          tyre_id: number
+          tyre_status: string | null
+          tyre_type: string | null
+          vehicle_id: number | null
+        }
+        Insert: {
+          brand_model?: string | null
+          condition_status?: string | null
+          last_mount_odo?: number | null
+          nsd_measurement?: number | null
+          placement_position?: string | null
+          recorded_date?: string | null
+          serial_number?: string | null
+          total_km_run?: number | null
+          tyre_id?: number
+          tyre_status?: string | null
+          tyre_type?: string | null
+          vehicle_id?: number | null
+        }
+        Update: {
+          brand_model?: string | null
+          condition_status?: string | null
+          last_mount_odo?: number | null
+          nsd_measurement?: number | null
+          placement_position?: string | null
+          recorded_date?: string | null
+          serial_number?: string | null
+          total_km_run?: number | null
+          tyre_id?: number
+          tyre_status?: string | null
+          tyre_type?: string | null
+          vehicle_id?: number | null
+        }
+        Relationships: []
+      }
+      pending_scans: {
+        Row: {
+          cargo_type: string | null
+          created_at: string | null
+          destination: string | null
+          document_type: string
+          image_url: string | null
+          lr_number: string | null
+          raw_json_result: Json | null
+          scan_id: string
+          source: string | null
+          status: string | null
+          tonnage_extracted: number | null
+          truck_number: string | null
+        }
+        Insert: {
+          cargo_type?: string | null
+          created_at?: string | null
+          destination?: string | null
+          document_type: string
+          image_url?: string | null
+          lr_number?: string | null
+          raw_json_result?: Json | null
+          scan_id?: string
+          source?: string | null
+          status?: string | null
+          tonnage_extracted?: number | null
+          truck_number?: string | null
+        }
+        Update: {
+          cargo_type?: string | null
+          created_at?: string | null
+          destination?: string | null
+          document_type?: string
+          image_url?: string | null
+          lr_number?: string | null
+          raw_json_result?: Json | null
+          scan_id?: string
+          source?: string | null
+          status?: string | null
+          tonnage_extracted?: number | null
+          truck_number?: string | null
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          setting_key: string
+          setting_value: string
+          updated_at: string | null
+        }
+        Insert: {
+          setting_key: string
+          setting_value: string
+          updated_at?: string | null
+        }
+        Update: {
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      trips: {
+        Row: {
+          branch_id: number | null
+          breakdown_remarks: string | null
+          cash_advance_issued: number | null
+          created_at: string | null
+          destination: string
+          destination_lat: number | null
+          destination_lng: number | null
+          diesel_filling_km: number | null
+          driver_bata: number | null
+          end_km: number | null
+          enroute_repairs_maintenance: number | null
+          freight_revenue: number
+          fuel_expense: number | null
+          fuel_litres: number | null
+          halt_bata: number | null
+          is_tank_full: boolean | null
+          loaded_weight_mt: number
+          loading_unloading_expense: number | null
+          misc_trip_expense: number | null
+          origin: string
+          origin_lat: number | null
+          origin_lng: number | null
+          pod_number: string | null
+          pod_received_date: string | null
+          pod_settlement_remarks: string | null
+          pod_status: string | null
+          primary_driver_id: number
+          reached_at: string | null
+          received_weight_mt: number | null
+          returning_at: string | null
+          settled_at: string | null
+          settlement_remarks: string | null
+          settlement_status: string | null
+          shortage_bearer: string | null
+          shortage_mt: number | null
+          shortage_penalty_deduction: number | null
+          shortage_weight_mt: number | null
+          start_km: number | null
+          toll_fastag_expense: number | null
+          tonnage_loaded: number
+          total_km_run: number | null
+          trip_closed_at: string | null
+          trip_end_date: string
+          trip_id: number
+          trip_number: string
+          trip_start_date: string
+          trip_status: string | null
+          unloaded_at: string | null
+          unloaded_weight_mt: number | null
+          vehicle_id: number | null
+        }
+        Insert: {
+          branch_id?: number | null
+          breakdown_remarks?: string | null
+          cash_advance_issued?: number | null
+          created_at?: string | null
+          destination: string
+          destination_lat?: number | null
+          destination_lng?: number | null
+          diesel_filling_km?: number | null
+          driver_bata?: number | null
+          end_km?: number | null
+          enroute_repairs_maintenance?: number | null
+          freight_revenue: number
+          fuel_expense?: number | null
+          fuel_litres?: number | null
+          halt_bata?: number | null
+          is_tank_full?: boolean | null
+          loaded_weight_mt: number
+          loading_unloading_expense?: number | null
+          misc_trip_expense?: number | null
+          origin: string
+          origin_lat?: number | null
+          origin_lng?: number | null
+          pod_number?: string | null
+          pod_received_date?: string | null
+          pod_settlement_remarks?: string | null
+          pod_status?: string | null
+          primary_driver_id: number
+          reached_at?: string | null
+          received_weight_mt?: number | null
+          returning_at?: string | null
+          settled_at?: string | null
+          settlement_remarks?: string | null
+          settlement_status?: string | null
+          shortage_bearer?: string | null
+          shortage_mt?: number | null
+          shortage_penalty_deduction?: number | null
+          shortage_weight_mt?: number | null
+          start_km?: number | null
+          toll_fastag_expense?: number | null
+          tonnage_loaded: number
+          total_km_run?: number | null
+          trip_closed_at?: string | null
+          trip_end_date: string
+          trip_id?: number
+          trip_number: string
+          trip_start_date: string
+          trip_status?: string | null
+          unloaded_at?: string | null
+          unloaded_weight_mt?: number | null
+          vehicle_id?: number | null
+        }
+        Update: {
+          branch_id?: number | null
+          breakdown_remarks?: string | null
+          cash_advance_issued?: number | null
+          created_at?: string | null
+          destination?: string
+          destination_lat?: number | null
+          destination_lng?: number | null
+          diesel_filling_km?: number | null
+          driver_bata?: number | null
+          end_km?: number | null
+          enroute_repairs_maintenance?: number | null
+          freight_revenue?: number
+          fuel_expense?: number | null
+          fuel_litres?: number | null
+          halt_bata?: number | null
+          is_tank_full?: boolean | null
+          loaded_weight_mt?: number
+          loading_unloading_expense?: number | null
+          misc_trip_expense?: number | null
+          origin?: string
+          origin_lat?: number | null
+          origin_lng?: number | null
+          pod_number?: string | null
+          pod_received_date?: string | null
+          pod_settlement_remarks?: string | null
+          pod_status?: string | null
+          primary_driver_id?: number
+          reached_at?: string | null
+          received_weight_mt?: number | null
+          returning_at?: string | null
+          settled_at?: string | null
+          settlement_remarks?: string | null
+          settlement_status?: string | null
+          shortage_bearer?: string | null
+          shortage_mt?: number | null
+          shortage_penalty_deduction?: number | null
+          shortage_weight_mt?: number | null
+          start_km?: number | null
+          toll_fastag_expense?: number | null
+          tonnage_loaded?: number
+          total_km_run?: number | null
+          trip_closed_at?: string | null
+          trip_end_date?: string
+          trip_id?: number
+          trip_number?: string
+          trip_start_date?: string
+          trip_status?: string | null
+          unloaded_at?: string | null
+          unloaded_weight_mt?: number | null
+          vehicle_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["branch_id"]
+          },
+          {
+            foreignKeyName: "trips_primary_driver_id_fkey"
+            columns: ["primary_driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["driver_id"]
+          },
+          {
+            foreignKeyName: "trips_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "trucks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trucks: {
+        Row: {
+          carrying_capacity_tons: number
+          created_at: string | null
+          current_status: string | null
+          fc_expiry_date: string | null
+          id: number
+          insurance_expiry_date: string | null
+          is_active: boolean | null
+          np_expiry_date: string | null
+          puc_expiry_date: string | null
+          qtax_expiry_date: string | null
+          state_permit_expiry_date: string | null
+          status_remarks: string | null
+          status_updated_at: string | null
+          tank_cert_expiry_date: string | null
+          truck_type: string
+          vehicle_number: string
+        }
+        Insert: {
+          carrying_capacity_tons?: number
+          created_at?: string | null
+          current_status?: string | null
+          fc_expiry_date?: string | null
+          id?: number
+          insurance_expiry_date?: string | null
+          is_active?: boolean | null
+          np_expiry_date?: string | null
+          puc_expiry_date?: string | null

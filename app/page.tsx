@@ -18,7 +18,7 @@ async function DashboardWrapper() {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#050507]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-app" />}>
       <DashboardWrapper />
     </Suspense>
   );

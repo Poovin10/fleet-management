@@ -3,7 +3,11 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { TableToolbar } from "@/components/ui/TableToolbar";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { exportToCSV } from "@/lib/utils/exportManager";
 
 export function FuelAdvanceModule() {
@@ -271,16 +275,26 @@ export function FuelAdvanceModule() {
  <div className="space-y-6 animate-in fade-in duration-300">
  <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
 
- <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/[0.08] pb-4">
+ <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
  <div>
- <h2 className="text-xl font-semibold text-white  tracking-tight">Fuel & Mileage</h2>
- <p className="text-xs text-white/60 mt-0.5">Manage diesel logs, full-to-full KMPL tracking, and fuel expense audits.</p>
+ <h2 className="text-xl font-semibold text-fg  tracking-tight">Fuel & Mileage</h2>
+ <p className="text-xs text-fg-secondary mt-0.5">Manage diesel logs, full-to-full KMPL tracking, and fuel expense audits.</p>
  </div>
  <div className="flex flex-wrap gap-2">
  {[" Issue Diesel", " Fuel Audit", " Mileage Tracker"].map((tab) => (
- <button key={tab} onClick={() => setFaNav(tab)} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${faNav === tab ? "bg-[#FF5A00] text-white shadow-lg shadow-[#FF5A00]/20" : "liquid-glass text-white/60 hover:text-white hover:bg-[#1E222D] border border-white/[0.08]"}`}>
- {tab}
- </button>
+ <Button
+  key={tab}
+  type="button"
+  onClick={() => setFaNav(tab)}
+  variant={faNav === tab ? "default" : "glass"}
+  className={`px-4 py-2.5 rounded-xl text-xs font-bold ${
+    faNav === tab
+      ? "shadow-lg shadow-orange"
+      : "text-fg-secondary hover:text-fg hover:bg-surface-raised/50"
+  }`}
+>
+  {tab}
+</Button>
  ))}
  </div>
  </div>
@@ -292,16 +306,16 @@ export function FuelAdvanceModule() {
  {/* Inbox UI */}
  {!editLogId && pendingScans.length > 0 && (
  <div className="mb-6 p-4 input-glass">
- <h4 className="text-xs font-semibold text-sky-400  tracking-wider flex items-center gap-2 mb-3"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span></span>Pending Fuel Slips ({pendingScans.length})</h4>
+ <h4 className="text-xs font-semibold text-info  tracking-wider flex items-center gap-2 mb-3"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-info opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-info"></span></span>Pending Fuel Slips ({pendingScans.length})</h4>
  <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
  {pendingScans.map(scan => {
  const data = scan.raw_json_result || {};
  return (
- <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-sky-500 bg-sky-500/10 ring-1 ring-sky-500' : 'border-white/[0.08] hover:border-slate-500 input-glass bg-white/[0.02]'}`}>
+ <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-info bg-info-soft ring-1 ring-info' : 'border-border hover:border-border-strong input-glass'}`}>
  <div className="animate-tab-focus flex justify-between items-start gap-4">
  <div>
- <p className="text-[10px] text-white/60 font-bold mb-1">Truck: <span className="text-white">{data.truckNo || "UNKNOWN"}</span></p>
- <p className="text-xs font-semibold text-white truncate">{data.litres || 0} L <span className="text-white/40 font-medium">@ {data.rate || '?'}</span></p>
+ <p className="text-[10px] text-fg-secondary font-bold mb-1">Truck: <span className="text-fg">{data.truckNo || "UNKNOWN"}</span></p>
+ <p className="text-xs font-semibold text-fg truncate">{data.litres || 0} L <span className="text-fg-muted font-medium">@ {data.rate || '?'}</span></p>
  </div>
  </div>
  </button>
@@ -311,41 +325,66 @@ export function FuelAdvanceModule() {
  </div>
  )}
 
- <div className="flex justify-between items-center border-b border-white/[0.08] pb-3 mb-5">
- <h3 className="text-sm font-semibold text-white  tracking-wide">{editLogId ? "Edit Diesel Log" : "Record Fuel Bill"}</h3>
- {editLogId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg  tracking-normal animate-pulse">Editing Mode</span>}
+ <div className="flex justify-between items-center border-b border-border pb-3 mb-5">
+ <h3 className="text-sm font-semibold text-fg  tracking-wide">{editLogId ? "Edit Diesel Log" : "Record Fuel Bill"}</h3>
+ {editLogId && <span className="px-3 py-1 bg-warning-soft text-warning text-[10px] font-bold rounded-lg  tracking-normal animate-pulse">Editing Mode</span>}
  </div>
 
  <form onSubmit={handleSaveDiesel} className="space-y-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Fuel Date *</label><input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Select Truck *</label><select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-bold" required disabled={isLoading}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Category *</label><select value={fCategory} onChange={e => setFCategory(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Trip LR No (Optional)</label><input type="text" maxLength={20} value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="input-glass text-white  outline-none focus:border-[#FF5A00] font-semibold" /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Fuel Date *</label><Input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="text-fg font-semibold" required /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Select Truck *</label><Select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="text-fg font-bold" required disabled={isLoading}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</Select></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Category *</label><Select value={fCategory} onChange={e => setFCategory(e.target.value)} className="text-fg font-semibold"><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></Select></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Trip LR No (Optional)</label><Input type="text" maxLength={20} value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="text-fg font-semibold" /></div>
  
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Filling KM</label><input type="number" min="0" max="9999999" value={fFillingKm} onChange={e => setFFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Litres *</label><input type="number" step="0.1" min="0.1" max="2000" value={fLitres} onChange={e => setFLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="input-glass outline-none focus:border-[#FF5A00] font-semibold text-[#FF5A00]" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Rate () *</label><input type="number" step="0.1" min="0.1" max="200" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="input-glass text-white outline-none focus:border-[#FF5A00] font-bold" required /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Filling KM</label><Input type="number" min="0" max="9999999" value={fFillingKm} onChange={e => setFFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="text-fg font-semibold" /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Litres *</label><Input type="number" step="0.1" min="0.1" max="2000" value={fLitres} onChange={e => setFLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="font-semibold text-accent" required /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Rate () *</label><Input type="number" step="0.1" min="0.1" max="200" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="text-fg font-bold" required /></div>
  </div>
 
- <div className="flex justify-between items-center input-glass bg-white/[0.02] p-4 rounded-xl border border-white/[0.08] mt-2">
+ <div className="flex justify-between items-center input-glass p-4 rounded-xl border border-border mt-2">
  <label className="flex items-center gap-3 cursor-pointer select-none">
- <input type="checkbox" checked={fIsTankFull} onChange={e => setFIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-[#FF5A00] input-glass bg-white/[0.02] border-white/[0.08] focus:ring-[#FF5A00]" />
- <span className="text-xs font-semibold text-white "> Tank Full</span>
+ <input type="checkbox" checked={fIsTankFull} onChange={e => setFIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-accent input-glass border-border focus:ring-accent" />
+ <span className="text-xs font-semibold text-fg "> Tank Full</span>
  </label>
  <div className="text-right">
- <span className="text-[10px] font-bold text-white/40  mr-3">Cost:</span>
- <span className="text-lg font-semibold text-rose-500">{((Number(fLitres) || 0) * (Number(fDieselRate) || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+ <span className="text-[10px] font-bold text-fg-muted  mr-3">Cost:</span>
+ <span className="text-lg font-semibold text-danger">{((Number(fLitres) || 0) * (Number(fDieselRate) || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
  </div>
  </div>
 
- <div className="flex gap-3 pt-4 border-t border-white/[0.08]">
+ <div className="flex gap-3 pt-4 border-t border-border">
  {editLogId && (
- <><button type="button" onClick={() => handleDeleteFuel(editLogId)} className="px-4 py-3 bg-rose-950/40 text-rose-500 hover:bg-rose-900 border border-rose-900/50 rounded-xl font-bold transition-colors">️</button><button type="button" onClick={clearFuelForm} className="flex-1 py-3 input-glass bg-white/[0.02] text-slate-300 font-bold rounded-xl border border-white/[0.08] hover:bg-[#272B36] transition-colors">Cancel</button></>
+ <>
+ <Button
+   type="button"
+   variant="destructive"
+   size="lg"
+   onClick={() => handleDeleteFuel(editLogId)}
+   aria-label="Delete fuel record"
+ >
+   Delete
+ </Button>
+ <Button
+   type="button"
+   variant="glass"
+   size="lg"
+   onClick={clearFuelForm}
+   className="flex-1"
+ >
+   Cancel
+ </Button>
+</>
  )}
- <button type="submit" disabled={!fVehicleId || Number(fLitres) <= 0 || isProcessing} className="flex-[2] py-3 bg-[#FF5A00] hover:bg-[#e04f00] disabled:bg-slate-700 text-white font-semibold text-sm rounded-xl transition-all shadow-lg active:scale-95">
- {editLogId ? "Update Record" : "Record Diesel"}
- </button>
+ <Button
+   type="submit"
+   variant="default"
+   size="lg"
+   disabled={!fVehicleId || Number(fLitres) <= 0 || isProcessing}
+   className="flex-[2]"
+ >
+   {editLogId ? "Update Record" : "Record Diesel"}
+ </Button>
  </div>
  </form>
  </div>
@@ -353,29 +392,71 @@ export function FuelAdvanceModule() {
  <div className="lg:col-span-8 liquid-glass overflow-hidden flex flex-col shadow-xl h-fit">
  <TableToolbar title="Recent Fuel Entries" searchQuery={recentSearch} setSearchQuery={setRecentSearch} exportData={exportRecent} exportFilename="Recent_Fuel_Logs" />
  <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
- <table className="min-w-full divide-y divide-[#272B36] whitespace-nowrap">
- <thead className="input-glass bg-white/[0.02] sticky top-0 z-10">
- <tr className="text-[10px] font-bold text-white/60  tracking-wider">
- <th className="px-5 py-3 text-left">Date</th>
- <th className="px-5 py-3 text-left">Truck</th>
- <th className="px-5 py-3 text-left">Category / LR</th>
- <th className="px-5 py-3 text-right">Litres</th>
- <th className="px-5 py-3 text-right">Cost ()</th>
- </tr>
- </thead>
- <tbody className="divide-y divide-[#272B36] text-xs liquid-glass">
- {filteredRecent.map((log) => (
- <tr key={log.fuel_log_id} onClick={() => handleEditClick(log)} className={`cursor-pointer transition-colors ${editLogId === log.fuel_log_id ? 'bg-[#FF5A00]/10 border-l-2 border-l-[#FF5A00]' : 'hover:bg-[#1E222D] border-l-2 border-transparent'}`}>
- <td className="px-5 py-3.5 font-semibold text-slate-300">{formatDate(log.fuel_date)}</td>
- <td className="px-5 py-3.5 font-semibold text-white">{log.vehicles?.vehicle_number}</td>
- <td className="px-5 py-3.5 text-slate-300">{log.diesel_category}<br/><span className="text-[9px] text-white/40">{log.lr_number}</span></td>
- <td className="px-5 py-3.5 text-right font-semibold text-[#FF5A00]">{log.litres_filled} L {log.is_tank_full && <span title="Tank Full" className="ml-1 text-sm"></span>}</td>
- <td className="px-5 py-3.5 text-right font-bold text-rose-500">{(log.total_fuel_cost || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
- </tr>
- ))}
- {filteredRecent.length === 0 && <tr><td colSpan={5} className="p-8 text-center font-medium text-white/40">No logs found.</td></tr>}
- </tbody>
- </table>
+ <Table className="min-w-full whitespace-nowrap">
+ <TableHeader className="sticky top-0 z-10">
+   <TableRow>
+     <TableHead className="px-5 py-3 text-left">Date</TableHead>
+     <TableHead className="px-5 py-3 text-left">Truck</TableHead>
+     <TableHead className="px-5 py-3 text-left">Category / LR</TableHead>
+     <TableHead className="px-5 py-3 text-right">Litres</TableHead>
+     <TableHead className="px-5 py-3 text-right">Cost ()</TableHead>
+   </TableRow>
+ </TableHeader>
+
+ <TableBody>
+   {filteredRecent.map((log) => (
+     <TableRow
+       key={log.fuel_log_id}
+       onClick={() => handleEditClick(log)}
+       className={`cursor-pointer border-l-2 ${
+         editLogId === log.fuel_log_id
+           ? "border-l-accent bg-accent/10"
+           : "border-l-transparent"
+       }`}
+     >
+       <TableCell className="px-5 py-3.5 font-semibold text-fg-secondary">
+         {formatDate(log.fuel_date)}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 font-semibold text-fg">
+         {log.vehicles?.vehicle_number}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 text-fg-secondary">
+         {log.diesel_category}
+         <br />
+         <span className="text-[9px] text-fg-muted">
+           {log.lr_number}
+         </span>
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 text-right font-semibold text-accent">
+         {log.litres_filled} L{" "}
+         {log.is_tank_full && (
+           <span title="Tank Full" className="ml-1 text-sm"></span>
+         )}
+       </TableCell>
+
+       <TableCell className="px-5 py-3.5 text-right font-bold text-danger">
+         {(log.total_fuel_cost || 0).toLocaleString("en-IN", {
+           minimumFractionDigits: 2,
+         })}
+       </TableCell>
+     </TableRow>
+   ))}
+
+   {filteredRecent.length === 0 && (
+     <TableRow>
+       <TableCell
+         colSpan={5}
+         className="p-8 text-center font-medium text-fg-muted"
+       >
+         No logs found.
+       </TableCell>
+     </TableRow>
+   )}
+ </TableBody>
+ </Table>
  </div>
  </div>
  </div>
@@ -383,42 +464,103 @@ export function FuelAdvanceModule() {
 
  {faNav === " Fuel Audit" && (
  <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
- <h3 className="text-sm font-semibold text-white  tracking-wide border-b border-white/[0.08] pb-3 mb-5">Advanced Fuel Audit Engine</h3>
+ <h3 className="text-sm font-semibold text-fg  tracking-wide border-b border-border pb-3 mb-5">Advanced Fuel Audit Engine</h3>
  
  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Date Mode</label><select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="All Time">All Time</option><option value="Specific Date">Specific Date</option><option value="Date Range">Date Range</option></select></div>
- {auditDateMode === "Specific Date" && <div><label className="block text-[10px] font-bold text-white/60  mb-1">Date</label><input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" /></div>}
- {auditDateMode === "Date Range" && <><div className="col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">From</label><input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" /></div><div><label className="block text-[10px] font-bold text-white/60  mb-1">To</label><input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" /></div></>}
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Date Mode</label><Select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="text-fg font-semibold"><option value="All Time">All Time</option><option value="Specific Date">Specific Date</option><option value="Date Range">Date Range</option></Select></div>
+ {auditDateMode === "Specific Date" && <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Date</label><Input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="text-fg font-semibold" /></div>}
+ {auditDateMode === "Date Range" && <><div className="col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">From</label><Input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="text-fg font-semibold" /></div><div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">To</label><Input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="text-fg font-semibold" /></div></>}
  {auditDateMode === "All Time" && <div className="hidden md:block md:col-span-2"></div>}
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck No</label><select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-bold"><option value="All Trucks">All Trucks</option>{vehicles.map(v => <option key={v.id} value={v.vehicle_number}>{v.vehicle_number}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Category</label><select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="All Categories">All Categories</option><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></select></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Truck No</label><Select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="text-fg font-bold"><option value="All Trucks">All Trucks</option>{vehicles.map(v => <option key={v.id} value={v.vehicle_number}>{v.vehicle_number}</option>)}</Select></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Category</label><Select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="text-fg font-semibold"><option value="All Categories">All Categories</option><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></Select></div>
  </div>
 
  <div className="flex justify-end mb-6">
- <button onClick={handleRunAudit} className="px-8 py-3 btn-orange-glow text-xs transition-all shadow-lg active:scale-95">Fetch Database Records</button>
+ <Button
+   type="button"
+   variant="default"
+   size="lg"
+   onClick={handleRunAudit}
+ >
+   Fetch Database Records
+ </Button>
  </div>
 
- <div className="border border-white/[0.08] rounded-xl overflow-hidden">
+ <div className="border border-border rounded-xl overflow-hidden">
  <TableToolbar title="Audit Results" searchQuery={auditSearch} setSearchQuery={setAuditSearch} exportData={exportAudit} exportFilename="Fuel_Audit_Report" />
  <div className="overflow-x-auto w-full max-h-[500px] overflow-y-auto">
- <table className="min-w-full divide-y divide-[#272B36] text-xs whitespace-nowrap">
- <thead className="input-glass bg-white/[0.02] sticky top-0"><tr className="text-left font-bold text-white/60  tracking-wider text-[10px]"><th className="px-5 py-4">Log ID</th><th className="px-5 py-4">Date</th><th className="px-5 py-4">Truck</th><th className="px-5 py-4">Category</th><th className="px-5 py-4">LR No</th><th className="px-5 py-4 text-right">Odometer</th><th className="px-5 py-4 text-right">Litres</th><th className="px-5 py-4 text-right">Cost ()</th></tr></thead>
- <tbody className="liquid-glass divide-y divide-[#272B36]">
- {filteredAudit.map(l => (
- <tr key={l.fuel_log_id} onClick={() => handleEditClick(l)} className="hover:bg-[#1E222D] cursor-pointer transition-colors">
- <td className="px-5 py-3 font-bold text-white/40">#{l.fuel_log_id}</td>
- <td className="px-5 py-3 font-semibold text-slate-300">{formatDate(l.fuel_date)}</td>
- <td className="px-5 py-3 font-semibold text-white">{l.vehicles?.vehicle_number}</td>
- <td className="px-5 py-3 text-slate-300">{l.diesel_category}</td>
- <td className="px-5 py-3 font-bold text-[#FF5A00]">{l.lr_number}</td>
- <td className="px-5 py-3 text-right text-slate-300">{l.filling_odometer_km}</td>
- <td className="px-5 py-3 text-right font-semibold text-[#FF5A00]">{l.litres_filled} L {l.is_tank_full && <span title="Tank Full" className="ml-1 text-sm"></span>}</td>
- <td className="px-5 py-3 text-right font-bold text-rose-500">{(l.total_fuel_cost || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
- </tr>
- ))}
- {filteredAudit.length === 0 && <tr><td colSpan={8} className="px-5 py-8 text-center text-white/40 font-medium">No logs match your criteria.</td></tr>}
- </tbody>
- </table>
+ <Table className="min-w-full whitespace-nowrap text-xs">
+ <TableHeader className="sticky top-0 z-10">
+   <TableRow>
+     <TableHead className="px-5 py-4 text-left">Log ID</TableHead>
+     <TableHead className="px-5 py-4 text-left">Date</TableHead>
+     <TableHead className="px-5 py-4 text-left">Truck</TableHead>
+     <TableHead className="px-5 py-4 text-left">Category</TableHead>
+     <TableHead className="px-5 py-4 text-left">LR No</TableHead>
+     <TableHead className="px-5 py-4 text-right">Odometer</TableHead>
+     <TableHead className="px-5 py-4 text-right">Litres</TableHead>
+     <TableHead className="px-5 py-4 text-right">Cost ()</TableHead>
+   </TableRow>
+ </TableHeader>
+
+ <TableBody>
+   {filteredAudit.map((l) => (
+     <TableRow
+       key={l.fuel_log_id}
+       onClick={() => handleEditClick(l)}
+       className="cursor-pointer"
+     >
+       <TableCell className="px-5 py-3 font-bold text-fg-muted">
+         #{l.fuel_log_id}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 font-semibold text-fg-secondary">
+         {formatDate(l.fuel_date)}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 font-semibold text-fg">
+         {l.vehicles?.vehicle_number}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-fg-secondary">
+         {l.diesel_category}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 font-bold text-accent">
+         {l.lr_number}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-right text-fg-secondary">
+         {l.filling_odometer_km}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-right font-semibold text-accent">
+         {l.litres_filled} L{" "}
+         {l.is_tank_full && (
+           <span title="Tank Full" className="ml-1 text-sm"></span>
+         )}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-right font-bold text-danger">
+         {(l.total_fuel_cost || 0).toLocaleString("en-IN", {
+           minimumFractionDigits: 2,
+         })}
+       </TableCell>
+     </TableRow>
+   ))}
+
+   {filteredAudit.length === 0 && (
+     <TableRow>
+       <TableCell
+         colSpan={8}
+         className="p-8 text-center font-medium text-fg-muted"
+       >
+         No audit records found.
+       </TableCell>
+     </TableRow>
+   )}
+ </TableBody>
+ </Table>
  </div>
  </div>
  </div>
@@ -426,40 +568,88 @@ export function FuelAdvanceModule() {
 
  {faNav === " Mileage Tracker" && (
  <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
- <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/[0.08] pb-4 mb-6 gap-4">
- <div><h3 className="text-sm font-semibold text-white  tracking-wide">Vehicle Mileage (KMPL) Tracker</h3><p className="text-xs text-white/60 mt-1">Calculates true mileage using the "Full-to-Full" standard formula.</p></div>
- <div className="w-full md:w-64"><select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)} className="input-glass"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number}</option>))}</select></div>
+ <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-border pb-4 mb-6 gap-4">
+ <div><h3 className="text-sm font-semibold text-fg  tracking-wide">Vehicle Mileage (KMPL) Tracker</h3><p className="text-xs text-fg-secondary mt-1">Calculates true mileage using the "Full-to-Full" standard formula.</p></div>
+ <div className="w-full md:w-64"><Select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number}</option>))}</Select></div>
  </div>
 
  {!kmplTruckId ? (
- <div className="p-12 text-center input-glass"><span className="text-4xl mb-4"></span><p className="text-sm font-bold text-white/40">Select a truck above to view its automated full-to-full mileage history.</p></div>
+ <div className="p-12 text-center input-glass"><span className="text-4xl mb-4"></span><p className="text-sm font-bold text-fg-muted">Select a truck above to view its automated full-to-full mileage history.</p></div>
  ) : isProcessing ? (
- <div className="p-12 text-center"><p className="text-sm font-bold text-[#FF5A00] animate-pulse">Calculating algorithms...</p></div>
+ <div className="p-12 text-center"><p className="text-sm font-bold text-accent animate-pulse">Calculating algorithms...</p></div>
  ) : (
  <div className="space-y-6">
  {ongoingKmplSpan && (
- <div className="bg-sky-950/20 border border-sky-900/50 p-5 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
- <div><h4 className="text-[10px] font-semibold text-sky-400  tracking-normal mb-1">Current Ongoing Span (Awaiting Next Tank Full)</h4><p className="text-sm font-semibold text-slate-300">Started at Odo <span className="font-semibold text-white">{ongoingKmplSpan.start_odo} KM</span> on {formatDate(ongoingKmplSpan.start_date)}</p></div>
- <div className="text-right"><p className="text-2xl font-semibold text-sky-400">{ongoingKmplSpan.accumulated_litres.toFixed(1)} L</p><p className="text-[10px] font-bold text-sky-500 ">Accumulated so far</p></div>
+ <div className="bg-info-soft border border-info p-5 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+ <div><h4 className="text-[10px] font-semibold text-info  tracking-normal mb-1">Current Ongoing Span (Awaiting Next Tank Full)</h4><p className="text-sm font-semibold text-fg-secondary">Started at Odo <span className="font-semibold text-fg">{ongoingKmplSpan.start_odo} KM</span> on {formatDate(ongoingKmplSpan.start_date)}</p></div>
+ <div className="text-right"><p className="text-2xl font-semibold text-info">{ongoingKmplSpan.accumulated_litres.toFixed(1)} L</p><p className="text-[10px] font-bold text-info ">Accumulated so far</p></div>
  </div>
  )}
- <div className="overflow-x-auto rounded-xl border border-white/[0.08] w-full">
+ <div className="overflow-x-auto rounded-xl border border-border w-full">
  <TableToolbar title="KMPL History" searchQuery={kmplSearch} setSearchQuery={setKmplSearch} exportData={exportKmpl} exportFilename="KMPL_Report" />
- <table className="min-w-full divide-y divide-[#272B36] text-xs whitespace-nowrap">
- <thead className="input-glass bg-white/[0.02] sticky top-0"><tr className="text-left font-bold text-white/60  tracking-wider text-[10px]"><th className="px-5 py-4">Time Span (Full to Full)</th><th className="px-5 py-4 text-right">Distance</th><th className="px-5 py-4 text-right">Consumed</th><th className="px-5 py-4 text-right border-l border-white/[0.08]">KMPL (Mileage)</th><th className="px-5 py-4 text-right">Cost / KM</th></tr></thead>
- <tbody className="liquid-glass divide-y divide-[#272B36]">
- {filteredKmpl.map((span, idx) => (
- <tr key={idx} className="hover:bg-[#1E222D] transition-colors">
- <td className="px-5 py-3"><p className="font-semibold text-slate-300">{formatDate(span.start_date)} <span className="text-slate-600"></span> {formatDate(span.end_date)}</p><p className="text-[10px] text-white/40 mt-0.5">Odo: {span.start_odo} {span.end_odo} <span className="text-[#FF5A00] ml-2 font-bold">({span.logs_count} fill-ups)</span></p></td>
- <td className="px-5 py-3 text-right font-semibold text-white">{span.distance} KM</td>
- <td className="px-5 py-3 text-right font-bold text-sky-400">{span.consumed_litres.toFixed(1)} L</td>
- <td className="px-5 py-3 text-right font-semibold text-emerald-400 text-base border-l border-white/[0.08] bg-emerald-950/10">{span.kmpl}</td>
- <td className="px-5 py-3 text-right font-bold text-rose-400">{span.cost_per_km}</td>
- </tr>
- ))}
- {filteredKmpl.length === 0 && <tr><td colSpan={5} className="px-5 py-8 text-center text-white/40 font-medium">Not enough "Tank Full" records to calculate.</td></tr>}
- </tbody>
- </table>
+ <Table className="min-w-full whitespace-nowrap text-xs">
+ <TableHeader className="sticky top-0 z-10">
+   <TableRow>
+     <TableHead className="px-5 py-4 text-left">Period</TableHead>
+     <TableHead className="px-5 py-4 text-right">Odo Start</TableHead>
+     <TableHead className="px-5 py-4 text-right">Odo End</TableHead>
+     <TableHead className="px-5 py-4 text-right">Distance</TableHead>
+     <TableHead className="px-5 py-4 text-right">Fuel Used</TableHead>
+     <TableHead className="px-5 py-4 text-right">KMPL</TableHead>
+     <TableHead className="px-5 py-4 text-right">Cost / KM</TableHead>
+     <TableHead className="px-5 py-4 text-right">Logs</TableHead>
+   </TableRow>
+ </TableHeader>
+
+ <TableBody>
+   {filteredKmpl.map((s) => (
+     <TableRow key={`${s.start_date}-${s.end_date}-${s.start_odo}`}>
+       <TableCell className="px-5 py-3 font-semibold text-fg">
+         {formatDate(s.start_date)} → {formatDate(s.end_date)}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-right text-fg-secondary">
+         {s.start_odo}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-right text-fg-secondary">
+         {s.end_odo}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-right font-semibold text-fg-secondary">
+         {s.distance}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-right text-fg-secondary">
+         {s.consumed_litres.toFixed(1)} L
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-right font-bold text-accent">
+         {s.kmpl}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-right font-semibold text-fg-secondary">
+         {s.cost_per_km}
+       </TableCell>
+
+       <TableCell className="px-5 py-3 text-right text-fg-muted">
+         {s.logs_count}
+       </TableCell>
+     </TableRow>
+   ))}
+
+   {filteredKmpl.length === 0 && (
+     <TableRow>
+       <TableCell
+         colSpan={8}
+         className="p-8 text-center font-medium text-fg-muted"
+       >
+         No KMPL records found.
+       </TableCell>
+     </TableRow>
+   )}
+ </TableBody>
+ </Table>
  </div>
  </div>
  )}
