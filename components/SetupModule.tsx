@@ -17,22 +17,22 @@ export function SetupModule() {
   const [truckNo, setTruckNo] = useState("");
   const [truckType, setTruckType] = useState("Bulks");
   const [capacity, setCapacity] = useState("35");
-  const [editTruckId, setEditTruckId] = useState<number | null>(null);
+  const [editTruckId, setEditTruckId] = useState<string | null>(null);
 
   // Form states for Drivers
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [licenseNo, setLicenseNo] = useState("");
   const [licenseExp, setLicenseExp] = useState("");
-  const [editDriverId, setEditDriverId] = useState<number | null>(null);
+  const [editDriverId, setEditDriverId] = useState<string | null>(null);
 
   const fetchData = async () => {
     const [tRes, dRes, destRes, bRes, uRes] = await Promise.all([
       supabase.from('vehicles').select('*').order('vehicle_number'),
       supabase.from('drivers').select('*').order('full_name'),
-      supabase.from('destinations_freight_master').select('*'),
-      supabase.from('driver_bata_master').select('*'),
-      supabase.from('app_users').select('*')
+      supabase.from('destinations_freight_master').select('*').order('destination_name'),
+      supabase.from('driver_bata_master').select('*').order('destination_name'),
+      supabase.from('app_users').select('*').order('username')
     ]);
 
     if (tRes.data) setTrucks(tRes.data);
@@ -42,7 +42,6 @@ export function SetupModule() {
     if (uRes.data) setAppUsers(uRes.data);
   };
 
-  // FIXED: Removed `supabase` dependency to kill the infinite re-render loop
   useEffect(() => {
     fetchData();
   }, []);
@@ -60,7 +59,7 @@ export function SetupModule() {
     };
 
     if (editTruckId) {
-      await supabase.from('vehicles').update(payload).eq('id', editTruckId);
+      await supabase.from('vehicles').update(payload).eq('vehicle_id', editTruckId);
       alert("Truck updated successfully!");
     } else {
       await supabase.from('vehicles').insert([{ ...payload, current_status: "WAITING_FOR_LOAD" }]);
@@ -75,7 +74,11 @@ export function SetupModule() {
 
     let autoGenCode = "DRV-001";
     if (drivers.length > 0) {
-      const maxId = drivers.reduce((max, d) => Math.max(max, Number(d.driver_id) || 0), 0);
+      const maxId = drivers.reduce((max, d) => {
+        const numMatch = (d.driver_code || "").match(/\d+/);
+        const num = numMatch ? parseInt(numMatch[0]) : 0;
+        return Math.max(max, num);
+      }, 0);
       autoGenCode = `DRV-${String(maxId + 1).padStart(3, '0')}`;
     }
 
@@ -154,13 +157,13 @@ export function SetupModule() {
                 <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Truck No</th><th className="px-4 py-3">Variant</th><th className="px-4 py-3">Capacity</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
                 <tbody className="divide-y divide-white/[0.05]">
                   {trucks.map(t => (
-                    <tr key={t.id} className="hover:bg-white/[0.02] transition-colors">
+                    <tr key={t.vehicle_id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-3.5 font-bold text-white font-mono">{t.vehicle_number}</td>
                       <td className="px-4 py-3.5 text-white/70 font-semibold">{t.truck_type}</td>
                       <td className="px-4 py-3.5 text-white/70 font-mono">{t.carrying_capacity_tons} MT</td>
                       <td className="px-4 py-3.5"><span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md text-[9px] font-bold font-mono uppercase">{t.current_status || "ACTIVE"}</span></td>
                       <td className="px-4 py-3.5 text-right">
-                        <button onClick={() => { setTruckNo(t.vehicle_number); setTruckType(t.truck_type); setCapacity(String(t.carrying_capacity_tons)); setEditTruckId(t.id); }} className="px-4 py-1.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white rounded-full text-[10px] font-bold transition-all ios-spring">Edit</button>
+                        <button onClick={() => { setTruckNo(t.vehicle_number); setTruckType(t.truck_type); setCapacity(String(t.carrying_capacity_tons)); setEditTruckId(t.vehicle_id); }} className="px-4 py-1.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white rounded-full text-[10px] font-bold transition-all ios-spring">Edit</button>
                       </td>
                     </tr>
                   ))}
@@ -203,7 +206,7 @@ export function SetupModule() {
                 <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Code</th><th className="px-4 py-3">Full Name</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">License Expiry</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
                 <tbody className="divide-y divide-white/[0.05]">
                   {drivers.map(d => (
-                    <tr key={d.driver_id || d.id} className="hover:bg-white/[0.02] transition-colors">
+                    <tr key={d.driver_id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-3.5 font-bold text-[#FF9F0A] font-mono">{d.driver_code}</td>
                       <td className="px-4 py-3.5 font-bold text-white">{d.full_name}</td>
                       <td className="px-4 py-3.5 text-white/70 font-mono">{d.phone_number || "-"}</td>
@@ -227,8 +230,8 @@ export function SetupModule() {
             <table className="min-w-full divide-y divide-white/[0.06] text-xs">
               <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3">Origin</th><th className="px-4 py-3 text-right">Rate / MT (₹)</th></tr></thead>
               <tbody className="divide-y divide-white/[0.05]">
-                {destinations.map((d, i) => (
-                  <tr key={d.id || d.destination_id || i} className="hover:bg-white/[0.02] transition-colors">
+                {destinations.map((d) => (
+                  <tr key={d.destination_id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-4 py-3.5 font-bold text-white">{d.destination_name}</td>
                     <td className="px-4 py-3.5 text-white/70">{d.origin || "COCHIN"}</td>
                     <td className="px-4 py-3.5 text-right font-bold text-emerald-400 font-mono">{(Number(d.freight_rate_per_ton)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
@@ -247,10 +250,10 @@ export function SetupModule() {
             <table className="min-w-full divide-y divide-white/[0.06] text-xs">
               <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Destination</th><th className="px-4 py-3 text-right">Standard Bata (₹)</th></tr></thead>
               <tbody className="divide-y divide-white/[0.05]">
-                {bataRules.map((b, i) => (
-                  <tr key={b.id || b.bata_rule_id || i} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3.5 font-bold text-white">{b.destination_name || b.destination || "Unknown"}</td>
-                    <td className="px-4 py-3.5 text-right font-bold text-[#FF9F0A] font-mono">{(Number(b.standard_bata_inr || b.bata_amount)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                {bataRules.map((b) => (
+                  <tr key={b.bata_rule_id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3.5 font-bold text-white">{b.destination_name || "Unknown"}</td>
+                    <td className="px-4 py-3.5 text-right font-bold text-[#FF9F0A] font-mono">{(Number(b.standard_bata_inr)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                   </tr>
                 ))}
               </tbody>
@@ -266,9 +269,9 @@ export function SetupModule() {
             <table className="min-w-full divide-y divide-white/[0.06] text-xs">
               <thead><tr className="text-left font-bold text-white/50 uppercase tracking-wider text-[9px]"><th className="px-4 py-3">Username / Email</th><th className="px-4 py-3">Role</th></tr></thead>
               <tbody className="divide-y divide-white/[0.05]">
-                {appUsers.map((u, i) => (
-                  <tr key={u.id || u.user_id || i} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3.5 font-bold text-white font-mono">{u.username || u.email}</td>
+                {appUsers.map((u) => (
+                  <tr key={u.user_id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3.5 font-bold text-white font-mono">{u.username || "-"}</td>
                     <td className="px-4 py-3.5"><span className="px-2.5 py-1 bg-[#FF9F0A]/10 text-[#FF9F0A] border border-[#FF9F0A]/20 rounded-md text-[9px] font-bold font-mono uppercase">{u.role || "USER"}</span></td>
                   </tr>
                 ))}
