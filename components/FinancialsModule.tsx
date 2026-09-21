@@ -168,7 +168,7 @@ export function FinancialsModule() {
  {["Fleet Retention", "Variant Benchmarks", "Driver Scorecard"].map((tab) => (<button key={tab} onClick={() => setAnalyticsSubTab(tab)} className={`pb-2 text-sm font-bold  tracking-wider transition-all duration-200 border-b-2 ${analyticsSubTab === tab ? "border-[#FF5A00] text-[#FF5A00]" : "border-transparent text-white/40 hover:text-white"}`}>{tab}</button>))}
  {analyticsSubTab === "Variant Benchmarks" && (<select value={selectedVariant} onChange={e => setSelectedVariant(e.target.value)} className="ml-auto text-xs p-2 rounded-lg border border-white/[0.08] font-bold text-white input-glass bg-white/[0.02] outline-none"><option value="All Variants">All Variants</option>{variantTypes.map(v => <option key={v} value={v}>{v}</option>)}</select>)}
  </div>
- <button onClick={exportAnalyticsToCSV} className="px-6 py-2.5 input-glass bg-white/[0.02] hover:input-glass bg-white/[0.02] border border-white/[0.08] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95 ">EXPORT CSV</button>
+ <button onClick={exportAnalyticsToCSV} className="px-6 py-2.5 input-glass bg-white/[0.02] hover:input-glass">EXPORT CSV</button>
  </div>
 
  {analyticsSubTab !== "Driver Scorecard" && (

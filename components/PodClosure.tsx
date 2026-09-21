@@ -30,11 +30,11 @@ function SearchableSelect({ options, value, onChange, placeholder, disabled }: {
  <span className="text-[10px] text-white/60"></span>
  </div>
  {isOpen && (
- <div className="absolute z-50 w-full mt-1 input-glass bg-white/[0.02] border border-white/[0.08] rounded-xl shadow-2xl max-h-60 overflow-y-auto">
+ <div className="absolute z-50 w-full mt-1 input-glass">
  <div className="p-2 sticky top-0 input-glass bg-white/[0.02]">
  <input 
  type="text" 
- className="w-full text-xs p-2.5 rounded-lg input-glass bg-white/[0.02] border border-white/[0.08] text-white outline-none focus:border-[#FF5A00]" 
+ className="w-full text-xs p-2.5 rounded-lg input-glass" 
  placeholder="Search LR..." 
  value={search} 
  onChange={(e) => setSearch(e.target.value)} 
@@ -275,7 +275,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  <div className="lg:col-span-7 liquid-glass p-6 shadow-sm">
  
  {pendingScans.length > 0 && (
- <div className="mb-6 p-4 input-glass bg-white/[0.02] border border-white/[0.08] rounded-xl animate-in slide-in-from-top-4">
+ <div className="mb-6 p-4 input-glass">
  <h4 className="text-xs font-semibold text-emerald-400  tracking-wider flex items-center gap-2 mb-3">
  <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
  Pending POD Entries Inbox ({pendingScans.length})
@@ -317,29 +317,20 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
  {currentTrip && (
  <>
- <div className="p-4 input-glass bg-white/[0.02] border border-white/[0.08] rounded-xl flex flex-wrap gap-4 justify-between text-xs text-slate-300">
+ <div className="p-4 input-glass">
  <span><strong className="text-white/40">DRIVER:</strong> <br/><span className="font-bold text-white">{currentTrip.drivers?.full_name || "Unassigned"}</span></span>
  <span><strong className="text-white/40">ROUTE:</strong> <br/><span className="font-bold text-white">{currentTrip.origin} {currentTrip.destination}</span></span>
  <span><strong className="text-white/40">DISPATCHED:</strong> <br/><span className="font-semibold text-[#FF5A00]">{currentTrip.loaded_weight_mt} MT</span></span>
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">POD No *</label><input type="text" value={podNo} onChange={(e) => setPodNo(e.target.value)} placeholder="e.g. POD-8821" className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white  font-bold outline-none focus:border-[#FF5A00]" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Closing Date *</label><input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white font-semibold outline-none focus:border-[#FF5A00]" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Unloaded MT</label><input type="number" {...numProps} value={unloadedMt} onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} /></div>
- </div>
-
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Closing KM *</label><input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder={`Start: ${currentTrip.start_km || 0}`} className={`w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-sky-400 font-bold outline-none focus:border-[#FF5A00] ${noSpinClass}`} required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Halt Bata ()</label><input type="number" {...numProps} value={haltBata} onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-[#FF5A00] font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Claims / Repairs ()</label><input type="number" {...numProps} value={claims} onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-rose-400 font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} /></div>
- </div>
-
- <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/[0.08] pt-5 items-center">
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">POD No *</label><input type="text" value={podNo} onChange={(e) => setPodNo(e.target.value)} placeholder="e.g. POD-8821" className="input-glass" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Closing Date *</label><input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="input-glass" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Unloaded MT</label><input type="number" {...numProps} value={unloadedMt} onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`input-glass"grid grid-cols-1 md:grid-cols-3 gap-4">
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Closing KM *</label><input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder={`Start: ${currentTrip.start_km || 0}`} className={`input-glass"block text-[10px] font-bold text-white/60  mb-1">Halt Bata ()</label><input type="number" {...numProps} value={haltBata} onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`input-glass"block text-[10px] font-bold text-white/60  mb-1">Claims / Repairs ()</label><input type="number" {...numProps} value={claims} onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`input-glass"grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/[0.08] pt-5 items-center">
  <div>
  <label className="block text-[10px] font-bold text-white/60  mb-1">Closing Diesel Top-up (L)</label>
- <input type="number" {...numProps} value={closingDiesel} onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0 Litres" className={`w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-[#FF5A00] font-semibold outline-none focus:border-[#FF5A00] ${noSpinClass}`} />
- <span className="text-[10px] text-white/40 font-bold mt-1 block">Valued at current rate: {dieselRate}/L</span>
+ <input type="number" {...numProps} value={closingDiesel} onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0 Litres" className={`input-glass"text-[10px] text-white/40 font-bold mt-1 block">Valued at current rate: {dieselRate}/L</span>
  </div>
  <div className="pt-2">
  <label className="flex items-center gap-3 cursor-pointer select-none input-glass bg-white/[0.02] p-3 rounded-xl border border-white/[0.08] w-fit">

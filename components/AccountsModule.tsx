@@ -138,7 +138,7 @@ export function AccountsModule() {
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={advRef} onChange={e => setAdvRef(e.target.value.toUpperCase())} placeholder="OPTIONAL REF" className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold " /></div>
  <div className="flex gap-2">
  {editAdvId && <button type="button" onClick={() => {setEditAdvId(null); setAdvAmount(""); setAdvRef("");}} className="flex-1 py-3 input-glass bg-white/[0.02] text-slate-300 font-bold rounded-xl border border-white/[0.08] hover:bg-[#272B36] transition-colors">Cancel</button>}
- <button type="submit" disabled={isProcessing} className="flex-[2] py-3 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg">{isProcessing ? "Processing..." : editAdvId ? "Update Advance" : "Log Advance"}</button>
+ <button type="submit" disabled={isProcessing} className="flex-[2] py-3 btn-orange-glow text-xs transition-all shadow-lg">{isProcessing ? "Processing..." : editAdvId ? "Update Advance" : "Log Advance"}</button>
  </div>
  </form>
  </div>
@@ -166,11 +166,11 @@ export function AccountsModule() {
  <div className="lg:col-span-4 liquid-glass p-6 rounded-2xl shadow-xl h-fit">
  <h3 className="text-sm font-semibold text-white  tracking-wide border-b border-white/[0.08] pb-3 mb-5">Record Petty Expense</h3>
  <form onSubmit={handleCreateExpense} className="space-y-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Expense Type</label><select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-white font-bold outline-none focus:border-[#FF5A00]"><option value="TOLL_FASTAG">TOLL / FASTAG</option><option value="POLICE_RTO">RTO / PERMITS</option><option value="LOADING">HAMALI / LOADING</option><option value="OFFICE">OFFICE MISC</option></select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck (Optional)</label><select value={expVehicleId} onChange={e => setExpVehicleId(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-white font-bold outline-none focus:border-[#FF5A00]"><option value="">-- GENERAL --</option>{trucksList.map(t => <option key={t.id} value={t.id}>{t.vehicle_number}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Amount () *</label><input type="number" min="1" max="100000" value={expAmount} onChange={e => setExpAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-xs p-3 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-[#FF5A00] font-semibold outline-none focus:border-[#FF5A00]" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={expDescription} onChange={e => setExpDescription(e.target.value.toUpperCase())} className="w-full text-xs p-3 rounded-xl input-glass bg-white/[0.02] border border-white/[0.08] text-white outline-none focus:border-[#FF5A00] " /></div>
- <button type="submit" disabled={isProcessing} className="w-full py-3 btn-orange-glow py-3 rounded-full text-xs  transition-all shadow-lg">{isProcessing ? "Saving..." : "Log Expense"}</button>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Expense Type</label><select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass"><option value="TOLL_FASTAG">TOLL / FASTAG</option><option value="POLICE_RTO">RTO / PERMITS</option><option value="LOADING">HAMALI / LOADING</option><option value="OFFICE">OFFICE MISC</option></select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck (Optional)</label><select value={expVehicleId} onChange={e => setExpVehicleId(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass"><option value="">-- GENERAL --</option>{trucksList.map(t => <option key={t.id} value={t.id}>{t.vehicle_number}</option>)}</select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Amount () *</label><input type="number" min="1" max="100000" value={expAmount} onChange={e => setExpAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-xs p-3 rounded-xl input-glass" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={expDescription} onChange={e => setExpDescription(e.target.value.toUpperCase())} className="w-full text-xs p-3 rounded-xl input-glass" /></div>
+ <button type="submit" disabled={isProcessing} className="w-full py-3 btn-orange-glow text-xs  transition-all shadow-lg">{isProcessing ? "Saving..." : "Log Expense"}</button>
  </form>
  </div>
  <div className="lg:col-span-8 liquid-glass overflow-hidden flex flex-col shadow-xl">

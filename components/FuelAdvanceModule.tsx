@@ -291,7 +291,7 @@ export function FuelAdvanceModule() {
  
  {/* Inbox UI */}
  {!editLogId && pendingScans.length > 0 && (
- <div className="mb-6 p-4 input-glass bg-white/[0.02] border border-white/[0.08] rounded-xl animate-in slide-in-from-top-4">
+ <div className="mb-6 p-4 input-glass">
  <h4 className="text-xs font-semibold text-sky-400  tracking-wider flex items-center gap-2 mb-3"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span></span>Pending Fuel Slips ({pendingScans.length})</h4>
  <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
  {pendingScans.map(scan => {
@@ -395,7 +395,7 @@ export function FuelAdvanceModule() {
  </div>
 
  <div className="flex justify-end mb-6">
- <button onClick={handleRunAudit} className="px-8 py-3 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg active:scale-95">Fetch Database Records</button>
+ <button onClick={handleRunAudit} className="px-8 py-3 btn-orange-glow text-xs transition-all shadow-lg active:scale-95">Fetch Database Records</button>
  </div>
 
  <div className="border border-white/[0.08] rounded-xl overflow-hidden">
@@ -428,11 +428,11 @@ export function FuelAdvanceModule() {
  <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/[0.08] pb-4 mb-6 gap-4">
  <div><h3 className="text-sm font-semibold text-white  tracking-wide">Vehicle Mileage (KMPL) Tracker</h3><p className="text-xs text-white/60 mt-1">Calculates true mileage using the "Full-to-Full" standard formula.</p></div>
- <div className="w-full md:w-64"><select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] focus:border-[#FF5A00] outline-none font-bold text-white"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number}</option>))}</select></div>
+ <div className="w-full md:w-64"><select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)} className="input-glass"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number}</option>))}</select></div>
  </div>
 
  {!kmplTruckId ? (
- <div className="p-12 text-center input-glass bg-white/[0.02] border border-white/[0.08] rounded-xl flex flex-col items-center"><span className="text-4xl mb-4"></span><p className="text-sm font-bold text-white/40">Select a truck above to view its automated full-to-full mileage history.</p></div>
+ <div className="p-12 text-center input-glass"><span className="text-4xl mb-4"></span><p className="text-sm font-bold text-white/40">Select a truck above to view its automated full-to-full mileage history.</p></div>
  ) : isProcessing ? (
  <div className="p-12 text-center"><p className="text-sm font-bold text-[#FF5A00] animate-pulse">Calculating algorithms...</p></div>
  ) : (

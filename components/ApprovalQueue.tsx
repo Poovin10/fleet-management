@@ -108,7 +108,7 @@ export function ApprovalQueue() {
 
  {approveData.isOpen && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
- <div className="input-glass bg-white/[0.02] border border-white/[0.08] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+ <div className="input-glass">
  <form onSubmit={executeApprove}>
  <div className="p-6">
  <h3 className="text-lg font-semibold text-white  tracking-wide mb-1">Approve Fuel Request</h3>

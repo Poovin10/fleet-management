@@ -183,7 +183,7 @@ export function ModifyTrips() {
  </div>
  <div className="pt-4 flex gap-3">
  <button type="button" onClick={clearForm} className="flex-1 py-3.5 input-glass bg-white/[0.02] text-slate-300 font-bold rounded-xl border border-white/[0.08] hover:bg-[#272B36] transition-colors">Cancel Edit</button>
- <button type="submit" disabled={isProcessing} className="flex-[2] py-3.5 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Trip Updates</button>
+ <button type="submit" disabled={isProcessing} className="flex-[2] py-3.5 btn-orange-glow text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95">Save Trip Updates</button>
  </div>
  </form>
  )}
@@ -203,8 +203,8 @@ export function ModifyTrips() {
  <div className="flex flex-col md:flex-row gap-4">
  <div className="flex-1"><label className="block text-[10px] font-bold text-white/60  mb-1">Search LR No</label><input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="input-glass text-white  outline-none focus:border-[#FF5A00] font-semibold" /></div>
  <div className="flex items-end gap-3">
- <button onClick={handleSearchTrips} disabled={isProcessing} className="px-8 py-3 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">{isProcessing ? "Searching..." : "Search Trips"}</button>
- <button onClick={exportTripsToCSV} className="px-6 py-3 input-glass bg-white/[0.02] hover:input-glass bg-white/[0.02] border border-white/[0.08] text-emerald-400 font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95"><span className="text-lg leading-none">Export CSV</span></button>
+ <button onClick={handleSearchTrips} disabled={isProcessing} className="px-8 py-3 btn-orange-glow text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">{isProcessing ? "Searching..." : "Search Trips"}</button>
+ <button onClick={exportTripsToCSV} className="px-6 py-3 input-glass bg-white/[0.02] hover:input-glass"><span className="text-lg leading-none">Export CSV</span></button>
  </div>
  </div>
  </div>

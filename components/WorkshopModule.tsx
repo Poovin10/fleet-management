@@ -191,25 +191,25 @@ export function WorkshopModule() {
  <div className="space-y-4">
  {actionModal.mode === "UNMOUNT" && (
  <>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck Odo at Unmount (KM) *</label><input type="number" min="0" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-bold" placeholder={`Was mounted at ${actionModal.tyre?.last_mount_odo || 0} KM`} /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Current NSD (mm)</label><input type="number" step="0.1" min="0" max="30" value={actionNsd} onChange={e=>setActionNsd(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-bold" placeholder={`${actionModal.tyre?.nsd_measurement || 0} mm`} /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Next Destination</label><select value={nextState} onChange={e=>setNextState(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-bold"><option value="IN_STORE">Store / Inventory</option><option value="RETREADING">Send to Retreading</option><option value="SCRAPPED">Scrap Yard</option><option value="REJECTED">Rejected / Burst</option></select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck Odo at Unmount (KM) *</label><input type="number" min="0" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="input-glass" placeholder={`Was mounted at ${actionModal.tyre?.last_mount_odo || 0} KM`} /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Current NSD (mm)</label><input type="number" step="0.1" min="0" max="30" value={actionNsd} onChange={e=>setActionNsd(parseFloat(e.target.value))} className="input-glass" placeholder={`${actionModal.tyre?.nsd_measurement || 0} mm`} /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Next Destination</label><select value={nextState} onChange={e=>setNextState(e.target.value)} className="input-glass"><option value="IN_STORE">Store / Inventory</option><option value="RETREADING">Send to Retreading</option><option value="SCRAPPED">Scrap Yard</option><option value="REJECTED">Rejected / Burst</option></select></div>
  </>
  )}
  {actionModal.mode === "MOUNT" && (
  <>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Assign to Truck *</label><select value={actionTruckId} onChange={e=>setActionTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-bold"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Position *</label><select value={actionPos} onChange={e=>setActionPos(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-bold"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck Odo at Mount (KM) *</label><input type="number" min="0" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-bold" placeholder="0" /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Assign to Truck *</label><select value={actionTruckId} onChange={e=>setActionTruckId(e.target.value)} className="input-glass"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Position *</label><select value={actionPos} onChange={e=>setActionPos(e.target.value)} className="input-glass"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck Odo at Mount (KM) *</label><input type="number" min="0" value={actionOdo} onChange={e=>setActionOdo(parseFloat(e.target.value))} className="input-glass" placeholder="0" /></div>
  </>
  )}
  {actionModal.mode === "RECEIVE_RETREAD" && (
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">New Retreaded NSD (mm)</label><input type="number" step="0.1" min="0" max="30" value={actionNsd} onChange={e=>setActionNsd(parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-bold" placeholder="e.g. 14.0" /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">New Retreaded NSD (mm)</label><input type="number" step="0.1" min="0" max="30" value={actionNsd} onChange={e=>setActionNsd(parseFloat(e.target.value))} className="input-glass" placeholder="e.g. 14.0" /></div>
  )}
  {actionModal.mode === "SCRAP_FROM_STORE" && (
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Reason for Disposal</label><select value={nextState} onChange={e=>setNextState(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-bold"><option value="SCRAPPED">Scrapped (End of Life)</option><option value="REJECTED">Rejected / Failed</option></select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Reason for Disposal</label><select value={nextState} onChange={e=>setNextState(e.target.value)} className="input-glass"><option value="SCRAPPED">Scrapped (End of Life)</option><option value="REJECTED">Rejected / Failed</option></select></div>
  )}
- <button onClick={executeLifecycleAction} disabled={isProcessing} className="w-full py-3.5 mt-2 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">
+ <button onClick={executeLifecycleAction} disabled={isProcessing} className="w-full py-3.5 mt-2 btn-orange-glow text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">
  {isProcessing ? "Processing..." : "Confirm Action"}
  </button>
  </div>
@@ -244,12 +244,12 @@ export function WorkshopModule() {
  </div>
  {regMode === "MOUNTED" && (
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 input-glass bg-white/[0.02] border border-[#FF5A00]/20 rounded-xl">
- <div><label className="block text-[10px] font-bold text-[#FF5A00]  mb-1">Select Truck *</label><select value={truckId} onChange={e => setTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-bold"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-[#FF5A00]  mb-1">Position</label><select value={position} onChange={e => setPosition(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-semibold"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></select></div>
- <div><label className="block text-[10px] font-bold text-[#FF5A00]  mb-1">Mounting ODO (KM) *</label><input type="number" min="0" value={mountOdo} onChange={e => setMountOdo(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-white/[0.08] input-glass bg-white/[0.02] text-white focus:border-[#FF5A00] outline-none font-bold" /></div>
+ <div><label className="block text-[10px] font-bold text-[#FF5A00]  mb-1">Select Truck *</label><select value={truckId} onChange={e => setTruckId(e.target.value)} className="input-glass"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</select></div>
+ <div><label className="block text-[10px] font-bold text-[#FF5A00]  mb-1">Position</label><select value={position} onChange={e => setPosition(e.target.value)} className="input-glass"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></select></div>
+ <div><label className="block text-[10px] font-bold text-[#FF5A00]  mb-1">Mounting ODO (KM) *</label><input type="number" min="0" value={mountOdo} onChange={e => setMountOdo(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass" /></div>
  </div>
  )}
- <div className="flex justify-end pt-2"><button type="submit" disabled={isProcessing} className="px-8 py-3 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">Save Tyre Data</button></div>
+ <div className="flex justify-end pt-2"><button type="submit" disabled={isProcessing} className="px-8 py-3 btn-orange-glow text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">Save Tyre Data</button></div>
  </form>
  </div>
 
@@ -342,7 +342,7 @@ export function WorkshopModule() {
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Total Bill Amount () *</label><input type="number" min="1" max="1000000" value={amount} onChange={e => setAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass focus:border-[#FF5A00] outline-none font-semibold text-rose-500" required /></div>
  </div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Parts & Service Description</label><input type="text" maxLength={150} value={description} onChange={e => setDescription(e.target.value.toUpperCase())} placeholder="e.g. Engine oil change, 2 brake pads" className="input-glass text-white focus:border-[#FF5A00] outline-none font-semibold " /></div>
- <button type="submit" disabled={isProcessing} className="w-full py-3.5 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg active:scale-95 disabled:bg-slate-700">Save Service Record</button>
+ <button type="submit" disabled={isProcessing} className="w-full py-3.5 btn-orange-glow text-xs transition-all shadow-lg active:scale-95 disabled:bg-slate-700">Save Service Record</button>
  </form>
 
  <div className="mt-10 border border-white/[0.08] rounded-2xl overflow-hidden w-full">

@@ -129,7 +129,7 @@ export function DriverSettlementModule() {
  <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">To Date *</label>
  <div className="flex gap-2">
  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-semibold outline-none" />
- <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 py-3.5 btn-orange-glow py-3 rounded-full ios-spring">
+ <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 py-3.5 btn-orange-glow ios-spring">
  Load
  </button>
  </div>
