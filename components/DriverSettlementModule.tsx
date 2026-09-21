@@ -111,7 +111,7 @@ export function DriverSettlementModule() {
  <p className="text-xs text-white/60 font-medium mt-0.5">Generate multi-truck ledgers, calculate net balances, and export statements.</p>
  </div>
 
- <div className="bg-[#080A10]/80 backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 sm:p-8 shadow-2xl">
+ <div className="liquid-glass p-6 sm:p-8 shadow-2xl">
  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
  <div className="md:col-span-2">
  <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">Select Driver *</label>
@@ -129,7 +129,7 @@ export function DriverSettlementModule() {
  <label className="block text-[10px] font-semibold text-white/60  tracking-normal mb-2">To Date *</label>
  <div className="flex gap-2">
  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full text-xs p-3.5 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white font-semibold outline-none" />
- <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 py-3.5 bg-gradient-to-r from-[#FF5A00] to-[#E04F00] text-white font-semibold text-xs rounded-xl  tracking-wider transition-all shadow-[0_0_20px_rgba(255,90,0,0.3)] cursor-pointer">
+ <button onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} className="px-5 py-3.5 btn-orange-glow py-3 rounded-full ios-spring">
  Load
  </button>
  </div>

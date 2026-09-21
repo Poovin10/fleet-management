@@ -46,8 +46,7 @@ export function SetupModule() {
     fetchData();
   }, []);
 
-  const compactInput = "w-full bg-white/[0.02] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-[#FF9F0A]/50 focus:bg-white/[0.05] transition-all outline-none font-medium ios-spring";
-
+  
   const handleSaveTruck = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!truckNo.trim()) return alert("Please enter a truck number.");
@@ -123,23 +122,23 @@ export function SetupModule() {
 
       {activeSubTab === "Trucks" && (
         <div className="space-y-6">
-          <div className="liquid-glass border border-white/[0.04] rounded-[32px] p-6 shadow-xl max-w-xl">
+          <div className="liquid-glass p-6 shadow-xl max-w-xl">
             <h3 className="text-xs font-bold text-white tracking-wider mb-4">{editTruckId ? "Edit Truck Record" : "Add New Fleet Truck"}</h3>
             <form onSubmit={handleSaveTruck} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Truck No *</label>
-                <input type="text" value={truckNo} onChange={e => setTruckNo(e.target.value)} placeholder="e.g. TN 56 F 0452" className={compactInput} required />
+                <input type="text" value={truckNo} onChange={e => setTruckNo(e.target.value)} placeholder="e.g. TN 56 F 0452" className="input-glass" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Variant</label>
-                  <select value={truckType} onChange={e => setTruckType(e.target.value)} className={`${compactInput} bg-[#020203]`}>
+                  <select value={truckType} onChange={e => setTruckType(e.target.value)} className={`input-glass bg-[#020203]`}>
                     <option value="Bulks">Bulks</option><option value="16-Wheel Multi-Axle">16-Wheel Multi-Axle</option><option value="14-Wheel Heavy Duty">14-Wheel Heavy Duty</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Capacity (MT)</label>
-                  <select value={capacity} onChange={e => setCapacity(e.target.value)} className={`${compactInput} bg-[#020203]`}>
+                  <select value={capacity} onChange={e => setCapacity(e.target.value)} className={`input-glass bg-[#020203]`}>
                     <option value="30">30 MT</option><option value="35">35 MT</option>
                   </select>
                 </div>
@@ -150,7 +149,7 @@ export function SetupModule() {
             </form>
           </div>
 
-          <div className="liquid-glass border border-white/[0.04] rounded-[32px] p-6 shadow-xl">
+          <div className="liquid-glass p-6 shadow-xl">
             <h3 className="text-xs font-bold text-white tracking-wider mb-4">Registered Fleet ({trucks.length} Units)</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-white/[0.06] text-xs">
@@ -176,21 +175,21 @@ export function SetupModule() {
 
       {activeSubTab === "Drivers" && (
         <div className="space-y-6">
-          <div className="liquid-glass border border-white/[0.04] rounded-[32px] p-6 shadow-xl max-w-xl">
+          <div className="liquid-glass p-6 shadow-xl max-w-xl">
             <h3 className="text-xs font-bold text-white tracking-wider mb-4">{editDriverId ? "Edit Driver Record" : "Register New Driver"}</h3>
             <form onSubmit={handleSaveDriver} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-semibold text-[#FF9F0A] mb-1.5 uppercase tracking-wider">Full Name *</label>
-                <input type="text" value={driverName} onChange={e => setDriverName(e.target.value)} placeholder="e.g. Aneesh CR" className={compactInput} required />
+                <input type="text" value={driverName} onChange={e => setDriverName(e.target.value)} placeholder="e.g. Aneesh CR" className="input-glass" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Phone Number</label>
-                  <input type="text" value={driverPhone} onChange={e => setDriverPhone(e.target.value)} placeholder="10-digit mobile" className={`${compactInput} font-mono`} />
+                  <input type="text" value={driverPhone} onChange={e => setDriverPhone(e.target.value)} placeholder="10-digit mobile" className={`input-glass font-mono`} />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-white/60 mb-1.5 uppercase tracking-wider">License Expiry</label>
-                  <input type="date" value={licenseExp} onChange={e => setLicenseExp(e.target.value)} className={`${compactInput} font-mono`} />
+                  <input type="date" value={licenseExp} onChange={e => setLicenseExp(e.target.value)} className={`input-glass font-mono`} />
                 </div>
               </div>
               <button type="submit" className="w-full py-3 btn-orange-glow text-xs font-bold rounded-full tracking-wide transition-all ios-spring shadow-[0_0_15px_rgba(255,159,10,0.3)] mt-2">
@@ -199,7 +198,7 @@ export function SetupModule() {
             </form>
           </div>
 
-          <div className="liquid-glass border border-white/[0.04] rounded-[32px] p-6 shadow-xl">
+          <div className="liquid-glass p-6 shadow-xl">
             <h3 className="text-xs font-bold text-white tracking-wider mb-4">Active Driver Roster ({drivers.length} Drivers)</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-white/[0.06] text-xs">
@@ -224,7 +223,7 @@ export function SetupModule() {
       )}
 
       {activeSubTab === "Freight Slabs" && (
-        <div className="liquid-glass border border-white/[0.04] rounded-[32px] p-6 shadow-xl">
+        <div className="liquid-glass p-6 shadow-xl">
           <h3 className="text-xs font-bold text-white tracking-wider mb-4">Destinations & Freight Master Slabs ({destinations.length})</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-white/[0.06] text-xs">
@@ -244,7 +243,7 @@ export function SetupModule() {
       )}
 
       {activeSubTab === "Bata" && (
-        <div className="liquid-glass border border-white/[0.04] rounded-[32px] p-6 shadow-xl">
+        <div className="liquid-glass p-6 shadow-xl">
           <h3 className="text-xs font-bold text-white tracking-wider mb-4">Driver Bata Rules ({bataRules.length})</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-white/[0.06] text-xs">
@@ -263,7 +262,7 @@ export function SetupModule() {
       )}
 
       {activeSubTab === "User Control" && (
-        <div className="liquid-glass border border-white/[0.04] rounded-[32px] p-6 shadow-xl">
+        <div className="liquid-glass p-6 shadow-xl">
           <h3 className="text-xs font-bold text-white tracking-wider mb-4">App Users & Roles ({appUsers.length})</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-white/[0.06] text-xs">
