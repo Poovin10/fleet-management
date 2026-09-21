@@ -172,7 +172,7 @@ export function WorkshopModule() {
  {/* CUSTOM LIFECYCLE MODAL */}
  {actionModal.isOpen && (
  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0F1117]/80 backdrop-blur-sm animate-in fade-in">
- <div className="bg-[#161922] border border-[#272B36] rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
+ <div className="liquid-glass shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
  <div className="flex justify-between items-center mb-5 border-b border-[#272B36] pb-3">
  <h3 className="text-lg font-semibold text-white  tracking-tight">
  {actionModal.mode === "UNMOUNT" && "Unmount Tyre"}
@@ -209,7 +209,7 @@ export function WorkshopModule() {
  {actionModal.mode === "SCRAP_FROM_STORE" && (
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Reason for Disposal</label><select value={nextState} onChange={e=>setNextState(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#12141C] text-white focus:border-[#FF5A00] outline-none font-bold"><option value="SCRAPPED">Scrapped (End of Life)</option><option value="REJECTED">Rejected / Failed</option></select></div>
  )}
- <button onClick={executeLifecycleAction} disabled={isProcessing} className="w-full py-3.5 mt-2 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">
+ <button onClick={executeLifecycleAction} disabled={isProcessing} className="w-full py-3.5 mt-2 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">
  {isProcessing ? "Processing..." : "Confirm Action"}
  </button>
  </div>
@@ -233,14 +233,14 @@ export function WorkshopModule() {
  {wTab === "Tyre Management" && (
  <div className="space-y-8">
  {/* Tyre Registration Form */}
- <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom-4">
+ <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
  <h3 className="text-sm font-semibold text-white  border-b border-[#272B36] pb-3 mb-4 flex items-center gap-2"><span></span> Add New Tyre to Database</h3>
  <form onSubmit={handleRegisterTyre} className="space-y-4">
  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
- <div className="md:col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">Destination *</label><select value={regMode} onChange={e => setRegMode(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white focus:border-[#FF5A00] outline-none font-bold"><option value="IN_STORE">Add to Store / Inventory</option><option value="MOUNTED">Mount Directly to Truck</option></select></div>
- <div className="md:col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">Serial Number *</label><input type="text" maxLength={30} value={serialNo} onChange={e => setSerialNo(e.target.value.toUpperCase())} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white focus:border-[#FF5A00] outline-none font-bold " required /></div>
- <div className="md:col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">Brand / Model</label><input type="text" maxLength={40} value={brand} onChange={e => setBrand(e.target.value.toUpperCase())} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white focus:border-[#FF5A00] outline-none font-semibold " /></div>
- <div className="md:col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">Initial NSD (MM)</label><input type="number" step="0.1" min="0" max="30" value={nsdMm} onChange={e => setNsdMm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white focus:border-[#FF5A00] outline-none font-bold" /></div>
+ <div className="md:col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">Destination *</label><select value={regMode} onChange={e => setRegMode(e.target.value)} className="input-glass text-white focus:border-[#FF5A00] outline-none font-bold"><option value="IN_STORE">Add to Store / Inventory</option><option value="MOUNTED">Mount Directly to Truck</option></select></div>
+ <div className="md:col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">Serial Number *</label><input type="text" maxLength={30} value={serialNo} onChange={e => setSerialNo(e.target.value.toUpperCase())} className="input-glass text-white focus:border-[#FF5A00] outline-none font-bold " required /></div>
+ <div className="md:col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">Brand / Model</label><input type="text" maxLength={40} value={brand} onChange={e => setBrand(e.target.value.toUpperCase())} className="input-glass text-white focus:border-[#FF5A00] outline-none font-semibold " /></div>
+ <div className="md:col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">Initial NSD (MM)</label><input type="number" step="0.1" min="0" max="30" value={nsdMm} onChange={e => setNsdMm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass text-white focus:border-[#FF5A00] outline-none font-bold" /></div>
  </div>
  {regMode === "MOUNTED" && (
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#0F1117] border border-[#FF5A00]/20 rounded-xl">
@@ -249,12 +249,12 @@ export function WorkshopModule() {
  <div><label className="block text-[10px] font-bold text-[#FF5A00]  mb-1">Mounting ODO (KM) *</label><input type="number" min="0" value={mountOdo} onChange={e => setMountOdo(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#12141C] text-white focus:border-[#FF5A00] outline-none font-bold" /></div>
  </div>
  )}
- <div className="flex justify-end pt-2"><button type="submit" disabled={isProcessing} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">Save Tyre Data</button></div>
+ <div className="flex justify-end pt-2"><button type="submit" disabled={isProcessing} className="px-8 py-3 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg shadow-[#FF5A00]/20 active:scale-95 disabled:bg-slate-700">Save Tyre Data</button></div>
  </form>
  </div>
 
  {/* ACTIVE MOUNTED TYRES */}
- <div className="bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden shadow-xl">
+ <div className="liquid-glass overflow-hidden shadow-xl">
  <TableToolbar title=" Currently Mounted on Fleet" searchQuery={mountedSearch} setSearchQuery={setMountedSearch} exportData={exportMounted} exportFilename="Mounted_Tyres" />
  <div className="overflow-x-auto w-full max-h-[400px]">
  <table className="min-w-full divide-y divide-[#272B36] text-xs text-left whitespace-nowrap">
@@ -277,7 +277,7 @@ export function WorkshopModule() {
  </div>
 
  {/* STORE & RETREADING */}
- <div className="bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden shadow-xl">
+ <div className="liquid-glass overflow-hidden shadow-xl">
  <TableToolbar title=" In Store / Retreading" searchQuery={storeSearch} setSearchQuery={setStoreSearch} exportData={exportStore} exportFilename="Store_Tyres" />
  <div className="overflow-x-auto w-full max-h-[400px]">
  <table className="min-w-full divide-y divide-[#272B36] text-xs text-left whitespace-nowrap">
@@ -308,7 +308,7 @@ export function WorkshopModule() {
  </div>
 
  {/* SCRAP YARD */}
- <div className="bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden shadow-xl">
+ <div className="liquid-glass overflow-hidden shadow-xl">
  <TableToolbar title=" Disposed / Scrap Yard" searchQuery={scrapSearch} setSearchQuery={setScrapSearch} exportData={exportScrap} exportFilename="Scrapped_Tyres" />
  <div className="overflow-x-auto w-full max-h-[300px]">
  <table className="min-w-full divide-y divide-[#272B36] text-xs text-left whitespace-nowrap">
@@ -330,19 +330,19 @@ export function WorkshopModule() {
  )}
 
  {wTab === "Spares & Service Bills" && (
- <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 sm:p-8 shadow-xl max-w-5xl mx-auto animate-in slide-in-from-bottom-4">
+ <div className="liquid-glass p-6 sm:p-8 shadow-xl max-w-5xl mx-auto animate-in slide-in-from-bottom-4">
  <h3 className="text-sm font-semibold text-white  border-b border-[#272B36] pb-3 mb-6">Log Service Bill</h3>
  <form onSubmit={handleSaveBill} className="space-y-5">
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Bill Date *</label><input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white focus:border-[#FF5A00] outline-none font-bold" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Select Truck *</label><select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white focus:border-[#FF5A00] outline-none font-bold" required><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Bill Date *</label><input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="input-glass text-white focus:border-[#FF5A00] outline-none font-bold" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Select Truck *</label><select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="input-glass text-white focus:border-[#FF5A00] outline-none font-bold" required><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</select></div>
  </div>
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Vendor / Workshop Name *</label><input type="text" maxLength={60} value={vendor} onChange={e => setVendor(e.target.value.toUpperCase())} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white focus:border-[#FF5A00] outline-none font-bold " required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Total Bill Amount () *</label><input type="number" min="1" max="1000000" value={amount} onChange={e => setAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] focus:border-[#FF5A00] outline-none font-semibold text-rose-500" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Vendor / Workshop Name *</label><input type="text" maxLength={60} value={vendor} onChange={e => setVendor(e.target.value.toUpperCase())} className="input-glass text-white focus:border-[#FF5A00] outline-none font-bold " required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Total Bill Amount () *</label><input type="number" min="1" max="1000000" value={amount} onChange={e => setAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass focus:border-[#FF5A00] outline-none font-semibold text-rose-500" required /></div>
  </div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Parts & Service Description</label><input type="text" maxLength={150} value={description} onChange={e => setDescription(e.target.value.toUpperCase())} placeholder="e.g. Engine oil change, 2 brake pads" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white focus:border-[#FF5A00] outline-none font-semibold " /></div>
- <button type="submit" disabled={isProcessing} className="w-full py-3.5 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-semibold text-sm rounded-xl transition-all shadow-lg active:scale-95 disabled:bg-slate-700">Save Service Record</button>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Parts & Service Description</label><input type="text" maxLength={150} value={description} onChange={e => setDescription(e.target.value.toUpperCase())} placeholder="e.g. Engine oil change, 2 brake pads" className="input-glass text-white focus:border-[#FF5A00] outline-none font-semibold " /></div>
+ <button type="submit" disabled={isProcessing} className="w-full py-3.5 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg active:scale-95 disabled:bg-slate-700">Save Service Record</button>
  </form>
 
  <div className="mt-10 border border-[#272B36] rounded-2xl overflow-hidden w-full">

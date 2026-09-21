@@ -55,7 +55,7 @@ export function AiInsightsDashboard() {
 
   return (
     <div className="animate-tab-focus space-y-6 animate-in fade-in  max-w-6xl mx-auto px-2">
-      <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
+      <div className="liquid-glass p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
         <div>
           <div className="flex items-center gap-2">
             <span className="flex h-3 w-3 relative">
@@ -72,13 +72,13 @@ export function AiInsightsDashboard() {
       </div>
 
       {!latestAudit ? (
-        <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-12 text-center shadow-xl">
+        <div className="liquid-glass p-12 text-center shadow-xl">
           <p className="text-sm font-bold text-white/60 mb-2">No audit reports generated yet.</p>
           <p className="text-xs text-white/40">Click the button above to run an instant fleet audit.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-xl flex flex-col">
+          <div className="liquid-glass p-6 shadow-xl flex flex-col">
             <div className="border-b border-[#222634] pb-4 mb-4">
               <h3 className="text-xs font-semibold text-rose-400  tracking-wider">Fuel & Maintenance Flags ({latestAudit.anomalies?.length || 0})</h3>
             </div>
@@ -101,7 +101,7 @@ export function AiInsightsDashboard() {
             </div>
           </div>
 
-          <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-xl flex flex-col">
+          <div className="liquid-glass p-6 shadow-xl flex flex-col">
             <div className="border-b border-[#222634] pb-4 mb-4">
               <h3 className="text-xs font-semibold text-amber-400  tracking-wider">Cash Flow & Transit Bottlenecks ({latestAudit.efficiency_leaks?.length || 0})</h3>
             </div>
@@ -121,7 +121,7 @@ export function AiInsightsDashboard() {
             </div>
           </div>
 
-          <div className="bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-xl flex flex-col">
+          <div className="liquid-glass p-6 shadow-xl flex flex-col">
             <div className="border-b border-[#222634] pb-4 mb-4">
               <h3 className="text-xs font-semibold text-sky-400  tracking-wider">Operational Recommendations ({latestAudit.retention_suggestions?.length || 0})</h3>
             </div>

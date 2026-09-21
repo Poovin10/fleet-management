@@ -128,21 +128,21 @@ export function AccountsModule() {
 
  {activeSubTab === "advances" && (
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
- <div className="lg:col-span-4 bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl h-fit">
+ <div className="lg:col-span-4 liquid-glass p-6 shadow-xl h-fit">
  <div className="flex justify-between items-center border-b border-[#272B36] pb-3 mb-5"><h3 className="text-sm font-semibold text-white  tracking-wide">{editAdvId ? "Edit Advance" : "Issue Advance"}</h3>{editAdvId && <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-lg  tracking-normal animate-pulse">Editing</span>}</div>
  <form onSubmit={handleIssueAdvance} className="space-y-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Advance Date *</label><input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Driver *</label><select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold" required><option value="">-- SELECT --</option>{drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Amount () *</label><input type="number" min="1" max="500000" value={advAmount} onChange={e => setAdvAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] outline-none focus:border-[#FF5A00] font-semibold text-emerald-400" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Category</label><select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="GENERAL_ADVANCE">GENERAL ADVANCE</option><option value="BATA_ADVANCE">BATA ADVANCE</option><option value="SALARY_ADVANCE">SALARY ADVANCE</option></select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={advRef} onChange={e => setAdvRef(e.target.value.toUpperCase())} placeholder="OPTIONAL REF" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold " /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Advance Date *</label><input type="date" value={advDate} onChange={e => setAdvDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Driver *</label><select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-bold" required><option value="">-- SELECT --</option>{drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}</select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Amount () *</label><input type="number" min="1" max="500000" value={advAmount} onChange={e => setAdvAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass outline-none focus:border-[#FF5A00] font-semibold text-emerald-400" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Category</label><select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="GENERAL_ADVANCE">GENERAL ADVANCE</option><option value="BATA_ADVANCE">BATA ADVANCE</option><option value="SALARY_ADVANCE">SALARY ADVANCE</option></select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={advRef} onChange={e => setAdvRef(e.target.value.toUpperCase())} placeholder="OPTIONAL REF" className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold " /></div>
  <div className="flex gap-2">
  {editAdvId && <button type="button" onClick={() => {setEditAdvId(null); setAdvAmount(""); setAdvRef("");}} className="flex-1 py-3 bg-[#0F1117] text-slate-300 font-bold rounded-xl border border-[#272B36] hover:bg-[#272B36] transition-colors">Cancel</button>}
- <button type="submit" disabled={isProcessing} className="flex-[2] py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-semibold text-sm rounded-xl transition-all shadow-lg">{isProcessing ? "Processing..." : editAdvId ? "Update Advance" : "Log Advance"}</button>
+ <button type="submit" disabled={isProcessing} className="flex-[2] py-3 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg">{isProcessing ? "Processing..." : editAdvId ? "Update Advance" : "Log Advance"}</button>
  </div>
  </form>
  </div>
- <div className="lg:col-span-8 bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden flex flex-col shadow-xl">
+ <div className="lg:col-span-8 liquid-glass overflow-hidden flex flex-col shadow-xl">
  <TableToolbar title="Advance History" searchQuery={advancesSearch} setSearchQuery={setAdvancesSearch} exportData={exportAdvances} exportFilename="Driver_Advances" />
  <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
  <table className="min-w-full divide-y divide-[#272B36] whitespace-nowrap text-xs">
@@ -163,17 +163,17 @@ export function AccountsModule() {
 
  {activeSubTab === "petty" && (
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
- <div className="lg:col-span-4 bg-[#161922] border border-[#272B36] p-6 rounded-2xl shadow-xl h-fit">
+ <div className="lg:col-span-4 liquid-glass p-6 rounded-2xl shadow-xl h-fit">
  <h3 className="text-sm font-semibold text-white  tracking-wide border-b border-[#272B36] pb-3 mb-5">Record Petty Expense</h3>
  <form onSubmit={handleCreateExpense} className="space-y-4">
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Expense Type</label><select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full text-xs p-3 rounded-xl bg-[#0F1117] border border-[#272B36] text-white font-bold outline-none focus:border-[#FF5A00]"><option value="TOLL_FASTAG">TOLL / FASTAG</option><option value="POLICE_RTO">RTO / PERMITS</option><option value="LOADING">HAMALI / LOADING</option><option value="OFFICE">OFFICE MISC</option></select></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck (Optional)</label><select value={expVehicleId} onChange={e => setExpVehicleId(e.target.value)} className="w-full text-xs p-3 rounded-xl bg-[#0F1117] border border-[#272B36] text-white font-bold outline-none focus:border-[#FF5A00]"><option value="">-- GENERAL --</option>{trucksList.map(t => <option key={t.id} value={t.id}>{t.vehicle_number}</option>)}</select></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Amount () *</label><input type="number" min="1" max="100000" value={expAmount} onChange={e => setExpAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="w-full text-xs p-3 rounded-xl bg-[#0F1117] border border-[#272B36] text-[#FF5A00] font-semibold outline-none focus:border-[#FF5A00]" required /></div>
  <div><label className="block text-[10px] font-bold text-white/60  mb-1">Remarks</label><input type="text" maxLength={60} value={expDescription} onChange={e => setExpDescription(e.target.value.toUpperCase())} className="w-full text-xs p-3 rounded-xl bg-[#0F1117] border border-[#272B36] text-white outline-none focus:border-[#FF5A00] " /></div>
- <button type="submit" disabled={isProcessing} className="w-full py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white text-xs font-semibold rounded-xl  transition-all shadow-lg">{isProcessing ? "Saving..." : "Log Expense"}</button>
+ <button type="submit" disabled={isProcessing} className="w-full py-3 btn-orange-glow py-3 rounded-full text-xs  transition-all shadow-lg">{isProcessing ? "Saving..." : "Log Expense"}</button>
  </form>
  </div>
- <div className="lg:col-span-8 bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden flex flex-col shadow-xl">
+ <div className="lg:col-span-8 liquid-glass overflow-hidden flex flex-col shadow-xl">
  <TableToolbar title="Petty Expense Ledger" searchQuery={pettySearch} setSearchQuery={setPettySearch} exportData={exportPetty} exportFilename="Petty_Expenses" />
  <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
  <table className="min-w-full divide-y divide-[#272B36] text-left text-xs whitespace-nowrap"><thead className="bg-[#0F1117] sticky top-0 text-white/60  font-semibold text-[10px] tracking-wider z-10"><tr><th className="px-5 py-3.5">Date</th><th className="px-5 py-3.5">Category</th><th className="px-5 py-3.5">Truck</th><th className="px-5 py-3.5">Description</th><th className="px-5 py-3.5 text-right">Amount ()</th></tr></thead>
@@ -185,7 +185,7 @@ export function AccountsModule() {
  )}
 
  {activeSubTab === "workshop" && (
- <div className="bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden shadow-xl animate-in fade-in">
+ <div className="liquid-glass overflow-hidden shadow-xl animate-in fade-in">
  <TableToolbar title="Workshop Ledger" searchQuery={workshopSearch} setSearchQuery={setWorkshopSearch} exportData={exportWorkshop} exportFilename="Workshop_Ledger" />
  <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
  <table className="min-w-full divide-y divide-[#272B36] text-left text-xs whitespace-nowrap">

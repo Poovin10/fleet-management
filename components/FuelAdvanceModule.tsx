@@ -287,7 +287,7 @@ export function FuelAdvanceModule() {
 
  {faNav === " Issue Diesel" && (
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
- <div className="lg:col-span-4 bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl h-fit">
+ <div className="lg:col-span-4 liquid-glass p-6 shadow-xl h-fit">
  
  {/* Inbox UI */}
  {!editLogId && pendingScans.length > 0 && (
@@ -317,15 +317,15 @@ export function FuelAdvanceModule() {
  </div>
 
  <form onSubmit={handleSaveDiesel} className="space-y-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Fuel Date *</label><input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Select Truck *</label><select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold" required disabled={isLoading}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Category *</label><select value={fCategory} onChange={e => setFCategory(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Trip LR No (Optional)</label><input type="text" maxLength={20} value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white  outline-none focus:border-[#FF5A00] font-semibold" /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Fuel Date *</label><input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Select Truck *</label><select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-bold" required disabled={isLoading}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Category *</label><select value={fCategory} onChange={e => setFCategory(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Trip LR No (Optional)</label><input type="text" maxLength={20} value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="input-glass text-white  outline-none focus:border-[#FF5A00] font-semibold" /></div>
  
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Filling KM</label><input type="number" min="0" max="9999999" value={fFillingKm} onChange={e => setFFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Litres *</label><input type="number" step="0.1" min="0.1" max="2000" value={fLitres} onChange={e => setFLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] outline-none focus:border-[#FF5A00] font-semibold text-[#FF5A00]" required /></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Rate () *</label><input type="number" step="0.1" min="0.1" max="200" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Filling KM</label><input type="number" min="0" max="9999999" value={fFillingKm} onChange={e => setFFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Litres *</label><input type="number" step="0.1" min="0.1" max="2000" value={fLitres} onChange={e => setFLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="input-glass outline-none focus:border-[#FF5A00] font-semibold text-[#FF5A00]" required /></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Rate () *</label><input type="number" step="0.1" min="0.1" max="200" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="input-glass text-white outline-none focus:border-[#FF5A00] font-bold" required /></div>
  </div>
 
  <div className="flex justify-between items-center bg-[#0F1117] p-4 rounded-xl border border-[#272B36] mt-2">
@@ -350,7 +350,7 @@ export function FuelAdvanceModule() {
  </form>
  </div>
 
- <div className="lg:col-span-8 bg-[#161922] border border-[#272B36] rounded-2xl overflow-hidden flex flex-col shadow-xl h-fit">
+ <div className="lg:col-span-8 liquid-glass overflow-hidden flex flex-col shadow-xl h-fit">
  <TableToolbar title="Recent Fuel Entries" searchQuery={recentSearch} setSearchQuery={setRecentSearch} exportData={exportRecent} exportFilename="Recent_Fuel_Logs" />
  <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
  <table className="min-w-full divide-y divide-[#272B36] whitespace-nowrap">
@@ -382,20 +382,20 @@ export function FuelAdvanceModule() {
  )}
 
  {faNav === " Fuel Audit" && (
- <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom-4">
+ <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
  <h3 className="text-sm font-semibold text-white  tracking-wide border-b border-[#272B36] pb-3 mb-5">Advanced Fuel Audit Engine</h3>
  
  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Date Mode</label><select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="All Time">All Time</option><option value="Specific Date">Specific Date</option><option value="Date Range">Date Range</option></select></div>
- {auditDateMode === "Specific Date" && <div><label className="block text-[10px] font-bold text-white/60  mb-1">Date</label><input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" /></div>}
- {auditDateMode === "Date Range" && <><div className="col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">From</label><input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" /></div><div><label className="block text-[10px] font-bold text-white/60  mb-1">To</label><input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold" /></div></>}
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Date Mode</label><select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="All Time">All Time</option><option value="Specific Date">Specific Date</option><option value="Date Range">Date Range</option></select></div>
+ {auditDateMode === "Specific Date" && <div><label className="block text-[10px] font-bold text-white/60  mb-1">Date</label><input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" /></div>}
+ {auditDateMode === "Date Range" && <><div className="col-span-1"><label className="block text-[10px] font-bold text-white/60  mb-1">From</label><input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" /></div><div><label className="block text-[10px] font-bold text-white/60  mb-1">To</label><input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold" /></div></>}
  {auditDateMode === "All Time" && <div className="hidden md:block md:col-span-2"></div>}
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck No</label><select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-bold"><option value="All Trucks">All Trucks</option>{vehicles.map(v => <option key={v.id} value={v.vehicle_number}>{v.vehicle_number}</option>)}</select></div>
- <div><label className="block text-[10px] font-bold text-white/60  mb-1">Category</label><select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#272B36] bg-[#0F1117] text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="All Categories">All Categories</option><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Truck No</label><select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-bold"><option value="All Trucks">All Trucks</option>{vehicles.map(v => <option key={v.id} value={v.vehicle_number}>{v.vehicle_number}</option>)}</select></div>
+ <div><label className="block text-[10px] font-bold text-white/60  mb-1">Category</label><select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="input-glass text-white outline-none focus:border-[#FF5A00] font-semibold"><option value="All Categories">All Categories</option><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></select></div>
  </div>
 
  <div className="flex justify-end mb-6">
- <button onClick={handleRunAudit} className="px-8 py-3 bg-[#FF5A00] hover:bg-[#e04f00] text-white font-semibold text-sm rounded-xl transition-all shadow-lg active:scale-95">Fetch Database Records</button>
+ <button onClick={handleRunAudit} className="px-8 py-3 btn-orange-glow py-3.5 rounded-full text-xs transition-all shadow-lg active:scale-95">Fetch Database Records</button>
  </div>
 
  <div className="border border-[#272B36] rounded-xl overflow-hidden">
@@ -425,7 +425,7 @@ export function FuelAdvanceModule() {
  )}
 
  {faNav === " Mileage Tracker" && (
- <div className="bg-[#161922] border border-[#272B36] rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom-4">
+ <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#272B36] pb-4 mb-6 gap-4">
  <div><h3 className="text-sm font-semibold text-white  tracking-wide">Vehicle Mileage (KMPL) Tracker</h3><p className="text-xs text-white/60 mt-1">Calculates true mileage using the "Full-to-Full" standard formula.</p></div>
  <div className="w-full md:w-64"><select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)} className="w-full text-sm p-3 rounded-xl border border-[#2B3142] bg-[#1A1F2C] focus:border-[#FF5A00] outline-none font-bold text-white"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number}</option>))}</select></div>

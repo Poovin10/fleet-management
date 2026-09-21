@@ -272,7 +272,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
  {/* LEFT PANEL: Settle POD Form */}
- <div className="lg:col-span-7 bg-[#12141C] border border-[#222634] rounded-2xl p-6 shadow-sm">
+ <div className="lg:col-span-7 liquid-glass p-6 shadow-sm">
  
  {pendingScans.length > 0 && (
  <div className="mb-6 p-4 bg-[#1A1F2C] border border-[#2B3142] rounded-xl animate-in slide-in-from-top-4">
@@ -370,7 +370,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  </div>
 
  {/* RIGHT PANEL: Pending POD List */}
- <div className="lg:col-span-5 bg-[#12141C] border border-[#222634] rounded-2xl overflow-hidden flex flex-col shadow-sm h-fit">
+ <div className="lg:col-span-5 liquid-glass overflow-hidden flex flex-col shadow-sm h-fit">
  <div className="bg-[#161922] px-5 py-4 flex justify-between items-center border-b border-[#222634]">
  <h4 className="text-xs font-semibold text-white  tracking-wider">Pending POD List ({activeTrips.length})</h4>
  <span className="text-[9px] font-bold px-2.5 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg  tracking-normal">Awaiting</span>
