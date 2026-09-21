@@ -319,7 +319,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  <>
  <div className="p-4 input-glass border border-white/[0.08] rounded-xl flex flex-wrap gap-4 justify-between text-xs text-slate-300">
  <span><strong className="text-white/40">DRIVER:</strong> <br/><span className="font-bold text-white">{currentTrip.drivers?.full_name || "Unassigned"}</span></span>
- <span><strong className="text-white/40">ROUTE:</strong> <br/><span className="font-bold text-white">{currentTrip.origin} -> {currentTrip.destination}</span></span>
+ <span><strong className="text-white/40">ROUTE:</strong> <br/><span className="font-bold text-white">{currentTrip.origin} &rarr; {currentTrip.destination}</span></span>
  <span><strong className="text-white/40">DISPATCHED:</strong> <br/><span className="font-semibold text-[#FF9F0A]">{currentTrip.loaded_weight_mt} MT</span></span>
  </div>
 
