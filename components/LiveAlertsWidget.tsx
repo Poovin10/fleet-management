@@ -147,7 +147,7 @@ export function LiveAlertsWidget() {
 
  return (
  <div className="animate-tab-focus liquid-glass shadow-sm overflow-hidden flex flex-col h-[500px]">
- <div className="liquid-glass border-b border-border px-5 py-4 flex justify-between items-center shrink-0">
+ <div className="kss-surface-raised border-b border-border px-5 py-4 flex justify-between items-center shrink-0">
  <div className="flex items-center gap-2.5">
  <span className="text-base"></span>
  <h3 className="text-white font-semibold  text-xs tracking-wider">Notifications</h3>
@@ -164,8 +164,8 @@ export function LiveAlertsWidget() {
  </div>
  ) : (
  notifications.map((item) => (
- <div key={item.id} className="input-glass bg-surface-raised/50 border border-border rounded-2xl p-3.5 flex items-start gap-3 shadow-sm hover:border-accent/40 transition-all animate-in slide-in-from-right-4 duration-300">
- <div className="w-9 h-9 rounded-xl input-glass bg-surface-raised/50 border border-border flex items-center justify-center text-base shrink-0">{item.icon}</div>
+ <div key={item.id} className="kss-surface-raised rounded-lg p-3.5 flex items-start gap-3 shadow-sm hover:border-accent/40 transition-all animate-in slide-in-from-right-4 duration-300">
+ <div className="w-9 h-9 rounded-lg bg-surface border border-border flex items-center justify-center text-base shrink-0">{item.icon}</div>
  <div className="flex-1 min-w-0">
  <div className="flex justify-between items-center mb-1">
  <span className="text-[11px] font-semibold  text-fg tracking-tight truncate">{item.title}</span>

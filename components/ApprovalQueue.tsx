@@ -110,20 +110,20 @@ export function ApprovalQueue() {
 
  {approveData.isOpen && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
- <div className="input-glass">
+ <div className="liquid-glass">
  <form onSubmit={executeApprove}>
  <div className="p-6">
  <h3 className="text-lg font-semibold text-fg  tracking-wide mb-1">Approve Fuel Request</h3>
  <p className="text-xs text-fg-secondary mb-6">Review the details and confirm the final bill amount.</p>
  
- <div className="input-glass bg-white/[0.015] p-4 rounded-xl border border-border mb-6 space-y-3 text-sm">
+ <div className="kss-surface-raised p-4 rounded-lg border border-border mb-6 space-y-3 text-sm">
  <div className="flex justify-between items-center"><span className="text-[10px] text-fg-secondary font-bold  tracking-wider">Truck</span> <span className="text-fg font-semibold">{approveData.req?.truck_number}</span></div>
  <div className="flex justify-between items-center"><span className="text-[10px] text-fg-secondary font-bold  tracking-wider">Driver</span> <span className="text-fg-secondary font-bold">{approveData.req?.driver_code}</span></div>
  <div className="flex justify-between items-center pt-2 border-t border-border"><span className="text-[10px] text-fg-secondary font-bold  tracking-wider">Requested Litres</span> <span className="text-accent font-semibold text-lg">{approveData.req?.litres} L</span></div>
  </div>
 
  <label className="block text-[10px] font-bold text-success  mb-2">Final Bill Amount () *</label>
- <input type="number" step="0.01" required value={approveData.amount} onChange={e => setApproveData({...approveData, amount: e.target.value})} className="w-full text-xl p-4 rounded-xl border border-border input-glass bg-white/[0.015] text-fg font-semibold outline-none focus:border-success focus:ring-1 focus:ring-success transition-all" />
+ <input type="number" step="0.01" required value={approveData.amount} onChange={e => setApproveData({...approveData, amount: e.target.value})} className="w-full text-xl p-4 rounded-lg border border-border input-glass text-fg font-semibold outline-none focus:border-success focus:ring-1 focus:ring-success transition-all" />
  </div>
  <div className="flex gap-3 p-6 pt-0">
  <Button type="button" variant="glass" className="flex-1" onClick={() => setApproveData({isOpen: false, req: null, amount: ""})} disabled={isProcessing}>Cancel</Button>
