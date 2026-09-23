@@ -52,25 +52,25 @@ export function ProfitLossModule() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-white/95 tracking-tight">Profit & Loss Statement</h2>
-          <p className="text-xs text-white/50 mt-0.5">Comprehensive financial telemetry from September 1, 2026 onwards</p>
+          <h2 className="text-lg font-semibold text-fg tracking-tight">Profit & Loss Statement</h2>
+          <p className="text-xs text-fg-secondary mt-0.5">Comprehensive financial telemetry from September 1, 2026 onwards</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-sm text-white/50">Computing financial statements...</div>
+        <div className="p-8 text-center text-sm text-fg-secondary">Computing financial statements...</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-5 rounded-2xl bg-white/[0.02] backdrop-blur-3xl saturate-200 border border-white/[0.06]">
-            <span className="text-xs font-medium text-white/50 uppercase tracking-wider">Total Freight Revenue</span>
+          <div className="liquid-glass p-5">
+            <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">Total Freight Revenue</span>
             <p className="text-2xl font-semibold text-emerald-400 mt-2 font-mono">₹{totalRevenue.toLocaleString("en-IN")}</p>
           </div>
-          <div className="p-5 rounded-2xl bg-white/[0.02] backdrop-blur-3xl saturate-200 border border-white/[0.06]">
-            <span className="text-xs font-medium text-white/50 uppercase tracking-wider">Total Operating Expenses</span>
+          <div className="liquid-glass p-5">
+            <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">Total Operating Expenses</span>
             <p className="text-2xl font-semibold text-rose-400 mt-2 font-mono">₹{totalExpenses.toLocaleString("en-IN")}</p>
           </div>
-          <div className="p-5 rounded-2xl bg-white/[0.02] backdrop-blur-3xl saturate-200 border border-white/[0.06]">
-            <span className="text-xs font-medium text-white/50 uppercase tracking-wider">Net Operating Margin</span>
+          <div className="liquid-glass p-5">
+            <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">Net Operating Margin</span>
             <p className={`text-2xl font-semibold mt-2 font-mono ${netProfit >= 0 ? "text-blue-400" : "text-amber-400"}`}>
               ₹{netProfit.toLocaleString("en-IN")}
             </p>
