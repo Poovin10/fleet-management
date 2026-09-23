@@ -201,228 +201,486 @@ export default function TelemetryHUD() {
  : [];
 
  return (
- <div className="animate-tab-focus space-y-6 text-fg">
- 
- {/* Enterprise Header */}
- <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-4 border-b border-border gap-4">
- <div>
- <h2 className="text-xl font-semibold text-fg tracking-tight flex items-center gap-3">
- Cochin Hub Command Center
- <span className="px-2 py-0.5 rounded-md bg-success/10 text-success text-[10px] font-medium tracking-wide border border-success/20">
- {vehicles.length} Units Online
- </span>
- </h2>
- <p className="text-sm text-fg-muted mt-1">Enterprise Fleet Telemetry & Real-Time Logistics Operations</p>
- </div>
- <div className="flex items-center gap-4">
- <div className="text-right hidden sm:block">
- <div className="text-[10px] font-medium text-fg-muted  tracking-normal">Operating Cycle</div>
- <div className="text-sm font-semibold text-fg tracking-wide">{currentMonthName}</div>
- </div>
- <Button
- type="button"
- variant="glass"
- onClick={() => fetchDashboardData()}
- className="h-auto rounded-lg px-4 py-2 text-xs"
- >
- <svg className="w-3.5 h-3.5 text-fg-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
- <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
- </svg>
- Sync
- </Button>
- </div>
- </div>
+  <div className="kss-page-enter space-y-6 text-fg">
 
- {/* KPI Grid */}
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
- {/* Total Trips */}
- <div className="bg-surface border border-border-subtle rounded-xl p-5 flex flex-col justify-between h-32 hover:border-border-strong transition-colors">
- <div className="flex justify-between items-start">
- <span className="text-xs font-medium text-fg-secondary">Total Completed Trips</span>
- </div>
- <div>
- <div className="text-2xl font-semibold text-fg tracking-tight">{totalTripsCount}</div>
- <div className="text-[11px] text-fg-muted mt-0.5">Dispatches logged this cycle</div>
- </div>
- </div>
+    {/* Command Header */}
+    <section className="liquid-glass relative overflow-hidden rounded-2xl border border-glass-border p-5 sm:p-6">
+      <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-accent-soft blur-3xl" />
 
- {/* PODs Pending */}
- <div className="bg-surface border border-border-subtle rounded-xl p-5 flex flex-col justify-between h-32 hover:border-border-strong transition-colors">
- <div className="flex justify-between items-start">
- <span className="text-xs font-medium text-fg-secondary">PODs Pending Closure</span>
- </div>
- <div>
- <div className="text-2xl font-semibold text-danger tracking-tight">{pendingPodsCount}</div>
- <div className="text-[11px] text-fg-muted mt-0.5">Awaiting physical sign-off</div>
- </div>
- </div>
+      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="kss-status-dot bg-success" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-fg-muted">
+                  Live Operations
+                </span>
+              </div>
 
- {/* Freight Revenue */}
- <div className="bg-surface border border-border-subtle rounded-xl p-5 flex flex-col justify-between h-32 hover:border-border-strong transition-colors">
- <div className="flex justify-between items-start">
- <span className="text-xs font-medium text-fg-secondary">Gross Freight Revenue</span>
- </div>
- <div>
- <div className="text-2xl font-semibold text-success tracking-tight">{formatINR(monthlyRevenue)}</div>
- <div className="text-[11px] text-fg-muted mt-0.5">Total billed tonnage income</div>
- </div>
- </div>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-fg sm:text-[28px]">
+                Cochin Hub Command Center
+              </h2>
+            </div>
 
- {/* Net Retention */}
- <div className="bg-surface border border-border-subtle rounded-xl p-5 flex flex-col justify-between h-32 hover:border-border-strong transition-colors">
- <div className="flex justify-between items-start">
- <span className="text-xs font-medium text-fg-secondary">Net Operating Margin</span>
- <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-accent/10 text-accent border border-accent/20">
- {retentionMargin}%
- </span>
- </div>
- <div>
- <div className="text-2xl font-semibold text-accent tracking-tight">{formatINR(netRetention)}</div>
- <div className="text-[11px] text-fg-muted mt-0.5">OPEX: {formatINR(monthlyExpenses)}</div>
- </div>
- </div>
- </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-success/20 bg-success/10 px-2.5 py-1 text-[10px] font-semibold text-success">
+              <span className="kss-status-dot bg-success" />
+              {vehicles.length} Units Online
+            </span>
+          </div>
 
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
- {/* Fleet Status Deployment */}
- <div className="lg:col-span-2 space-y-4">
- <div className="flex items-end justify-between gap-4">
- <div>
- <h3 className="text-sm font-medium text-fg tracking-tight">Fleet Deployment</h3>
- <p className="text-[11px] text-fg-muted mt-1">Select a fleet state to inspect its vehicles.</p>
- </div>
- {selectedFleet && (
- <button
- type="button"
- onClick={() => setSelectedFleetStatus(null)}
- className="text-[11px] font-medium text-fg-muted hover:text-fg transition-colors"
- >
- Clear
- </button>
- )}
- </div>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-fg-muted sm:text-sm">
+            Enterprise fleet telemetry and real-time logistics operations.
+          </p>
+        </div>
 
- <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
- {fleetStatusConfig.map((item) => {
- const count = statusDistribution[item.key];
- const isSelected = selectedFleetStatus === item.key;
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="hidden border-l border-border-subtle pl-4 sm:block">
+            <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-fg-muted">
+              Operating Cycle
+            </div>
+            <div className="mt-1 text-sm font-semibold text-fg">
+              {currentMonthName}
+            </div>
+          </div>
 
- return (
- <button
- key={item.key}
- type="button"
- onClick={() => setSelectedFleetStatus(isSelected ? null : item.key)}
- aria-pressed={isSelected}
- className={`group text-left rounded-xl border p-4 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
- isSelected
- ? "bg-surface-raised border-accent/40 shadow-orange"
- : "bg-surface border-border-subtle hover:border-border-strong hover:bg-surface-raised"
- }`}
- >
- <div className="flex items-center justify-between gap-2">
- <span className={`kss-status-dot bg-${item.color}`} />
- <span className="text-[10px] text-fg-muted group-hover:text-fg-secondary transition-colors">View</span>
- </div>
- <div className="text-xl font-semibold text-fg tracking-tight mt-3">{count}</div>
- <div className="text-[11px] font-medium text-fg-secondary mt-1">{item.label}</div>
- </button>
- );
- })}
- </div>
+          <Button
+            type="button"
+            variant="glass"
+            onClick={() => fetchDashboardData()}
+            className="h-9 rounded-xl px-3.5 text-xs sm:px-4"
+          >
+            <svg
+              className="mr-2 h-3.5 w-3.5 text-fg-secondary"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Sync
+          </Button>
+        </div>
+      </div>
+    </section>
 
- {selectedFleet && (
- <div className="liquid-glass rounded-2xl border border-glass-border overflow-hidden animate-fade-up">
- <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-border-subtle">
- <div>
- <div className="flex items-center gap-2">
- <span className={`kss-status-dot bg-${selectedFleet.color}`} />
- <h4 className="text-sm font-semibold text-fg uppercase tracking-wide">
- {selectedFleet.label}
- </h4>
- </div>
- <p className="text-[11px] text-fg-muted mt-1">
- {selectedVehicles.length} {selectedVehicles.length === 1 ? "vehicle" : "vehicles"} in this state
- </p>
- </div>
- <div className="text-[11px] font-medium text-fg-muted">
- Live fleet snapshot
- </div>
- </div>
+    {/* KPI Layer */}
+    <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Trips */}
+      <div className="kss-surface kss-interactive group rounded-2xl p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-muted">
+              Fleet Activity
+            </div>
+            <div className="mt-1 text-sm font-medium text-fg-secondary">
+              Completed Trips
+            </div>
+          </div>
 
- {selectedVehicles.length === 0 ? (
- <div className="px-5 py-10 text-center">
- <div className="text-sm font-medium text-fg-secondary">No vehicles in this state</div>
- <div className="text-[11px] text-fg-muted mt-1">The fleet snapshot is currently clear.</div>
- </div>
- ) : (
- <div className="divide-y divide-border-subtle">
- {selectedVehicles.map((vehicle) => (
- <div
- key={vehicle.id}
- className="px-5 py-4 hover:bg-glass-hover transition-colors"
- >
- <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
- <div className="min-w-0">
- <div className="flex items-center gap-3">
- <span className="text-sm font-semibold text-fg tracking-tight">
- {vehicle.vehicle_number || "Unnamed vehicle"}
- </span>
- <span className="text-[10px] font-medium text-fg-muted uppercase tracking-wide">
- {vehicle.vehicle_type || "Fleet Unit"}
- </span>
- </div>
- <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11px] text-fg-muted">
- <span>Status: <span className="text-fg-secondary">{vehicle.current_status || "WAITING_FOR_LOAD"}</span></span>
- {vehicle.status_remarks && (
- <span>Note: <span className="text-fg-secondary">{vehicle.status_remarks}</span></span>
- )}
- </div>
- </div>
+          <div className="rounded-xl border border-info/15 bg-info/10 p-2 text-info">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 7h8m0 0v8m0-8-9 9-4-4-6 6" />
+            </svg>
+          </div>
+        </div>
 
- {vehicle.status_updated_at && (
- <div className="shrink-0 text-[10px] text-fg-muted">
- Updated {new Date(vehicle.status_updated_at).toLocaleString("en-IN", {
- day: "2-digit",
- month: "short",
- hour: "2-digit",
- minute: "2-digit",
- })}
- </div>
- )}
- </div>
- </div>
- ))}
- </div>
- )}
- </div>
- )}
- </div>
+        <div className="mt-7">
+          <div className="text-3xl font-semibold tracking-tight text-fg">
+            {totalTripsCount}
+          </div>
+          <div className="mt-1 text-[11px] text-fg-muted">
+            Dispatches logged this cycle
+          </div>
+        </div>
+      </div>
 
- {/* Telemetry Radar */}
- <div className="space-y-4">
- <h3 className="text-sm font-medium text-fg tracking-tight">Active Alerts</h3>
- <div className="bg-surface border border-border-subtle rounded-xl p-1 max-h-[340px] overflow-y-auto">
- {liveAlerts.length === 0 ? (
- <div className="p-6 text-center">
- <div className="text-[13px] font-medium text-fg-secondary">No active alerts</div>
- <div className="text-[11px] text-fg-muted mt-1">All systems operating normally</div>
- </div>
- ) : (
- <div className="flex flex-col gap-1 p-1">
- {liveAlerts.map((alert) => (
- <div key={alert.id} className="p-3 rounded-lg hover:bg-surface-raised/50 transition-colors flex items-start gap-3">
- <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${alert.severity === "HIGH" || alert.severity === "URGENT" ? "bg-danger" : "bg-warning"}`} />
- <div>
- <div className="text-[13px] font-medium text-fg">{alert.title}</div>
- <div className="text-[11px] text-fg-muted mt-0.5">{alert.desc}</div>
- </div>
- </div>
- ))}
- </div>
- )}
- </div>
- </div>
- </div>
- </div>
- );
+      {/* POD */}
+      <div className="kss-surface kss-interactive group rounded-2xl p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-muted">
+              Closure Queue
+            </div>
+            <div className="mt-1 text-sm font-medium text-fg-secondary">
+              PODs Pending
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-danger/15 bg-danger/10 p-2 text-danger">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.72 3h16.92a2 2 0 0 0 1.72-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+            </svg>
+          </div>
+        </div>
+
+        <div className="mt-7">
+          <div className={`text-3xl font-semibold tracking-tight ${pendingPodsCount > 0 ? "text-danger" : "text-success"}`}>
+            {pendingPodsCount}
+          </div>
+          <div className="mt-1 text-[11px] text-fg-muted">
+            {pendingPodsCount > 0 ? "Waybills require closure" : "No closure backlog"}
+          </div>
+        </div>
+      </div>
+
+      {/* Revenue */}
+      <div className="kss-surface kss-interactive group rounded-2xl p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-muted">
+              Revenue
+            </div>
+            <div className="mt-1 text-sm font-medium text-fg-secondary">
+              Gross Freight
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-success/15 bg-success/10 p-2 text-success">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V6m0 12v-2m8-4a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" />
+            </svg>
+          </div>
+        </div>
+
+        <div className="mt-7">
+          <div className="truncate text-2xl font-semibold tracking-tight text-success sm:text-3xl">
+            ₹{formatINR(monthlyRevenue)}
+          </div>
+          <div className="mt-1 text-[11px] text-fg-muted">
+            Total billed tonnage income
+          </div>
+        </div>
+      </div>
+
+      {/* Retention */}
+      <div className="kss-surface kss-interactive group rounded-2xl p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-muted">
+              Operating Result
+            </div>
+            <div className="mt-1 text-sm font-medium text-fg-secondary">
+              Net Retention
+            </div>
+          </div>
+
+          <span className="rounded-full border border-accent/20 bg-accent-soft px-2.5 py-1 text-[10px] font-semibold text-accent">
+            {retentionMargin}%
+          </span>
+        </div>
+
+        <div className="mt-7">
+          <div className="truncate text-2xl font-semibold tracking-tight text-accent sm:text-3xl">
+            ₹{formatINR(netRetention)}
+          </div>
+          <div className="mt-1 truncate text-[11px] text-fg-muted">
+            OPEX: ₹{formatINR(monthlyExpenses)}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* Operations */}
+    <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.8fr)]">
+
+      {/* Fleet Deployment */}
+      <div className="min-w-0 space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-muted">
+              Fleet Deployment
+            </div>
+            <h3 className="mt-1 text-lg font-semibold tracking-tight text-fg">
+              Current Unit Distribution
+            </h3>
+            <p className="mt-1 text-xs text-fg-muted">
+              Select a fleet state to inspect the actual vehicles currently assigned to it.
+            </p>
+          </div>
+
+          {selectedFleet && (
+            <button
+              type="button"
+              onClick={() => setSelectedFleetStatus(null)}
+              className="self-start rounded-lg px-2 py-1 text-[11px] font-medium text-fg-muted transition-colors hover:bg-glass-hover hover:text-fg sm:self-auto"
+            >
+              Clear selection
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {fleetStatusConfig.map((item) => {
+            const count = statusDistribution[item.key];
+            const isSelected = selectedFleetStatus === item.key;
+
+            const statusTone =
+              item.color === "info"
+                ? {
+                    dot: "bg-info",
+                    icon: "text-info",
+                    iconBg: "bg-info/10",
+                    border: "border-info/25",
+                    selected: "bg-info/10",
+                  }
+                : item.color === "success"
+                  ? {
+                      dot: "bg-success",
+                      icon: "text-success",
+                      iconBg: "bg-success/10",
+                      border: "border-success/25",
+                      selected: "bg-success/10",
+                    }
+                  : item.color === "danger"
+                    ? {
+                        dot: "bg-danger",
+                        icon: "text-danger",
+                        iconBg: "bg-danger/10",
+                        border: "border-danger/25",
+                        selected: "bg-danger/10",
+                      }
+                    : {
+                        dot: "bg-warning",
+                        icon: "text-warning",
+                        iconBg: "bg-warning/10",
+                        border: "border-warning/25",
+                        selected: "bg-warning/10",
+                      };
+
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setSelectedFleetStatus(isSelected ? null : item.key)}
+                aria-pressed={isSelected}
+                className={`group rounded-2xl border p-4 text-left transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
+                  isSelected
+                    ? `${statusTone.selected} ${statusTone.border} shadow-raised`
+                    : "kss-surface border-border-subtle hover:border-border-strong hover:bg-glass-hover"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`h-2 w-2 rounded-full ${statusTone.dot}`} />
+                  <span className={`rounded-lg p-1.5 ${statusTone.iconBg} ${statusTone.icon}`}>
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </span>
+                </div>
+
+                <div className="mt-4 text-2xl font-semibold tracking-tight text-fg">
+                  {count}
+                </div>
+
+                <div className="mt-1 text-[11px] font-medium leading-4 text-fg-secondary">
+                  <span className="sm:hidden">{item.shortLabel}</span>
+                  <span className="hidden sm:inline">{item.label}</span>
+                </div>
+
+                <div className="mt-2 text-[10px] text-fg-muted">
+                  {isSelected ? "Selected" : "Inspect"}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {selectedFleet && (
+          <div className="liquid-glass overflow-hidden rounded-2xl border border-glass-border animate-fade-up">
+            <div className="flex flex-col gap-3 border-b border-border-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`kss-status-dot ${
+                      selectedFleet.color === "info"
+                        ? "bg-info"
+                        : selectedFleet.color === "success"
+                          ? "bg-success"
+                          : selectedFleet.color === "danger"
+                            ? "bg-danger"
+                            : "bg-warning"
+                    }`}
+                  />
+                  <h4 className="text-sm font-semibold uppercase tracking-[0.08em] text-fg">
+                    {selectedFleet.label}
+                  </h4>
+                </div>
+
+                <p className="mt-1 text-[11px] text-fg-muted">
+                  {selectedVehicles.length}{" "}
+                  {selectedVehicles.length === 1 ? "vehicle" : "vehicles"} in this state
+                </p>
+              </div>
+
+              <div className="rounded-full border border-border-subtle bg-surface/60 px-2.5 py-1 text-[10px] font-medium text-fg-muted">
+                Live fleet snapshot
+              </div>
+            </div>
+
+            {selectedVehicles.length === 0 ? (
+              <div className="px-5 py-12 text-center">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-success/15 bg-success/10 text-success">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m5 12 4 4L19 6" />
+                  </svg>
+                </div>
+                <div className="mt-3 text-sm font-medium text-fg-secondary">
+                  No vehicles in this state
+                </div>
+                <div className="mt-1 text-[11px] text-fg-muted">
+                  The fleet snapshot is currently clear.
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-border-subtle">
+                {selectedVehicles.map((vehicle) => (
+                  <div
+                    key={vehicle.id}
+                    className="px-5 py-4 transition-colors hover:bg-glass-hover"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span className="text-sm font-semibold tracking-tight text-fg">
+                            {vehicle.vehicle_number || "Unnamed vehicle"}
+                          </span>
+
+                          <span className="rounded-md border border-border-subtle bg-surface/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-fg-muted">
+                            {vehicle.vehicle_type || "Fleet Unit"}
+                          </span>
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-fg-muted">
+                          <span>
+                            Status:{" "}
+                            <span className="text-fg-secondary">
+                              {vehicle.current_status || "WAITING_FOR_LOAD"}
+                            </span>
+                          </span>
+
+                          {vehicle.status_remarks && (
+                            <span className="min-w-0">
+                              Note:{" "}
+                              <span className="text-fg-secondary">
+                                {vehicle.status_remarks}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {vehicle.status_updated_at && (
+                        <div className="shrink-0 text-[10px] text-fg-muted sm:text-right">
+                          Updated{" "}
+                          {new Date(vehicle.status_updated_at).toLocaleString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Active Alerts */}
+      <div className="min-w-0 space-y-4">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-muted">
+            Telemetry Radar
+          </div>
+          <div className="mt-1 flex items-center gap-2">
+            <h3 className="text-lg font-semibold tracking-tight text-fg">
+              Active Alerts
+            </h3>
+            {liveAlerts.length > 0 && (
+              <span className="rounded-full border border-danger/20 bg-danger/10 px-2 py-0.5 text-[10px] font-semibold text-danger">
+                {liveAlerts.length}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="liquid-glass overflow-hidden rounded-2xl border border-glass-border">
+          {liveAlerts.length === 0 ? (
+            <div className="px-5 py-12 text-center">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-success/15 bg-success/10 text-success">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m5 12 4 4L19 6" />
+                </svg>
+              </div>
+
+              <div className="mt-3 text-sm font-medium text-fg-secondary">
+                No active alerts
+              </div>
+
+              <div className="mt-1 text-[11px] leading-5 text-fg-muted">
+                All monitored systems are currently clear.
+              </div>
+            </div>
+          ) : (
+            <div className="divide-y divide-border-subtle">
+              {liveAlerts.map((alert) => {
+                const isHigh =
+                  alert.severity === "HIGH" || alert.severity === "URGENT";
+
+                return (
+                  <div
+                    key={alert.id}
+                    className="flex gap-3 px-4 py-4 transition-colors hover:bg-glass-hover sm:px-5"
+                  >
+                    <div
+                      className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                        isHigh
+                          ? "bg-danger/10 text-danger"
+                          : "bg-warning/10 text-warning"
+                      }`}
+                    >
+                      <span className={`h-2 w-2 rounded-full ${isHigh ? "bg-danger" : "bg-warning"}`} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-[13px] font-semibold text-fg">
+                          {alert.title}
+                        </div>
+
+                        <span
+                          className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                            isHigh
+                              ? "border-danger/20 bg-danger/10 text-danger"
+                              : "border-warning/20 bg-warning/10 text-warning"
+                          }`}
+                        >
+                          {alert.severity}
+                        </span>
+                      </div>
+
+                      <div className="mt-1 text-[11px] leading-5 text-fg-muted">
+                        {alert.desc}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  </div>
+ )
+
 }
