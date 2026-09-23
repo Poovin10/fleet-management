@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { extractFleetRawStatus, resolveFleetOperationalState } from "../lib/operationalState";
 import { Button } from "@/components/ui/button";
 
 export default function TelemetryHUD() {
@@ -104,12 +105,21 @@ export default function TelemetryHUD() {
  };
 
  trucks.forEach((t: any) => {
- const s = (t.current_status || "WAITING_FOR_LOAD").toUpperCase();
- if (s.includes("PLANT") || s.includes("LOADING")) dist.plantLoading++;
- else if (s.includes("TRANSIT")) dist.inTransit++;
- else if (s.includes("WORKSHOP") || s.includes("REPAIR")) dist.workshop++;
- else if (s.includes("LEAVE") || s.includes("NO_DRIVER")) dist.noDriver++;
- else dist.waitingForLoad++;
+ const state = resolveFleetOperationalState(extractFleetRawStatus(t));
+
+ if (state === "PLANT_LOADING") {
+   dist.plantLoading++;
+ } else if (
+   ["IN_TRANSIT", "WAITING_FOR_UNLOAD", "UNLOADED", "RETURNING"].includes(state)
+ ) {
+   dist.inTransit++;
+ } else if (state === "WORKSHOP") {
+   dist.workshop++;
+ } else if (state === "DRIVER_UNAVAILABLE") {
+   dist.noDriver++;
+ } else if (state === "READY") {
+   dist.waitingForLoad++;
+ }
  });
  setStatusDistribution(dist);
 
@@ -182,11 +192,11 @@ export default function TelemetryHUD() {
  const retentionMargin = monthlyRevenue > 0 ? ((netRetention / monthlyRevenue) * 100).toFixed(1) : "0.0";
 
  const fleetStatusConfig = [
- { key: "inTransit", label: "In Transit", shortLabel: "Transit", color: "info", match: (s: string) => s.includes("TRANSIT") },
- { key: "plantLoading", label: "Plant Loading", shortLabel: "Loading", color: "warning", match: (s: string) => s.includes("PLANT") || s.includes("LOADING") },
- { key: "waitingForLoad", label: "Ready For Dispatch", shortLabel: "Ready", color: "success", match: (s: string) => !s.includes("TRANSIT") && !s.includes("PLANT") && !s.includes("LOADING") && !s.includes("WORKSHOP") && !s.includes("REPAIR") && !s.includes("LEAVE") && !s.includes("NO_DRIVER") },
- { key: "workshop", label: "Workshop Repairs", shortLabel: "Workshop", color: "danger", match: (s: string) => s.includes("WORKSHOP") || s.includes("REPAIR") },
- { key: "noDriver", label: "Driver Unavailable", shortLabel: "No Driver", color: "warning", match: (s: string) => s.includes("LEAVE") || s.includes("NO_DRIVER") },
+ { key: "inTransit", label: "In Transit", shortLabel: "Transit", color: "info", match: (s: string) => ["IN_TRANSIT", "WAITING_FOR_UNLOAD", "UNLOADED", "RETURNING"].includes(resolveFleetOperationalState(s)) },
+ { key: "plantLoading", label: "Plant Loading", shortLabel: "Loading", color: "warning", match: (s: string) => resolveFleetOperationalState(s) === "PLANT_LOADING" },
+ { key: "waitingForLoad", label: "Ready For Dispatch", shortLabel: "Ready", color: "success", match: (s: string) => resolveFleetOperationalState(s) === "READY" },
+ { key: "workshop", label: "Workshop Repairs", shortLabel: "Workshop", color: "danger", match: (s: string) => resolveFleetOperationalState(s) === "WORKSHOP" },
+ { key: "noDriver", label: "Driver Unavailable", shortLabel: "No Driver", color: "warning", match: (s: string) => resolveFleetOperationalState(s) === "DRIVER_UNAVAILABLE" },
  ] as const;
 
  const selectedFleet = fleetStatusConfig.find(
@@ -195,7 +205,7 @@ export default function TelemetryHUD() {
 
  const selectedVehicles = selectedFleet
  ? vehicles.filter((vehicle) => {
- const status = String(vehicle.current_status || "WAITING_FOR_LOAD").toUpperCase();
+ const status = extractFleetRawStatus(vehicle);
  return selectedFleet.match(status);
  })
  : [];

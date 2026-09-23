@@ -1,4 +1,5 @@
 "use client";
+import { extractFleetRawStatus, resolveFleetOperationalState } from "./operationalState";
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -37,13 +38,22 @@ export function useFleetTelemetry() {
       ]);
 
       const vehicles = vehiclesRes.data || [];
-      const extractStatus = (v: any) => String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
 
       const counts = {
-        "Plant Loading": vehicles.filter((v: any) => ['WAITING_FOR_LOAD', 'AVAILABLE_FOR_LOAD'].includes(extractStatus(v))).length,
-        "In Transit": vehicles.filter((v: any) => extractStatus(v) === 'IN_TRANSIT').length,
-        "Workshop / Repairs": vehicles.filter((v: any) => extractStatus(v) === 'WORKSHOP_MAINTENANCE').length,
-        "No Driver / Leave": vehicles.filter((v: any) => extractStatus(v) === 'DRIVER_UNAVAILABLE').length
+        "Plant Loading": vehicles.filter((v: any) =>
+          resolveFleetOperationalState(extractFleetRawStatus(v)) === "PLANT_LOADING"
+        ).length,
+        "In Transit": vehicles.filter((v: any) =>
+          ["IN_TRANSIT", "WAITING_FOR_UNLOAD", "UNLOADED", "RETURNING"].includes(
+            resolveFleetOperationalState(extractFleetRawStatus(v))
+          )
+        ).length,
+        "Workshop / Repairs": vehicles.filter((v: any) =>
+          resolveFleetOperationalState(extractFleetRawStatus(v)) === "WORKSHOP"
+        ).length,
+        "No Driver / Leave": vehicles.filter((v: any) =>
+          resolveFleetOperationalState(extractFleetRawStatus(v)) === "DRIVER_UNAVAILABLE"
+        ).length
       };
 
       let totalFreight = 0;

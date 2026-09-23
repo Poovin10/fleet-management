@@ -292,10 +292,13 @@ export function DriverPortal() {
  let updatePayload: any = {}; let finalRemarks = remarks; let vehicleStatusUpdate = "IN_TRANSIT"; let statusRemarksText = "";
 
  if (actionType === "REACHED") {
- updatePayload.reached_at = timestamp; updatePayload.trip_status = "REACHED_DESTINATION"; statusRemarksText = `Reached ${currentTrip.destination} at ${formatDateTime(timestamp)}`;
+ updatePayload.reached_at = timestamp; updatePayload.trip_status = "REACHED_DESTINATION";
+ vehicleStatusUpdate = "WAITING_FOR_UNLOAD";
+ statusRemarksText = `Reached ${currentTrip.destination} — waiting for unload`;
  }
  else if (actionType === "UNLOADED") {
  updatePayload.unloaded_at = timestamp; updatePayload.trip_status = "UNLOADED";
+ vehicleStatusUpdate = "UNLOADED";
  if (isBulk) {
  if (noWeighment) finalRemarks = `[NO WEIGHMENT] ${finalRemarks}`;
  else {
@@ -309,7 +312,9 @@ export function DriverPortal() {
  statusRemarksText = `Unloaded at ${currentTrip.destination}`;
  }
  else if (actionType === "RETURNING") {
- updatePayload.returning_at = timestamp; updatePayload.trip_status = "RETURNING"; statusRemarksText = `Returning from ${currentTrip.destination}`;
+ updatePayload.returning_at = timestamp; updatePayload.trip_status = "RETURNING";
+ vehicleStatusUpdate = "RETURNING";
+ statusRemarksText = `Returning from ${currentTrip.destination}`;
  }
  else if (actionType === "WAITING_FOR_LOAD") {
  updatePayload.trip_status = "WAITING_FOR_LOAD"; updatePayload.end_km = Number(odometer) || 0;

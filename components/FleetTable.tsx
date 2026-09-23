@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { resolveFleetOperationalState, fleetStateLabel } from "../lib/operationalState";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export function FleetTable() {
@@ -10,35 +11,22 @@ export function FleetTable() {
   const supabase = createClient();
 
   const getStatusClass = (status: string) => {
-    const normalized = status.toUpperCase();
-
-    if (
-      normalized.includes("WORKSHOP") ||
-      normalized.includes("REPAIR") ||
-      normalized.includes("BREAKDOWN")
-    ) {
-      return "border-danger/20 bg-danger-soft text-danger";
+    switch (resolveFleetOperationalState(status)) {
+      case "WORKSHOP":
+        return "border-danger/20 bg-danger-soft text-danger";
+      case "DRIVER_UNAVAILABLE":
+      case "PLANT_LOADING":
+        return "border-warning/20 bg-warning-soft text-warning";
+      case "IN_TRANSIT":
+      case "WAITING_FOR_UNLOAD":
+      case "UNLOADED":
+      case "RETURNING":
+        return "border-info/20 bg-info-soft text-info";
+      case "READY":
+        return "border-success/20 bg-success-soft text-success";
+      default:
+        return "border-subtle bg-surface-raised text-secondary";
     }
-
-    if (
-      normalized.includes("DRIVER") ||
-      normalized.includes("UNAVAILABLE") ||
-      normalized.includes("HALT") ||
-      normalized.includes("DELAY")
-    ) {
-      return "border-warning/20 bg-warning-soft text-warning";
-    }
-
-    if (
-      normalized.includes("TRANSIT") ||
-      normalized.includes("LOADING") ||
-      normalized.includes("WAITING_FOR_UNLOAD") ||
-      normalized.includes("WAITING FOR UNLOAD")
-    ) {
-      return "border-info/20 bg-info-soft text-info";
-    }
-
-    return "border-success/20 bg-success-soft text-success";
   };
 
   useEffect(() => {
@@ -84,7 +72,9 @@ export function FleetTable() {
                       v.current_status || "AVAILABLE_FOR_LOAD"
                     )}`}
                   >
-                    {v.current_status || "AVAILABLE_FOR_LOAD"}
+                    {fleetStateLabel(
+                      resolveFleetOperationalState(v.current_status || "AVAILABLE_FOR_LOAD")
+                    )}
                   </span>
                 </TableCell>
                 <TableCell className="p-3 text-fg-secondary">{v.status_remarks || "-"}</TableCell>

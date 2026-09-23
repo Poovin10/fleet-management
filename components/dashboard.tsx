@@ -1,4 +1,5 @@
 "use client";
+import { extractFleetRawStatus, resolveFleetOperationalState } from "../lib/operationalState";
 
 import TelemetryHUD from "./TelemetryHUD";
 import { useState, useEffect } from "react";
@@ -97,18 +98,20 @@ export default function Dashboard() {
     if (!supabase) return; await supabase.auth.signOut(); setIsLogoutModalOpen(false); router.replace("/auth/login");
   };
 
-  const extractStatus = (v: any) => String(v.status || v.current_status || v.vehicle_status || v.STATUS || "").trim().toUpperCase();
-
   const fetchDashboardData = async () => {
     if (!supabase) return;
     const { data: vehiclesData } = await supabase.from('vehicles').select('*');
     if (vehiclesData && vehiclesData.length > 0) {
       setLiveVehicles(vehiclesData);
       setStatusCounts({
-        "Plant Loading": vehiclesData.filter((v: any) => extractStatus(v) === 'WAITING_FOR_LOAD' || extractStatus(v) === 'AVAILABLE_FOR_LOAD').length,
-        "In Transit": vehiclesData.filter((v: any) => extractStatus(v) === 'IN_TRANSIT').length,
-        "Workshop / Repairs": vehiclesData.filter((v: any) => extractStatus(v) === 'WORKSHOP_MAINTENANCE').length,
-        "No Driver / Leave": vehiclesData.filter((v: any) => extractStatus(v) === 'DRIVER_UNAVAILABLE').length
+        "Plant Loading": vehiclesData.filter((v: any) => resolveFleetOperationalState(extractFleetRawStatus(v)) === "PLANT_LOADING").length,
+        "In Transit": vehiclesData.filter((v: any) =>
+          ["IN_TRANSIT", "WAITING_FOR_UNLOAD", "UNLOADED", "RETURNING"].includes(
+            resolveFleetOperationalState(extractFleetRawStatus(v))
+          )
+        ).length,
+        "Workshop / Repairs": vehiclesData.filter((v: any) => resolveFleetOperationalState(extractFleetRawStatus(v)) === "WORKSHOP").length,
+        "No Driver / Leave": vehiclesData.filter((v: any) => resolveFleetOperationalState(extractFleetRawStatus(v)) === "DRIVER_UNAVAILABLE").length
       });
     }
 
