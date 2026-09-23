@@ -160,7 +160,7 @@ export function SetupModule() {
                 <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Truck No</TableHead><TableHead className="px-4 py-3">Variant</TableHead><TableHead className="px-4 py-3">Capacity</TableHead><TableHead className="px-4 py-3">Status</TableHead><TableHead className="px-4 py-3 text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody className="divide-y divide-border">
                   {trucks.map(t => (
-                    <TableRow key={t.vehicle_id} className="hover:bg-white/[0.02] transition-colors">
+                    <TableRow key={t.vehicle_id} className="hover:bg-surface-raised/50 transition-colors">
                       <TableCell className="px-4 py-3.5 font-bold text-fg font-mono">{t.vehicle_number}</TableCell>
                       <TableCell className="px-4 py-3.5 text-fg-secondary font-semibold">{t.truck_type}</TableCell>
                       <TableCell className="px-4 py-3.5 text-fg-secondary font-mono">{t.carrying_capacity_tons} MT</TableCell>
@@ -209,7 +209,7 @@ export function SetupModule() {
                 <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Code</TableHead><TableHead className="px-4 py-3">Full Name</TableHead><TableHead className="px-4 py-3">Phone</TableHead><TableHead className="px-4 py-3">License Expiry</TableHead><TableHead className="px-4 py-3 text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody className="divide-y divide-border">
                   {drivers.map(d => (
-                    <TableRow key={d.driver_id} className="hover:bg-white/[0.02] transition-colors">
+                    <TableRow key={d.driver_id} className="hover:bg-surface-raised/50 transition-colors">
                       <TableCell className="px-4 py-3.5 font-bold text-accent font-mono">{d.driver_code}</TableCell>
                       <TableCell className="px-4 py-3.5 font-bold text-fg">{d.full_name}</TableCell>
                       <TableCell className="px-4 py-3.5 text-fg-secondary font-mono">{d.phone_number || "-"}</TableCell>
@@ -234,7 +234,7 @@ export function SetupModule() {
               <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Destination</TableHead><TableHead className="px-4 py-3">Origin</TableHead><TableHead className="px-4 py-3 text-right">Rate / MT (₹)</TableHead></TableRow></TableHeader>
               <TableBody className="divide-y divide-border">
                 {destinations.map((d) => (
-                  <TableRow key={d.destination_id} className="hover:bg-white/[0.02] transition-colors">
+                  <TableRow key={d.destination_id} className="hover:bg-surface-raised/50 transition-colors">
                     <TableCell className="px-4 py-3.5 font-bold text-fg">{d.destination_name}</TableCell>
                     <TableCell className="px-4 py-3.5 text-fg-secondary">{d.origin || "COCHIN"}</TableCell>
                     <TableCell className="px-4 py-3.5 text-right font-bold text-success font-mono">{(Number(d.freight_rate_per_ton)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
@@ -254,7 +254,7 @@ export function SetupModule() {
               <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Destination</TableHead><TableHead className="px-4 py-3 text-right">Standard Bata (₹)</TableHead></TableRow></TableHeader>
               <TableBody className="divide-y divide-border">
                 {bataRules.map((b) => (
-                  <TableRow key={b.bata_rule_id} className="hover:bg-white/[0.02] transition-colors">
+                  <TableRow key={b.bata_rule_id} className="hover:bg-surface-raised/50 transition-colors">
                     <TableCell className="px-4 py-3.5 font-bold text-fg">{b.destination_name || "Unknown"}</TableCell>
                     <TableCell className="px-4 py-3.5 text-right font-bold text-accent font-mono">{(Number(b.standard_bata_inr)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                   </TableRow>
@@ -273,7 +273,7 @@ export function SetupModule() {
               <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Username / Email</TableHead><TableHead className="px-4 py-3">Role</TableHead></TableRow></TableHeader>
               <TableBody className="divide-y divide-border">
                 {appUsers.map((u) => (
-                  <TableRow key={u.user_id} className="hover:bg-white/[0.02] transition-colors">
+                  <TableRow key={u.user_id} className="hover:bg-surface-raised/50 transition-colors">
                     <TableCell className="px-4 py-3.5 font-bold text-fg font-mono">{u.username || "-"}</TableCell>
                     <TableCell className="px-4 py-3.5"><span className="px-2.5 py-1 bg-accent-soft text-accent border border-accent rounded-md text-[9px] font-bold font-mono uppercase">{u.role || "USER"}</span></TableCell>
                   </TableRow>
