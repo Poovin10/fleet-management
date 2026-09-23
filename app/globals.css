@@ -49,83 +49,89 @@
 
 @layer base {
   :root {
-    /* ---------- Core surfaces ---------- */
-    --bg-app: #050507;
-    --bg-surface: #0b0d13;
-    --bg-surface-raised: #11141d;
-    --bg-surface-elevated: #171b25;
+    /* ==========================================================
+       KSS PREMIUM UI V2 — SURFACE SYSTEM
+       ========================================================== */
 
-    /* ---------- Text ---------- */
-    --text-primary: #f8fafc;
-    --text-secondary: #a7afbf;
-    --text-muted: #6f7888;
+    --bg-app: #07090d;
+    --bg-surface: #0c1016;
+    --bg-surface-raised: #11161e;
+    --bg-surface-elevated: #171d27;
 
-    /* ---------- KSS Orange ---------- */
+    /* ---------- Text hierarchy ---------- */
+    --text-primary: #f5f7fa;
+    --text-secondary: #aeb7c5;
+    --text-muted: #727d8d;
+
+    /* ---------- KSS accent ---------- */
     --accent: #ff9f0a;
-    --accent-hover: #ffb340;
-    --accent-fg: #050507;
-    --accent-soft: rgba(255, 159, 10, 0.12);
-    --accent-border: rgba(255, 159, 10, 0.30);
-    --accent-glow: rgba(255, 159, 10, 0.30);
+    --accent-hover: #ffb52e;
+    --accent-fg: #11100c;
+    --accent-soft: rgba(255, 159, 10, 0.10);
+    --accent-border: rgba(255, 159, 10, 0.26);
+    --accent-glow: rgba(255, 159, 10, 0.18);
 
     /* ---------- Semantic states ---------- */
-    --success: #34d399;
-    --success-soft: rgba(52, 211, 153, 0.12);
+    --success: #35d39a;
+    --success-soft: rgba(53, 211, 154, 0.10);
 
-    --danger: #fb7185;
-    --danger-soft: rgba(251, 113, 133, 0.12);
+    --danger: #ff7185;
+    --danger-soft: rgba(255, 113, 133, 0.10);
 
-    --warning: #fbbf24;
-    --warning-soft: rgba(251, 191, 36, 0.12);
+    --warning: #f7c34a;
+    --warning-soft: rgba(247, 195, 74, 0.10);
 
-    --info: #60a5fa;
-    --info-soft: rgba(96, 165, 250, 0.12);
+    --info: #69a9ff;
+    --info-soft: rgba(105, 169, 255, 0.10);
 
-    /* ---------- Borders ---------- */
-    --border: rgba(255, 255, 255, 0.07);
-    --border-strong: rgba(255, 255, 255, 0.12);
-    --border-subtle: rgba(255, 255, 255, 0.04);
+    /* ---------- Border hierarchy ---------- */
+    --border: rgba(255, 255, 255, 0.075);
+    --border-strong: rgba(255, 255, 255, 0.13);
+    --border-subtle: rgba(255, 255, 255, 0.045);
 
-    /* ---------- Glass ---------- */
-    --glass-bg: rgba(11, 13, 19, 0.78);
-    --glass-bg-hover: rgba(255, 255, 255, 0.055);
-    --glass-border: rgba(255, 255, 255, 0.07);
-    --glass-highlight: rgba(255, 255, 255, 0.045);
-    --glass-blur: 24px;
+    /* ---------- Glass hierarchy ---------- */
+    --glass-bg: rgba(18, 23, 31, 0.72);
+    --glass-bg-hover: rgba(255, 255, 255, 0.045);
+    --glass-border: rgba(255, 255, 255, 0.10);
+    --glass-highlight: rgba(255, 255, 255, 0.055);
+    --glass-blur: 28px;
 
-  /* Input tokens */
-  --input-bg: rgba(255, 255, 255, 0.025);
-  --input-bg-focus: rgba(255, 255, 255, 0.045);
-  --input-border-hover: rgba(255, 255, 255, 0.16);
+    /* ---------- Inputs ---------- */
+    --input-bg: rgba(255, 255, 255, 0.028);
+    --input-bg-focus: rgba(255, 255, 255, 0.048);
+    --input-border-hover: rgba(255, 255, 255, 0.19);
 
     /* ---------- Radius ---------- */
-    --radius-sm: 10px;
-    --radius-md: 14px;
-    --radius-lg: 20px;
-    --radius-xl: 28px;
-    --radius-2xl: 32px;
+    --radius-sm: 9px;
+    --radius-md: 13px;
+    --radius-lg: 17px;
+    --radius-xl: 24px;
+    --radius-2xl: 30px;
 
     /* ---------- Shadows ---------- */
     --shadow-card:
-      0 10px 30px rgba(0, 0, 0, 0.22);
+      0 8px 28px rgba(0, 0, 0, 0.20),
+      0 1px 2px rgba(0, 0, 0, 0.30);
 
     --shadow-raised:
-      0 18px 50px rgba(0, 0, 0, 0.32);
+      0 18px 48px rgba(0, 0, 0, 0.28),
+      0 2px 5px rgba(0, 0, 0, 0.24);
 
     --shadow-glass:
-      0 18px 50px rgba(0, 0, 0, 0.28);
+      0 20px 60px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.035);
 
     --shadow-orange:
-      0 0 18px rgba(255, 159, 10, 0.28);
+      0 5px 18px rgba(255, 159, 10, 0.18);
 
     --shadow-orange-hover:
-      0 0 30px rgba(255, 159, 10, 0.45);
+      0 8px 26px rgba(255, 159, 10, 0.28);
 
     /* ---------- Motion ---------- */
     --duration-fast: 120ms;
     --duration-base: 180ms;
-    --duration-normal: 260ms;
-    --duration-slow: 400ms;
+    --duration-normal: 240ms;
+    --duration-slow: 380ms;
 
     --ease-standard: cubic-bezier(0.2, 0, 0, 1);
     --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
@@ -137,7 +143,6 @@
     --font-size-title: 1.125rem;
     --font-size-heading: 1.5rem;
   }
-
   html {
     background: var(--bg-app);
     color: var(--text-primary);
@@ -169,19 +174,50 @@
   /* ---------- Liquid Glass ---------- */
 
   .liquid-glass {
-    background: var(--glass-bg);
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.035),
+        rgba(255, 255, 255, 0.008) 42%,
+        rgba(255, 255, 255, 0.018)
+      ),
+      var(--glass-bg);
     border: 1px solid var(--glass-border);
-    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
     border-radius: var(--radius-2xl);
     box-shadow: var(--shadow-glass);
   }
 
+  .liquid-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      linear-gradient(
+        115deg,
+        rgba(255,255,255,0.055),
+        transparent 28%,
+        transparent 72%,
+        rgba(255,255,255,0.018)
+      );
+    opacity: 0.8;
+  }
+
+  .liquid-glass > * {
+    position: relative;
+    z-index: 1;
+  }
+
   .liquid-glass-soft {
-    background: rgba(255, 255, 255, 0.025);
+    background: rgba(255, 255, 255, 0.018);
     border: 1px solid var(--border);
-    backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    backdrop-filter: blur(22px) saturate(145%);
+    -webkit-backdrop-filter: blur(22px) saturate(145%);
     border-radius: var(--radius-xl);
   }
 
@@ -268,5 +304,95 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   KSS PREMIUM INTERACTION SYSTEM
+   ============================================================ */
+
+@layer components {
+
+  .kss-surface {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
+  }
+
+  .kss-surface-raised {
+    background: var(--bg-surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .kss-interactive {
+    transition:
+      transform var(--duration-normal) var(--ease-spring),
+      background var(--duration-normal) var(--ease-standard),
+      border-color var(--duration-normal) var(--ease-standard),
+      box-shadow var(--duration-normal) var(--ease-standard);
+  }
+
+  .kss-interactive:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-strong);
+  }
+
+  .kss-interactive:active {
+    transform: translateY(0) scale(0.992);
+  }
+
+  .kss-glow-accent {
+    box-shadow:
+      0 0 0 1px rgba(255, 159, 10, 0.10),
+      0 10px 34px rgba(255, 159, 10, 0.10);
+  }
+
+  .kss-status-dot {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+  }
+
+  .kss-page-enter {
+    animation: kss-page-enter 380ms var(--ease-spring) both;
+  }
+
+  .kss-fade-up {
+    animation: kss-fade-up 420ms var(--ease-spring) both;
+  }
+}
+
+@keyframes kss-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes kss-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kss-page-enter,
+  .kss-fade-up {
+    animation: none !important;
   }
 }

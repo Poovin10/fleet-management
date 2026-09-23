@@ -1,14 +1,11 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 
 export default function TelemetryHUD() {
  const supabase = createClient();
- const [isPending, startTransition] = useTransition();
 
  // Telemetry & Metrics State
  const [totalTripsCount, setTotalTripsCount] = useState(0);
@@ -28,11 +25,8 @@ export default function TelemetryHUD() {
  waitingForLoad: 0,
  });
 
- // Quick Status Override Modal State
- const [selectedTruckId, setSelectedTruckId] = useState("");
- const [overrideStatus, setOverrideStatus] = useState("WAITING_FOR_LOAD");
- const [overrideRemarks, setOverrideRemarks] = useState("");
- const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+ // Fleet Deployment Drill-Down State
+ const [selectedFleetStatus, setSelectedFleetStatus] = useState<string | null>(null);
 
  // Live Alerts & Feed State
  const [liveAlerts, setLiveAlerts] = useState<any[]>([]);
@@ -184,29 +178,27 @@ export default function TelemetryHUD() {
  fetchDashboardData();
  }, [supabase]);
 
- const handleUpdateStatus = async (e: React.FormEvent) => {
- e.preventDefault();
- if (!selectedTruckId) return alert("Select a vehicle to update.");
- setIsUpdatingStatus(true);
- const { error } = await supabase
- .from('vehicles')
- .update({
- current_status: overrideStatus,
- status_remarks: overrideRemarks || null,
- status_updated_at: new Date().toISOString(),
- })
- .eq("id", selectedTruckId);
-
- setIsUpdatingStatus(false);
- if (error) alert("Status update failed: " + error.message);
- else {
- setOverrideRemarks("");
- fetchDashboardData();
- }
- };
-
  const currentMonthName = new Date().toLocaleString("default", { month: "long", year: "numeric" });
  const retentionMargin = monthlyRevenue > 0 ? ((netRetention / monthlyRevenue) * 100).toFixed(1) : "0.0";
+
+ const fleetStatusConfig = [
+ { key: "inTransit", label: "In Transit", shortLabel: "Transit", color: "info", match: (s: string) => s.includes("TRANSIT") },
+ { key: "plantLoading", label: "Plant Loading", shortLabel: "Loading", color: "warning", match: (s: string) => s.includes("PLANT") || s.includes("LOADING") },
+ { key: "waitingForLoad", label: "Ready For Dispatch", shortLabel: "Ready", color: "success", match: (s: string) => !s.includes("TRANSIT") && !s.includes("PLANT") && !s.includes("LOADING") && !s.includes("WORKSHOP") && !s.includes("REPAIR") && !s.includes("LEAVE") && !s.includes("NO_DRIVER") },
+ { key: "workshop", label: "Workshop Repairs", shortLabel: "Workshop", color: "danger", match: (s: string) => s.includes("WORKSHOP") || s.includes("REPAIR") },
+ { key: "noDriver", label: "Driver Unavailable", shortLabel: "No Driver", color: "warning", match: (s: string) => s.includes("LEAVE") || s.includes("NO_DRIVER") },
+ ] as const;
+
+ const selectedFleet = fleetStatusConfig.find(
+ (item) => item.key === selectedFleetStatus
+ );
+
+ const selectedVehicles = selectedFleet
+ ? vehicles.filter((vehicle) => {
+ const status = String(vehicle.current_status || "WAITING_FOR_LOAD").toUpperCase();
+ return selectedFleet.match(status);
+ })
+ : [];
 
  return (
  <div className="animate-tab-focus space-y-6 text-fg">
@@ -292,83 +284,118 @@ export default function TelemetryHUD() {
  </div>
 
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
- {/* Fleet Status Distribution */}
+ {/* Fleet Status Deployment */}
  <div className="lg:col-span-2 space-y-4">
- <h3 className="text-sm font-medium text-fg tracking-tight">Fleet Status Deployment</h3>
- <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
- <div className="bg-surface border border-border-subtle rounded-xl p-4 flex flex-col items-start hover:border-border-strong transition-colors">
- <span className="w-2 h-2 rounded-full bg-warning mb-2" />
- <div className="text-xl font-semibold text-fg tracking-tight">{statusDistribution.plantLoading}</div>
- <div className="text-[11px] font-medium text-fg-secondary mt-1">Plant Loading</div>
+ <div className="flex items-end justify-between gap-4">
+ <div>
+ <h3 className="text-sm font-medium text-fg tracking-tight">Fleet Deployment</h3>
+ <p className="text-[11px] text-fg-muted mt-1">Select a fleet state to inspect its vehicles.</p>
  </div>
- <div className="bg-surface border border-border-subtle rounded-xl p-4 flex flex-col items-start hover:border-border-strong transition-colors">
- <span className="w-2 h-2 rounded-full bg-info mb-2" />
- <div className="text-xl font-semibold text-fg tracking-tight">{statusDistribution.inTransit}</div>
- <div className="text-[11px] font-medium text-fg-secondary mt-1">In Transit</div>
+ {selectedFleet && (
+ <button
+ type="button"
+ onClick={() => setSelectedFleetStatus(null)}
+ className="text-[11px] font-medium text-fg-muted hover:text-fg transition-colors"
+ >
+ Clear
+ </button>
+ )}
  </div>
- <div className="bg-surface border border-border-subtle rounded-xl p-4 flex flex-col items-start hover:border-border-strong transition-colors">
- <span className="w-2 h-2 rounded-full bg-danger mb-2" />
- <div className="text-xl font-semibold text-fg tracking-tight">{statusDistribution.workshop}</div>
- <div className="text-[11px] font-medium text-fg-secondary mt-1">Workshop Repairs</div>
+
+ <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+ {fleetStatusConfig.map((item) => {
+ const count = statusDistribution[item.key];
+ const isSelected = selectedFleetStatus === item.key;
+
+ return (
+ <button
+ key={item.key}
+ type="button"
+ onClick={() => setSelectedFleetStatus(isSelected ? null : item.key)}
+ aria-pressed={isSelected}
+ className={`group text-left rounded-xl border p-4 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
+ isSelected
+ ? "bg-surface-raised border-accent/40 shadow-orange"
+ : "bg-surface border-border-subtle hover:border-border-strong hover:bg-surface-raised"
+ }`}
+ >
+ <div className="flex items-center justify-between gap-2">
+ <span className={`kss-status-dot bg-${item.color}`} />
+ <span className="text-[10px] text-fg-muted group-hover:text-fg-secondary transition-colors">View</span>
  </div>
- <div className="bg-surface border border-border-subtle rounded-xl p-4 flex flex-col items-start hover:border-border-strong transition-colors">
- <span className="w-2 h-2 rounded-full bg-success mb-2" />
- <div className="text-xl font-semibold text-fg tracking-tight">{statusDistribution.waitingForLoad}</div>
- <div className="text-[11px] font-medium text-fg-secondary mt-1">Ready For Dispatch</div>
+ <div className="text-xl font-semibold text-fg tracking-tight mt-3">{count}</div>
+ <div className="text-[11px] font-medium text-fg-secondary mt-1">{item.label}</div>
+ </button>
+ );
+ })}
+ </div>
+
+ {selectedFleet && (
+ <div className="liquid-glass rounded-2xl border border-glass-border overflow-hidden animate-fade-up">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-border-subtle">
+ <div>
+ <div className="flex items-center gap-2">
+ <span className={`kss-status-dot bg-${selectedFleet.color}`} />
+ <h4 className="text-sm font-semibold text-fg uppercase tracking-wide">
+ {selectedFleet.label}
+ </h4>
+ </div>
+ <p className="text-[11px] text-fg-muted mt-1">
+ {selectedVehicles.length} {selectedVehicles.length === 1 ? "vehicle" : "vehicles"} in this state
+ </p>
+ </div>
+ <div className="text-[11px] font-medium text-fg-muted">
+ Live fleet snapshot
  </div>
  </div>
 
- {/* Quick Override Tool */}
- <div className="bg-surface border border-border-subtle rounded-xl p-5 mt-4">
- <h4 className="text-sm font-medium text-fg tracking-tight mb-4">Rapid Status Override</h4>
- <form onSubmit={handleUpdateStatus} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
- <div className="sm:col-span-1">
- <label className="block text-[11px] font-medium text-fg-secondary mb-1.5">Vehicle</label>
- <Select
- value={selectedTruckId}
- onChange={(e) => setSelectedTruckId(e.target.value)}
- required
+ {selectedVehicles.length === 0 ? (
+ <div className="px-5 py-10 text-center">
+ <div className="text-sm font-medium text-fg-secondary">No vehicles in this state</div>
+ <div className="text-[11px] text-fg-muted mt-1">The fleet snapshot is currently clear.</div>
+ </div>
+ ) : (
+ <div className="divide-y divide-border-subtle">
+ {selectedVehicles.map((vehicle) => (
+ <div
+ key={vehicle.id}
+ className="px-5 py-4 hover:bg-glass-hover transition-colors"
  >
- <option value="">Select...</option>
- {vehicles.map((v) => (
- <option key={v.id} value={v.id}>{v.vehicle_number}</option>
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+ <div className="min-w-0">
+ <div className="flex items-center gap-3">
+ <span className="text-sm font-semibold text-fg tracking-tight">
+ {vehicle.vehicle_number || "Unnamed vehicle"}
+ </span>
+ <span className="text-[10px] font-medium text-fg-muted uppercase tracking-wide">
+ {vehicle.vehicle_type || "Fleet Unit"}
+ </span>
+ </div>
+ <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11px] text-fg-muted">
+ <span>Status: <span className="text-fg-secondary">{vehicle.current_status || "WAITING_FOR_LOAD"}</span></span>
+ {vehicle.status_remarks && (
+ <span>Note: <span className="text-fg-secondary">{vehicle.status_remarks}</span></span>
+ )}
+ </div>
+ </div>
+
+ {vehicle.status_updated_at && (
+ <div className="shrink-0 text-[10px] text-fg-muted">
+ Updated {new Date(vehicle.status_updated_at).toLocaleString("en-IN", {
+ day: "2-digit",
+ month: "short",
+ hour: "2-digit",
+ minute: "2-digit",
+ })}
+ </div>
+ )}
+ </div>
+ </div>
  ))}
- </Select>
  </div>
- <div className="sm:col-span-1">
- <label className="block text-[11px] font-medium text-fg-secondary mb-1.5">Status</label>
- <Select
- value={overrideStatus}
- onChange={(e) => setOverrideStatus(e.target.value)}
- >
- <option value="PLANT_LOADING">Plant Loading</option>
- <option value="IN_TRANSIT">In Transit</option>
- <option value="WORKSHOP_MAINTENANCE">Workshop / Repairs</option>
- <option value="WAITING_FOR_LOAD">Ready For Load</option>
- </Select>
+ )}
  </div>
- <div className="sm:col-span-1">
- <label className="block text-[11px] font-medium text-fg-secondary mb-1.5">Remarks</label>
- <Input
- type="text"
- value={overrideRemarks}
- onChange={(e) => setOverrideRemarks(e.target.value)}
- placeholder="Optional note"
- className="h-auto rounded-lg px-3 py-2.5"
- />
- </div>
- <div className="sm:col-span-1 flex items-end">
- <Button
- type="submit"
- variant="default"
- disabled={isUpdatingStatus}
- className="w-full h-auto rounded-lg py-2.5 text-sm"
- >
- {isUpdatingStatus ? "Updating..." : "Apply Status"}
- </Button>
- </div>
- </form>
- </div>
+ )}
  </div>
 
  {/* Telemetry Radar */}
