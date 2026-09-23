@@ -279,7 +279,7 @@ export default function TelemetryHUD() {
               Fleet Activity
             </div>
             <div className="mt-1 text-sm font-medium text-fg-secondary">
-              Completed Trips
+              Trips Logged
             </div>
           </div>
 
