@@ -152,10 +152,10 @@ export function ModifyTrips() {
  </div>
 
  {!currentTrip ? (
- <div className="py-12 text-center border-2 border-dashed border-border rounded-xl bg-surface-raised/50"><p className="text-fg-secondary font-bold text-sm">Select a trip from the Search & Audit Log below to modify its details.</p></div>
+ <div className="py-12 text-center border-2 border-dashed border-border rounded-lg kss-surface-raised"><p className="text-fg-secondary font-bold text-sm">Select a trip from the Search & Audit Log below to modify its details.</p></div>
  ) : (
  <form onSubmit={handleUpdateTrip} className="space-y-5 animate-in slide-in-from-bottom-4">
- <div className="flex flex-wrap gap-4 bg-success-soft p-3 rounded-xl border border-success/30"><span className="text-xs text-success font-bold tracking-wider">Self-Healing Sync: Hitting save will automatically repair any missing Fuel Audit logs.</span></div>
+ <div className="flex flex-wrap gap-4 bg-success-soft p-3 rounded-lg border border-success/20"><span className="text-xs text-success font-bold tracking-wider">Self-Healing Sync: Hitting save will automatically repair any missing Fuel Audit logs.</span></div>
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">LR Number</label><Input type="text" value={tripNumber} onChange={e => setTripNumber(e.target.value)} className="text-fg font-bold" /></div>
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Dispatch Date</label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-fg font-bold" /></div>
@@ -166,13 +166,13 @@ export function ModifyTrips() {
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Destination</label><Input type="text" value={destination} onChange={e => setDestination(e.target.value)} className="text-fg font-bold" /></div>
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Primary Driver</label><Select value={driverId} onChange={e => setDriverId(e.target.value)} className="text-fg font-bold"><option value="">-- UNASSIGNED --</option>{drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}</Select></div>
  </div>
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-surface-raised/50 rounded-xl border border-border">
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 kss-surface-raised rounded-lg border border-border">
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Loaded MT</label><Input type="number" step="0.01" value={tonnage} onChange={e => setTonnage(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-fg font-bold" /></div>
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Freight Rate / MT ()</label><Input type="number" step="0.01" value={spotRate} onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-success font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Auto-Calc Gross Freight ()</label><Input type="text" value={`${grossFreight.toLocaleString('en-IN', {minimumFractionDigits: 2})}`} disabled className="w-full text-sm p-3 rounded-xl border border-success/30 bg-success-soft text-success font-semibold cursor-not-allowed"  /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Auto-Calc Gross Freight ()</label><Input type="text" value={`${grossFreight.toLocaleString('en-IN', {minimumFractionDigits: 2})}`} disabled className="w-full text-sm p-3 rounded-lg border border-success/20 bg-success-soft text-success font-semibold cursor-not-allowed"  /></div>
  </div>
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div><div className="flex justify-between items-end mb-1"><label className="block text-[10px] font-bold text-fg-secondary">Diesel Issued (L)</label><label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="w-3 h-3 rounded text-accent focus:ring-accent bg-surface-raised/50 border-border" /><span className="text-[9px] font-semibold text-fg">Tank Full</span></label></div><Input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" /></div>
+ <div><div className="flex justify-between items-end mb-1"><label className="block text-[10px] font-bold text-fg-secondary">Diesel Issued (L)</label><label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="w-3 h-3 rounded text-accent focus:ring-accent bg-surface-raised border-border" /><span className="text-[9px] font-semibold text-fg">Tank Full</span></label></div><Input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" /></div>
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Start KM</label><Input type="number" value={startKm} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold" /></div>
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">End KM</label><Input type="number" value={endKm} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold" /></div>
  </div>
@@ -194,8 +194,8 @@ export function ModifyTrips() {
  </div>
 
  <div className="liquid-glass overflow-hidden flex flex-col shadow-xl max-w-5xl mx-auto h-fit mt-6">
- <div className="bg-surface-raised/50 px-6 py-4 flex justify-between items-center border-b border-border"><h3 className="text-sm font-semibold text-fg tracking-wide">Trip Audit & Search</h3></div>
- <div className="p-6 border-b border-border bg-surface-raised/50">
+ <div className="bg-surface-raised px-6 py-4 flex justify-between items-center border-b border-border"><h3 className="text-sm font-semibold text-fg tracking-wide">Trip Audit & Search</h3></div>
+ <div className="p-6 border-b border-border bg-surface-raised">
  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Date Mode</label><Select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="text-fg font-semibold"><option value="All Time">All Time</option><option value="Specific Date">Specific Date</option><option value="Date Range">Date Range</option></Select></div>
  {auditDateMode === "Specific Date" && (<div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Date</label><Input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="text-fg font-semibold" /></div>)}
@@ -242,9 +242,9 @@ export function ModifyTrips() {
  <TableCell className="px-5 py-3.5 text-center">
   <span className={`px-2.5 py-1 rounded text-[10px] font-bold ${
     t.trip_status === 'COMPLETED'
-      ? 'bg-success-soft text-success border border-success/30'
+      ? 'bg-success-soft text-success border border-success/20'
       : t.trip_status === 'CANCELLED'
-        ? 'bg-danger-soft text-danger border border-danger/30'
+        ? 'bg-danger-soft text-danger border border-danger/20'
         : 'bg-warning-soft text-warning border border-warning/30'
   }`}>
     {t.trip_status}
