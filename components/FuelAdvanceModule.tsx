@@ -289,7 +289,7 @@ export function FuelAdvanceModule() {
   variant={faNav === tab ? "default" : "glass"}
   className={`px-4 py-2.5 rounded-xl text-xs font-bold ${
     faNav === tab
-      ? "shadow-lg shadow-orange"
+      ? "shadow-orange"
       : "text-fg-secondary hover:text-fg hover:bg-surface-raised/50"
   }`}
 >
@@ -342,7 +342,7 @@ export function FuelAdvanceModule() {
  <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Rate () *</label><Input type="number" step="0.1" min="0.1" max="200" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="text-fg font-bold" required /></div>
  </div>
 
- <div className="flex justify-between items-center input-glass p-4 rounded-xl border border-border mt-2">
+ <div className="flex justify-between items-center kss-surface-raised p-4 rounded-lg border border-border mt-2">
  <label className="flex items-center gap-3 cursor-pointer select-none">
  <input type="checkbox" checked={fIsTankFull} onChange={e => setFIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-accent input-glass border-border focus:ring-accent" />
  <span className="text-xs font-semibold text-fg "> Tank Full</span>
@@ -486,7 +486,7 @@ export function FuelAdvanceModule() {
  </Button>
  </div>
 
- <div className="border border-border rounded-xl overflow-hidden">
+ <div className="kss-surface overflow-hidden">
  <TableToolbar title="Audit Results" searchQuery={auditSearch} setSearchQuery={setAuditSearch} exportData={exportAudit} exportFilename="Fuel_Audit_Report" />
  <div className="overflow-x-auto w-full max-h-[500px] overflow-y-auto">
  <Table className="min-w-full whitespace-nowrap text-xs">
@@ -574,18 +574,18 @@ export function FuelAdvanceModule() {
  </div>
 
  {!kmplTruckId ? (
- <div className="p-12 text-center input-glass"><span className="text-4xl mb-4"></span><p className="text-sm font-bold text-fg-muted">Select a truck above to view its automated full-to-full mileage history.</p></div>
+ <div className="p-12 text-center kss-surface-raised"><span className="text-4xl mb-4"></span><p className="text-sm font-bold text-fg-muted">Select a truck above to view its automated full-to-full mileage history.</p></div>
  ) : isProcessing ? (
  <div className="p-12 text-center"><p className="text-sm font-bold text-accent animate-pulse">Calculating algorithms...</p></div>
  ) : (
  <div className="space-y-6">
  {ongoingKmplSpan && (
- <div className="bg-info-soft border border-info p-5 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+ <div className="bg-info-soft border border-info/20 p-5 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-4">
  <div><h4 className="text-[10px] font-semibold text-info  tracking-normal mb-1">Current Ongoing Span (Awaiting Next Tank Full)</h4><p className="text-sm font-semibold text-fg-secondary">Started at Odo <span className="font-semibold text-fg">{ongoingKmplSpan.start_odo} KM</span> on {formatDate(ongoingKmplSpan.start_date)}</p></div>
  <div className="text-right"><p className="text-2xl font-semibold text-info">{ongoingKmplSpan.accumulated_litres.toFixed(1)} L</p><p className="text-[10px] font-bold text-info ">Accumulated so far</p></div>
  </div>
  )}
- <div className="overflow-x-auto rounded-xl border border-border w-full">
+ <div className="kss-surface overflow-hidden w-full">
  <TableToolbar title="KMPL History" searchQuery={kmplSearch} setSearchQuery={setKmplSearch} exportData={exportKmpl} exportFilename="KMPL_Report" />
  <Table className="min-w-full whitespace-nowrap text-xs">
  <TableHeader className="sticky top-0 z-10">
