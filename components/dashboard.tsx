@@ -325,13 +325,9 @@ export default function Dashboard() {
             <div className="liquid-glass rounded-[22px] min-h-[68px] px-4 sm:px-5 flex items-center justify-between gap-4">
 
               <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="mb-1">
                   <span className="text-[9px] uppercase tracking-[0.16em] font-semibold text-accent">
                     {activeGroup}
-                  </span>
-                  <span className="text-fg-muted text-[9px]">/</span>
-                  <span className="text-[9px] uppercase tracking-[0.14em] font-medium text-fg-muted">
-                    Live
                   </span>
                 </div>
 
@@ -350,15 +346,6 @@ export default function Dashboard() {
                   <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                   <span className="text-[10px] font-medium text-fg-secondary">
                     {liveVehicles.length} units
-                  </span>
-                </div>
-
-                <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-raised/70 border border-border-subtle">
-                  <span className="text-[9px] uppercase tracking-[0.12em] text-fg-muted">
-                    Role
-                  </span>
-                  <span className="text-[10px] font-bold text-accent">
-                    {userRole}
                   </span>
                 </div>
 
