@@ -175,7 +175,7 @@ export function WorkshopModule() {
 
  {/* CUSTOM LIFECYCLE MODAL */}
  {actionModal.isOpen && (
- <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 input-glass bg-white/[0.02]/80 backdrop-blur-sm animate-in fade-in">
+ <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xl animate-in fade-in">
  <div className="liquid-glass shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
  <div className="flex justify-between items-center mb-5 border-b border-border pb-3">
  <h3 className="text-lg font-semibold text-fg  tracking-tight">
@@ -187,7 +187,7 @@ export function WorkshopModule() {
  <Button type="button" variant="ghost" onClick={() => setActionModal({ isOpen: false, tyre: null, mode: "" })} className="text-fg-muted hover:text-danger font-bold transition-colors"></Button>
  </div>
 
- <div className="input-glass bg-white/[0.02] p-4 rounded-xl border border-border mb-5">
+ <div className="kss-surface-raised p-4 rounded-lg border border-border mb-5">
  <p className="text-xs font-bold text-fg-muted ">Selected Tyre</p>
  <p className="text-sm font-semibold text-accent">{actionModal.tyre?.serial_number} <span className="text-fg-secondary font-semibold ml-2">({actionModal.tyre?.brand_model})</span></p>
  </div>
@@ -229,7 +229,7 @@ export function WorkshopModule() {
  </div>
  <div className="flex flex-wrap gap-2">
  {["Tyre Management", "Spares & Service Bills"].map((tab) => (
- <Button type="button" variant="ghost" key={tab} onClick={() => setWTab(tab)} className={`px-4 py-2.5 rounded-xl text-xs font-bold ${wTab === tab ? "bg-accent text-accent-fg shadow-lg shadow-orange" : "bg-surface-raised/70 text-fg-secondary hover:text-fg hover:bg-surface-elevated border border-border-strong backdrop-blur-xl"}`}>{tab}</Button>
+ <Button type="button" variant="ghost" key={tab} onClick={() => setWTab(tab)} className={`px-4 py-2.5 rounded-xl text-xs font-bold ${wTab === tab ? "bg-accent text-accent-fg shadow-orange" : "bg-surface-raised text-fg-secondary hover:text-fg hover:bg-surface-elevated border border-border-strong"}`}>{tab}</Button>
  ))}
  </div>
  </div>
@@ -241,13 +241,13 @@ export function WorkshopModule() {
  <h3 className="text-sm font-semibold text-fg  border-b border-border pb-3 mb-4 flex items-center gap-2"><span></span> Add New Tyre to Database</h3>
  <form onSubmit={handleRegisterTyre} className="space-y-4">
  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
- <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Destination *</label><Select value={regMode} onChange={e => setRegMode(e.target.value)} className="input-glass text-fg focus:border-[var(--accent)] outline-none font-bold"><option value="IN_STORE">Add to Store / Inventory</option><option value="MOUNTED">Mount Directly to Truck</option></Select></div>
- <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Serial Number *</label><Input type="text" maxLength={30} value={serialNo} onChange={e => setSerialNo(e.target.value.toUpperCase())} className="input-glass text-fg focus:border-[var(--accent)] outline-none font-bold " required /></div>
- <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Brand / Model</label><Input type="text" maxLength={40} value={brand} onChange={e => setBrand(e.target.value.toUpperCase())} className="input-glass text-fg focus:border-[var(--accent)] outline-none font-semibold " /></div>
- <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Initial NSD (MM)</label><Input type="number" step="0.1" min="0" max="30" value={nsdMm} onChange={e => setNsdMm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass text-fg focus:border-[var(--accent)] outline-none font-bold" /></div>
+ <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Destination *</label><Select value={regMode} onChange={e => setRegMode(e.target.value)} className="input-glass text-fg"><option value="IN_STORE">Add to Store / Inventory</option><option value="MOUNTED">Mount Directly to Truck</option></Select></div>
+ <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Serial Number *</label><Input type="text" maxLength={30} value={serialNo} onChange={e => setSerialNo(e.target.value.toUpperCase())} className="input-glass text-fg " required /></div>
+ <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Brand / Model</label><Input type="text" maxLength={40} value={brand} onChange={e => setBrand(e.target.value.toUpperCase())} className="input-glass text-fg " /></div>
+ <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Initial NSD (MM)</label><Input type="number" step="0.1" min="0" max="30" value={nsdMm} onChange={e => setNsdMm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass text-fg" /></div>
  </div>
  {regMode === "MOUNTED" && (
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 input-glass bg-white/[0.02] border border-[var(--accent)]/20 rounded-xl">
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 kss-surface-raised border border-accent-border rounded-lg">
  <div><label className="block text-[10px] font-bold text-accent  mb-1">Select Truck *</label><Select value={truckId} onChange={e => setTruckId(e.target.value)} className="input-glass"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</Select></div>
  <div><label className="block text-[10px] font-bold text-accent  mb-1">Position</label><Select value={position} onChange={e => setPosition(e.target.value)} className="input-glass"><option value="FRONT_LEFT">FRONT_LEFT</option><option value="FRONT_RIGHT">FRONT_RIGHT</option><option value="DRIVE">DRIVE AXLE</option><option value="STEPNEY">STEPNEY</option></Select></div>
  <div><label className="block text-[10px] font-bold text-accent  mb-1">Mounting ODO (KM) *</label><Input type="number" min="0" value={mountOdo} onChange={e => setMountOdo(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass" /></div>
@@ -271,7 +271,7 @@ export function WorkshopModule() {
  <TableCell className="px-5 py-3.5 text-fg-secondary font-bold">{t.placement_position}</TableCell>
  <TableCell className="px-5 py-3.5 text-fg-secondary">{formatDate(t.mounted_date)}</TableCell>
  <TableCell className="px-5 py-3.5 font-semibold text-success">{t.total_km_run || 0} km</TableCell>
- <TableCell className="px-5 py-3.5 text-center"><Button type="button" variant="ghost" onClick={() => { setNextState("IN_STORE"); setActionOdo(""); setActionNsd(""); setActionModal({ isOpen: true, tyre: t, mode: "UNMOUNT" }); }} className="px-3 py-1.5 input-glass bg-white/[0.02] hover:bg-[var(--bg-surface-elevated)] text-fg font-bold rounded-lg transition-colors border border-border">Unmount</Button></TableCell>
+ <TableCell className="px-5 py-3.5 text-center"><Button type="button" variant="ghost" onClick={() => { setNextState("IN_STORE"); setActionOdo(""); setActionNsd(""); setActionModal({ isOpen: true, tyre: t, mode: "UNMOUNT" }); }} className="px-3 py-1.5">Unmount</Button></TableCell>
  </TableRow>
  ))}
  {filteredMounted.length === 0 && <TableRow><TableCell colSpan={6} className="p-8 text-center text-fg-muted font-medium">No mounted tyres found.</TableCell></TableRow>}
@@ -289,17 +289,17 @@ export function WorkshopModule() {
  <TableBody className="">
  {filteredStore.map(t => (
  <TableRow key={t.tyre_id} className="">
- <TableCell className="px-5 py-3.5"><span className={`px-2 py-1 rounded text-[10px] font-semibold ${t.tyre_status === 'RETREADING' ? 'bg-warning/10 text-warning border border-warning/30' : 'input-glass bg-white/[0.02] text-fg border border-border'}`}>{t.tyre_status || 'IN_STORE'}</span></TableCell>
+ <TableCell className="px-5 py-3.5"><span className={`px-2 py-1 rounded text-[10px] font-semibold ${t.tyre_status === 'RETREADING' ? 'bg-warning/10 text-warning border border-warning/30' : 'bg-surface-raised text-fg border border-border'}`}>{t.tyre_status || 'IN_STORE'}</span></TableCell>
  <TableCell className="px-5 py-3.5 font-mono font-bold text-fg">{t.serial_number} <br/><span className="font-sans font-semibold text-[10px] text-fg-secondary">{t.brand_model}</span></TableCell>
  <TableCell className="px-5 py-3.5 text-fg-secondary font-bold">{t.condition_status}</TableCell>
  <TableCell className="px-5 py-3.5 font-semibold text-info">{t.total_km_run || 0} km</TableCell>
  <TableCell className="px-5 py-3.5 text-center">
  {t.tyre_status === 'RETREADING' ? (
- <Button type="button" variant="secondary" onClick={() => { setActionNsd(""); setActionModal({ isOpen: true, tyre: t, mode: "RECEIVE_RETREAD" }); }} className="px-3 py-1.5 bg-success/10 text-success font-bold rounded-lg border border-success/20">Receive</Button>
+ <Button type="button" variant="secondary" onClick={() => { setActionNsd(""); setActionModal({ isOpen: true, tyre: t, mode: "RECEIVE_RETREAD" }); }} className="px-3 py-1.5 bg-success/10 text-success border border-success/20">Receive</Button>
  ) : (
  <div className="flex justify-center gap-2">
- <Button type="button" variant="default" onClick={() => { setActionTruckId(""); setActionOdo(""); setActionModal({ isOpen: true, tyre: t, mode: "MOUNT" }); }} className="px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent font-bold rounded-lg border border-accent/20">Mount</Button>
- <Button type="button" variant="ghost" onClick={() => { setNextState("SCRAPPED"); setActionModal({ isOpen: true, tyre: t, mode: "SCRAP_FROM_STORE" }); }} className="px-3 py-1.5 input-glass bg-white/[0.02] hover:bg-[var(--bg-surface-elevated)] text-fg-secondary font-bold rounded-lg border border-border">Dispose</Button>
+ <Button type="button" variant="default" onClick={() => { setActionTruckId(""); setActionOdo(""); setActionModal({ isOpen: true, tyre: t, mode: "MOUNT" }); }} className="px-3 py-1.5 bg-accent-soft hover:bg-accent/15 text-accent border border-accent-border">Mount</Button>
+ <Button type="button" variant="ghost" onClick={() => { setNextState("SCRAPPED"); setActionModal({ isOpen: true, tyre: t, mode: "SCRAP_FROM_STORE" }); }} className="px-3 py-1.5">Dispose</Button>
  </div>
  )}
  </TableCell>
@@ -338,18 +338,18 @@ export function WorkshopModule() {
  <h3 className="text-sm font-semibold text-fg  border-b border-border pb-3 mb-6">Log Service Bill</h3>
  <form onSubmit={handleSaveBill} className="space-y-5">
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Bill Date *</label><Input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="input-glass text-fg focus:border-[var(--accent)] outline-none font-bold" required /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Select Truck *</label><Select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="input-glass text-fg focus:border-[var(--accent)] outline-none font-bold" required><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</Select></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Bill Date *</label><Input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="input-glass text-fg" required /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Select Truck *</label><Select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="input-glass text-fg" required><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</Select></div>
  </div>
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Vendor / Workshop Name *</label><Input type="text" maxLength={60} value={vendor} onChange={e => setVendor(e.target.value.toUpperCase())} className="input-glass text-fg focus:border-[var(--accent)] outline-none font-bold " required /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Total Bill Amount () *</label><Input type="number" min="1" max="1000000" value={amount} onChange={e => setAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass focus:border-[var(--accent)] outline-none font-semibold text-danger" required /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Vendor / Workshop Name *</label><Input type="text" maxLength={60} value={vendor} onChange={e => setVendor(e.target.value.toUpperCase())} className="input-glass text-fg " required /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Total Bill Amount () *</label><Input type="number" min="1" max="1000000" value={amount} onChange={e => setAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass text-fg font-semibold text-danger" required /></div>
  </div>
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Parts & Service Description</label><Input type="text" maxLength={150} value={description} onChange={e => setDescription(e.target.value.toUpperCase())} placeholder="e.g. Engine oil change, 2 brake pads" className="input-glass text-fg focus:border-[var(--accent)] outline-none font-semibold " /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Parts & Service Description</label><Input type="text" maxLength={150} value={description} onChange={e => setDescription(e.target.value.toUpperCase())} placeholder="e.g. Engine oil change, 2 brake pads" className="input-glass text-fg " /></div>
  <Button type="submit" variant="default" disabled={isProcessing} className="w-full py-3.5 text-xs disabled:bg-surface-raised">Save Service Record</Button>
  </form>
 
- <div className="mt-10 border border-border rounded-2xl overflow-hidden w-full">
+ <div className="mt-10 kss-surface overflow-hidden w-full">
  <TableToolbar title="Recent Workshop Bills" searchQuery={billsSearch} setSearchQuery={setBillsSearch} exportData={exportBills} exportFilename="Workshop_Spares_Bills" />
  <div className="overflow-x-auto w-full max-h-[400px]">
  <Table className="text-xs text-left whitespace-nowrap">
