@@ -18,7 +18,7 @@ export function TableToolbar({
   exportFilename,
 }: TableToolbarProps) {
   return (
-    <div className="flex flex-col items-center justify-between gap-3 border-b border-border bg-white/[0.015] p-4 sm:flex-row">
+    <div className="flex flex-col items-center justify-between gap-3 border-b border-border bg-surface-raised p-4 sm:flex-row">
       <h3 className="text-sm font-semibold tracking-wide text-fg">
         {title}
       </h3>

@@ -34,7 +34,7 @@ const badgeVariants = cva(
           "border-info/20 bg-info-soft text-info",
 
         glass:
-          "border-border bg-white/[0.035] text-fg-secondary backdrop-blur-xl",
+          "border-border bg-surface-raised text-fg-secondary backdrop-blur-xl",
       },
     },
 
