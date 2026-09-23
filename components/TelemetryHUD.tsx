@@ -66,7 +66,7 @@ export default function TelemetryHUD() {
  supabase
  .from("trips")
  .select("*", { count: "exact", head: true })
- .neq("trip_status", "COMPLETED"),
+ .eq("pod_status", "PENDING_SUBMISSION"),
  supabase
  .from("driver_pending_entries")
  .select("*", { count: "exact", head: true })

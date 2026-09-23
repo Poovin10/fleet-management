@@ -21,15 +21,17 @@ export async function GET(req: Request) {
     const todayStr = new Date().toISOString().split('T')[0];
 
     // 1. Fetch live fleet records
-    const [vehiclesRes, tripsRes, fuelRes, repairsRes] = await Promise.all([
+    const [vehiclesRes, tripsRes, pendingPodsRes, fuelRes, repairsRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true),
       supabase.from('trips').select('*, vehicles(vehicle_number), drivers(full_name)').order('trip_id', { ascending: false }).limit(60),
+      supabase.from('trips').select('trip_id, trip_number, trip_start_date, freight_revenue').eq('pod_status', 'PENDING_SUBMISSION').order('trip_start_date', { ascending: true }),
       supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).limit(60),
       supabase.from('workshop_repairs').select('*, vehicles(vehicle_number)').order('repair_date', { ascending: false }).limit(30)
     ]);
 
     const vehicles = vehiclesRes.data || [];
     const trips = tripsRes.data || [];
+    const pendingPods = pendingPodsRes.data || [];
     const fuelLogs = fuelRes.data || [];
     const repairs = repairsRes.data || [];
 
@@ -60,12 +62,12 @@ export async function GET(req: Request) {
     });
 
     // --- Audit Rule 2: Aging PODs (Cash Flow Lock) ---
-    const unclosedTrips = trips.filter((t) => t.trip_status !== 'COMPLETED');
-    if (unclosedTrips.length > 0) {
-      const totalPendingRevenue = unclosedTrips.reduce((acc, t) => acc + (Number(t.freight_revenue) || 0), 0);
+    const pendingPodClosures = pendingPods;
+    if (pendingPodClosures.length > 0) {
+      const totalPendingRevenue = pendingPodClosures.reduce((acc, t) => acc + (Number(t.freight_revenue) || 0), 0);
       efficiencyLeaks.push({
         area: "Pending POD Closures",
-        details: `${unclosedTrips.length} active trips pending delivery weighment/POD verification.`,
+        details: `${pendingPodClosures.length} PODs pending closure and delivery verification.`,
         estimatedLoss: `₹${totalPendingRevenue.toLocaleString('en-IN')} locked in receivables`
       });
     }
@@ -93,7 +95,7 @@ export async function GET(req: Request) {
     // --- Audit Rule 4: Operational & Retention Guidance ---
     strategicInsights.push({
       category: "Fleet Optimization",
-      suggestion: `Fleet active capacity: ${vehicles.length} trucks operational. Prioritize closing the oldest ${Math.min(unclosedTrips.length, 5)} open PODs to accelerate freight realization.`
+      suggestion: `Fleet active capacity: ${vehicles.length} trucks operational. Prioritize closing the oldest ${Math.min(pendingPodClosures.length, 5)} open PODs to accelerate freight realization.`
     });
 
     // 2. Persist deterministic audit into Supabase

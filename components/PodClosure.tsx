@@ -107,9 +107,10 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  const [tripsRes, dieselRes, scansRes] = await Promise.all([
  supabase.from("trips").select(`
  trip_id, trip_number, trip_start_date, origin, destination, loaded_weight_mt, start_km, fuel_litres, vehicle_id, primary_driver_id,
+ trip_status, pod_status, pod_number, pod_received_date,
  vehicles ( vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date ),
  drivers ( full_name, phone_number, driver_code, license_expiry_date )
- `).neq("trip_status", "COMPLETED").order("trip_start_date", { ascending: true }),
+ `).eq("pod_status", "PENDING_SUBMISSION").order("trip_start_date", { ascending: true }),
  supabase.from("diesel_fuel_logs").select("diesel_rate_per_litre").order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false }).limit(1),
  supabase.from("pending_scans").select("*").eq("document_type", "POD_CLOSURE").eq("status", "PENDING").order("created_at", { ascending: false })
  ]);
@@ -158,7 +159,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  setAlertConfig({
  isOpen: true,
  title: "Manual Selection Required ⚠️",
- message: `Could not auto-match the LR number from this entry (Detected: ${data.lrNo || "None"}). Please manually select the Active LR from the dropdown below.`,
+ message: `Could not auto-match the LR number from this entry (Detected: ${data.lrNo || "None"}). Please manually select the pending POD/LR from the dropdown below.`,
  type: "info"
  });
  }
@@ -226,34 +227,76 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
  setIsSubmitting(true);
  const loadedMt = Number(currentTrip.loaded_weight_mt) || 0;
- const finalUnloadedMt = Number(unloadedMt) || 0;
- const shortageMt = Math.max(0, loadedMt - finalUnloadedMt);
+ const finalUnloadedMt = unloadedMt === "" ? null : Number(unloadedMt);
+ const scannedShortageMt = scannedShortageKg !== null ? scannedShortageKg / 1000 : null;
+ const shortageMt = finalUnloadedMt !== null
+   ? Math.max(0, loadedMt - finalUnloadedMt)
+   : Math.max(0, scannedShortageMt ?? 0);
 
- const startKm = Number(currentTrip.start_km) || 0;
  const endKm = Number(closingKm) || 0;
- const totalKmRun = endKm > startKm ? endKm - startKm : 0;
 
  const addDiesel = Number(closingDiesel) || 0;
  const addedDieselCost = Math.round(addDiesel * dieselRate * 100) / 100;
 
- const { error: tripUpdateError } = await supabase.from("trips").update({
- pod_number: podNo.trim().toUpperCase(), trip_end_date: closingDate, end_km: endKm, total_km_run: totalKmRun,
- unloaded_weight_mt: finalUnloadedMt, shortage_mt: shortageMt, halt_bata: Number(haltBata) || 0,
- enroute_repairs_maintenance: Number(claims) || 0, fuel_litres: (Number(currentTrip.fuel_litres) || 0) + addDiesel,
- trip_status: "COMPLETED", trip_closed_at: new Date().toISOString()
- }).eq("trip_id", currentTrip.trip_id);
-
- if (tripUpdateError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Closure Failed", message: "Error updating trip: " + tripUpdateError.message, type: "error" }); }
-
- if (addDiesel > 0) {
- await supabase.from("diesel_fuel_logs").insert([{
- fuel_date: closingDate, vehicle_id: currentTrip.id, trip_id: currentTrip.trip_id, lr_number: currentTrip.trip_number,
- diesel_category: "TRIP_DIESEL", litres_filled: addDiesel, diesel_rate_per_litre: dieselRate, total_fuel_cost: addedDieselCost,
- filling_odometer_km: endKm, is_tank_full: isTankFull
- }]);
+ if (addDiesel > 0 && endKm <= 0) {
+   setIsSubmitting(false);
+   return setAlertConfig({
+     isOpen: true,
+     title: "Odometer Required",
+     message: "Please enter the filling odometer KM when recording a diesel top-up.",
+     type: "error"
+   });
  }
 
- await supabase.from('vehicles').update({ current_status: "AVAILABLE_FOR_LOAD", status_remarks: "Available (Auto-Closed on POD)" }).eq("vehicle_id", currentTrip.id);
+ const { data: closedTrips, error: tripUpdateError } = await supabase.from("trips").update({
+ pod_number: podNo.trim().toUpperCase(),
+ pod_received_date: closingDate,
+ pod_status: "VERIFIED_ACCEPTED",
+ shortage_mt: shortageMt,
+ halt_bata: Number(haltBata) || 0,
+ enroute_repairs_maintenance: Number(claims) || 0,
+ fuel_litres: (Number(currentTrip.fuel_litres) || 0) + addDiesel
+ }).eq("trip_id", currentTrip.trip_id).eq("pod_status", "PENDING_SUBMISSION")
+   .select("trip_id, pod_status, trip_status");
+
+ if (tripUpdateError) {
+   setIsSubmitting(false);
+   return setAlertConfig({
+     isOpen: true,
+     title: "POD Update Failed",
+     message: "Error updating POD: " + tripUpdateError.message,
+     type: "error"
+   });
+ }
+
+ if (!closedTrips || closedTrips.length !== 1) {
+   setIsSubmitting(false);
+   return setAlertConfig({
+     isOpen: true,
+     title: "POD Already Processed",
+     message: "This POD was already closed or is no longer pending. Please refresh the pending POD list.",
+     type: "error"
+   });
+ }
+
+ if (addDiesel > 0) {
+   const { error: dieselError } = await supabase.from("diesel_fuel_logs").insert([{
+     fuel_date: closingDate,
+     vehicle_id: currentTrip.vehicle_id,
+     trip_id: currentTrip.trip_id,
+     lr_number: currentTrip.trip_number,
+     diesel_category: "TRIP_DIESEL",
+     litres_filled: addDiesel,
+     diesel_rate_per_litre: dieselRate,
+     total_fuel_cost: addedDieselCost,
+     filling_odometer_km: endKm,
+     is_tank_full: isTankFull
+   }]);
+
+   if (dieselError) {
+     console.error("Diesel log insertion failed after trip closure:", dieselError);
+   }
+ }
 
  if (activeScanId) {
  await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
@@ -261,7 +304,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  setActiveScanId(null);
  }
 
- setAlertConfig({ isOpen: true, title: "POD Settled!", message: `Trip ${currentTrip.trip_number} successfully closed and settled!`, type: "success" });
+ setAlertConfig({ isOpen: true, title: "POD Settled!", message: `POD for ${currentTrip.trip_number} successfully recorded and settled.`, type: "success" });
  setIsSubmitting(false); setSelectedLr(""); setPodNo(""); setCurrentTrip(null); setScannedShortageKg(null); fetchActiveTrips(); if (onSuccess) onSuccess();
  };
 
@@ -302,19 +345,19 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  )}
 
  <div className="border-b border-border pb-4 mb-6">
- <h3 className="text-base font-semibold text-fg tracking-tight">Record POD & Settle Trip</h3>
- <p className="text-xs text-fg-secondary mt-1">Select an active LR or pick a pending POD entry from the inbox to autofill.</p>
+ <h3 className="text-base font-semibold text-fg tracking-tight">Record & Settle POD</h3>
+ <p className="text-xs text-fg-secondary mt-1">Select a pending POD/LR or pick a pending POD entry from the inbox to autofill.</p>
  </div>
 
  {activeTrips.length === 0 && !isLoading ? (
  <div className="p-8 text-center bg-success/10 border border-success/20 rounded-xl">
- <p className="text-sm font-bold text-success">All PODs are settled! No active trips pending closure.</p>
+ <p className="text-sm font-bold text-success">All PODs are settled! No pending PODs awaiting settlement.</p>
  </div>
  ) : (
  <form onSubmit={handleSettlePod} className="space-y-5">
  <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">Search & Select Active LR *</label>
- <SearchableSelect options={lrOptions} value={selectedLr} onChange={setSelectedLr} placeholder="-- SELECT LR TO CLOSE --" disabled={isLoading} />
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Search & Select Pending POD / LR *</label>
+ <SearchableSelect options={lrOptions} value={selectedLr} onChange={setSelectedLr} placeholder="-- SELECT LR FOR POD --" disabled={isLoading} />
  </div>
 
  {currentTrip && (
@@ -335,15 +378,15 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  <Input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="font-semibold" required />
  </div>
  <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">Unloaded MT</label>
- <Input type="number" {...numProps} value={unloadedMt} onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`font-semibold ${noSpinClass}`} />
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Unloaded MT (if weighed)</label>
+ <Input type="number" {...numProps} value={unloadedMt} onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="Optional" className={`font-semibold ${noSpinClass}`} />
  </div>
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
  <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">Closing KM *</label>
- <Input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder={`Start: ${currentTrip.start_km || 0}`} className={`text-info font-bold ${noSpinClass}`} required />
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Filling Odometer KM</label>
+ <Input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="Required only for diesel top-up" className={`text-info font-bold ${noSpinClass}`} />
  </div>
  <div>
  <label className="block text-[10px] font-bold text-fg-secondary mb-1">Halt Bata (₹)</label>
@@ -385,7 +428,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  variant="secondary"
  className="w-full md:w-auto px-8 py-3.5 rounded-xl text-sm bg-success hover:bg-success/90 text-fg border-success/40 shadow-none"
 >
- {isSubmitting ? "Settling..." : "✅ Settle & Close POD"}
+ {isSubmitting ? "Saving..." : "✅ Settle POD"}
 </Button>
  </div>
  </>
