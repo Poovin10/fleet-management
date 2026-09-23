@@ -2,7 +2,6 @@
 
 import TelemetryHUD from "./TelemetryHUD";
 import { useState, useEffect } from "react";
-import { LogoutButton } from "@/components/LogoutButton";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -166,87 +165,245 @@ export default function Dashboard() {
   if (!isAuthenticated) return null;
 
   const erpNavigation = [
-    { category: "Command & Operations", items: ["Dashboard", "Operations", "Fuel", "Workshop & Tyres"] },
-    { category: "Finance & Analytics", items: ["Driver Settlement", "Accounts", "Fleet Analytics", "P&L Statement"] },
-    { category: "System", items: ["Insights", "Master"] }
+    {
+      category: "Command & Operations",
+      items: ["Dashboard", "Operations", "Fuel", "Workshop & Tyres"]
+    },
+    {
+      category: "Finance & Analytics",
+      items: ["Driver Settlement", "Accounts", "Fleet Analytics", "P&L Statement"]
+    },
+    {
+      category: "System",
+      items: ["Insights", "Master"]
+    }
   ];
 
-  const allowedCategories = (userRole === "ADMIN" || userRole === "SUPERADMIN") ? erpNavigation : [ { category: "Overview", items: ["Dashboard"] }, { category: "Finance", items: ["Fleet Analytics", "P&L Statement", "Insights"] } ];
+  const allowedCategories =
+    userRole === "ADMIN" || userRole === "SUPERADMIN"
+      ? erpNavigation
+      : [
+          { category: "Overview", items: ["Dashboard"] },
+          { category: "Finance", items: ["Fleet Analytics", "P&L Statement", "Insights"] }
+        ];
+
+  const activeGroup =
+    allowedCategories.find((group) => group.items.includes(activeTab))?.category ?? "Overview";
+
+  const activeDescription: Record<string, string> = {
+    Dashboard: "Fleet command center",
+    Operations: "Trip execution and closure",
+    Fuel: "Fuel advances and fleet consumption",
+    "Workshop & Tyres": "Maintenance and tyre control",
+    "Driver Settlement": "Driver advances and settlement",
+    Accounts: "Accounts and financial control",
+    "Fleet Analytics": "Fleet financial performance",
+    "P&L Statement": "Profit and loss statement",
+    Insights: "Operational intelligence",
+    Master: "Fleet and system configuration"
+  };
 
   return (
-    <div className="min-h-screen bg-app text-fg font-sans selection:bg-accent/30 selection:text-accent relative overflow-hidden">
+    <div className="min-h-screen bg-app text-fg font-sans selection:bg-accent/30 selection:text-accent relative overflow-x-hidden">
 
-      {/* Global Ambient Refraction for Liquid Glass */}
-      <div className="fixed top-[-15%] right-[-10%] w-[60vw] h-[60vw] bg-accent/15 rounded-full blur-[140px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '10s' }} />
-      <div className="fixed bottom-[-15%] left-[-10%] w-[70vw] h-[70vw] bg-accent-hover/10 rounded-full blur-[160px] pointer-events-none mix-blend-screen z-0 animate-pulse" style={{ animationDuration: '14s' }} />
-      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none z-0" />
+      {/* Global Ambient Refraction */}
+      <div
+        className="fixed top-[-18%] right-[-12%] w-[55vw] h-[55vw] bg-accent/10 rounded-full blur-[150px] pointer-events-none mix-blend-screen z-0 animate-pulse"
+        style={{ animationDuration: "12s" }}
+      />
+      <div
+        className="fixed bottom-[-18%] left-[-12%] w-[65vw] h-[65vw] bg-accent-hover/8 rounded-full blur-[170px] pointer-events-none mix-blend-screen z-0 animate-pulse"
+        style={{ animationDuration: "16s" }}
+      />
 
-      <div className="relative z-10">
-        <ConfirmModal isOpen={isLogoutModalOpen} title="Secure Sign Out" message="Terminate active secure session?" isDanger={true} confirmText="Sign Out" onConfirm={executeLogout} onCancel={() => setIsLogoutModalOpen(false)} />
+      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.025] pointer-events-none z-0" />
 
-        {/* Hyper-Modern Floating Glass Header */}
-        <header className="sticky top-4 z-50 max-w-[1600px] mx-auto px-6">
-          <div className="liquid-glass rounded-3xl px-6 py-4 flex items-center justify-between shadow-[0_8px_32px_0_rgba(0,0,0,0.5)]">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-surface-elevated to-surface border border-border-strong flex items-center justify-center shadow-inner">
-                <KssLogo className="w-5 h-5"/>
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold tracking-wide text-fg">KSS Roadways</h1>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]"></span>
-                  <span className="text-[10px] font-medium text-fg/60 tracking-wide">Cochin Node {liveVehicles.length} Active Units</span>
+      <div className="relative z-10 min-h-screen">
+
+        <ConfirmModal
+          isOpen={isLogoutModalOpen}
+          title="Secure Sign Out"
+          message="Terminate active secure session?"
+          isDanger={true}
+          confirmText="Sign Out"
+          onConfirm={executeLogout}
+          onCancel={() => setIsLogoutModalOpen(false)}
+        />
+
+        {/* Desktop Command Sidebar */}
+        <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-[252px] p-4">
+          <div className="liquid-glass w-full h-full rounded-[28px] flex flex-col overflow-hidden">
+
+            <div className="px-5 pt-5 pb-4 border-b border-border-subtle">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[14px] bg-surface-elevated border border-border-strong flex items-center justify-center shadow-inner shrink-0">
+                  <KssLogo className="w-5 h-5" />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold tracking-wide text-fg">
+                    KSS Roadways
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                    <span className="text-[9px] uppercase tracking-[0.14em] font-medium text-fg-muted">
+                      Fleet Command
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl liquid-glass text-[11px] font-semibold font-mono border-border-subtle">
-                <span className="text-fg/40">ROLE:</span>
-                <span className="text-accent font-bold">{userRole}</span>
+            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+              {allowedCategories.map((group) => (
+                <div key={group.category}>
+                  <div className="px-3 mb-2 text-[9px] uppercase tracking-[0.16em] font-semibold text-fg-muted">
+                    {group.category}
+                  </div>
+
+                  <div className="space-y-1">
+                    {group.items.map((item) => {
+                      const isActive = activeTab === item;
+
+                      return (
+                        <Button
+                          key={item}
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setActiveTab(item)}
+                          className={`w-full justify-start h-10 rounded-xl px-3.5 text-[11.5px] transition-all duration-200 ${
+                            isActive
+                              ? "bg-accent text-accent-fg font-bold shadow-orange hover:bg-accent-hover hover:text-accent-fg"
+                              : "text-fg-secondary font-medium hover:text-fg hover:bg-surface-raised"
+                          }`}
+                        >
+                          <span className={`mr-3 w-1.5 h-1.5 rounded-full shrink-0 ${
+                            isActive ? "bg-accent-fg" : "bg-fg-muted/50"
+                          }`} />
+                          <span className="truncate">{item}</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </nav>
+
+            <div className="p-3 border-t border-border-subtle">
+              <div className="rounded-2xl bg-surface-raised/70 border border-border-subtle p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[9px] uppercase tracking-[0.14em] text-fg-muted font-semibold">
+                      Session
+                    </div>
+                    <div className="text-xs font-semibold text-fg mt-1 truncate">
+                      {userRole}
+                    </div>
+                  </div>
+
+                  <span className="kss-status-dot kss-status-dot-success" />
+                </div>
+
+                <Button
+                  type="button"
+                  variant="glass"
+                  onClick={() => setIsLogoutModalOpen(true)}
+                  className="w-full mt-3 h-9 rounded-xl text-[10.5px] font-semibold"
+                >
+                  Sign Out
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant="glass"
-                onClick={() => setIsLogoutModalOpen(true)}
-                className="h-auto rounded-xl px-5 py-2 text-xs font-semibold"
-              >
-                Sign Out
-              </Button>
             </div>
           </div>
-        </header>
+        </aside>
 
-        <main className="max-w-[1600px] mx-auto px-6 py-8 space-y-6">
+        {/* Main Application Frame */}
+        <div className="lg:pl-[252px] min-h-screen">
 
-          {/* Sleek Minimalist Glass Navigation Bar */}
-          <div className="flex flex-col lg:flex-row gap-3 p-2 liquid-glass rounded-[28px]">
-            {allowedCategories.map((group) => (
-              <div key={group.category} className="flex-1 flex flex-col xl:flex-row xl:items-center gap-2 p-1.5 bg-surface-raised/50 rounded-2xl border border-border-subtle">
-                <span className="text-[10px] font-semibold text-fg/40 px-3 hidden xl:inline uppercase tracking-widest">{group.category}</span>
-                <div className="flex flex-wrap gap-1.5 flex-1">
-                  {group.items.map((item) => (
+          {/* Premium Command Bar */}
+          <header className="sticky top-0 z-30 px-3 sm:px-5 lg:px-6 pt-3 lg:pt-4">
+            <div className="liquid-glass rounded-[22px] min-h-[68px] px-4 sm:px-5 flex items-center justify-between gap-4">
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[9px] uppercase tracking-[0.16em] font-semibold text-accent">
+                    {activeGroup}
+                  </span>
+                  <span className="text-fg-muted text-[9px]">/</span>
+                  <span className="text-[9px] uppercase tracking-[0.14em] font-medium text-fg-muted">
+                    Live
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-2 min-w-0">
+                  <h1 className="text-base sm:text-lg font-semibold tracking-[-0.025em] text-fg truncate">
+                    {activeTab}
+                  </h1>
+                  <span className="hidden sm:inline text-[10px] text-fg-muted truncate">
+                    {activeDescription[activeTab] ?? "KSS Roadways ERP"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-raised/70 border border-border-subtle">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                  <span className="text-[10px] font-medium text-fg-secondary">
+                    {liveVehicles.length} units
+                  </span>
+                </div>
+
+                <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-raised/70 border border-border-subtle">
+                  <span className="text-[9px] uppercase tracking-[0.12em] text-fg-muted">
+                    Role
+                  </span>
+                  <span className="text-[10px] font-bold text-accent">
+                    {userRole}
+                  </span>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="glass"
+                  onClick={() => setIsLogoutModalOpen(true)}
+                  className="lg:hidden h-9 rounded-xl px-3 text-[10.5px] font-semibold"
+                >
+                  Sign Out
+                </Button>
+              </div>
+            </div>
+          </header>
+
+          {/* Mobile Navigation */}
+          <div className="lg:hidden px-3 sm:px-5 pt-3">
+            <div className="liquid-glass rounded-[20px] p-2 overflow-x-auto">
+              <div className="flex items-center gap-1.5 min-w-max">
+                {allowedCategories.flatMap((group) => group.items).map((item) => {
+                  const isActive = activeTab === item;
+
+                  return (
                     <Button
                       key={item}
                       type="button"
-                      variant={activeTab === item ? "default" : "ghost"}
+                      variant="ghost"
                       onClick={() => setActiveTab(item)}
-                      className={`flex-1 h-auto rounded-xl px-4 py-2.5 text-[11.5px] tracking-wide ${
-                        activeTab === item
-                          ? "font-bold"
+                      className={`h-9 rounded-xl px-3.5 text-[10.5px] whitespace-nowrap ${
+                        isActive
+                          ? "bg-accent text-accent-fg font-bold shadow-orange hover:bg-accent-hover hover:text-accent-fg"
                           : "text-fg-secondary hover:text-fg hover:bg-surface-raised font-medium"
                       }`}
                     >
                       {item}
                     </Button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            ))}
+            </div>
           </div>
 
-          <div>
-            {activeTab === "Dashboard" && <TelemetryHUD />}
+          <main className="max-w-[1500px] mx-auto px-3 sm:px-5 lg:px-6 py-5 lg:py-6">
+            <div>
+              {activeTab === "Dashboard" && <TelemetryHUD />}
 
             {activeTab === "Operations" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
               <div className="liquid-glass rounded-[32px] p-6 sm:p-8 min-h-[60vh]">
@@ -336,8 +493,9 @@ export default function Dashboard() {
             {activeTab === "P&L Statement" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><ProfitLossModule /></div>}
             {activeTab === "Insights" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><AiInsightsDashboard /></div>}
             {activeTab === "Master" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><SetupModule /></div>}
-          </div>
-        </main>
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );
