@@ -161,18 +161,18 @@ export function DriverSettlementModule() {
  {hasSearched && (
  <div className="space-y-8 animate-slide-up">
  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
- <div className="bg-surface-raised/50 border border-border-subtle rounded-2xl p-5"><p className="text-[9px] font-semibold text-fg-secondary  tracking-normal">Total Trips</p><p className="text-2xl font-semibold text-fg mt-2 font-mono">{driverTrips.length}</p></div>
- <div className="bg-success-soft border border-success/30 rounded-2xl p-5"><p className="text-[9px] font-semibold text-success  tracking-normal">Gross Bata Earned</p><p className="text-2xl font-semibold text-success mt-2 font-mono">{formatAmt(grandTotalBata)}</p></div>
- <div className="bg-danger-soft border border-danger/30 rounded-2xl p-5"><p className="text-[9px] font-semibold text-danger  tracking-normal">Total Deductions</p><p className="text-2xl font-semibold text-danger mt-2 font-mono">{formatAmt(grandTotalTripAdv + directAdvTotal)}</p></div>
- <div className="bg-accent-soft border border-accent/30 rounded-2xl p-5 shadow-sm"><p className="text-[9px] font-semibold text-accent  tracking-normal">Net Payable</p><p className="text-2xl sm:text-3xl font-semibold text-accent mt-2 font-mono">{formatAmt(finalBalancePayable)}</p></div>
+ <div className="kss-surface-raised border border-border p-5"><p className="text-[9px] font-semibold text-fg-secondary  tracking-normal">Total Trips</p><p className="text-2xl font-semibold text-fg mt-2 font-mono">{driverTrips.length}</p></div>
+ <div className="kss-surface-raised border border-success/20 p-5"><p className="text-[9px] font-semibold text-success  tracking-normal">Gross Bata Earned</p><p className="text-2xl font-semibold text-success mt-2 font-mono">{formatAmt(grandTotalBata)}</p></div>
+ <div className="kss-surface-raised border border-danger/20 p-5"><p className="text-[9px] font-semibold text-danger  tracking-normal">Total Deductions</p><p className="text-2xl font-semibold text-danger mt-2 font-mono">{formatAmt(grandTotalTripAdv + directAdvTotal)}</p></div>
+ <div className="kss-surface-raised border border-accent-border p-5"><p className="text-[9px] font-semibold text-accent  tracking-normal">Net Payable</p><p className="text-2xl sm:text-3xl font-semibold text-accent mt-2 font-mono">{formatAmt(finalBalancePayable)}</p></div>
  </div>
 
  <div className="space-y-6">
  {Object.entries(tripsByTruck).map(([truckNo, tArr]: any) => {
  let trFreight = 0; let trBata = 0; let trAdv = 0;
  return (
- <div key={truckNo} className="border border-border rounded-2xl overflow-hidden shadow-sm bg-surface/50">
- <div className="bg-surface-raised/70 px-6 py-3.5 border-b border-border flex justify-between items-center"><h4 className="text-xs font-semibold text-accent  tracking-wide">TRUCK: {truckNo}</h4></div>
+ <div key={truckNo} className="kss-surface overflow-hidden">
+ <div className="bg-surface-raised px-6 py-3.5 border-b border-border flex justify-between items-center"><h4 className="text-xs font-semibold text-accent  tracking-wide">TRUCK: {truckNo}</h4></div>
  <div className="overflow-x-auto w-full max-h-80 overflow-y-auto">
  <Table className="text-xs whitespace-nowrap">
  <TableHeader className="sticky top-0 z-10"><TableRow className="text-left font-bold text-fg-secondary  tracking-wider text-[9px]"><TableHead className="px-5 py-3 border-b border-border">Date / LR No</TableHead><TableHead className="px-5 py-3 border-b border-border">Route</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Freight ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Bata ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Trip Adv ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Balance ()</TableHead><TableHead className="px-5 py-3 text-center border-b border-border">Status</TableHead></TableRow></TableHeader>
@@ -188,7 +188,7 @@ export function DriverSettlementModule() {
  <TableCell className="px-5 py-3.5 text-right font-semibold text-success font-mono">{formatAmt(tb)}</TableCell>
  <TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(ta)}</TableCell>
  <TableCell className="px-5 py-3.5 text-right font-semibold text-accent font-mono">{formatAmt(tb - ta)}</TableCell>
- <TableCell className="px-5 py-3.5 text-center"><span className={`px-2.5 py-1 rounded-md text-[9px] font-semibold  tracking-wider ${t.settlement_status === 'SETTLED' ? 'bg-success-soft text-success border border-success/30' : 'bg-warning-soft text-warning border border-warning/30'}`}>{t.settlement_status || "PENDING"}</span></TableCell>
+ <TableCell className="px-5 py-3.5 text-center"><span className={`px-2.5 py-1 rounded-md text-[9px] font-semibold  tracking-wider ${t.settlement_status === 'SETTLED' ? 'bg-success-soft text-success border border-success/20' : 'bg-warning-soft text-warning border border-warning/20'}`}>{t.settlement_status || "PENDING"}</span></TableCell>
  </TableRow>
  );
  })}
@@ -201,8 +201,8 @@ export function DriverSettlementModule() {
  })}
 
  {driverAdvances.length > 0 && (
- <div className="border border-border rounded-2xl overflow-hidden shadow-sm bg-surface/50">
- <div className="bg-surface-raised/70 px-6 py-3.5 border-b border-border"><h4 className="text-xs font-semibold text-danger  tracking-wide">Direct Cash Advances</h4></div>
+ <div className="kss-surface overflow-hidden">
+ <div className="bg-surface-raised px-6 py-3.5 border-b border-border"><h4 className="text-xs font-semibold text-danger  tracking-wide">Direct Cash Advances</h4></div>
  <div className="overflow-x-auto w-full max-h-60 overflow-y-auto">
  <Table className="text-xs whitespace-nowrap">
  <TableHeader className="sticky top-0 z-10"><TableRow className="text-left font-bold text-fg-secondary  tracking-wider text-[9px]"><TableHead className="px-5 py-3 border-b border-border">Date</TableHead><TableHead className="px-5 py-3 border-b border-border">Category</TableHead><TableHead className="px-5 py-3 border-b border-border">Remarks</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Amount ()</TableHead></TableRow></TableHeader>
