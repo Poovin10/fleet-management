@@ -221,15 +221,15 @@ export function FinancialsModule() {
 
  {analyticsSubTab !== "Driver Scorecard" && (
  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
- <div className="p-4 rounded-xl border border-border input-glass bg-surface-raised/50 min-w-0"><p className="text-[9px] sm:text-[10px] font-bold text-fg-secondary  mb-1 truncate">Fleet Revenue</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-semibold text-fg leading-none whitespace-nowrap">{formatAmt(aggFreight)}</p></div>
- <div className="p-4 rounded-xl border border-danger/30 bg-danger-soft min-w-0"><p className="text-[9px] sm:text-[10px] font-bold text-danger  mb-1 truncate">Diesel Cost</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-semibold text-danger leading-none whitespace-nowrap">{formatAmt(aggDiesel)}</p></div>
- <div className="p-4 rounded-xl border border-success/30 bg-success-soft min-w-0"><p className="text-[9px] sm:text-[10px] font-bold text-success  mb-1 truncate">Net Margin</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-semibold text-success leading-none whitespace-nowrap">{formatAmt(aggRetention)}</p></div>
- <div className="p-4 rounded-xl border border-accent/30 bg-accent-soft min-w-0"><p className="text-[9px] sm:text-[10px] font-bold text-accent  mb-1 truncate">Retention %</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-semibold text-accent leading-none whitespace-nowrap">{formatDec(aggRetentionPct)}%</p></div>
+ <div className="kss-surface-raised p-4 min-w-0"><p className="text-[9px] sm:text-[10px] font-bold text-fg-secondary  mb-1 truncate">Fleet Revenue</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-semibold text-fg leading-none whitespace-nowrap">{formatAmt(aggFreight)}</p></div>
+ <div className="kss-surface-raised border border-danger/20 p-4 min-w-0"><p className="text-[9px] sm:text-[10px] font-bold text-danger  mb-1 truncate">Diesel Cost</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-semibold text-danger leading-none whitespace-nowrap">{formatAmt(aggDiesel)}</p></div>
+ <div className="kss-surface-raised border border-success/20 p-4 min-w-0"><p className="text-[9px] sm:text-[10px] font-bold text-success  mb-1 truncate">Net Margin</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-semibold text-success leading-none whitespace-nowrap">{formatAmt(aggRetention)}</p></div>
+ <div className="kss-surface-raised border border-accent-border p-4 min-w-0"><p className="text-[9px] sm:text-[10px] font-bold text-accent  mb-1 truncate">Retention %</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-semibold text-accent leading-none whitespace-nowrap">{formatDec(aggRetentionPct)}%</p></div>
  </div>
  )}
 
  <div className="overflow-x-auto rounded-xl border border-border relative min-h-[300px] w-full">
- {isAnalyticsLoading && (<div className="absolute inset-0 liquid-glass/80 backdrop-blur-sm z-10 flex items-center justify-center"><span className="font-bold text-accent animate-pulse">Aggregating Metrics...</span></div>)}
+ {isAnalyticsLoading && (<div className="absolute inset-0 liquid-glass z-10 flex items-center justify-center"><span className="font-bold text-accent animate-pulse">Aggregating Metrics...</span></div>)}
 
  {(analyticsSubTab === "Fleet Retention" || analyticsSubTab === "Variant Benchmarks") && (
  <Table className="min-w-full text-xs text-right whitespace-nowrap">
