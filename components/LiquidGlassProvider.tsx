@@ -35,7 +35,7 @@ export default function LiquidGlassProvider({ children }: { children: React.Reac
         {alerts.map((alert) => (
           <div
             key={alert.id}
-            className="animate-tab-focus flex items-center gap-3 p-4 rounded-2xl bg-[#1C1C1E]/70 backdrop-blur-3xl saturate-200 border border-white/[0.12] shadow-[0_16px_32px_rgba(0,0,0,0.4)] pointer-events-auto"
+            className="liquid-glass animate-tab-focus flex items-center gap-3 p-4 pointer-events-auto"
           >
             {alert.type === "success" && (
               <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-500/30">

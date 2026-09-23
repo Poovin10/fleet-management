@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "KSS Roadways ERP",
   description: "KSS Roadways Fleet Management Portal",
-  themeColor: "#050507",
+  themeColor: "#07090d",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
