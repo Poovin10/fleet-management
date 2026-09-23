@@ -42,21 +42,21 @@ export function Insights() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-white/95 tracking-tight">Fleet Intelligence & Insights</h2>
-          <p className="text-xs text-white/50 mt-0.5">Performance analytics and operational metrics since September 1, 2026</p>
+          <h2 className="text-lg font-semibold text-fg tracking-tight">Fleet Intelligence & Insights</h2>
+          <p className="text-xs text-fg-secondary mt-0.5">Performance analytics and operational metrics since September 1, 2026</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-sm text-white/50">Analyzing fleet telemetry...</div>
+        <div className="p-8 text-center text-sm text-fg-secondary">Analyzing fleet telemetry...</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-5 rounded-2xl bg-white/[0.02] backdrop-blur-3xl saturate-200 border border-white/[0.06]">
-            <span className="text-xs font-medium text-white/50 uppercase tracking-wider">Total Fleet Distance Run</span>
+          <div className="liquid-glass p-5">
+            <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">Total Fleet Distance Run</span>
             <p className="text-2xl font-semibold text-blue-400 mt-2 font-mono">{totalKm.toLocaleString("en-IN")} KM</p>
           </div>
-          <div className="p-5 rounded-2xl bg-white/[0.02] backdrop-blur-3xl saturate-200 border border-white/[0.06]">
-            <span className="text-xs font-medium text-white/50 uppercase tracking-wider">Total Tonnage Transported</span>
+          <div className="liquid-glass p-5">
+            <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">Total Tonnage Transported</span>
             <p className="text-2xl font-semibold text-emerald-400 mt-2 font-mono">{totalTonnage.toLocaleString("en-IN")} Tons</p>
           </div>
         </div>
