@@ -184,30 +184,30 @@ export function TripForm() {
     <div className="max-w-5xl mx-auto space-y-4 relative">
 
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl px-4">
           <div className="liquid-glass p-6 sm:p-8 w-full max-w-md scale-in-center">
-            <h3 className="text-lg font-bold text-white mb-2">Confirm Trip Dispatch</h3>
-            <p className="text-xs text-white/60 mb-6">Verify the calculated operational financials before locking this trip.</p>
+            <h3 className="text-lg font-bold text-fg mb-2">Confirm Trip Dispatch</h3>
+            <p className="text-xs text-fg-secondary mb-6">Verify the calculated operational financials before locking this trip.</p>
 
-            <div className="space-y-3 mb-8 bg-black/30 p-4 rounded-2xl border border-white/[0.05]">
+            <div className="kss-surface-raised space-y-3 mb-8 p-4">
               <div className="flex justify-between text-xs">
-                <span className="text-white/50 uppercase tracking-wider font-semibold">LR Number:</span>
-                <span className="text-white font-bold">{lrNumber.toUpperCase()}</span>
+                <span className="text-fg-muted uppercase tracking-wider font-semibold">LR Number:</span>
+                <span className="text-fg font-bold">{lrNumber.toUpperCase()}</span>
               </div>
-              <div className="flex justify-between text-xs pt-2 border-t border-white/[0.05]">
-                <span className="text-white/50 uppercase tracking-wider font-semibold">Total Revenue (Freight):</span>
-                <span className="text-emerald-400 font-bold">₹{totalRevenue.toLocaleString('en-IN')}</span>
+              <div className="flex justify-between text-xs pt-2 border-t border-border-subtle">
+                <span className="text-fg-muted uppercase tracking-wider font-semibold">Total Revenue (Freight):</span>
+                <span className="text-success font-bold">₹{totalRevenue.toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-white/50 uppercase tracking-wider font-semibold">Total Expenses:</span>
-                <span className="text-rose-400 font-bold">₹{totalExpense.toLocaleString('en-IN')}</span>
+                <span className="text-fg-muted uppercase tracking-wider font-semibold">Total Expenses:</span>
+                <span className="text-danger font-bold">₹{totalExpense.toLocaleString('en-IN')}</span>
               </div>
-              <div className="flex justify-between text-[10px] text-white/40 pl-2">
+              <div className="flex justify-between text-[10px] text-fg-muted pl-2">
                 <span>(Advance + Bata + Fuel Cost)</span>
               </div>
-              <div className="flex justify-between text-sm pt-2 border-t border-white/[0.05]">
-                <span className="text-white/70 uppercase tracking-wider font-bold">Expected Margin:</span>
-                <span className="text-white font-bold">₹{netMargin.toLocaleString('en-IN')}</span>
+              <div className="flex justify-between text-sm pt-2 border-t border-border-subtle">
+                <span className="text-fg-secondary uppercase tracking-wider font-bold">Expected Margin:</span>
+                <span className="text-fg font-bold">₹{netMargin.toLocaleString('en-IN')}</span>
               </div>
             </div>
 
@@ -224,7 +224,7 @@ export function TripForm() {
       <div className="flex justify-between items-end mb-4">
         <div>
           <h2 className="text-sm font-semibold text-white tracking-wide">Dispatch New Trip</h2>
-          <p className="text-[11px] text-white/50 mt-0.5">Unified strict-validation logistics console</p>
+          <p className="text-[11px] text-fg-muted mt-0.5">Unified strict-validation logistics console</p>
         </div>
       </div>
 
@@ -233,24 +233,24 @@ export function TripForm() {
         {/* ROW 1: Core Identifiers */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-accent mb-1.5 uppercase tracking-wider">Trip Date</label>
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Trip Date</label>
             <input type="date" value={tripDate} onChange={(e) => setTripDate(e.target.value)} className="input-glass" required />
           </div>
           <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-accent mb-1.5 uppercase tracking-wider">LR Number</label>
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">LR Number</label>
             <input type="text" value={lrNumber} onChange={(e) => setLrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))} placeholder="KSS..." className="input-glass uppercase font-mono" required pattern="[A-Za-z0-9]+" />
           </div>
           <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-accent mb-1.5 uppercase tracking-wider">Cargo Type</label>
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Cargo Type</label>
             <div className="flex gap-1.5">
               <Button type="button" variant={cargoType === "BULK" ? "default" : "glass"} onClick={() => { setCargoType("BULK"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className="flex-1 py-2 rounded-full text-[10px] font-bold">BULK</Button>
               <Button type="button" variant={cargoType === "BAG" ? "default" : "glass"} onClick={() => { setCargoType("BAG"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className="flex-1 py-2 rounded-full text-[10px] font-bold">BAG</Button>
             </div>
           </div>
           <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-accent mb-1.5 uppercase tracking-wider">Assign Truck</label>
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Assign Truck</label>
             <Select value={truckId} onChange={(e) => setTruckId(e.target.value)} required>
-              <option value="" className="text-white/40">Select...</option>
+              <option value="" className="text-fg-muted">Select...</option>
               {filteredVehicles.map(v => (
                 <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>
               ))}
@@ -259,11 +259,11 @@ export function TripForm() {
         </div>
 
         {/* ROW 2: Routing & Driver */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 rounded-3xl bg-white/[0.01] border border-white/[0.04]">
+        <div className="kss-surface-raised grid grid-cols-1 md:grid-cols-12 gap-4 p-4">
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
               <label className="block text-[10px] font-semibold text-accent uppercase tracking-wider">Origin</label>
-              <Button type="button" variant="ghost" size="xs" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="h-6 px-2 py-0.5 rounded-full bg-accent/10 text-accent hover:bg-accent/20 uppercase tracking-wider text-[9px] font-bold">
+              <Button type="button" variant="ghost" size="xs" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="h-7 px-2.5 rounded-md bg-accent-soft text-accent border border-accent-border hover:bg-accent/15 uppercase tracking-wider text-[9px] font-bold">
                 {sourceMode === "select" ? "+ New" : "≡ List"}
               </Button>
             </div>
@@ -280,7 +280,7 @@ export function TripForm() {
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
               <label className="block text-[10px] font-semibold text-accent uppercase tracking-wider">Destination</label>
-              <Button type="button" variant="ghost" size="xs" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="h-6 px-2 py-0.5 rounded-full bg-accent/10 text-accent hover:bg-accent/20 uppercase tracking-wider text-[9px] font-bold">
+              <Button type="button" variant="ghost" size="xs" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="h-7 px-2.5 rounded-md bg-accent-soft text-accent border border-accent-border hover:bg-accent/15 uppercase tracking-wider text-[9px] font-bold">
                 {destMode === "select" ? "+ New" : "≡ List"}
               </Button>
             </div>
@@ -297,7 +297,7 @@ export function TripForm() {
           <div className="md:col-span-4">
             <div className="flex justify-between items-end mb-1.5">
               <label className="block text-[10px] font-semibold text-accent uppercase tracking-wider">Driver</label>
-              <Button type="button" variant="ghost" size="xs" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="h-6 px-2 py-0.5 rounded-full bg-accent/10 text-accent hover:bg-accent/20 uppercase tracking-wider text-[9px] font-bold">
+              <Button type="button" variant="ghost" size="xs" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="h-7 px-2.5 rounded-md bg-accent-soft text-accent border border-accent-border hover:bg-accent/15 uppercase tracking-wider text-[9px] font-bold">
                 {driverMode === "select" ? "+ New" : "≡ List"}
               </Button>
             </div>
@@ -320,61 +320,61 @@ export function TripForm() {
         {/* ROW 3: Financials & Telemetry */}
         <div className="grid grid-cols-2 md:grid-cols-12 gap-3">
           <div className="md:col-span-2">
-            <label className="block text-[9px] font-semibold text-accent mb-1.5 uppercase tracking-wider">Tonnage (MT)</label>
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Tonnage (MT)</label>
             <input type="number" {...strictNumberProps} step="0.01" value={tonnage} onChange={(e) => setTonnage(e.target.value)} className="input-glass" placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-[9px] font-semibold text-accent mb-1.5 uppercase tracking-wider">Freight (₹)</label>
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Freight (₹)</label>
             <input type="number" {...strictNumberProps} value={freightRevenue} onChange={(e) => setFreightRevenue(e.target.value)} className="input-glass" placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-[9px] font-semibold text-accent mb-1.5 uppercase tracking-wider">Bata (₹)</label>
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Bata (₹)</label>
             <input type="number" {...strictNumberProps} value={driverBata} onChange={(e) => setDriverBata(e.target.value)} className="input-glass" placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-[9px] font-semibold text-accent mb-1.5 uppercase tracking-wider">Advance (₹)</label>
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Advance (₹)</label>
             <input type="number" {...strictNumberProps} value={advance} onChange={(e) => setAdvance(e.target.value)} className="input-glass" placeholder="0.00" required />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-[9px] font-semibold text-accent mb-1.5 uppercase tracking-wider" title={`Previous: ${previousKm ?? 'N/A'}`}>Start KM</label>
-            <input type="number" {...strictNumberProps} value={startKm} onChange={(e) => setStartKm(e.target.value)} className="input-glass font-mono border-accent/30" placeholder={previousKm ? String(previousKm) : "0"} required />
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider" title={`Previous: ${previousKm ?? 'N/A'}`}>Start KM</label>
+            <input type="number" {...strictNumberProps} value={startKm} onChange={(e) => setStartKm(e.target.value)} className="input-glass font-mono border-accent-border" placeholder={previousKm ? String(previousKm) : "0"} required />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-[9px] font-semibold text-accent mb-1.5 uppercase tracking-wider">Diesel</label>
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Diesel</label>
             <div className="flex gap-1.5">
-              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className="input-glass font-mono border-accent/30 w-1/2" placeholder="L" required title="Diesel Issued (Litres)" />
-              <input type="number" {...strictNumberProps} step="0.01" value={dieselRate} onChange={(e) => handleRateChange(e.target.value)} className="input-glass font-mono border-accent/30 w-1/2" placeholder="₹/L" required title="Diesel Rate (₹/Litre)" />
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className="input-glass font-mono border-accent-border w-1/2" placeholder="L" required title="Diesel Issued (Litres)" />
+              <input type="number" {...strictNumberProps} step="0.01" value={dieselRate} onChange={(e) => handleRateChange(e.target.value)} className="input-glass font-mono border-accent-border w-1/2" placeholder="₹/L" required title="Diesel Rate (₹/Litre)" />
             </div>
             <div className="flex items-center mt-2 gap-2">
-              <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-4 h-4 rounded-full input-glass bg-white/[0.02] border border-accent/50 text-accent focus:ring-0 cursor-pointer appearance-none checked:bg-accent flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
+              <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-4 h-4 rounded-full input-glass border border-accent-border text-accent focus:ring-0 cursor-pointer appearance-none checked:bg-accent flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
               <span className="text-[9px] text-accent uppercase tracking-wider font-bold">Tank Full</span>
             </div>
           </div>
         </div>
 
         {/* Live Calculation & Controls Bar */}
-        <div className="p-4 rounded-3xl bg-white/[0.02] border border-white/[0.06] flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
+        <div className="kss-surface-raised p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
           <div className="flex items-center gap-6 overflow-x-auto pb-2 md:pb-0">
             <div>
-              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Total Revenue</p>
-              <p className="text-sm font-bold text-emerald-400">₹{totalRevenue.toLocaleString('en-IN')}</p>
+              <p className="text-[10px] font-semibold text-fg-muted uppercase tracking-wider mb-0.5">Total Revenue</p>
+              <p className="text-sm font-bold text-success">₹{totalRevenue.toLocaleString('en-IN')}</p>
             </div>
-            <div className="w-px h-8 bg-white/[0.08]"></div>
+            <div className="w-px h-8 bg-border"></div>
             <div>
-              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Total Expenses</p>
-              <p className="text-sm font-bold text-rose-400" title={`Bata (₹${driverBata || 0}) + Advance (₹${advance || 0}) + Fuel (₹${fuelExpense || 0})`}>
+              <p className="text-[10px] font-semibold text-fg-muted uppercase tracking-wider mb-0.5">Total Expenses</p>
+              <p className="text-sm font-bold text-danger" title={`Bata (₹${driverBata || 0}) + Advance (₹${advance || 0}) + Fuel (₹${fuelExpense || 0})`}>
                 ₹{totalExpense.toLocaleString('en-IN')}
               </p>
             </div>
-            <div className="w-px h-8 bg-white/[0.08]"></div>
+            <div className="w-px h-8 bg-border"></div>
             <div>
-              <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Expected Margin</p>
-              <p className="text-sm font-bold text-white">₹{netMargin.toLocaleString('en-IN')}</p>
+              <p className="text-[10px] font-semibold text-fg-muted uppercase tracking-wider mb-0.5">Expected Margin</p>
+              <p className="text-sm font-bold text-fg">₹{netMargin.toLocaleString('en-IN')}</p>
             </div>
           </div>
 
           <div className="flex justify-end gap-3 w-full md:w-auto">
-            <Button type="button" variant="glass" onClick={handleClear} className="px-6 py-3 rounded-full font-bold text-xs hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30">
+            <Button type="button" variant="glass" onClick={handleClear} className="px-6 py-3 rounded-full font-bold text-xs hover:bg-danger/10 hover:text-danger hover:border-danger/30">
               Clear
             </Button>
             <Button type="submit" variant="default" disabled={loading} className="px-7 py-3 rounded-full text-xs">
@@ -384,7 +384,7 @@ export function TripForm() {
         </div>
 
         {success && (
-          <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs text-center font-bold">
+          <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-success text-xs text-center font-bold">
             Trip successfully registered and dispatched to live telemetry!
           </div>
         )}
