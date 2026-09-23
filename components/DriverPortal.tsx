@@ -117,19 +117,29 @@ export function DriverPortal() {
  }, [supabase]);
 
  const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
- const selectedTruckObj = vehicles.find(v => String(v.id) === String(selectedTruckId));
+ const selectedTruckObj = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
 
  const sortedTrips = [...activeTrips].sort((a, b) => b.trip_id - a.trip_id);
- const latestAssignedTrip = sortedTrips.find(t => String(t.id) === String(selectedTruckId));
- const currentTrip = latestAssignedTrip?.trip_status === 'WAITING_FOR_LOAD' ? null : latestAssignedTrip;
+ const latestAssignedTrip = sortedTrips.find(
+   t =>
+     String(t.vehicle_id) === String(selectedTruckId) &&
+     String(t.primary_driver_id) === String(activeDriverObj?.driver_id)
+ );
+ const currentTrip = latestAssignedTrip || null;
 
  useEffect(() => {
  if (isDriverLocked && drivers.length > 0 && activeDriverObj) {
- if (activeTrips.length > 0) {
- const activeTrip = activeTrips.find(t => String(t.primary_driver_id) === String(activeDriverObj.driver_id) && t.trip_status !== 'WAITING_FOR_LOAD');
- if (activeTrip) setSelectedTruckId(String(activeTrip.id));
- }
- fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
+   const activeTrip = [...activeTrips]
+     .filter(
+       t =>
+         String(t.primary_driver_id) === String(activeDriverObj.driver_id) &&
+         String(t.vehicle_id) !== ""
+     )
+     .sort((a, b) => b.trip_id - a.trip_id)[0];
+
+   if (activeTrip) setSelectedTruckId(String(activeTrip.vehicle_id));
+
+   fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
  }
  }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab, activeDriverObj]);
 
@@ -238,6 +248,64 @@ export function DriverPortal() {
 
  setIsSubmitting(true);
  const timestamp = new Date().toISOString();
+
+ if (actionType === "START_TRIP" && currentTrip) {
+ const updatePayload: Record<string, any> = {
+   trip_status: "IN_TRANSIT"
+ };
+
+ const enteredOdometer = Number(odometer) || 0;
+ if ((!currentTrip.start_km || Number(currentTrip.start_km) <= 0) && enteredOdometer > 0) {
+   updatePayload.start_km = enteredOdometer;
+ }
+
+ const { error: tripError } = await supabase
+   .from('trips')
+   .update(updatePayload)
+   .eq('trip_id', currentTrip.trip_id);
+
+ if (tripError) {
+   setIsSubmitting(false);
+   return setAlertConfig({
+     isOpen: true,
+     title: "Trip Start Failed",
+     message: tripError.message,
+     type: "error"
+   });
+ }
+
+ const { error: vehicleError } = await supabase
+   .from('vehicles')
+   .update({
+     current_status: "IN_TRANSIT",
+     status_remarks: `Trip started — ${currentTrip.trip_number}`,
+     status_updated_at: timestamp
+   })
+   .eq('vehicle_id', selectedTruckId);
+
+ if (vehicleError) {
+   setIsSubmitting(false);
+   return setAlertConfig({
+     isOpen: true,
+     title: "Vehicle Update Failed",
+     message: vehicleError.message,
+     type: "error"
+   });
+ }
+
+ setAlertConfig({
+   isOpen: true,
+   title: "Trip Started",
+   message: `${currentTrip.trip_number} is now in transit.`,
+   type: "success"
+ });
+
+ setOdometer("");
+ setRemarks("");
+ setIsSubmitting(false);
+ await fetchPortalData();
+ return;
+ }
 
  if (!currentTrip && actionType === "START_TRIP") {
  const draftLr = `DRAFT-${Math.floor(Date.now() / 1000)}`;
@@ -395,7 +463,7 @@ export function DriverPortal() {
  <label className={labelStyle}>Active Truck</label>
  <select value={selectedTruckId} onChange={e => setSelectedTruckId(e.target.value)} className={inputStyle} required>
  <option value="">Select assigned vehicle...</option>
- {vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number} ({v.truck_type})</option>))}
+ {vehicles.map(v => (<option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} ({v.truck_type})</option>))}
  </select>
  </div>
 
@@ -407,7 +475,7 @@ export function DriverPortal() {
  ) : (
  <div className="p-4 bg-[var(--portal-surface-muted)] border border-[var(--portal-border)] rounded-2xl text-center">
  <p className="text-xs font-bold text-[var(--portal-text-on-dark)]/40">No active trip dispatched by office.</p>
- <p className="text-[11px] font-bold text-accent mt-1">Hit 'Start Trip' to create a Draft Trip.</p>
+ <p className="text-[11px] font-bold text-accent mt-1">You can start an unplanned trip from this truck.</p>
  </div>
  )}
 
@@ -415,7 +483,7 @@ export function DriverPortal() {
  <label className={labelStyle}>Update Lifecycle Status</label>
  <div className="grid grid-cols-2 gap-2">
  {TRIP_ACTIONS.map((item, idx, arr) => {
- const isStarted = item.id === "START_TRIP" && currentTrip && currentTrip.start_km > 0;
+ const isStarted = item.id === "START_TRIP" && currentTrip?.trip_status === "IN_TRANSIT";
  return (
  <Button
  type="button" key={item.id} onClick={() => !isStarted && setActionType(item.id)} disabled={isStarted}
