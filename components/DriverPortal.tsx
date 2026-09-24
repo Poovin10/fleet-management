@@ -144,22 +144,28 @@ export function DriverPortal() {
  }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab, activeDriverObj]);
 
  useEffect(() => {
- if (selectedTruckId && supabase) {
- const fetchLastOdo = async () => {
- const [tripData, fuelData, pendingData] = await Promise.all([
- supabase.from("trips").select("end_km, start_km").eq("vehicle_id", selectedTruckId).order("trip_id", { ascending: false }).limit(1),
- supabase.from("diesel_fuel_logs").select("filling_odometer_km").eq("vehicle_id", selectedTruckId).order("fuel_log_id", { ascending: false }).limit(1),
- supabase.from("driver_pending_entries").select("odometer_km").eq("vehicle_id", selectedTruckId).order("submitted_at", { ascending: false }).limit(1)
- ]);
- let maxOdo = 0;
- if (tripData.data && tripData.data.length > 0) maxOdo = Math.max(maxOdo, Number(tripData.data[0].end_km || 0), Number(tripData.data[0].start_km || 0));
- if (fuelData.data && fuelData.data.length > 0) maxOdo = Math.max(maxOdo, Number(fuelData.data[0].filling_odometer_km || 0));
- if (pendingData.data && pendingData.data.length > 0) maxOdo = Math.max(maxOdo, Number(pendingData.data[0].odometer_km || 0));
- setLastOdometer(maxOdo > 0 ? maxOdo : "");
- };
- fetchLastOdo();
- } else setLastOdometer("");
- }, [selectedTruckId, activeTrips, pendingRequests, supabase]);
+if (selectedTruckId && supabase) {
+const fetchLastOdo = async () => {
+const { data, error } = await supabase.rpc(
+"get_vehicle_current_odometer",
+{ p_vehicle_id: Number(selectedTruckId) }
+);
+
+if (error) {
+console.error("Failed to fetch authoritative odometer:", error);
+setLastOdometer("");
+return;
+}
+
+const currentOdo = Number(data || 0);
+setLastOdometer(currentOdo > 0 ? currentOdo : "");
+};
+
+fetchLastOdo();
+} else {
+setLastOdometer("");
+}
+}, [selectedTruckId, supabase]);
 
  const handleDriverChange = (code: string) => {
  setDriverCode(code); setDriverPin(""); setConfirmPin("");
