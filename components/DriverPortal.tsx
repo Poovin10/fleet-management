@@ -421,8 +421,42 @@ setLastOdometer("");
  updatePayload = {};
  }
  else if (actionType === "BREAKDOWN") {
- updatePayload.breakdown_remarks = `${finalRemarks} [Odo: ${odometer}]`; updatePayload.trip_status = "BREAKDOWN";
- vehicleStatusUpdate = "WORKSHOP_MAINTENANCE"; statusRemarksText = `Enroute Breakdown`;
+ const breakdownKm = Number(odometer) || 0;
+
+ const { error: breakdownError } = await supabase.rpc("record_driver_breakdown_atomic", {
+   p_trip_id: Number(currentTrip.trip_id),
+   p_vehicle_id: Number(selectedTruckId),
+   p_odometer_km: breakdownKm,
+   p_reading_at: timestamp,
+   p_entered_by: savedDriverCode || "DriverPortal",
+   p_breakdown_remarks: finalRemarks || "Enroute Breakdown"
+ });
+
+ if (breakdownError) {
+   setIsSubmitting(false);
+   return setAlertConfig({
+     isOpen: true,
+     title: "Breakdown Update Blocked",
+     message: breakdownError.message,
+     type: "error"
+   });
+ }
+
+ setAlertConfig({
+   isOpen: true,
+   title: "Breakdown Reported",
+   message: "Breakdown recorded with authoritative odometer reading.",
+   type: "success"
+ });
+
+ setOdometer("");
+ setFuelLitres("");
+ setRemarks("");
+ setUnloadedMt("");
+ setDamagedBags("");
+ setIsSubmitting(false);
+ await fetchPortalData();
+ return;
  }
 
  const finalVehicleRemarks = (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) ? finalRemarks : statusRemarksText;
