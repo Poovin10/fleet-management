@@ -58,9 +58,9 @@ export function TripForm() {
       const { data: dData } = await supabase.from("drivers").select("*").eq("is_active", true);
       if (dData) setDrivers(dData);
 
-      const { data: tData } = await supabase.from("trips").select("source, destination").order("created_at", { ascending: false }).limit(300);
+      const { data: tData } = await supabase.from("trips").select("origin, destination").order("created_at", { ascending: false }).limit(300);
       if (tData) {
-        const uniqueS = Array.from(new Set(tData.map(t => t.source).filter(Boolean))) as string[];
+        const uniqueS = Array.from(new Set(tData.map(t => t.origin).filter(Boolean))) as string[];
         const uniqueD = Array.from(new Set(tData.map(t => t.destination).filter(Boolean))) as string[];
         setHistoricalSources(uniqueS.length ? uniqueS : ["Kochi", "Erode", "Chennai"]);
         setHistoricalDestinations(uniqueD.length ? uniqueD : ["Kochi", "Erode", "Chennai"]);
@@ -75,22 +75,32 @@ export function TripForm() {
   useEffect(() => {
     async function getPreviousKm() {
       if (!truckId) {
-        setPreviousKm(null); setStartKm(""); return;
+        setPreviousKm(null);
+        setStartKm("");
+        return;
       }
-      const { data } = await supabase.from("trips")
-        .select("end_km")
-        .eq("vehicle_id", truckId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
 
-      if (data && data.end_km) {
-        setPreviousKm(Number(data.end_km));
-        setStartKm(String(data.end_km));
+      const { data, error } = await supabase
+        .rpc("get_vehicle_current_odometer", {
+          p_vehicle_id: Number(truckId)
+        });
+
+      if (error) {
+        console.error("Failed to read authoritative odometer:", error);
+        setPreviousKm(null);
+        setStartKm("");
+        return;
+      }
+
+      if (data !== null && data !== undefined) {
+        setPreviousKm(Number(data));
+        setStartKm(String(data));
       } else {
         setPreviousKm(0);
+        setStartKm("");
       }
     }
+
     getPreviousKm();
   }, [truckId, supabase]);
 
@@ -139,7 +149,7 @@ export function TripForm() {
       alert(`SECURITY BLOCK: Starting KM (${startKm}) must be strictly LARGER than the previous recorded end KM (${previousKm}).`); setLoading(false); return;
     }
     if (lrNumber) {
-      const { data: existingLR } = await supabase.from("trips").select("lr_number").eq("lr_number", lrNumber).maybeSingle();
+      const { data: existingLR } = await supabase.from("trips").select("trip_number").eq("trip_number", lrNumber.toUpperCase().trim()).maybeSingle();
       if (existingLR) {
         alert(`SECURITY BLOCK: The LR Number "${lrNumber}" already exists.`); setLoading(false); return;
       }
@@ -161,14 +171,23 @@ export function TripForm() {
       finalDriverId = newDriver.id || newDriver.driver_id;
     }
 
-    const tripData = {
-      trip_start_date: tripDate, lr_number: lrNumber.toUpperCase(), cargo_type: cargoType, vehicle_id: truckId,
-      primary_driver_id: finalDriverId, source: source, destination: destination, tonnage_loaded: Number(tonnage),
-      freight_revenue: Number(freightRevenue), driver_bata: Number(driverBata), cash_advance_issued: Number(advance),
-      diesel_issued: Number(dieselIssued), start_km: Number(startKm), is_tank_full: tankFull, trip_status: "WAITING_FOR_LOAD"
-    };
-
-    const { error } = await supabase.from("trips").insert([tripData]);
+    const { error } = await supabase.rpc("create_dispatch_trip_atomic", {
+      p_trip_number: lrNumber.toUpperCase().trim(),
+      p_vehicle_id: Number(truckId),
+      p_primary_driver_id: Number(finalDriverId),
+      p_trip_start_date: tripDate,
+      p_origin: source.toUpperCase().trim(),
+      p_destination: destination.toUpperCase().trim(),
+      p_tonnage_loaded: Number(tonnage),
+      p_freight_revenue: Number(freightRevenue),
+      p_fuel_litres: Number(dieselIssued),
+      p_fuel_expense: fuelExpense,
+      p_driver_bata: Number(driverBata),
+      p_cash_advance_issued: Number(advance),
+      p_start_km: Number(startKm),
+      p_is_tank_full: tankFull,
+      p_entered_by: "TripForm"
+    });
 
     if (!error) {
       setSuccess(true);
