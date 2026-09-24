@@ -275,25 +275,6 @@ setLastOdometer("");
    });
  }
 
- const { error: vehicleError } = await supabase
-   .from('vehicles')
-   .update({
-     current_status: "IN_TRANSIT",
-     status_remarks: `Trip started — ${currentTrip.trip_number}`,
-     status_updated_at: timestamp
-   })
-   .eq('vehicle_id', selectedTruckId);
-
- if (vehicleError) {
-   setIsSubmitting(false);
-   return setAlertConfig({
-     isOpen: true,
-     title: "Vehicle Update Failed",
-     message: vehicleError.message,
-     type: "error"
-   });
- }
-
  setAlertConfig({
    isOpen: true,
    title: "Trip Started",
@@ -321,12 +302,6 @@ setLastOdometer("");
    p_entered_by: savedDriverCode || "DriverPortal"
  });
  if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Trip Error", message: tripError.message, type: "error" }); }
-
- const { error: vehicleError } = await supabase.from('vehicles').update({
- current_status: "IN_TRANSIT", status_remarks: `Started draft trip [${draftLr}]`, status_updated_at: timestamp
- }).eq('vehicle_id', selectedTruckId);
-
- if (vehicleError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Vehicle Error", message: vehicleError.message, type: "error" }); }
 
  setAlertConfig({ isOpen: true, title: "Trip Started", message: "Draft trip created! The office will attach paperwork later.", type: "success" });
  setOdometer(""); setRemarks(""); setIsSubmitting(false); await fetchPortalData();
@@ -462,15 +437,24 @@ setLastOdometer("");
  const finalVehicleRemarks = (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) ? finalRemarks : statusRemarksText;
 
  if (actionType !== "WAITING_FOR_LOAD") {
-   const { error: tripError } = await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
-   if (tripError) {
+   const { error: statusError } = await supabase.rpc("update_trip_status_atomic", {
+     p_trip_id: Number(currentTrip.trip_id),
+     p_vehicle_id: Number(selectedTruckId),
+     p_payload: updatePayload,
+     p_vehicle_status: vehicleStatusUpdate,
+     p_vehicle_remarks: finalVehicleRemarks
+   });
+
+   if (statusError) {
      setIsSubmitting(false);
-     return setAlertConfig({ isOpen: true, title: "Trip Update Failed", message: tripError.message, type: "error" });
+     return setAlertConfig({
+       isOpen: true,
+       title: "Status Update Blocked",
+       message: statusError.message,
+       type: "error"
+     });
    }
  }
-
- const { error: vehicleError } = await supabase.from('vehicles').update({ current_status: vehicleStatusUpdate, status_remarks: finalVehicleRemarks, status_updated_at: timestamp }).eq('vehicle_id', selectedTruckId);
- if (vehicleError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Vehicle Update Failed", message: vehicleError.message, type: "error" }); }
 
  setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
  }
