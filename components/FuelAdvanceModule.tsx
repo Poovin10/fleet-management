@@ -141,39 +141,86 @@ export function FuelAdvanceModule() {
  const handleSaveDiesel = (e: React.FormEvent) => {
  e.preventDefault();
  if (!fVehicleId || Number(fLitres) <= 0 || Number(fDieselRate) <= 0) return alert("Invalid inputs.");
+
  const isUpdate = editLogId !== null;
  const cost = Math.round((Number(fLitres) * Number(fDieselRate)) * 100) / 100;
+ const fillingKm = Number(fFillingKm) || 0;
 
- const payload = {
- fuel_date: fDate, vehicle_id: Number(fVehicleId), lr_number: fLrNo.toUpperCase().trim() || "SUNDRY",
- diesel_category: fCategory, litres_filled: Number(fLitres), diesel_rate_per_litre: Number(fDieselRate),
- total_fuel_cost: cost, filling_odometer_km: Number(fFillingKm) || 0, is_tank_full: fIsTankFull
- };
+ if (!isUpdate && !fDate) return alert("Please select the fuel date.");
 
  triggerModal(
  isUpdate ? "Update Diesel Record" : "Record Diesel Entry",
- isUpdate ? "Edit this fuel log? Trip expenses will recalculate." : `Issue ${fLitres}L of diesel? This updates expenses immediately.`,
- false, isUpdate ? "Update Record" : "Record Diesel",
+ isUpdate
+   ? "Update fuel details? The authoritative fuel odometer cannot be changed here."
+   : `Issue ${fLitres}L of diesel? This will record the fuel entry and authoritative odometer together.`,
+ false,
+ isUpdate ? "Update Record" : "Record Diesel",
  async () => {
  setIsProcessing(true);
- if (isUpdate) {
- const { error } = await supabase.from('diesel_fuel_logs').update(payload).eq('fuel_log_id', editLogId);
- if (error) { alert("Error: " + error.message); setIsProcessing(false); return; }
- if (editTripId) {
- const { data: trip } = await supabase.from('trips').select('start_km').eq('trip_id', editTripId).single();
- let updatePayload: any = { fuel_litres: Number(fLitres), fuel_expense: cost };
- if (trip && (trip.start_km === 0 || trip.start_km === null)) updatePayload.start_km = Number(fFillingKm);
- await supabase.from('trips').update(updatePayload).eq('trip_id', editTripId);
+
+ try {
+   if (isUpdate) {
+     // Fuel odometer, vehicle and trip linkage are immutable through normal editing.
+     // The RPC updates editable fuel fields and linked trip fuel totals atomically.
+     const { error } = await supabase.rpc("update_fuel_atomic", {
+       p_fuel_log_id: Number(editLogId),
+       p_fuel_date: fDate,
+       p_diesel_category: fCategory,
+       p_litres_filled: Number(fLitres),
+       p_diesel_rate_per_litre: Number(fDieselRate),
+       p_total_fuel_cost: cost,
+       p_lr_number: fLrNo.toUpperCase().trim() || "SUNDRY",
+       p_fuel_station_vendor: null,
+       p_remarks: null,
+       p_is_tank_full: fIsTankFull
+     });
+
+     if (error) {
+       alert("Error: " + error.message);
+       return;
+     }
+
+   } else {
+     const { error } = await supabase.rpc("record_fuel_atomic", {
+       p_vehicle_id: Number(fVehicleId),
+       p_fuel_date: fDate,
+       p_diesel_category: fCategory,
+       p_litres_filled: Number(fLitres),
+       p_diesel_rate_per_litre: Number(fDieselRate),
+       p_total_fuel_cost: cost,
+       p_filling_odometer_km: fillingKm > 0 ? fillingKm : null,
+       p_trip_id: editTripId || null,
+       p_lr_number: fLrNo.toUpperCase().trim() || "SUNDRY",
+       p_fuel_station_vendor: null,
+       p_remarks: null,
+       p_is_tank_full: fIsTankFull,
+       p_reading_at: new Date().toISOString(),
+       p_entered_by: "FuelAdvanceModule"
+     });
+
+     if (error) {
+       alert("Error: " + error.message);
+       return;
+     }
+
+     if (activeScanId) {
+       await supabase
+         .from("pending_scans")
+         .update({ status: 'PROCESSED' })
+         .eq("scan_id", activeScanId);
+
+       setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId));
+     }
+   }
+
+   clearFuelForm();
+   fetchData();
+   setIsProcessing(false);
+   closeModal();
+ } catch (err: any) {
+   alert("Unexpected error: " + (err?.message || String(err)));
+   setIsProcessing(false);
  }
- } else {
- const { error } = await supabase.from('diesel_fuel_logs').insert([payload]);
- if (error) { alert("Error: " + error.message); setIsProcessing(false); return; }
- if (activeScanId) {
- await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
- setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId));
- }
- }
- clearFuelForm(); fetchData(); setIsProcessing(false); closeModal();
  }
  );
  };
@@ -181,7 +228,9 @@ export function FuelAdvanceModule() {
  const handleDeleteFuel = (id: string) => {
  triggerModal("Delete Fuel Record", "Warning: Permanently delete this fuel log? This action cannot be reversed.", true, "Delete Log", async () => {
  setIsProcessing(true); 
- const { error } = await supabase.from('diesel_fuel_logs').delete().eq('fuel_log_id', id);
+ const { error } = await supabase.rpc("delete_fuel_atomic", {
+   p_fuel_log_id: Number(id)
+ });
  if (error) alert("Error: " + error.message);
  clearFuelForm(); fetchData(); if (faNav === " Fuel Audit") handleRunAudit(); 
  setIsProcessing(false); closeModal();
@@ -190,12 +239,12 @@ export function FuelAdvanceModule() {
 
  const handleRunAudit = async () => {
  setIsProcessing(true);
- let query = supabase.from('diesel_fuel_logs').select('*, trucks!inner(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false });
+ let query = supabase.from('diesel_fuel_logs').select('*, vehicles!inner(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false });
  
  if (auditDateMode === "Specific Date") query = query.eq('fuel_date', auditSpecificDate);
  else if (auditDateMode === "Date Range") query = query.gte('fuel_date', auditFromDate).lte('fuel_date', auditToDate);
  
- if (auditTruck !== "All Trucks") query = query.eq('trucks.vehicle_number', auditTruck);
+ if (auditTruck !== "All Trucks") query = query.eq('vehicles.vehicle_number', auditTruck);
  if (auditCategory !== "All Categories") query = query.eq('diesel_category', auditCategory);
 
  const { data, error } = await query;
