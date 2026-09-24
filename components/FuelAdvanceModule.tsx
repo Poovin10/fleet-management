@@ -239,7 +239,7 @@ export function FuelAdvanceModule() {
 
  const handleRunAudit = async () => {
  setIsProcessing(true);
- let query = supabase.from('diesel_fuel_logs').select('*, vehicles!inner(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false });
+ let query = supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false });
  
  if (auditDateMode === "Specific Date") query = query.eq('fuel_date', auditSpecificDate);
  else if (auditDateMode === "Date Range") query = query.gte('fuel_date', auditFromDate).lte('fuel_date', auditToDate);
