@@ -250,19 +250,14 @@ export function DriverPortal() {
  const timestamp = new Date().toISOString();
 
  if (actionType === "START_TRIP" && currentTrip) {
- const updatePayload: Record<string, any> = {
-   trip_status: "IN_TRANSIT"
- };
-
  const enteredOdometer = Number(odometer) || 0;
- if ((!currentTrip.start_km || Number(currentTrip.start_km) <= 0) && enteredOdometer > 0) {
-   updatePayload.start_km = enteredOdometer;
- }
 
- const { error: tripError } = await supabase
-   .from('trips')
-   .update(updatePayload)
-   .eq('trip_id', currentTrip.trip_id);
+ const { error: tripError } = await supabase.rpc("start_existing_trip_atomic", {
+   p_trip_id: Number(currentTrip.trip_id),
+   p_start_km: enteredOdometer > 0 ? enteredOdometer : null,
+   p_reading_at: timestamp,
+   p_entered_by: savedDriverCode || "DriverPortal"
+ });
 
  if (tripError) {
    setIsSubmitting(false);
@@ -309,15 +304,16 @@ export function DriverPortal() {
 
  if (!currentTrip && actionType === "START_TRIP") {
  const draftLr = `DRAFT-${Math.floor(Date.now() / 1000)}`;
- const updatePayload = {
- trip_number: draftLr, branch_id: 1, vehicle_id: Number(selectedTruckId), primary_driver_id: Number(activeDriverObj.driver_id),
- trip_start_date: timestamp.split('T')[0], origin: "PENDING OFFICE", destination: "PENDING OFFICE",
- start_km: Number(odometer) || 0, end_km: 0, total_km_run: 0, tonnage_loaded: 0, loaded_weight_mt: 0,
- freight_revenue: 0, fuel_litres: 0, fuel_expense: 0, driver_bata: 0, cash_advance_issued: 0,
- trip_status: "IN_TRANSIT"
- };
 
- const { error: tripError } = await supabase.from('trips').insert([updatePayload]);
+ const { error: tripError } = await supabase.rpc("start_driver_draft_trip_atomic", {
+   p_trip_number: draftLr,
+   p_vehicle_id: Number(selectedTruckId),
+   p_primary_driver_id: Number(activeDriverObj.driver_id),
+   p_trip_start_date: timestamp.split('T')[0],
+   p_start_km: Number(odometer) || 0,
+   p_reading_at: timestamp,
+   p_entered_by: savedDriverCode || "DriverPortal"
+ });
  if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Trip Error", message: tripError.message, type: "error" }); }
 
  const { error: vehicleError } = await supabase.from('vehicles').update({
@@ -385,10 +381,38 @@ export function DriverPortal() {
  statusRemarksText = `Returning from ${currentTrip.destination}`;
  }
  else if (actionType === "WAITING_FOR_LOAD") {
- updatePayload.trip_status = "WAITING_FOR_LOAD"; updatePayload.end_km = Number(odometer) || 0;
- const startKm = Number(currentTrip.start_km) || 0;
- if (startKm > 0 && Number(odometer) > startKm) updatePayload.total_km_run = Number(odometer) - startKm;
- vehicleStatusUpdate = "WAITING_FOR_LOAD"; statusRemarksText = `Reached plant, waiting for load (${formatDateTime(timestamp)})`;
+ const closingKm = Number(odometer) || 0;
+
+ if (closingKm <= 0) {
+   setIsSubmitting(false);
+   return setAlertConfig({
+     isOpen: true,
+     title: "Closing KM Required",
+     message: "Enter a valid closing odometer reading before reaching the plant.",
+     type: "error"
+   });
+ }
+
+ const { error: closeTripError } = await supabase.rpc("close_driver_trip_atomic", {
+   p_trip_id: Number(currentTrip.trip_id),
+   p_end_km: closingKm,
+   p_reading_at: timestamp,
+   p_entered_by: savedDriverCode || "DriverPortal"
+ });
+
+ if (closeTripError) {
+   setIsSubmitting(false);
+   return setAlertConfig({
+     isOpen: true,
+     title: "Trip Closing Blocked",
+     message: closeTripError.message,
+     type: "error"
+   });
+ }
+
+ vehicleStatusUpdate = "WAITING_FOR_LOAD";
+ statusRemarksText = `Reached plant, waiting for load (${formatDateTime(timestamp)})`;
+ updatePayload = {};
  }
  else if (actionType === "BREAKDOWN") {
  updatePayload.breakdown_remarks = `${finalRemarks} [Odo: ${odometer}]`; updatePayload.trip_status = "BREAKDOWN";
@@ -397,8 +421,13 @@ export function DriverPortal() {
 
  const finalVehicleRemarks = (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) ? finalRemarks : statusRemarksText;
 
- const { error: tripError } = await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
- if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Trip Update Failed", message: tripError.message, type: "error" }); }
+ if (actionType !== "WAITING_FOR_LOAD") {
+   const { error: tripError } = await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
+   if (tripError) {
+     setIsSubmitting(false);
+     return setAlertConfig({ isOpen: true, title: "Trip Update Failed", message: tripError.message, type: "error" });
+   }
+ }
 
  const { error: vehicleError } = await supabase.from('vehicles').update({ current_status: vehicleStatusUpdate, status_remarks: finalVehicleRemarks, status_updated_at: timestamp }).eq('vehicle_id', selectedTruckId);
  if (vehicleError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Vehicle Update Failed", message: vehicleError.message, type: "error" }); }
@@ -418,7 +447,7 @@ export function DriverPortal() {
 
  const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:border-accent";
  const labelStyle = "text-xs font-bold text-fg-secondary  tracking-wide leading-none mb-1";
- const numProps = { onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur() };
+ const numProps = { onWheel: (e: React.WheelEvent<HTMLInputElement>) => { e.preventDefault(); e.currentTarget.blur(); } };
 
  return (
  <div className="kss-driver-portal w-full max-w-sm rounded-2xl border border-border bg-surface shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: "light" }}>
