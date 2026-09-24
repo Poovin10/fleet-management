@@ -46,6 +46,8 @@ export function FuelAdvanceModule() {
  const [fCategory, setFCategory] = useState("TRIP_DIESEL");
  const [fLrNo, setFLrNo] = useState("");
  const [fFillingKm, setFFillingKm] = useState<number | "">("");
+ const [currentOdometer, setCurrentOdometer] = useState<number | null>(null);
+ const [fillingKmError, setFillingKmError] = useState("");
  const [fLitres, setFLitres] = useState<number | "">("");
  const [fDieselRate, setFDieselRate] = useState<number | "">(95.0);
  const [fIsTankFull, setFIsTankFull] = useState(false);
@@ -103,6 +105,34 @@ export function FuelAdvanceModule() {
  }
  }, [faNav, kmplTruckId]);
 
+ useEffect(() => {
+ if (!fVehicleId) {
+ setCurrentOdometer(null);
+ setFillingKmError("");
+ return;
+ }
+
+ const fetchCurrentOdometer = async () => {
+ const { data, error } = await supabase.rpc(
+ "get_vehicle_current_odometer",
+ { p_vehicle_id: Number(fVehicleId) }
+ );
+
+ if (error) {
+ console.error("Failed to fetch authoritative odometer:", error);
+ setCurrentOdometer(null);
+ setFillingKmError("Unable to verify the truck's current odometer.");
+ return;
+ }
+
+ const odo = Number(data || 0);
+ setCurrentOdometer(odo > 0 ? odo : null);
+ setFillingKmError("");
+ };
+
+ fetchCurrentOdometer();
+ }, [fVehicleId, supabase]);
+
  const clearFuelForm = () => {
  setEditLogId(null); setEditTripId(null); setFDate(new Date().toISOString().split('T')[0]);
  setFVehicleId(""); setFCategory("TRIP_DIESEL"); setFLrNo(""); setFFillingKm("");
@@ -147,6 +177,7 @@ export function FuelAdvanceModule() {
  const fillingKm = Number(fFillingKm) || 0;
 
  if (!isUpdate && !fDate) return alert("Please select the fuel date.");
+ if (!isUpdate && fillingKm <= 0) return alert("Please enter a valid Filling KM greater than 0.");
 
  triggerModal(
  isUpdate ? "Update Diesel Record" : "Record Diesel Entry",
@@ -214,11 +245,11 @@ export function FuelAdvanceModule() {
    }
 
    clearFuelForm();
-   fetchData();
-   setIsProcessing(false);
+   await fetchData();
    closeModal();
  } catch (err: any) {
    alert("Unexpected error: " + (err?.message || String(err)));
+ } finally {
    setIsProcessing(false);
  }
  }
@@ -386,7 +417,39 @@ export function FuelAdvanceModule() {
  <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Trip LR No (Optional)</label><Input type="text" maxLength={20} value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="text-fg font-semibold" /></div>
  
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Filling KM</label><Input type="number" min="0" max="9999999" value={fFillingKm} onChange={e => setFFillingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="text-fg font-semibold" /></div>
+ <div>
+ <label className="block text-[10px] font-bold text-fg-secondary mb-1">Filling KM</label>
+ <Input
+  type="number"
+  min="0"
+  max="9999999"
+  value={fFillingKm}
+  onChange={e => {
+   const value = e.target.value === "" ? "" : parseFloat(e.target.value);
+   setFFillingKm(value);
+
+   if (editLogId || value === "") {
+    setFillingKmError("");
+   } else if (Number(value) <= 0) {
+    setFillingKmError("Filling KM must be greater than 0.");
+   } else if (currentOdometer !== null && Number(value) <= currentOdometer) {
+    setFillingKmError(`Enter a Filling KM greater than ${currentOdometer}.`);
+   } else {
+    setFillingKmError("");
+   }
+  }}
+  placeholder={currentOdometer !== null ? `> ${currentOdometer}` : "0.0"}
+  className={`text-fg font-semibold ${fillingKmError ? "border-danger focus:border-danger" : ""}`}
+ />
+ {currentOdometer !== null && !editLogId && (
+  <p className="text-[10px] text-fg-muted mt-1">
+   Current authoritative odometer: <span className="font-bold text-fg">{currentOdometer} km</span>
+  </p>
+ )}
+ {fillingKmError && !editLogId && (
+  <p className="text-[10px] text-danger font-semibold mt-1">{fillingKmError}</p>
+ )}
+ </div>
  <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Litres *</label><Input type="number" step="0.1" min="0.1" max="2000" value={fLitres} onChange={e => setFLitres(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0" className="font-semibold text-accent" required /></div>
  <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Rate () *</label><Input type="number" step="0.1" min="0.1" max="200" value={fDieselRate} onChange={e => setFDieselRate(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className="text-fg font-bold" required /></div>
  </div>
@@ -429,7 +492,12 @@ export function FuelAdvanceModule() {
    type="submit"
    variant="default"
    size="lg"
-   disabled={!fVehicleId || Number(fLitres) <= 0 || isProcessing}
+   disabled={
+    !fVehicleId ||
+    Number(fLitres) <= 0 ||
+    (!editLogId && (Number(fFillingKm) <= 0 || fillingKmError !== "")) ||
+    isProcessing
+   }
    className="flex-[2]"
  >
    {editLogId ? "Update Record" : "Record Diesel"}
