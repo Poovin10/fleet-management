@@ -531,13 +531,13 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
          value={podSearch}
          onChange={(e) => setPodSearch(e.target.value)}
          placeholder="Search LR, truck, destination or driver..."
-         className="w-full"
+         className="w-full !bg-[#11161e] !border-border !shadow-lg focus:!bg-[#11161e]"
        />
      </div>
 
      <div className="overflow-x-auto overflow-y-auto max-h-[680px] w-full">
        <table className="w-full text-left border-collapse">
-         <thead className="bg-surface-raised/95 sticky top-0 z-10 backdrop-blur-xl">
+         <thead className="bg-[#11161e] sticky top-0 z-20 border-b border-border shadow-lg">
            <tr>
              <th className="py-3 px-5 text-[9px] font-semibold uppercase tracking-wider text-fg-muted border-b border-border">LR</th>
              <th className="py-3 px-5 text-[9px] font-semibold uppercase tracking-wider text-fg-muted border-b border-border">Date</th>
