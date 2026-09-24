@@ -14,6 +14,8 @@ export function TripForm() {
   // Core Data States
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
+  const [freightMasters, setFreightMasters] = useState<any[]>([]);
+  const [bataMasters, setBataMasters] = useState<any[]>([]);
   const [historicalSources, setHistoricalSources] = useState<string[]>([]);
   const [historicalDestinations, setHistoricalDestinations] = useState<string[]>([]);
 
@@ -40,7 +42,13 @@ export function TripForm() {
   // Operational & Financial States
   const [tonnage, setTonnage] = useState("");
   const [freightRevenue, setFreightRevenue] = useState("");
+  const [freightMasterRate, setFreightMasterRate] = useState<number | null>(null);
+  const [freightMasterStatus, setFreightMasterStatus] = useState("");
+  const [freightManualOverride, setFreightManualOverride] = useState(false);
   const [driverBata, setDriverBata] = useState("");
+  const [bataMasterAmount, setBataMasterAmount] = useState<number | null>(null);
+  const [bataMasterStatus, setBataMasterStatus] = useState("");
+  const [bataManualOverride, setBataManualOverride] = useState(false);
   const [advance, setAdvance] = useState("");
   const [dieselIssued, setDieselIssued] = useState("");
   const [dieselRate, setDieselRate] = useState("");
@@ -50,13 +58,57 @@ export function TripForm() {
   const [startKm, setStartKm] = useState("");
   const [previousKm, setPreviousKm] = useState<number | null>(null);
 
+  // Immediate validation state
+  const [tonnageError, setTonnageError] = useState("");
+  const [tonnageAnomaly, setTonnageAnomaly] = useState("");
+  const [startKmError, setStartKmError] = useState("");
+  const [lastDriverId, setLastDriverId] = useState<string>("");
+  const [dieselRateSource, setDieselRateSource] = useState("");
+
   useEffect(() => {
     async function fetchFormContext() {
       const { data: vData } = await supabase.from("vehicles").select("*").eq("is_active", true);
       if (vData) setVehicles(vData);
 
-      const { data: dData } = await supabase.from("drivers").select("*").eq("is_active", true);
+      const { data: dData } = await supabase
+        .from("drivers")
+        .select("driver_id, driver_code, full_name, phone_number, license_number, license_expiry_date")
+        .eq("is_active", true)
+        .order("full_name");
       if (dData) setDrivers(dData);
+
+      const { data: freightData } = await supabase
+        .from("destinations_freight_master")
+        .select("*")
+        .eq("is_active", true);
+      if (freightData) setFreightMasters(freightData);
+
+      const { data: bataData } = await supabase
+        .from("driver_bata_master")
+        .select("*");
+      if (bataData) setBataMasters(bataData);
+
+      const { data: latestFuel } = await supabase
+        .from("diesel_fuel_logs")
+        .select("diesel_rate_per_litre")
+        .gt("diesel_rate_per_litre", 0)
+        .order("fuel_date", { ascending: false })
+        .order("fuel_log_id", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestFuel?.diesel_rate_per_litre) {
+        const latestRate = String(latestFuel.diesel_rate_per_litre);
+        setDieselRate(latestRate);
+        setDieselRateSource("Latest recorded fuel rate");
+        localStorage.setItem("kss_diesel_rate", latestRate);
+      } else {
+        const savedRate = localStorage.getItem("kss_diesel_rate");
+        if (savedRate) {
+          setDieselRate(savedRate);
+          setDieselRateSource("Saved local rate");
+        }
+      }
 
       const { data: tData } = await supabase.from("trips").select("origin, destination").order("created_at", { ascending: false }).limit(300);
       if (tData) {
@@ -68,8 +120,8 @@ export function TripForm() {
     }
     fetchFormContext();
 
-    const savedRate = localStorage.getItem("kss_diesel_rate");
-    if (savedRate) setDieselRate(savedRate);
+    // Diesel rate is loaded from the latest database record above.
+    // localStorage is used only as fallback when no historical rate exists.
   }, [supabase]);
 
   useEffect(() => {
@@ -94,10 +146,12 @@ export function TripForm() {
 
       if (data !== null && data !== undefined) {
         setPreviousKm(Number(data));
-        setStartKm(String(data));
+        setStartKm("");
+        setStartKmError("");
       } else {
         setPreviousKm(0);
         setStartKm("");
+        setStartKmError("");
       }
     }
 
@@ -111,6 +165,13 @@ export function TripForm() {
     });
   }, [vehicles, cargoType]);
 
+  const selectedVehicle = useMemo(
+    () => vehicles.find(v => String(v.vehicle_id) === truckId) || null,
+    [vehicles, truckId]
+  );
+
+  const selectedCapacity = Number(selectedVehicle?.carrying_capacity_tons || 0);
+
   const strictNumberProps = {
     min: "0",
     onWheel: (e: any) => e.currentTarget.blur(),
@@ -118,6 +179,201 @@ export function TripForm() {
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
     }
   };
+
+  useEffect(() => {
+    const value = Number(tonnage);
+
+    if (tonnage === "") {
+      setTonnageError("");
+      setTonnageAnomaly("");
+      return;
+    }
+
+    if (!Number.isFinite(value) || value <= 0) {
+      setTonnageError("Tonnage must be greater than 0 MT.");
+      setTonnageAnomaly("");
+      return;
+    }
+
+    if (selectedCapacity > 0 && value > selectedCapacity) {
+      setTonnageError("");
+      setTonnageAnomaly(
+        `Load exceeds truck capacity of ${selectedCapacity} MT. Confirmation required.`
+      );
+      return;
+    }
+
+    if (value <= 2) {
+      setTonnageError("");
+      setTonnageAnomaly(
+        "Low load anomaly: 2 MT or below. Confirmation required."
+      );
+      return;
+    }
+
+    setTonnageError("");
+    setTonnageAnomaly("");
+  }, [tonnage, selectedCapacity]);
+
+  const normalize = (value: unknown) =>
+    String(value ?? "").trim().toUpperCase();
+
+  const capacityMatches = (masterCapacity: unknown, truckCapacity: number) => {
+    if (!masterCapacity || truckCapacity <= 0) return false;
+
+    const raw = normalize(masterCapacity);
+
+    if (raw.includes("/")) {
+      return raw
+        .split("/")
+        .map(Number)
+        .some(value => Number.isFinite(value) && Math.abs(value - truckCapacity) < 0.01);
+    }
+
+    const value = Number(raw);
+    return Number.isFinite(value) && Math.abs(value - truckCapacity) < 0.01;
+  };
+
+  useEffect(() => {
+    if (!source || !destination || !cargoType || selectedCapacity <= 0) {
+      setFreightMasterRate(null);
+      setFreightMasterStatus("");
+      setFreightManualOverride(false);
+      return;
+    }
+
+    const matches = freightMasters.filter(rule =>
+      normalize(rule.cargo_type) === normalize(cargoType) &&
+      normalize(rule.origin) === normalize(source) &&
+      normalize(rule.destination_name) === normalize(destination) &&
+      capacityMatches(rule.capacity_tons, selectedCapacity)
+    );
+
+    if (!matches.length) {
+      setFreightMasterRate(null);
+      setFreightMasterStatus("No matching freight master found — manual freight required.");
+      setFreightManualOverride(false);
+      return;
+    }
+
+    const exactVehicleCapacity = matches.find(rule =>
+      Number(rule.capacity_tons) === selectedCapacity
+    );
+
+    const selectedRule = exactVehicleCapacity || matches[0];
+    const rate = Number(selectedRule.freight_rate_per_ton);
+
+    if (!Number.isFinite(rate) || rate <= 0) {
+      setFreightMasterRate(null);
+      setFreightMasterStatus("Freight master rate is invalid — manual freight required.");
+      return;
+    }
+
+    setFreightMasterRate(rate);
+    setFreightMasterStatus("Master freight rate matched.");
+    setFreightManualOverride(false);
+  }, [
+    source,
+    destination,
+    cargoType,
+    selectedCapacity,
+    freightMasters
+  ]);
+
+  useEffect(() => {
+    if (freightMasterRate === null || !tonnage || freightManualOverride) return;
+
+    const load = Number(tonnage);
+
+    if (!Number.isFinite(load) || load <= 0) return;
+
+    setFreightRevenue(String(Number((load * freightMasterRate).toFixed(2))));
+  }, [tonnage, freightMasterRate, freightManualOverride]);
+
+  useEffect(() => {
+    if (!source || !destination || !cargoType || selectedCapacity <= 0) {
+      setBataMasterAmount(null);
+      setBataMasterStatus("");
+      setBataManualOverride(false);
+      return;
+    }
+
+    const matches = bataMasters.filter(rule =>
+      normalize(rule.cargo_type) === normalize(cargoType) &&
+      normalize(rule.origin) === normalize(source) &&
+      normalize(rule.destination_name) === normalize(destination) &&
+      capacityMatches(rule.capacity_tons, selectedCapacity)
+    );
+
+    if (!matches.length) {
+      setBataMasterAmount(null);
+      setBataMasterStatus("No Bata master found — manual Bata required.");
+      setBataManualOverride(false);
+      return;
+    }
+
+    const vehicleSpecific = matches.find(rule =>
+      Number(rule.vehicle_id) === Number(truckId)
+    );
+
+    const selectedRule = vehicleSpecific || matches[0];
+    const amount = Number(selectedRule.standard_bata_inr);
+
+    if (!Number.isFinite(amount) || amount < 0) {
+      setBataMasterAmount(null);
+      setBataMasterStatus("Bata master amount is invalid — manual Bata required.");
+      return;
+    }
+
+    setBataMasterAmount(amount);
+    setDriverBata(String(amount));
+    setBataMasterStatus("Master Bata matched.");
+    setBataManualOverride(false);
+  }, [
+    source,
+    destination,
+    cargoType,
+    selectedCapacity,
+    truckId,
+    bataMasters
+  ]);
+
+  useEffect(() => {
+    if (!truckId) {
+      setLastDriverId("");
+      return;
+    }
+
+    const fetchPreviousDriver = async () => {
+      const { data, error } = await supabase
+        .from("trips")
+        .select("primary_driver_id, trip_start_date, created_at")
+        .eq("vehicle_id", Number(truckId))
+        .not("primary_driver_id", "is", null)
+        .order("trip_start_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data?.primary_driver_id) {
+        setLastDriverId("");
+        return;
+      }
+
+      const previousDriver = drivers.find(
+        driver => Number(driver.driver_id) === Number(data.primary_driver_id)
+      );
+
+      if (previousDriver) {
+        setLastDriverId(String(previousDriver.driver_id));
+        setDriverId(String(previousDriver.driver_id));
+      } else {
+        setLastDriverId("");
+      }
+    };
+
+    fetchPreviousDriver();
+  }, [truckId, drivers, supabase]);
 
   const totalRevenue = Number(freightRevenue || 0);
   const fuelExpense = Number(dieselIssued || 0) * Number(dieselRate || 0);
@@ -131,7 +387,8 @@ export function TripForm() {
 
   const handleClear = () => {
     setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination("");
-    setTonnage(""); setFreightRevenue(""); setDriverBata(""); setAdvance("");
+    setTonnage(""); setFreightRevenue(""); setFreightManualOverride(false);
+    setDriverBata(""); setBataManualOverride(false); setAdvance("");
     setDieselIssued(""); setStartKm(""); setTankFull(false); setSuccess(false);
     if (driverMode === "manual") {
       setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
@@ -145,8 +402,28 @@ export function TripForm() {
     if (Number(startKm) < 0 || Number(tonnage) < 0 || Number(freightRevenue) < 0 || Number(driverBata) < 0 || Number(advance) < 0 || Number(dieselIssued) < 0 || Number(dieselRate) < 0) {
       alert("SECURITY BLOCK: Negative values are strictly prohibited."); setLoading(false); return;
     }
+
+    if (tonnageError) {
+      alert(`SECURITY BLOCK: ${tonnageError}`);
+      setLoading(false);
+      return;
+    }
+    if (startKmError) {
+      alert(`SECURITY BLOCK: ${startKmError}`);
+      setLoading(false);
+      return;
+    }
+
+    if (!startKm || Number(startKm) <= 0) {
+      alert("SECURITY BLOCK: Starting KM must be greater than 0.");
+      setLoading(false);
+      return;
+    }
+
     if (previousKm !== null && Number(startKm) <= previousKm) {
-      alert(`SECURITY BLOCK: Starting KM (${startKm}) must be strictly LARGER than the previous recorded end KM (${previousKm}).`); setLoading(false); return;
+      alert(`SECURITY BLOCK: Starting KM (${startKm}) must be strictly LARGER than the previous authoritative odometer (${previousKm}).`);
+      setLoading(false);
+      return;
     }
     if (lrNumber) {
       const { data: existingLR } = await supabase.from("trips").select("trip_number").eq("trip_number", lrNumber.toUpperCase().trim()).maybeSingle();
@@ -164,11 +441,15 @@ export function TripForm() {
     let finalDriverId = driverId;
     if (driverMode === "manual") {
       const { data: newDriver, error: driverErr } = await supabase.from("drivers").insert([{
-        name: newDriverName, phone_number: newDriverPhone, license_number: newDriverLicense, license_expiry: newDriverExpiry, is_active: true
+        full_name: newDriverName,
+        phone_number: newDriverPhone,
+        license_number: newDriverLicense,
+        license_expiry_date: newDriverExpiry,
+        is_active: true
       }]).select().single();
 
       if (driverErr) { alert("Failed to register new driver. Error: " + driverErr.message); setLoading(false); setShowConfirm(false); return; }
-      finalDriverId = newDriver.id || newDriver.driver_id;
+      finalDriverId = newDriver.driver_id;
     }
 
     const { error } = await supabase.rpc("create_dispatch_trip_atomic", {
@@ -228,6 +509,12 @@ export function TripForm() {
                 <span className="text-fg-secondary uppercase tracking-wider font-bold">Expected Margin:</span>
                 <span className="text-fg font-bold">₹{netMargin.toLocaleString('en-IN')}</span>
               </div>
+              {tonnageAnomaly && (
+                <div className="mt-3 p-3 rounded-xl bg-warning-soft border border-warning/30">
+                  <p className="text-[10px] font-bold text-warning uppercase tracking-wider">Load Anomaly — Confirmation Required</p>
+                  <p className="text-[10px] text-fg-secondary mt-1">{tonnageAnomaly}</p>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-3">
@@ -321,12 +608,21 @@ export function TripForm() {
               </Button>
             </div>
             {driverMode === "select" ? (
-              <Select value={driverId} onChange={(e) => setDriverId(e.target.value)} required>
-                <option value="">Select driver...</option>
-                {drivers.map(d => (
-                  <option key={d.driver_id || d.id} value={d.driver_id || d.id}>{d.name}</option>
-                ))}
-              </Select>
+              <>
+                <Select value={driverId} onChange={(e) => setDriverId(e.target.value)} required>
+                  <option value="">Select driver...</option>
+                  {drivers.map(d => (
+                    <option key={d.driver_id} value={d.driver_id}>
+                      {d.driver_code ? `${d.driver_code} — ` : ""}{d.full_name}
+                    </option>
+                  ))}
+                </Select>
+                {lastDriverId && (
+                  <p className="text-[9px] text-success font-semibold mt-1">
+                    Previous driver selected by default — you can change it.
+                  </p>
+                )}
+              </>
             ) : (
               <div className="flex gap-2">
                 <input type="text" placeholder="Name" value={newDriverName} onChange={e => setNewDriverName(e.target.value)} className="input-glass" required />
@@ -340,15 +636,93 @@ export function TripForm() {
         <div className="grid grid-cols-2 md:grid-cols-12 gap-3">
           <div className="md:col-span-2">
             <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Tonnage (MT)</label>
-            <input type="number" {...strictNumberProps} step="0.01" value={tonnage} onChange={(e) => setTonnage(e.target.value)} className="input-glass" placeholder="0.00" required />
+            <input
+              type="number"
+              {...strictNumberProps}
+              step="0.01"
+              value={tonnage}
+              onChange={(e) => setTonnage(e.target.value)}
+              className={`input-glass ${tonnageError ? "border-danger focus:border-danger" : tonnageAnomaly ? "border-warning focus:border-warning" : ""}`}
+              placeholder={selectedCapacity > 0 ? `2–${selectedCapacity}` : "0.00"}
+              required
+            />
+            {selectedCapacity > 0 && (
+              <p className="text-[9px] text-fg-muted mt-1">
+                Truck capacity: <span className="font-bold text-fg">{selectedCapacity} MT</span>
+              </p>
+            )}
+            {tonnageError && (
+              <p className="text-[9px] text-danger font-semibold mt-1">{tonnageError}</p>
+            )}
+            {tonnageAnomaly && !tonnageError && (
+              <p className="text-[9px] text-warning font-semibold mt-1">{tonnageAnomaly}</p>
+            )}
           </div>
           <div className="md:col-span-2">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Freight (₹)</label>
-            <input type="number" {...strictNumberProps} value={freightRevenue} onChange={(e) => setFreightRevenue(e.target.value)} className="input-glass" placeholder="0.00" required />
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">
+              Freight (₹)
+            </label>
+            <input
+              type="number"
+              {...strictNumberProps}
+              step="0.01"
+              value={freightRevenue}
+              onChange={(e) => {
+                setFreightRevenue(e.target.value);
+                setFreightManualOverride(
+                  freightMasterRate !== null &&
+                  Number(e.target.value || 0) !== Number((Number(tonnage || 0) * freightMasterRate).toFixed(2))
+                );
+              }}
+              className={`input-glass ${freightManualOverride ? "border-warning focus:border-warning" : ""}`}
+              placeholder="0.00"
+              required
+            />
+            {freightMasterRate !== null && (
+              <p className="text-[9px] text-fg-muted mt-1">
+                Master: <span className="font-bold text-fg">₹{freightMasterRate.toLocaleString("en-IN")}/MT</span>
+                {tonnage && (
+                  <> · Calculated: <span className="font-bold text-fg">₹{(Number(tonnage) * freightMasterRate).toLocaleString("en-IN")}</span></>
+                )}
+              </p>
+            )}
+            {freightMasterStatus && (
+              <p className={`text-[9px] font-semibold mt-1 ${freightManualOverride ? "text-warning" : freightMasterRate !== null ? "text-success" : "text-warning"}`}>
+                {freightManualOverride ? "Manual freight override." : freightMasterStatus}
+              </p>
+            )}
           </div>
+
           <div className="md:col-span-2">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Bata (₹)</label>
-            <input type="number" {...strictNumberProps} value={driverBata} onChange={(e) => setDriverBata(e.target.value)} className="input-glass" placeholder="0.00" required />
+            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">
+              Bata (₹)
+            </label>
+            <input
+              type="number"
+              {...strictNumberProps}
+              step="0.01"
+              value={driverBata}
+              onChange={(e) => {
+                setDriverBata(e.target.value);
+                setBataManualOverride(
+                  bataMasterAmount !== null &&
+                  Number(e.target.value || 0) !== bataMasterAmount
+                );
+              }}
+              className={`input-glass ${bataManualOverride ? "border-warning focus:border-warning" : ""}`}
+              placeholder="0.00"
+              required
+            />
+            {bataMasterAmount !== null && (
+              <p className="text-[9px] text-fg-muted mt-1">
+                Master Bata: <span className="font-bold text-fg">₹{bataMasterAmount.toLocaleString("en-IN")}</span>
+              </p>
+            )}
+            {bataMasterStatus && (
+              <p className={`text-[9px] font-semibold mt-1 ${bataManualOverride ? "text-warning" : bataMasterAmount !== null ? "text-success" : "text-warning"}`}>
+                {bataManualOverride ? "Manual Bata override." : bataMasterStatus}
+              </p>
+            )}
           </div>
           <div className="md:col-span-2">
             <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Advance (₹)</label>
@@ -356,14 +730,59 @@ export function TripForm() {
           </div>
           <div className="md:col-span-2">
             <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider" title={`Previous: ${previousKm ?? 'N/A'}`}>Start KM</label>
-            <input type="number" {...strictNumberProps} value={startKm} onChange={(e) => setStartKm(e.target.value)} className="input-glass font-mono border-accent-border" placeholder={previousKm ? String(previousKm) : "0"} required />
+            <input
+              type="number"
+              {...strictNumberProps}
+              step="0.1"
+              value={startKm}
+              onChange={(e) => {
+                const value = e.target.value;
+                setStartKm(value);
+
+                if (value === "") {
+                  setStartKmError("");
+                } else if (!Number.isFinite(Number(value)) || Number(value) <= 0) {
+                  setStartKmError("Starting KM must be greater than 0.");
+                } else if (previousKm !== null && Number(value) <= previousKm) {
+                  setStartKmError(`Starting KM must be greater than the current authoritative odometer (${previousKm} km).`);
+                } else {
+                  setStartKmError("");
+                }
+              }}
+              className={`input-glass font-mono border-accent-border ${startKmError ? "border-danger focus:border-danger" : ""}`}
+              placeholder={previousKm !== null ? `> ${previousKm}` : "> 0"}
+              required
+            />
+            {previousKm !== null && (
+              <p className="text-[9px] text-fg-muted mt-1">
+                Current authoritative odometer: <span className="font-bold text-fg">{previousKm} km</span>
+              </p>
+            )}
+            {startKmError && (
+              <p className="text-[9px] text-danger font-semibold mt-1">{startKmError}</p>
+            )}
           </div>
           <div className="md:col-span-2">
             <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Diesel</label>
             <div className="flex gap-1.5">
               <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className="input-glass font-mono border-accent-border w-1/2" placeholder="L" required title="Diesel Issued (Litres)" />
-              <input type="number" {...strictNumberProps} step="0.01" value={dieselRate} onChange={(e) => handleRateChange(e.target.value)} className="input-glass font-mono border-accent-border w-1/2" placeholder="₹/L" required title="Diesel Rate (₹/Litre)" />
+              <input
+                type="number"
+                {...strictNumberProps}
+                step="0.01"
+                value={dieselRate}
+                onChange={(e) => handleRateChange(e.target.value)}
+                className="input-glass font-mono border-accent-border w-1/2"
+                placeholder="₹/L"
+                required
+                title="Diesel Rate (₹/Litre)"
+              />
             </div>
+            {dieselRateSource && (
+              <p className="text-[9px] text-fg-muted mt-1">
+                {dieselRateSource}. <span className="font-bold text-fg">₹{dieselRate || "0"}/L</span>
+              </p>
+            )}
             <div className="flex items-center mt-2 gap-2">
               <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-4 h-4 rounded-full input-glass border border-accent-border text-accent focus:ring-0 cursor-pointer appearance-none checked:bg-accent flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
               <span className="text-[9px] text-accent uppercase tracking-wider font-bold">Tank Full</span>

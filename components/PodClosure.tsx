@@ -6,66 +6,8 @@ import { AlertModal } from "@/components/AlertModal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-// --- CUSTOM SEARCHABLE SELECT COMPONENT ---
-function SearchableSelect({ options, value, onChange, placeholder, disabled }: { options: {label: string, value: string}[], value: string, onChange: (val: string) => void, placeholder: string, disabled?: boolean }) {
- const [isOpen, setIsOpen] = useState(false);
- const [search, setSearch] = useState("");
- const containerRef = useRef<HTMLDivElement>(null);
-
- useEffect(() => {
- const handleClickOutside = (e: MouseEvent) => {
- if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false);
- };
- document.addEventListener("mousedown", handleClickOutside);
- return () => document.removeEventListener("mousedown", handleClickOutside);
- }, []);
-
- const selectedOption = options.find(o => String(o.value) === String(value));
-
- return (
- <div ref={containerRef} className="relative w-full">
- <div 
- className={`w-full text-sm p-3 rounded-xl border ${isOpen ? 'border-accent ring-1 ring-accent' : 'border-border'} input-glass text-fg flex justify-between items-center cursor-pointer font-bold ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
- onClick={() => !disabled && setIsOpen(!isOpen)}
- >
- <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
- <span className="text-[10px] text-fg-secondary">▼</span>
- </div>
- {isOpen && (
- <div className="absolute z-50 w-full mt-1 input-glass border border-border rounded-xl shadow-2xl max-h-60 overflow-y-auto">
- <div className="p-2 sticky top-0 input-glass bg-surface-raised">
- <Input
- type="text"
- className="text-xs p-2.5"
- placeholder="Search LR..."
- value={search}
- onChange={(e) => setSearch(e.target.value)}
- onClick={(e) => e.stopPropagation()}
- autoFocus
- />
- </div>
- <div className="pb-2 px-2">
- {options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())).map(o => (
- <div 
- key={o.value} 
- className="p-2.5 text-xs font-bold text-fg-secondary hover:bg-accent/20 hover:text-fg rounded-lg cursor-pointer truncate"
- onClick={() => { onChange(o.value); setIsOpen(false); setSearch(""); }}
- >
- {o.label}
- </div>
- ))}
- {options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())).length === 0 && (
- <div className="p-3 text-xs text-fg-muted text-center font-bold">No matches found</div>
- )}
- </div>
- </div>
- )}
- </div>
- );
-}
-
+const supabase = createClient();
 export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
- const supabase = createClient();
  const [isLoading, setIsLoading] = useState(true);
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [dieselRate, setDieselRate] = useState<number>(95.0);
@@ -76,6 +18,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
 
  const [activeTrips, setActiveTrips] = useState<any[]>([]);
  const [selectedLr, setSelectedLr] = useState<string>("");
+ const [podSearch, setPodSearch] = useState("");
  const [currentTrip, setCurrentTrip] = useState<any>(null);
 
  // INBOX STATES
@@ -308,170 +251,351 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  setIsSubmitting(false); setSelectedLr(""); setPodNo(""); setCurrentTrip(null); setScannedShortageKg(null); fetchActiveTrips(); if (onSuccess) onSuccess();
  };
 
- const lrOptions = activeTrips.map((t) => ({ value: t.trip_number, label: `LR: ${t.trip_number} | Date: ${formatDate(t.trip_start_date)} | Truck: ${t.vehicles?.vehicle_number || "Unknown"}` }));
+ const filteredPodTrips = activeTrips.filter((t: any) => {
+ const q = podSearch.trim().toUpperCase();
+ if (!q) return true;
+
+ return [
+   t.trip_number,
+   t.vehicles?.vehicle_number,
+   t.destination,
+   t.origin,
+   t.drivers?.full_name,
+ ].some((value) =>
+   String(value ?? "").toUpperCase().includes(q)
+ );
+ });
+
+
  const noSpinClass = "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
  const numProps = { step: "any", onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur() };
 
  return (
- <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-300 relative">
- <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
+ <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start kss-page-enter relative">
+   <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
- {/* LEFT PANEL: Settle POD Form */}
- <div className="lg:col-span-7 liquid-glass p-6 shadow-sm">
- 
- {pendingScans.length > 0 && (
- <div className="mb-6 p-4 input-glass border border-border rounded-xl">
- <h4 className="text-xs font-semibold text-success tracking-wider flex items-center gap-2 mb-3">
- <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span></span>
- Pending POD Entries Inbox ({pendingScans.length})
- </h4>
- <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
- {pendingScans.map(scan => {
- const data = scan.raw_json_result || {};
- return (
- <button key={scan.scan_id} type="button" onClick={() => applyScanData(scan)} className={`min-w-[200px] text-left p-3 rounded-lg border transition-all snap-start ${activeScanId === scan.scan_id ? 'border-success bg-success/10 ring-1 ring-success' : 'border-border hover:border-border-strong input-glass'}`}>
- <div className="flex justify-between items-start gap-4">
- <div>
- <p className="text-[10px] text-fg-secondary font-bold mb-1">LR: <span className="text-fg">{data.lrNo || "UNKNOWN"}</span></p>
- <p className="text-xs font-semibold text-fg truncate">Shortage: <span className={data.shortageKg > 0 ? "text-danger" : "text-success"}>{data.shortageKg || 0} kg</span></p>
- </div>
- <div onClick={(e) => handleDeleteScan(e, scan.scan_id)} className="text-fg-muted hover:text-danger input-glass p-1.5 rounded border border-border transition-colors" title="Delete entry">🗑️</div>
- </div>
- </button>
- );
- })}
- </div>
- </div>
- )}
+   {/* LEFT PANEL: POD settlement workspace */}
+   <div className="xl:col-span-7 liquid-glass p-5 md:p-6">
 
- <div className="border-b border-border pb-4 mb-6">
- <h3 className="text-base font-semibold text-fg tracking-tight">Record & Settle POD</h3>
- <p className="text-xs text-fg-secondary mt-1">Select a pending POD/LR or pick a pending POD entry from the inbox to autofill.</p>
- </div>
+     <div className="flex items-start justify-between gap-4 pb-5 mb-5 border-b border-border">
+       <div>
+         <div className="flex items-center gap-2 mb-1.5">
+           <span className="kss-status-dot bg-accent" />
+           <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">Operations</span>
+         </div>
+         <h3 className="text-lg font-semibold tracking-tight text-fg">POD Closure</h3>
+         <p className="text-xs text-fg-secondary mt-1">Verify delivery, reconcile the trip and close the POD.</p>
+       </div>
 
- {activeTrips.length === 0 && !isLoading ? (
- <div className="p-8 text-center bg-success/10 border border-success/20 rounded-xl">
- <p className="text-sm font-bold text-success">All PODs are settled! No pending PODs awaiting settlement.</p>
- </div>
- ) : (
- <form onSubmit={handleSettlePod} className="space-y-5">
- <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">Search & Select Pending POD / LR *</label>
- <SearchableSelect options={lrOptions} value={selectedLr} onChange={setSelectedLr} placeholder="-- SELECT LR FOR POD --" disabled={isLoading} />
- </div>
+       {activeTrips.length > 0 && (
+         <div className="shrink-0 px-3 py-2 rounded-xl border border-border bg-surface-raised/60 text-right">
+           <p className="text-[9px] font-semibold uppercase tracking-wider text-fg-muted">Pending</p>
+           <p className="text-lg font-semibold leading-none text-fg mt-1">{activeTrips.length}</p>
+         </div>
+       )}
+     </div>
 
- {currentTrip && (
- <>
- <div className="p-4 input-glass border border-border rounded-xl flex flex-wrap gap-4 justify-between text-xs text-fg-secondary">
- <span><strong className="text-fg-muted">DRIVER:</strong> <br/><span className="font-bold text-fg">{currentTrip.drivers?.full_name || "Unassigned"}</span></span>
- <span><strong className="text-fg-muted">ROUTE:</strong> <br/><span className="font-bold text-fg">{currentTrip.origin} &rarr; {currentTrip.destination}</span></span>
- <span><strong className="text-fg-muted">DISPATCHED:</strong> <br/><span className="font-semibold text-accent">{currentTrip.loaded_weight_mt} MT</span></span>
- </div>
+     {pendingScans.length > 0 && (
+       <div className="mb-5 liquid-glass-soft p-4">
+         <div className="flex items-center justify-between gap-3 mb-3">
+           <div className="flex items-center gap-2">
+             <span className="relative flex h-2 w-2">
+               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60" />
+               <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+             </span>
+             <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-success">POD Inbox</h4>
+           </div>
+           <span className="text-[10px] font-medium text-fg-muted">{pendingScans.length} pending scan{pendingScans.length === 1 ? "" : "s"}</span>
+         </div>
 
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">POD No *</label>
- <Input type="text" value={podNo} onChange={(e) => setPodNo(e.target.value)} placeholder="e.g. POD-8821" className="font-bold" required />
- </div>
- <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">Closing Date *</label>
- <Input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="font-semibold" required />
- </div>
- <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">Unloaded MT (if weighed)</label>
- <Input type="number" {...numProps} value={unloadedMt} onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="Optional" className={`font-semibold ${noSpinClass}`} />
- </div>
- </div>
+         <div className="flex gap-3 overflow-x-auto pb-1 snap-x">
+           {pendingScans.map(scan => {
+             const data = scan.raw_json_result || {};
+             return (
+               <div
+                 key={scan.scan_id}
+                 role="button"
+                 tabIndex={0}
+                 onClick={() => applyScanData(scan)}
+                 onKeyDown={(e) => {
+                   if (e.key === "Enter" || e.key === " ") {
+                     e.preventDefault();
+                     applyScanData(scan);
+                   }
+                 }}
+                 className={`min-w-[210px] text-left p-3.5 rounded-xl border transition-all duration-200 snap-start kss-interactive ${
+                   activeScanId === scan.scan_id
+                     ? "border-success/50 bg-success/10 kss-glow-accent"
+                     : "border-border bg-surface-raised/50 hover:border-border-strong"
+                 }`}
+               >
+                 <div className="flex justify-between items-start gap-4">
+                   <div className="min-w-0">
+                     <p className="text-[9px] uppercase tracking-wider text-fg-muted font-semibold mb-1">LR</p>
+                     <p className="text-sm font-semibold text-fg truncate">{data.lrNo || "UNKNOWN"}</p>
+                     <p className="text-[11px] font-medium text-fg-secondary mt-2">
+                       Shortage{" "}
+                       <span className={data.shortageKg > 0 ? "text-danger" : "text-success"}>
+                         {data.shortageKg || 0} kg
+                       </span>
+                     </p>
+                   </div>
+                   <button
+                     type="button"
+                     onClick={(e) => handleDeleteScan(e, scan.scan_id)}
+                     className="shrink-0 p-1.5 rounded-lg border border-border bg-surface/40 text-fg-muted hover:text-danger hover:border-danger/30 transition-colors"
+                     title="Delete entry"
+                   >
+                     ×
+                   </button>
+                 </div>
+               </div>
+             );
+           })}
+         </div>
+       </div>
+     )}
 
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">Filling Odometer KM</label>
- <Input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="Required only for diesel top-up" className={`text-info font-bold ${noSpinClass}`} />
- </div>
- <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">Halt Bata (₹)</label>
- <Input type="number" {...numProps} value={haltBata} onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`text-accent font-semibold ${noSpinClass}`} />
- </div>
- <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">Claims / Repairs (₹)</label>
- <Input type="number" {...numProps} value={claims} onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`text-danger font-semibold ${noSpinClass}`} />
- </div>
- </div>
+     {activeTrips.length === 0 && !isLoading ? (
+       <div className="kss-surface p-8 text-center">
+         <div className="mx-auto mb-3 w-10 h-10 rounded-full bg-success/10 border border-success/20 flex items-center justify-center">
+           <span className="text-success text-lg">✓</span>
+         </div>
+         <p className="text-sm font-semibold text-fg">POD queue is clear</p>
+         <p className="text-xs text-fg-secondary mt-1">There are no pending PODs awaiting settlement.</p>
+       </div>
+     ) : (
+       <form onSubmit={handleSettlePod} className="space-y-5">
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-border pt-5 items-center">
- <div>
- <label className="block text-[10px] font-bold text-fg-secondary mb-1">Closing Diesel Top-up (L)</label>
- <Input type="number" {...numProps} value={closingDiesel} onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0 Litres" className={`text-accent font-semibold ${noSpinClass}`} />
- <span className="text-[10px] text-fg-muted font-bold mt-1 block">Valued at current rate: ₹{dieselRate}/L</span>
- </div>
- <div className="pt-2">
- <label className="flex items-center gap-3 cursor-pointer select-none input-glass p-3 rounded-xl border border-border w-fit">
- <input type="checkbox" checked={isTankFull} onChange={(e) => setIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-accent focus:ring-accent input-glass border-border" />
- <span className="text-xs font-semibold text-fg">Mark Tank Full</span>
- </label>
- </div>
- </div>
+         {currentTrip && (
+           <>
+             {/* Trip snapshot */}
+             <div className="kss-surface-raised p-4 md:p-5">
+               <div className="flex items-center justify-between gap-4 mb-4">
+                 <div>
+                   <p className="text-[9px] uppercase tracking-[0.16em] text-fg-muted font-semibold">Trip snapshot</p>
+                   <p className="text-base font-semibold text-fg mt-1">LR {currentTrip.trip_number}</p>
+                 </div>
+                 <span className="px-2.5 py-1 rounded-lg border border-accent-border bg-accent-soft text-[9px] font-semibold uppercase tracking-wider text-accent">
+                   Awaiting POD
+                 </span>
+               </div>
 
- {complianceWarnings.length > 0 && (
- <div className="bg-danger/10 border border-danger/20 p-4 rounded-xl mt-4 mb-2">
- <h4 className="text-[10px] font-semibold text-danger mb-2 flex items-center gap-2">⚠️ Compliance Warnings (Closing Allowed)</h4>
- {complianceWarnings.map((w, i) => (
- <p key={i} className={`text-xs font-bold ${w.isUrgent ? 'text-danger' : 'text-warning'}`}>• {w.name} {w.docName} expiring on {w.date}</p>
- ))}
- </div>
- )}
+               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                 <div className="min-w-0">
+                   <p className="text-[9px] uppercase tracking-wider text-fg-muted font-semibold">Truck</p>
+                   <p className={`text-xs font-semibold mt-1 truncate ${currentTrip.vehicles?.vehicle_number ? "text-fg" : "text-warning"}`}>
+                     {currentTrip.vehicles?.vehicle_number || "UNASSIGNED"}
+                   </p>
+                 </div>
+                 <div className="min-w-0">
+                   <p className="text-[9px] uppercase tracking-wider text-fg-muted font-semibold">Driver</p>
+                   <p className="text-xs font-semibold text-fg mt-1 truncate">{currentTrip.drivers?.full_name || "Unassigned"}</p>
+                 </div>
+                 <div className="min-w-0 md:col-span-2">
+                   <p className="text-[9px] uppercase tracking-wider text-fg-muted font-semibold">Route</p>
+                   <p className="text-xs font-semibold text-fg mt-1 truncate">{currentTrip.origin} <span className="text-fg-muted mx-1">→</span> {currentTrip.destination}</p>
+                 </div>
+               </div>
 
- <div className="pt-6 border-t border-border flex justify-end">
- <Button
- type="submit"
- disabled={isSubmitting}
- variant="secondary"
- className="w-full md:w-auto px-8 py-3.5 rounded-xl text-sm bg-success hover:bg-success/90 text-fg border-success/40 shadow-none"
->
- {isSubmitting ? "Saving..." : "✅ Settle POD"}
-</Button>
- </div>
- </>
- )}
- </form>
- )}
- </div>
+               <div className="mt-4 pt-4 border-t border-border-subtle flex items-center justify-between">
+                 <span className="text-[9px] uppercase tracking-wider text-fg-muted font-semibold">Dispatched weight</span>
+                 <span className="text-sm font-semibold text-accent">{currentTrip.loaded_weight_mt} MT</span>
+               </div>
+             </div>
 
- {/* RIGHT PANEL: Pending POD List */}
- <div className="lg:col-span-5 liquid-glass overflow-hidden flex flex-col shadow-sm h-fit">
- <div className="px-5 py-4 flex justify-between items-center border-b border-border">
- <h4 className="text-xs font-semibold text-fg tracking-wider">Pending POD List ({activeTrips.length})</h4>
- <span className="text-[9px] font-bold px-2.5 py-1 bg-danger/10 text-danger border border-danger/20 rounded-lg tracking-normal">Awaiting</span>
- </div>
- <div className="overflow-x-auto overflow-y-auto max-h-[600px] w-full">
- <table className="w-full text-left border-collapse whitespace-nowrap">
- <thead className="input-glass bg-surface-raised sticky top-0 z-10">
- <tr>
- <th className="py-3 px-5 text-[10px] font-bold text-fg-muted tracking-wider border-b border-border">LR No</th>
- <th className="py-3 px-5 text-[10px] font-bold text-fg-muted tracking-wider border-b border-border">Date</th>
- <th className="py-3 px-5 text-[10px] font-bold text-fg-muted tracking-wider border-b border-border">Truck</th>
- <th className="py-3 px-5 text-[10px] font-bold text-fg-muted tracking-wider border-b border-border text-right">Aging</th>
- </tr>
- </thead>
- <tbody className="divide-y divide-border-subtle input-glass">
- {activeTrips.map((t) => {
- const days = getDaysPending(t.trip_start_date);
- const isSelected = selectedLr === t.trip_number;
- return (
- <tr key={t.trip_id} onClick={() => setSelectedLr(t.trip_number)} className={`cursor-pointer transition-all ${isSelected ? 'bg-accent/10 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent hover:bg-surface-raised/50'}`}>
- <td className={`py-3.5 px-5 text-xs font-semibold ${isSelected ? 'text-accent' : 'text-fg'}`}>{t.trip_number}</td>
- <td className="py-3.5 px-5 text-xs font-semibold text-fg-secondary">{formatDate(t.trip_start_date)}</td>
- <td className="py-3.5 px-5 text-xs font-bold text-fg-secondary">{t.vehicles?.vehicle_number || "-"}</td>
- <td className={`py-3.5 px-5 text-xs font-semibold text-right ${days >= 2 ? 'text-danger' : 'text-warning'}`}>{days}d</td>
- </tr>
- );
- })}
- {activeTrips.length === 0 && (<tr><td colSpan={4} className="py-8 text-center text-fg-muted text-xs font-medium">No pending PODs found.</td></tr>)}
- </tbody>
- </table>
- </div>
- </div>
+             {/* POD details */}
+             <section>
+               <div className="flex items-center gap-3 mb-3">
+                 <span className="text-[9px] font-semibold text-accent">01</span>
+                 <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-secondary">POD details</h4>
+                 <div className="h-px flex-1 bg-border" />
+               </div>
 
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                 <div>
+                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">POD number *</label>
+                   <Input type="text" value={podNo} onChange={(e) => setPodNo(e.target.value)} placeholder="e.g. POD-8821" className="font-semibold" required />
+                 </div>
+                 <div>
+                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Closing date *</label>
+                   <Input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="font-semibold" required />
+                 </div>
+                 <div>
+                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Unloaded weight</label>
+                   <Input type="number" {...numProps} value={unloadedMt} onChange={(e) => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="Optional" className={`font-semibold ${noSpinClass}`} />
+                 </div>
+               </div>
+             </section>
+
+             {/* Odometer & fuel */}
+             <section>
+               <div className="flex items-center gap-3 mb-3">
+                 <span className="text-[9px] font-semibold text-accent">02</span>
+                 <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-secondary">Odometer & fuel</h4>
+                 <div className="h-px flex-1 bg-border" />
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                 <div>
+                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Filling odometer KM</label>
+                   <Input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="Only for diesel top-up" className={`text-info font-semibold ${noSpinClass}`} />
+                 </div>
+                 <div>
+                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Diesel top-up (L)</label>
+                   <Input type="number" {...numProps} value={closingDiesel} onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0 Litres" className={`text-accent font-semibold ${noSpinClass}`} />
+                   <span className="text-[9px] text-fg-muted font-medium mt-1.5 block">Current rate ₹{dieselRate}/L</span>
+                 </div>
+                 <div className="flex items-end">
+                   <label className="flex items-center gap-3 cursor-pointer select-none input-glass rounded-xl px-3.5 py-2.5">
+                     <input type="checkbox" checked={isTankFull} onChange={(e) => setIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-accent focus:ring-accent bg-transparent border-border" />
+                     <span className="text-xs font-semibold text-fg">Tank full</span>
+                   </label>
+                 </div>
+               </div>
+             </section>
+
+             {/* Expenses */}
+             <section>
+               <div className="flex items-center gap-3 mb-3">
+                 <span className="text-[9px] font-semibold text-accent">03</span>
+                 <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-secondary">Trip expenses</h4>
+                 <div className="h-px flex-1 bg-border" />
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                 <div>
+                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Halt bata (₹)</label>
+                   <Input type="number" {...numProps} value={haltBata} onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`text-accent font-semibold ${noSpinClass}`} />
+                 </div>
+                 <div>
+                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Claims / repairs (₹)</label>
+                   <Input type="number" {...numProps} value={claims} onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`text-danger font-semibold ${noSpinClass}`} />
+                 </div>
+               </div>
+             </section>
+
+             {complianceWarnings.length > 0 && (
+               <div className="rounded-xl border border-danger/20 bg-danger/10 p-4">
+                 <div className="flex items-start gap-3">
+                   <span className="mt-0.5 text-danger text-sm">!</span>
+                   <div className="min-w-0">
+                     <h4 className="text-[9px] font-semibold uppercase tracking-[0.14em] text-danger">Compliance attention · closing allowed</h4>
+                     <div className="mt-2 space-y-1">
+                       {complianceWarnings.map((w, i) => (
+                         <p key={i} className={`text-xs font-medium ${w.isUrgent ? "text-danger" : "text-warning"}`}>
+                           {w.name} · {w.docName} · expires {w.date}
+                         </p>
+                       ))}
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             )}
+
+             <div className="pt-2 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+               <p className="text-[10px] text-fg-muted">Review all values before closing this POD.</p>
+               <Button
+                 type="submit"
+                 disabled={isSubmitting}
+                 variant="secondary"
+                 className="w-full sm:w-auto px-7 py-3 rounded-xl text-sm font-semibold bg-accent hover:bg-accent-hover text-accent-fg border-accent-border shadow-orange"
+               >
+                 {isSubmitting ? "Saving..." : "Settle POD"}
+               </Button>
+             </div>
+           </>
+         )}
+       </form>
+     )}
+   </div>
+
+   {/* RIGHT PANEL: Pending POD queue */}
+   <div className="xl:col-span-5 liquid-glass overflow-hidden flex flex-col">
+     <div className="px-5 py-5 border-b border-border">
+       <div className="flex items-start justify-between gap-4 mb-4">
+         <div>
+           <div className="flex items-center gap-2 mb-1">
+             <span className="kss-status-dot bg-warning" />
+             <h4 className="text-sm font-semibold text-fg tracking-tight">Pending POD queue</h4>
+           </div>
+           <p className="text-[10px] text-fg-muted">Select a trip to load its settlement workspace.</p>
+         </div>
+         <span className="shrink-0 px-2.5 py-1 rounded-lg border border-warning/20 bg-warning/10 text-warning text-[9px] font-semibold uppercase tracking-wider">
+           {filteredPodTrips.length} awaiting
+         </span>
+       </div>
+
+       <Input
+         type="text"
+         value={podSearch}
+         onChange={(e) => setPodSearch(e.target.value)}
+         placeholder="Search LR, truck, destination or driver..."
+         className="w-full"
+       />
+     </div>
+
+     <div className="overflow-x-auto overflow-y-auto max-h-[680px] w-full">
+       <table className="w-full text-left border-collapse">
+         <thead className="bg-surface-raised/95 sticky top-0 z-10 backdrop-blur-xl">
+           <tr>
+             <th className="py-3 px-5 text-[9px] font-semibold uppercase tracking-wider text-fg-muted border-b border-border">LR</th>
+             <th className="py-3 px-5 text-[9px] font-semibold uppercase tracking-wider text-fg-muted border-b border-border">Date</th>
+             <th className="py-3 px-5 text-[9px] font-semibold uppercase tracking-wider text-fg-muted border-b border-border">Truck</th>
+             <th className="py-3 px-5 text-[9px] font-semibold uppercase tracking-wider text-fg-muted border-b border-border text-right">Age</th>
+           </tr>
+         </thead>
+
+         <tbody className="divide-y divide-border-subtle">
+           {filteredPodTrips.map((t) => {
+             const days = getDaysPending(t.trip_start_date);
+             const isSelected = selectedLr === t.trip_number;
+             const hasTruck = Boolean(t.vehicles?.vehicle_number);
+
+             return (
+               <tr
+                 key={t.trip_id}
+                 onClick={() => setSelectedLr(t.trip_number)}
+                 className={`cursor-pointer transition-all duration-150 border-l-2 ${
+                   isSelected
+                     ? "bg-accent/10 border-l-accent"
+                     : "border-l-transparent hover:bg-surface-raised/60 hover:border-l-border-strong"
+                 }`}
+               >
+                 <td className="py-3.5 px-5">
+                   <span className={`text-xs font-semibold ${isSelected ? "text-accent" : "text-fg"}`}>{t.trip_number}</span>
+                 </td>
+                 <td className="py-3.5 px-5 text-xs font-medium text-fg-secondary">{formatDate(t.trip_start_date)}</td>
+                 <td className="py-3.5 px-5">
+                   {hasTruck ? (
+                     <span className="text-xs font-semibold text-fg">{t.vehicles.vehicle_number}</span>
+                   ) : (
+                     <span className="inline-flex items-center px-2 py-1 rounded-md border border-warning/20 bg-warning/10 text-[9px] font-semibold uppercase tracking-wider text-warning">
+                       Unassigned
+                     </span>
+                   )}
+                 </td>
+                 <td className={`py-3.5 px-5 text-xs font-semibold text-right ${days >= 2 ? "text-danger" : "text-warning"}`}>
+                   {days}d
+                 </td>
+               </tr>
+             );
+           })}
+
+           {filteredPodTrips.length === 0 && (
+             <tr>
+               <td colSpan={4} className="py-12 px-5 text-center">
+                 <p className="text-sm font-semibold text-fg">{podSearch.trim() ? "No matches" : "No pending PODs"}</p>
+                 <p className="text-xs text-fg-muted mt-1">
+                   {podSearch.trim() ? `Nothing matches "${podSearch.trim()}".` : "The settlement queue is currently clear."}
+                 </p>
+               </td>
+             </tr>
+           )}
+         </tbody>
+       </table>
+     </div>
+   </div>
  </div>
  );
 }
