@@ -120,7 +120,7 @@ export function FuelAdvanceModule() {
  return dbTruck === aiTruck || dbTruck.includes(aiTruck) || aiTruck.includes(dbTruck);
  });
  if (matchedTruck) {
- setFVehicleId(String(matchedTruck.id));
+ setFVehicleId(String(matchedTruck.vehicle_id));
  matched = true;
  }
  }
@@ -381,7 +381,7 @@ export function FuelAdvanceModule() {
 
  <form onSubmit={handleSaveDiesel} className="space-y-4">
  <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Fuel Date *</label><Input type="date" value={fDate} onChange={e => setFDate(e.target.value)} className="text-fg font-semibold" required /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Select Truck *</label><Select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="text-fg font-bold" required disabled={isLoading}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.id} value={String(v.id)}>{v.vehicle_number}</option>)}</Select></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Select Truck *</label><Select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="text-fg font-bold" required disabled={isLoading}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}</Select></div>
  <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Category *</label><Select value={fCategory} onChange={e => setFCategory(e.target.value)} className="text-fg font-semibold"><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></Select></div>
  <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Trip LR No (Optional)</label><Input type="text" maxLength={20} value={fLrNo} onChange={e => setFLrNo(e.target.value.toUpperCase())} placeholder="e.g. 40080069852" className="text-fg font-semibold" /></div>
  
@@ -520,7 +520,7 @@ export function FuelAdvanceModule() {
  {auditDateMode === "Specific Date" && <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Date</label><Input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="text-fg font-semibold" /></div>}
  {auditDateMode === "Date Range" && <><div className="col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">From</label><Input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="text-fg font-semibold" /></div><div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">To</label><Input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="text-fg font-semibold" /></div></>}
  {auditDateMode === "All Time" && <div className="hidden md:block md:col-span-2"></div>}
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Truck No</label><Select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="text-fg font-bold"><option value="All Trucks">All Trucks</option>{vehicles.map(v => <option key={v.id} value={v.vehicle_number}>{v.vehicle_number}</option>)}</Select></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Truck No</label><Select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="text-fg font-bold"><option value="All Trucks">All Trucks</option>{vehicles.map(v => <option key={v.vehicle_id} value={v.vehicle_number}>{v.vehicle_number}</option>)}</Select></div>
  <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Category</label><Select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="text-fg font-semibold"><option value="All Categories">All Categories</option><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></Select></div>
  </div>
 
@@ -619,7 +619,7 @@ export function FuelAdvanceModule() {
  <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
  <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-border pb-4 mb-6 gap-4">
  <div><h3 className="text-sm font-semibold text-fg  tracking-wide">Vehicle Mileage (KMPL) Tracker</h3><p className="text-xs text-fg-secondary mt-1">Calculates true mileage using the "Full-to-Full" standard formula.</p></div>
- <div className="w-full md:w-64"><Select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.id} value={v.id}>{v.vehicle_number}</option>))}</Select></div>
+ <div className="w-full md:w-64"><Select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>))}</Select></div>
  </div>
 
  {!kmplTruckId ? (
