@@ -143,9 +143,14 @@ export function WorkshopModule() {
  if (!wsTruckId || !vendor.trim() || Number(amount) <= 0) return alert("Invalid inputs.");
  triggerModal("Record Service Bill", `Log ${amount} expense from ${vendor}?`, false, "Save Bill", async () => {
  setIsProcessing(true);
- const { error: billError } = await supabase.from('workshop_spares_bills').insert([{
- bill_date: billDate, vehicle_id: Number(wsTruckId), vendor_name: vendor.trim(), service_description: description.trim(), bill_amount: Number(amount)
- }]);
+   const { error: billError } = await supabase.rpc("create_workshop_bill_atomic", {
+   p_bill_date: billDate,
+   p_vehicle_id: Number(wsTruckId),
+   p_vendor_name: vendor.trim(),
+   p_invoice_number: null,
+   p_spare_parts_details: description.trim() || "Workshop Service",
+   p_total_bill_amount: Number(amount),
+ });
  if (billError) alert("Failed to save bill: " + billError.message);
  else { alert("Service bill recorded successfully!"); setVendor(""); setDescription(""); setAmount(""); fetchData(); }
  setIsProcessing(false); closeModal();
@@ -167,7 +172,7 @@ export function WorkshopModule() {
  const exportScrap = filteredScrap.map(t => ({ "Serial": t.serial_number, "Brand": t.brand_model, "Status": t.tyre_status, "Total Lifetime KM": t.total_km_run || 0 }));
 
  const filteredBills = activeBills.filter(b => (b.vendor_name || "").toLowerCase().includes(billsSearch.toLowerCase()) || (b.vehicles?.vehicle_number || "").toLowerCase().includes(billsSearch.toLowerCase()));
- const exportBills = filteredBills.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.vehicles?.vehicle_number || "GENERAL", "Vendor": b.vendor_name, "Description": b.service_description, "Amount (INR)": b.bill_amount }));
+ const exportBills = filteredBills.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.vehicles?.vehicle_number || "GENERAL", "Vendor": b.vendor_name, "Description": b.spare_parts_details, "Amount (INR)": b.total_bill_amount }));
 
  return (
  <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300 text-fg">
@@ -359,8 +364,8 @@ export function WorkshopModule() {
  <TableRow key={b.bill_id} className="">
  <TableCell className="px-5 py-4 font-semibold text-fg-secondary">{formatDate(b.bill_date)}</TableCell>
  <TableCell className="px-5 py-4 font-semibold text-fg">{b.vehicles?.vehicle_number || "UNKNOWN"}</TableCell>
- <TableCell className="px-5 py-4 text-fg-secondary font-bold">{b.vendor_name} <br/><span className="text-[10px] text-fg-muted font-normal">{b.service_description}</span></TableCell>
- <TableCell className="px-5 py-4 text-right font-semibold text-danger">{(b.bill_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+ <TableCell className="px-5 py-4 text-fg-secondary font-bold">{b.vendor_name} <br/><span className="text-[10px] text-fg-muted font-normal">{b.spare_parts_details}</span></TableCell>
+ <TableCell className="px-5 py-4 text-right font-semibold text-danger">{(b.total_bill_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
  </TableRow>
  ))}
  {filteredBills.length === 0 && <TableRow><TableCell colSpan={4} className="p-8 text-center text-fg-muted font-medium">No service bills match your search.</TableCell></TableRow>}

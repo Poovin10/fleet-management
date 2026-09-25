@@ -51,10 +51,24 @@ export function DriverSettlementModule() {
  const handleMarkSettled = async () => {
  if (!confirm(`Mark all records as SETTLED for this period?`)) return;
  setIsProcessing(true);
- await supabase.from('trips').update({ settlement_status: 'SETTLED' }).eq('primary_driver_id', selectedDriverId).gte('trip_start_date', fromDate).lte('trip_start_date', toDate);
- await supabase.from('driver_direct_advances').update({ is_settled: true }).eq('driver_id', selectedDriverId).gte('advance_date', fromDate).lte('advance_date', toDate);
- alert("Records marked as settled successfully!");
- generateSettlement();
+ const { data, error } = await supabase.rpc("settle_driver_period_atomic", {
+   p_driver_id: Number(selectedDriverId),
+   p_from_date: fromDate,
+   p_to_date: toDate,
+ });
+
+ if (error) {
+   alert("Settlement failed: " + error.message);
+   setIsProcessing(false);
+   return;
+ }
+
+ alert(
+   `Settlement completed. Trips settled: ${data?.trips_settled ?? 0}. ` +
+   `Advances settled: ${data?.advances_settled ?? 0}.`
+ );
+
+ await generateSettlement();
  };
 
  const tripsByTruck = driverTrips.reduce((acc: any, trip: any) => {

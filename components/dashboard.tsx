@@ -424,7 +424,11 @@ export default function Dashboard() {
                     <h3 className="text-sm font-semibold text-fg mb-6 tracking-wide border-b border-border pb-4">Manual Status Override</h3>
                     <form onSubmit={async (e) => {
                       e.preventDefault(); if (!supabase || !qsTruckId) return;
-                      const { error } = await supabase.from('vehicles').update({ current_status: qsStatus, status_remarks: qsRemarks, status_updated_at: new Date().toISOString() }).eq('id', qsTruckId);
+                      const { error } = await supabase.rpc("update_vehicle_status_atomic", {
+                        p_vehicle_id: Number(qsTruckId),
+                        p_status: qsStatus,
+                        p_status_remarks: qsRemarks,
+                      });
                       if (error) alert("Error: " + error.message); else { alert("Status updated!"); setQsTruckId(""); setQsRemarks(""); fetchDashboardData(); }
                     }} className="space-y-5">
                       <div>
@@ -435,7 +439,7 @@ export default function Dashboard() {
                         >
                           <option value="">Select vehicle...</option>
                           {liveVehicles.map(v => (
-                            <option key={v.id} value={v.id}>
+                            <option key={v.vehicle_id} value={v.vehicle_id}>
                               {v.vehicle_number} ({v.carrying_capacity_tons}MT)
                             </option>
                           ))}
