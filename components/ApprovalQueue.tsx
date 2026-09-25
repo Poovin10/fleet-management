@@ -32,9 +32,9 @@ export function ApprovalQueue() {
  }
 
  if (qData && qData.length > 0) {
- const { data: vData } = await supabase.from('vehicles').select('id, vehicle_number');
+ const { data: vData } = await supabase.from('vehicles').select('vehicle_id, vehicle_number');
  const mappedQueue = qData.map(req => {
- const truck = vData?.find(v => v.id === req.vehicle_id);
+ const truck = vData?.find(v => v.vehicle_id === req.vehicle_id);
  return { ...req, truck_number: truck ? truck.vehicle_number : `Truck ID: ${req.vehicle_id}` };
  });
  setQueue(mappedQueue);
@@ -52,12 +52,12 @@ export function ApprovalQueue() {
  const estimatedCost = Math.round((Number(req.litres) || 0) * dieselRate);
  setApproveData({ isOpen: true, req, amount: String(estimatedCost) });
  } else {
- // It's a START_TRIP request (or similar). Just clear it by approving.
- setIsProcessing(true);
- await supabase.from('driver_pending_entries').update({ status: 'APPROVED' }).eq('entry_id', req.entry_id);
- setAlertConfig({ isOpen: true, title: "Acknowledged!", message: "Driver request cleared from queue.", type: "success" });
- setIsProcessing(false);
- fetchQueue();
+ setAlertConfig({
+ isOpen: true,
+ title: "Legacy Request",
+ message: "This request type is no longer approved from this queue. Start Trip requests are handled directly by the atomic driver workflow.",
+ type: "error"
+ });
  }
  };
 
@@ -67,32 +67,94 @@ export function ApprovalQueue() {
  if (!req || !amount) return;
 
  setIsProcessing(true);
+
  const finalCost = Number(amount);
- const actualRate = finalCost / Number(req.litres);
 
- const { error: insertError } = await supabase.from('diesel_fuel_logs').insert([{
- fuel_date: new Date().toISOString().split('T')[0], vehicle_id: req.vehicle_id, diesel_category: 'TRIP_DIESEL',
- litres_filled: Number(req.litres), diesel_rate_per_litre: actualRate, total_fuel_cost: finalCost, filling_odometer_km: req.odometer_km || 0,
- lr_number: 'SUNDRY', is_tank_full: false
- }]);
-
- if (insertError) {
- setIsProcessing(false); setApproveData({ isOpen: false, req: null, amount: "" });
- return setAlertConfig({ isOpen: true, title: "Failed", message: "Failed to save diesel log: " + insertError.message, type: "error" });
+ if (!Number.isFinite(finalCost) || finalCost <= 0) {
+ setIsProcessing(false);
+ return setAlertConfig({
+ isOpen: true,
+ title: "Invalid Amount",
+ message: "Please enter a valid diesel cost greater than zero.",
+ type: "error"
+ });
  }
 
- await supabase.from('driver_pending_entries').update({ status: 'APPROVED', amount_inr: finalCost }).eq('entry_id', req.entry_id);
+ const { error } = await supabase.rpc("approve_driver_fuel_atomic", {
+ p_entry_id: Number(req.entry_id),
+ p_final_cost: finalCost,
+ p_entered_by: "ApprovalQueue"
+ });
 
- setIsProcessing(false); setApproveData({ isOpen: false, req: null, amount: "" });
- setAlertConfig({ isOpen: true, title: "Approved!", message: "Fuel request approved and added to expenses.", type: "success" });
+ if (error) {
+ setIsProcessing(false);
+ setApproveData({ isOpen: false, req: null, amount: "" });
+
+ let title = "Fuel Approval Failed";
+ const message = error.message || "Unable to approve fuel request.";
+
+ if (message.includes("PENDING_ENTRY_ALREADY_PROCESSED")) {
+ title = "Already Processed";
+ } else if (message.includes("FUEL_ODOMETER_REQUIRED")) {
+ title = "Odometer Required";
+ } else if (message.includes("ODOMETER_MUST_INCREASE_PREVIOUS")) {
+ title = "Invalid Odometer";
+ } else if (message.includes("VEHICLE_NOT_FOUND")) {
+ title = "Vehicle Not Found";
+ } else if (message.includes("FUEL_LITRES_INVALID")) {
+ title = "Invalid Fuel Quantity";
+ }
+
+ return setAlertConfig({
+ isOpen: true,
+ title,
+ message,
+ type: "error"
+ });
+ }
+
+ setIsProcessing(false);
+ setApproveData({ isOpen: false, req: null, amount: "" });
+ setAlertConfig({
+ isOpen: true,
+ title: "Approved!",
+ message: "Fuel request approved and added to expenses.",
+ type: "success"
+ });
  fetchQueue();
  };
 
  const executeReject = async () => {
  if (!rejectId) return;
+
  setIsProcessing(true);
- await supabase.from('driver_pending_entries').update({ status: 'REJECTED' }).eq('entry_id', rejectId);
- setRejectId(null); setIsProcessing(false); fetchQueue();
+
+ const { error } = await supabase.rpc("reject_driver_pending_entry_atomic", {
+ p_entry_id: Number(rejectId),
+ p_rejection_reason: "Rejected from Approval Queue"
+ });
+
+ if (error) {
+ setIsProcessing(false);
+
+ let title = "Reject Failed";
+ const message = error.message || "Unable to reject driver request.";
+
+ if (message.includes("PENDING_ENTRY_ALREADY_PROCESSED")) {
+ title = "Already Processed";
+ }
+
+ return setAlertConfig({
+ isOpen: true,
+ title,
+ message,
+ type: "error"
+ });
+ }
+
+ setRejectId(null);
+ setIsProcessing(false);
+ fetchQueue();
  };
 
  const formatDateTime = (dateStr: string) => {
