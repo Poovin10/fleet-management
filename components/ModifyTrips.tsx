@@ -70,12 +70,12 @@ export function ModifyTrips() {
 
  const handleSearchTrips = async () => {
  setIsProcessing(true);
- const selectString = auditTruck !== "All Trucks" ? '*, trucks!inner(vehicle_number), drivers(full_name)' : '*, vehicles(vehicle_number), drivers(full_name)';
+ const selectString = auditTruck !== "All Trucks" ? '*, vehicles!inner(vehicle_number), drivers(full_name)' : '*, vehicles(vehicle_number), drivers(full_name)';
  let query = supabase.from('trips').select(selectString).order('trip_start_date', { ascending: false }).order('trip_id', { ascending: false }).limit(200);
 
  if (auditDateMode === "Specific Date") query = query.eq('trip_start_date', auditSpecificDate);
  else if (auditDateMode === "Date Range") query = query.gte('trip_start_date', auditFromDate).lte('trip_start_date', auditToDate);
- if (auditTruck !== "All Trucks") query = query.eq('trucks.vehicle_number', auditTruck);
+ if (auditTruck !== "All Trucks") query = query.eq('vehicles.vehicle_number', auditTruck);
  if (auditStatus !== "All Statuses") query = query.eq('trip_status', auditStatus);
  if (auditSearchLr) query = query.ilike('trip_number', `%${auditSearchLr}%`);
 
@@ -104,42 +104,105 @@ export function ModifyTrips() {
  const handleUpdateTrip = (e: React.FormEvent) => {
  e.preventDefault();
  if (!currentTrip) return;
- triggerModal("Update Trip & Sync Ledgers", `Save modifications for Trip #${currentTrip.trip_number}?`, false, "Save & Sync", async () => {
- setIsProcessing(true);
- let currentDieselRate = 95.0;
- if (currentTrip.fuel_litres && currentTrip.fuel_expense) currentDieselRate = currentTrip.fuel_expense / currentTrip.fuel_litres;
- else {
- const { data: dData } = await supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).limit(1);
- if (dData && dData.length > 0) currentDieselRate = Number(dData[0].diesel_rate_per_litre);
- }
- const newFuelCost = Math.round((Number(dieselL) || 0) * currentDieselRate * 100) / 100;
- const finalStart = startKm !== "" ? Number(startKm) : 0; const finalEnd = endKm !== "" ? Number(endKm) : 0; const totalKm = finalEnd > finalStart ? finalEnd - finalStart : 0;
 
- const updatePayload = {
- trip_number: tripNumber.toUpperCase().trim(), trip_start_date: startDate || null, origin: origin.toUpperCase().trim(), destination: destination.toUpperCase().trim(),
- primary_driver_id: driverId ? Number(driverId) : null, tonnage_loaded: tonnage !== "" ? Number(tonnage) : null, freight_revenue: grossFreight,
- fuel_litres: dieselL !== "" ? Number(dieselL) : null, fuel_expense: newFuelCost, is_tank_full: isTankFull, start_km: finalStart || null, end_km: finalEnd || null, total_km_run: totalKm || null,
- driver_bata: driverBata !== "" ? Number(driverBata) : null, cash_advance_issued: advanceIssued !== "" ? Number(advanceIssued) : null, trip_status: status,
- trip_end_date: endDate || null, unloaded_weight_mt: unloadedMt !== "" ? Number(unloadedMt) : null, halt_bata: haltBata !== "" ? Number(haltBata) : null,
+ triggerModal(
+   "Update Trip & Sync Ledgers",
+   `Save modifications for Trip #${currentTrip.trip_number}?`,
+   false,
+   "Save & Sync",
+   async () => {
+     setIsProcessing(true);
+
+     const normalizedTripNumber = tripNumber.toUpperCase().trim();
+     const normalizedOrigin = origin.toUpperCase().trim();
+     const normalizedDestination = destination.toUpperCase().trim();
+
+     let currentDieselRate = 95.0;
+
+     if (currentTrip.fuel_litres && currentTrip.fuel_expense) {
+       currentDieselRate =
+         Number(currentTrip.fuel_expense) / Number(currentTrip.fuel_litres);
+     } else {
+       const { data: dData } = await supabase
+         .from("diesel_fuel_logs")
+         .select("diesel_rate_per_litre")
+         .order("fuel_date", { ascending: false })
+         .limit(1);
+
+       if (dData && dData.length > 0) {
+         currentDieselRate = Number(dData[0].diesel_rate_per_litre);
+       }
+     }
+
+     const finalDieselLitres = Number(dieselL) || 0;
+     const newFuelCost = Math.round(
+       finalDieselLitres * currentDieselRate * 100
+     ) / 100;
+
+     const payload = {
+       trip_number: normalizedTripNumber,
+       trip_start_date: startDate || null,
+       trip_end_date: endDate || null,
+       origin: normalizedOrigin,
+       destination: normalizedDestination,
+       primary_driver_id: driverId ? Number(driverId) : null,
+       tonnage_loaded: tonnage !== "" ? Number(tonnage) : null,
+       freight_revenue: grossFreight,
+       driver_bata: driverBata !== "" ? Number(driverBata) : 0,
+       cash_advance_issued:
+         advanceIssued !== "" ? Number(advanceIssued) : 0,
+       trip_status: status,
+       unloaded_weight_mt:
+         unloadedMt !== "" ? Number(unloadedMt) : 0,
+       halt_bata: haltBata !== "" ? Number(haltBata) : 0,
+
+       fuel_litres: finalDieselLitres,
+       fuel_expense: newFuelCost,
+       diesel_rate_per_litre: currentDieselRate,
+       fuel_date: startDate || new Date().toISOString().split("T")[0],
+       diesel_category: "TRIP_DIESEL",
+       lr_number: normalizedTripNumber || "SUNDRY",
+       fuel_station_vendor: null,
+       fuel_remarks: null,
+       is_tank_full: isTankFull
+     };
+
+     const { error } = await supabase.rpc("modify_trip_atomic", {
+       p_trip_id: Number(currentTrip.trip_id),
+       p_payload: payload
+     });
+
+     if (error) {
+       const message = error.message || "";
+
+       if (message.includes("TRIP_VEHICLE_REQUIRED")) {
+         alert(
+           "This historical trip has no assigned vehicle and cannot be modified in the new integrity workflow."
+         );
+       } else if (
+         message.includes("FUEL_RECORD_REQUIRED_USE_FUEL_ADVANCE")
+       ) {
+         alert(
+           "No fuel record exists for this trip. Please create the fuel entry through Fuel Advance before modifying diesel details."
+         );
+       } else {
+         alert("Trip update blocked: " + message);
+       }
+
+       setIsProcessing(false);
+       closeModal();
+       return;
+     }
+
+     await handleSearchTrips();
+     clearForm();
+     setIsProcessing(false);
+     closeModal();
+   }
+ );
  };
 
- const { error } = await supabase.from('trips').update(updatePayload).eq('trip_id', currentTrip.trip_id);
- if (error) { alert("Error updating trip: " + error.message); setIsProcessing(false); closeModal(); return; }
 
- if (Number(dieselL) > 0) {
- const { data: existingLogs } = await supabase.from('diesel_fuel_logs').select('fuel_log_id').eq('trip_id', currentTrip.trip_id);
- if (existingLogs && existingLogs.length > 0) {
- await supabase.from('diesel_fuel_logs').update({ litres_filled: Number(dieselL), total_fuel_cost: newFuelCost, diesel_rate_per_litre: currentDieselRate, lr_number: tripNumber.toUpperCase().trim(), fuel_date: startDate || new Date().toISOString().split('T')[0], is_tank_full: isTankFull, filling_odometer_km: finalStart }).eq('fuel_log_id', existingLogs[0].fuel_log_id);
- if (existingLogs.length > 1) { const extraIds = existingLogs.slice(1).map((l: any) => l.fuel_log_id); await supabase.from('diesel_fuel_logs').delete().in('fuel_log_id', extraIds); }
- } else {
- await supabase.from('diesel_fuel_logs').insert([{ fuel_date: startDate || new Date().toISOString().split('T')[0], vehicle_id: currentTrip.id, trip_id: currentTrip.trip_id, lr_number: tripNumber.toUpperCase().trim(), diesel_category: "TRIP_DIESEL", litres_filled: Number(dieselL), diesel_rate_per_litre: currentDieselRate, total_fuel_cost: newFuelCost, filling_odometer_km: finalStart, is_tank_full: isTankFull }]);
- }
- } else {
- await supabase.from('diesel_fuel_logs').delete().eq('trip_id', currentTrip.trip_id);
- }
- await handleSearchTrips(); clearForm(); setIsProcessing(false); closeModal();
- });
- };
 
  return (
  <div className="space-y-6 animate-in fade-in duration-300">
@@ -155,7 +218,7 @@ export function ModifyTrips() {
  <div className="py-12 text-center border-2 border-dashed border-border rounded-lg kss-surface-raised"><p className="text-fg-secondary font-bold text-sm">Select a trip from the Search & Audit Log below to modify its details.</p></div>
  ) : (
  <form onSubmit={handleUpdateTrip} className="space-y-5 animate-in slide-in-from-bottom-4">
- <div className="flex flex-wrap gap-4 bg-success-soft p-3 rounded-lg border border-success/20"><span className="text-xs text-success font-bold tracking-wider">Self-Healing Sync: Hitting save will automatically repair any missing Fuel Audit logs.</span></div>
+ <div className="flex flex-wrap gap-4 bg-success-soft p-3 rounded-lg border border-success/20"><span className="text-xs text-success font-bold tracking-wider">Integrity Sync: Save validates trip and fuel records atomically. Missing fuel records must be created through Fuel Advance.</span></div>
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">LR Number</label><Input type="text" value={tripNumber} onChange={e => setTripNumber(e.target.value)} className="text-fg font-bold" /></div>
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Dispatch Date</label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-fg font-bold" /></div>
@@ -173,8 +236,8 @@ export function ModifyTrips() {
  </div>
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
  <div><div className="flex justify-between items-end mb-1"><label className="block text-[10px] font-bold text-fg-secondary">Diesel Issued (L)</label><label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="w-3 h-3 rounded text-accent focus:ring-accent bg-surface-raised border-border" /><span className="text-[9px] font-semibold text-fg">Tank Full</span></label></div><Input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Start KM</label><Input type="number" value={startKm} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">End KM</label><Input type="number" value={endKm} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold" /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Start KM</label><Input type="number" value={startKm} disabled={!!currentTrip} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold disabled:opacity-60 disabled:cursor-not-allowed" /></div>
+ <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">End KM</label><Input type="number" value={endKm} disabled={!!currentTrip} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold disabled:opacity-60 disabled:cursor-not-allowed" /></div>
  </div>
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
  <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Driver Bata ()</label><Input type="number" value={driverBata} onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" /></div>
