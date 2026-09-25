@@ -64,6 +64,7 @@ export function TripForm() {
   const [startKmError, setStartKmError] = useState("");
   const [lastDriverId, setLastDriverId] = useState<string>("");
   const [dieselRateSource, setDieselRateSource] = useState("");
+  const [reviewWarnings, setReviewWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchFormContext() {
@@ -397,41 +398,159 @@ export function TripForm() {
 
   const handleReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true); setSuccess(false);
+    setLoading(true);
+    setSuccess(false);
+    setReviewWarnings([]);
 
-    if (Number(startKm) < 0 || Number(tonnage) < 0 || Number(freightRevenue) < 0 || Number(driverBata) < 0 || Number(advance) < 0 || Number(dieselIssued) < 0 || Number(dieselRate) < 0) {
-      alert("SECURITY BLOCK: Negative values are strictly prohibited."); setLoading(false); return;
+    const normalizedLr = lrNumber.toUpperCase().trim();
+    const normalizedSource = source.toUpperCase().trim();
+    const normalizedDestination = destination.toUpperCase().trim();
+
+    // ------------------------------------------------------------
+    // STAGE 5 — APPLICATION-LEVEL REQUIRED FIELD GATE
+    // Browser `required` attributes remain useful for UX, but
+    // critical business validation must also happen here.
+    // ------------------------------------------------------------
+    const hardErrors: string[] = [];
+
+    if (!tripDate) hardErrors.push("Trip date is required.");
+    if (!normalizedLr) hardErrors.push("LR Number is required.");
+    if (!truckId) hardErrors.push("Truck selection is required.");
+    if (!normalizedSource) hardErrors.push("Origin is required.");
+    if (!normalizedDestination) hardErrors.push("Destination is required.");
+
+    if (driverMode === "select") {
+      if (!driverId) {
+        hardErrors.push("Driver selection is required.");
+      }
+    } else {
+      if (!newDriverName.trim()) hardErrors.push("New driver name is required.");
+      if (!newDriverPhone.trim()) hardErrors.push("New driver phone is required.");
     }
 
-    if (tonnageError) {
-      alert(`SECURITY BLOCK: ${tonnageError}`);
-      setLoading(false);
-      return;
-    }
-    if (startKmError) {
-      alert(`SECURITY BLOCK: ${startKmError}`);
-      setLoading(false);
-      return;
-    }
+    const numericFields: Array<[string, string, boolean]> = [
+      ["Tonnage", tonnage, false],
+      ["Freight", freightRevenue, true],
+      ["Bata", driverBata, true],
+      ["Advance", advance, true],
+      ["Diesel quantity", dieselIssued, true],
+      ["Diesel rate", dieselRate, true],
+      ["Starting KM", startKm, false],
+    ];
 
-    if (!startKm || Number(startKm) <= 0) {
-      alert("SECURITY BLOCK: Starting KM must be greater than 0.");
-      setLoading(false);
-      return;
-    }
+    for (const [label, rawValue, allowZero] of numericFields) {
+      if (rawValue === "" || rawValue === null || rawValue === undefined) {
+        hardErrors.push(`${label} is required.`);
+        continue;
+      }
 
-    if (previousKm !== null && Number(startKm) <= previousKm) {
-      alert(`SECURITY BLOCK: Starting KM (${startKm}) must be strictly LARGER than the previous authoritative odometer (${previousKm}).`);
-      setLoading(false);
-      return;
-    }
-    if (lrNumber) {
-      const { data: existingLR } = await supabase.from("trips").select("trip_number").eq("trip_number", lrNumber.toUpperCase().trim()).maybeSingle();
-      if (existingLR) {
-        alert(`SECURITY BLOCK: The LR Number "${lrNumber}" already exists.`); setLoading(false); return;
+      const value = Number(rawValue);
+
+      if (!Number.isFinite(value)) {
+        hardErrors.push(`${label} must be a valid number.`);
+        continue;
+      }
+
+      if (allowZero ? value < 0 : value <= 0) {
+        hardErrors.push(
+          allowZero
+            ? `${label} cannot be negative.`
+            : `${label} must be greater than 0.`
+        );
       }
     }
 
+    if (tripDate && !/^\d{4}-\d{2}-\d{2}$/.test(tripDate)) {
+      hardErrors.push("Trip date is invalid.");
+    }
+
+    if (normalizedLr && !/^[A-Z0-9]+$/.test(normalizedLr)) {
+      hardErrors.push("LR Number may contain only letters and numbers.");
+    }
+
+    if (tonnageError) {
+      hardErrors.push(tonnageError);
+    }
+
+    if (startKmError) {
+      hardErrors.push(startKmError);
+    }
+
+    if (previousKm !== null && Number(startKm) <= previousKm) {
+      hardErrors.push(
+        `Starting KM (${startKm}) must be strictly greater than the authoritative odometer (${previousKm}).`
+      );
+    }
+
+    if (hardErrors.length > 0) {
+      setLoading(false);
+      alert(
+        "DISPATCH BLOCKED:\n\n" +
+        hardErrors.map((error, index) => `${index + 1}. ${error}`).join("\n")
+      );
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // DUPLICATE LR CHECK
+    // ------------------------------------------------------------
+    const { data: existingLR, error: lrCheckError } = await supabase
+      .from("trips")
+      .select("trip_number")
+      .eq("trip_number", normalizedLr)
+      .maybeSingle();
+
+    if (lrCheckError) {
+      setLoading(false);
+      alert("Unable to verify LR uniqueness. Please try again.");
+      return;
+    }
+
+    if (existingLR) {
+      setLoading(false);
+      alert(`SECURITY BLOCK: The LR Number "${normalizedLr}" already exists.`);
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // STAGE 5 — ANOMALY / EXPLICIT CONFIRMATION GATE
+    // ------------------------------------------------------------
+    const warnings: string[] = [];
+
+    if (tonnageAnomaly) {
+      warnings.push(tonnageAnomaly);
+    }
+
+    if (freightManualOverride) {
+      const masterCalculated =
+        freightMasterRate !== null
+          ? Number((Number(tonnage) * freightMasterRate).toFixed(2))
+          : null;
+
+      if (masterCalculated !== null) {
+        warnings.push(
+          `Freight override: entered ₹${Number(freightRevenue).toLocaleString("en-IN")} differs from master-calculated ₹${masterCalculated.toLocaleString("en-IN")}.`
+        );
+      } else {
+        warnings.push("Freight has been manually overridden because no matching master rate is active.");
+      }
+    } else if (freightMasterRate === null) {
+      warnings.push("No matching freight master found. Freight is being entered manually.");
+    }
+
+    if (bataManualOverride) {
+      if (bataMasterAmount !== null) {
+        warnings.push(
+          `Bata override: entered ₹${Number(driverBata).toLocaleString("en-IN")} differs from master Bata ₹${bataMasterAmount.toLocaleString("en-IN")}.`
+        );
+      } else {
+        warnings.push("Bata has been manually overridden because no matching master amount is active.");
+      }
+    } else if (bataMasterAmount === null) {
+      warnings.push("No matching Bata master found. Bata is being entered manually.");
+    }
+
+    setReviewWarnings(warnings);
     setLoading(false);
     setShowConfirm(true);
   };
@@ -509,10 +628,29 @@ export function TripForm() {
                 <span className="text-fg-secondary uppercase tracking-wider font-bold">Expected Margin:</span>
                 <span className="text-fg font-bold">₹{netMargin.toLocaleString('en-IN')}</span>
               </div>
-              {tonnageAnomaly && (
+              {reviewWarnings.length > 0 && (
                 <div className="mt-3 p-3 rounded-xl bg-warning-soft border border-warning/30">
-                  <p className="text-[10px] font-bold text-warning uppercase tracking-wider">Load Anomaly — Confirmation Required</p>
-                  <p className="text-[10px] text-fg-secondary mt-1">{tonnageAnomaly}</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-bold text-warning uppercase tracking-wider">
+                      Review Required
+                    </p>
+                    <span className="text-[9px] font-bold text-warning">
+                      {reviewWarnings.length} item{reviewWarnings.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 space-y-1.5">
+                    {reviewWarnings.map((warning, index) => (
+                      <div key={`${warning}-${index}`} className="flex gap-2 text-[10px] text-fg-secondary">
+                        <span className="text-warning font-bold shrink-0">🟠</span>
+                        <span>{warning}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-[9px] text-fg-muted mt-3 pt-2 border-t border-warning/20">
+                    Confirm these anomalies before dispatch. Normal values require no additional action.
+                  </p>
                 </div>
               )}
             </div>
