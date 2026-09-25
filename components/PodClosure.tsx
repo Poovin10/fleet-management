@@ -165,90 +165,113 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  };
 
  const handleSettlePod = async (e: React.FormEvent) => {
- e.preventDefault();
- if (!currentTrip || !podNo.trim()) return setAlertConfig({ isOpen: true, title: "Missing Information", message: "Please enter a valid POD Number to proceed.", type: "error" });
+   e.preventDefault();
 
- setIsSubmitting(true);
- const loadedMt = Number(currentTrip.loaded_weight_mt) || 0;
- const finalUnloadedMt = unloadedMt === "" ? null : Number(unloadedMt);
- const scannedShortageMt = scannedShortageKg !== null ? scannedShortageKg / 1000 : null;
- const shortageMt = finalUnloadedMt !== null
-   ? Math.max(0, loadedMt - finalUnloadedMt)
-   : Math.max(0, scannedShortageMt ?? 0);
-
- const endKm = Number(closingKm) || 0;
-
- const addDiesel = Number(closingDiesel) || 0;
- const addedDieselCost = Math.round(addDiesel * dieselRate * 100) / 100;
-
- if (addDiesel > 0 && endKm <= 0) {
-   setIsSubmitting(false);
-   return setAlertConfig({
-     isOpen: true,
-     title: "Odometer Required",
-     message: "Please enter the filling odometer KM when recording a diesel top-up.",
-     type: "error"
-   });
- }
-
- const { data: closedTrips, error: tripUpdateError } = await supabase.from("trips").update({
- pod_number: podNo.trim().toUpperCase(),
- pod_received_date: closingDate,
- pod_status: "VERIFIED_ACCEPTED",
- shortage_mt: shortageMt,
- halt_bata: Number(haltBata) || 0,
- enroute_repairs_maintenance: Number(claims) || 0,
- fuel_litres: (Number(currentTrip.fuel_litres) || 0) + addDiesel
- }).eq("trip_id", currentTrip.trip_id).eq("pod_status", "PENDING_SUBMISSION")
-   .select("trip_id, pod_status, trip_status");
-
- if (tripUpdateError) {
-   setIsSubmitting(false);
-   return setAlertConfig({
-     isOpen: true,
-     title: "POD Update Failed",
-     message: "Error updating POD: " + tripUpdateError.message,
-     type: "error"
-   });
- }
-
- if (!closedTrips || closedTrips.length !== 1) {
-   setIsSubmitting(false);
-   return setAlertConfig({
-     isOpen: true,
-     title: "POD Already Processed",
-     message: "This POD was already closed or is no longer pending. Please refresh the pending POD list.",
-     type: "error"
-   });
- }
-
- if (addDiesel > 0) {
-   const { error: dieselError } = await supabase.from("diesel_fuel_logs").insert([{
-     fuel_date: closingDate,
-     vehicle_id: currentTrip.vehicle_id,
-     trip_id: currentTrip.trip_id,
-     lr_number: currentTrip.trip_number,
-     diesel_category: "TRIP_DIESEL",
-     litres_filled: addDiesel,
-     diesel_rate_per_litre: dieselRate,
-     total_fuel_cost: addedDieselCost,
-     filling_odometer_km: endKm,
-     is_tank_full: isTankFull
-   }]);
-
-   if (dieselError) {
-     console.error("Diesel log insertion failed after trip closure:", dieselError);
+   if (!currentTrip || !podNo.trim()) {
+     return setAlertConfig({
+       isOpen: true,
+       title: "Missing Information",
+       message: "Please enter a valid POD Number to proceed.",
+       type: "error"
+     });
    }
- }
 
- if (activeScanId) {
- await supabase.from("pending_scans").update({ status: 'PROCESSED' }).eq("scan_id", activeScanId);
- setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId)); 
- setActiveScanId(null);
- }
+   setIsSubmitting(true);
 
- setAlertConfig({ isOpen: true, title: "POD Settled!", message: `POD for ${currentTrip.trip_number} successfully recorded and settled.`, type: "success" });
- setIsSubmitting(false); setSelectedLr(""); setPodNo(""); setCurrentTrip(null); setScannedShortageKg(null); fetchActiveTrips(); if (onSuccess) onSuccess();
+   const loadedMt = Number(currentTrip.loaded_weight_mt) || 0;
+   const finalUnloadedMt = unloadedMt === "" ? null : Number(unloadedMt);
+   const scannedShortageMt =
+     scannedShortageKg !== null ? scannedShortageKg / 1000 : null;
+
+   const shortageMt =
+     finalUnloadedMt !== null
+       ? Math.max(0, loadedMt - finalUnloadedMt)
+       : Math.max(0, scannedShortageMt ?? 0);
+
+   const addDiesel = Number(closingDiesel) || 0;
+   const fillingOdometerKm = Number(closingKm) || 0;
+
+   if (addDiesel > 0 && fillingOdometerKm <= 0) {
+     setIsSubmitting(false);
+
+     return setAlertConfig({
+       isOpen: true,
+       title: "Odometer Required",
+       message:
+         "Please enter the filling odometer KM when recording a diesel top-up.",
+       type: "error"
+     });
+   }
+
+   const { error } = await supabase.rpc("close_pod_atomic", {
+     p_trip_id: Number(currentTrip.trip_id),
+     p_pod_number: podNo.trim().toUpperCase(),
+     p_closing_date: closingDate,
+     p_unloaded_weight_mt: finalUnloadedMt,
+     p_shortage_mt: shortageMt,
+     p_halt_bata: Number(haltBata) || 0,
+     p_claims: Number(claims) || 0,
+     p_add_diesel: addDiesel,
+     p_diesel_rate_per_litre: dieselRate,
+     p_filling_odometer_km:
+       addDiesel > 0 ? fillingOdometerKm : null,
+     p_is_tank_full: isTankFull,
+     p_scan_id: activeScanId || null
+   });
+
+   if (error) {
+     setIsSubmitting(false);
+
+     const message = error.message || "Unable to settle POD.";
+     let title = "POD Settlement Failed";
+
+     if (message.includes("POD_ALREADY_PROCESSED")) {
+       title = "POD Already Processed";
+     } else if (message.includes("TRIP_VEHICLE_REQUIRED")) {
+       title = "Vehicle Required";
+     } else if (message.includes("FUEL_ODOMETER_REQUIRED")) {
+       title = "Odometer Required";
+     } else if (message.includes("ODOMETER_MUST_INCREASE_PREVIOUS")) {
+       title = "Invalid Odometer";
+     } else if (message.includes("FUEL_RATE_INVALID")) {
+       title = "Invalid Diesel Rate";
+     } else if (
+       message.includes("UNLOADED_WEIGHT_EXCEEDS_LOADED_WEIGHT")
+     ) {
+       title = "Invalid Unloaded Weight";
+     }
+
+     return setAlertConfig({
+       isOpen: true,
+       title,
+       message: message.replace(/^.*?:\s*/, ""),
+       type: "error"
+     });
+   }
+
+   if (activeScanId) {
+     setPendingScans(prev =>
+       prev.filter(s => s.scan_id !== activeScanId)
+     );
+     setActiveScanId(null);
+   }
+
+   setAlertConfig({
+     isOpen: true,
+     title: "POD Settled!",
+     message:
+       `POD for ${currentTrip.trip_number} successfully recorded and settled.`,
+     type: "success"
+   });
+
+   setIsSubmitting(false);
+   setSelectedLr("");
+   setPodNo("");
+   setCurrentTrip(null);
+   setScannedShortageKg(null);
+   fetchActiveTrips();
+
+   if (onSuccess) onSuccess();
  };
 
  const filteredPodTrips = activeTrips.filter((t: any) => {
