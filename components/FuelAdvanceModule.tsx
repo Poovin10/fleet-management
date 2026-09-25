@@ -28,6 +28,27 @@ export function FuelAdvanceModule() {
  const [vehicles, setVehicles] = useState<any[]>([]);
  const [dieselRate, setDieselRate] = useState<number>(95.0);
  const [recentFuelLogs, setRecentFuelLogs] = useState<any[]>([]);
+ const [adblueLogs, setAdblueLogs] = useState<any[]>([]);
+ const [adblueVendors, setAdblueVendors] = useState<any[]>([]);
+ const [adblueSearch, setAdblueSearch] = useState("");
+ const [adblueEditId, setAdblueEditId] = useState<number | null>(null);
+ const [adblueDate, setAdblueDate] = useState(new Date().toISOString().split('T')[0]);
+ const [adblueVehicleId, setAdblueVehicleId] = useState("");
+ const [adblueTripId, setAdblueTripId] = useState("");
+ const [adblueLrNo, setAdblueLrNo] = useState("");
+ const [adblueLitres, setAdblueLitres] = useState<number | "">("");
+ const [adblueRate, setAdblueRate] = useState<number | "">("");
+ const [adblueFillingKm, setAdblueFillingKm] = useState<number | "">("");
+ const [adblueCurrentOdometer, setAdblueCurrentOdometer] = useState<number | null>(null);
+ const [adblueFillingKmError, setAdblueFillingKmError] = useState("");
+ const [adblueVendorId, setAdblueVendorId] = useState("");
+ const [adbluePaymentMode, setAdbluePaymentMode] = useState("CASH");
+ const [adblueInvoiceNumber, setAdblueInvoiceNumber] = useState("");
+ const [adblueDueDate, setAdblueDueDate] = useState("");
+ const [adbluePaymentReference, setAdbluePaymentReference] = useState("");
+ const [adblueIsTankFull, setAdblueIsTankFull] = useState(false);
+ const [adblueRemarks, setAdblueRemarks] = useState("");
+
  
  // Search States
  const [recentSearch, setRecentSearch] = useState("");
@@ -75,16 +96,26 @@ export function FuelAdvanceModule() {
 
  const fetchData = async () => {
  setIsLoading(true);
- const [vehRes, fuelRes, dieselRateRes, scansRes] = await Promise.all([
+ const [vehRes, fuelRes, dieselRateRes, scansRes, adblueRes, vendorRes] = await Promise.all([
  supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number'),
  supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(200),
  supabase.from('diesel_fuel_logs').select('diesel_rate_per_litre').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(1),
- supabase.from("pending_scans").select("*").eq("document_type", "FUEL_SLIP").eq("status", "PENDING").order("created_at", { ascending: false })
+ supabase.from("pending_scans").select("*").eq("document_type", "FUEL_SLIP").eq("status", "PENDING").order("created_at", { ascending: false }),
+ supabase.from('adblue_logs').select('*, vehicles(vehicle_number), vendors(vendor_name, vendor_type)').order('adblue_date', { ascending: false }).order('adblue_log_id', { ascending: false }).limit(200),
+ supabase.from('vendors').select('*').eq('is_active', true).order('vendor_name')
  ]);
 
  if (vehRes.data) setVehicles(vehRes.data);
  if (fuelRes.data) setRecentFuelLogs(fuelRes.data);
  if (scansRes.data) setPendingScans(scansRes.data);
+ if (adblueRes.data) setAdblueLogs(adblueRes.data);
+ if (vendorRes.data) {
+   setAdblueVendors(
+     vendorRes.data.filter((v: any) =>
+       ["ADBLUE", "GENERAL"].includes(String(v.vendor_type || "").toUpperCase())
+     )
+   );
+ }
 
  if (dieselRateRes.data && dieselRateRes.data.length > 0 && dieselRateRes.data[0].diesel_rate_per_litre) {
  const latestRate = Number(dieselRateRes.data[0].diesel_rate_per_litre);
@@ -132,6 +163,34 @@ export function FuelAdvanceModule() {
 
  fetchCurrentOdometer();
  }, [fVehicleId, supabase]);
+
+ useEffect(() => {
+   if (!adblueVehicleId) {
+     setAdblueCurrentOdometer(null);
+     setAdblueFillingKmError("");
+     return;
+   }
+
+   const fetchAdblueOdometer = async () => {
+     const { data, error } = await supabase.rpc(
+       "get_vehicle_current_odometer",
+       { p_vehicle_id: Number(adblueVehicleId) }
+     );
+
+     if (error) {
+       console.error("Failed to fetch authoritative AdBlue odometer:", error);
+       setAdblueCurrentOdometer(null);
+       setAdblueFillingKmError("Unable to verify the truck's current odometer.");
+       return;
+     }
+
+     const odo = Number(data || 0);
+     setAdblueCurrentOdometer(odo > 0 ? odo : null);
+     setAdblueFillingKmError("");
+   };
+
+   fetchAdblueOdometer();
+ }, [adblueVehicleId, supabase]);
 
  const clearFuelForm = () => {
  setEditLogId(null); setEditTripId(null); setFDate(new Date().toISOString().split('T')[0]);
@@ -268,6 +327,260 @@ export function FuelAdvanceModule() {
  });
  };
 
+ const clearAdblueForm = () => {
+   setAdblueEditId(null);
+   setAdblueDate(new Date().toISOString().split('T')[0]);
+   setAdblueVehicleId("");
+   setAdblueTripId("");
+   setAdblueLrNo("");
+   setAdblueLitres("");
+   setAdblueRate("");
+   setAdblueFillingKm("");
+   setAdblueCurrentOdometer(null);
+   setAdblueFillingKmError("");
+   setAdblueVendorId("");
+   setAdbluePaymentMode("CASH");
+   setAdblueInvoiceNumber("");
+   setAdblueDueDate("");
+   setAdbluePaymentReference("");
+   setAdblueIsTankFull(false);
+   setAdblueRemarks("");
+ };
+
+ const handleEditAdblue = (log: any) => {
+   setFaNav(" AdBlue");
+   setAdblueEditId(Number(log.adblue_log_id));
+   setAdblueDate(log.adblue_date || "");
+   setAdblueVehicleId(String(log.vehicle_id || ""));
+   setAdblueTripId(log.trip_id ? String(log.trip_id) : "");
+   setAdblueLrNo(log.lr_number || "");
+   setAdblueLitres(log.litres_filled ?? "");
+   setAdblueRate(log.adblue_rate_per_litre ?? "");
+   setAdblueFillingKm(log.filling_odometer_km ?? "");
+   setAdblueVendorId(log.vendor_id ? String(log.vendor_id) : "");
+   setAdbluePaymentMode("CASH");
+   setAdblueInvoiceNumber("");
+   setAdblueDueDate("");
+   setAdbluePaymentReference("");
+   setAdblueIsTankFull(Boolean(log.is_tank_full));
+   setAdblueRemarks(log.remarks || "");
+   window.scrollTo({ top: 0, behavior: "smooth" });
+ };
+
+ const handleSaveAdblue = (e: React.FormEvent) => {
+   e.preventDefault();
+
+   const litres = Number(adblueLitres);
+   const rate = Number(adblueRate);
+   const fillingKm = Number(adblueFillingKm);
+   const vendorId = adblueVendorId ? Number(adblueVendorId) : null;
+   const tripId = adblueTripId ? Number(adblueTripId) : null;
+   const paymentMode = adbluePaymentMode.toUpperCase();
+
+   if (!adblueVehicleId) {
+     alert("Please select a truck.");
+     return;
+   }
+
+   if (!adblueDate) {
+     alert("Please select the AdBlue date.");
+     return;
+   }
+
+   if (!Number.isFinite(litres) || litres <= 0) {
+     alert("AdBlue litres must be greater than zero.");
+     return;
+   }
+
+   if (!Number.isFinite(rate) || rate <= 0) {
+     alert("AdBlue rate must be greater than zero.");
+     return;
+   }
+
+   if (!adblueEditId) {
+     if (!Number.isFinite(fillingKm) || fillingKm <= 0) {
+       alert("Please enter a valid Filling KM greater than zero.");
+       return;
+     }
+
+     if (
+       adblueCurrentOdometer !== null &&
+       fillingKm <= adblueCurrentOdometer
+     ) {
+       alert(
+         `Filling KM must be greater than the authoritative odometer (${adblueCurrentOdometer} km).`
+       );
+       return;
+     }
+   }
+
+   if (!adblueEditId && paymentMode === "CREDIT") {
+     if (!vendorId) {
+       alert("Vendor is required for a credit AdBlue purchase.");
+       return;
+     }
+
+     if (!adblueInvoiceNumber.trim()) {
+       alert("Invoice number is required for a credit AdBlue purchase.");
+       return;
+     }
+
+     if (!adblueDueDate) {
+       alert("Due date is required for a credit AdBlue purchase.");
+       return;
+     }
+   }
+
+   if (adblueEditId && paymentMode === "CREDIT") {
+     alert("Payment mode cannot be changed while editing an existing AdBlue record.");
+     return;
+   }
+
+   const estimatedCost =
+     Math.round(litres * rate * 100) / 100;
+
+   triggerModal(
+     adblueEditId ? "Update AdBlue Record" : "Record AdBlue Purchase",
+     adblueEditId
+       ? "Update the editable AdBlue details? Vehicle, trip and authoritative odometer remain protected."
+       : paymentMode === "CREDIT"
+         ? `Record ${litres} L of AdBlue for ₹${estimatedCost.toLocaleString("en-IN", { minimumFractionDigits: 2 })} on vendor credit?`
+         : `Record ${litres} L of AdBlue for ₹${estimatedCost.toLocaleString("en-IN", { minimumFractionDigits: 2 })}?`,
+     false,
+     adblueEditId ? "Update Record" : "Record AdBlue",
+     async () => {
+       setIsProcessing(true);
+
+       try {
+         if (adblueEditId) {
+           const { error } = await supabase.rpc(
+             "update_adblue_atomic",
+             {
+               p_adblue_log_id: adblueEditId,
+               p_adblue_date: adblueDate,
+               p_litres_filled: litres,
+               p_adblue_rate_per_litre: rate,
+               p_vendor_id: vendorId,
+               p_lr_number: adblueLrNo.trim().toUpperCase() || null,
+               p_is_tank_full: adblueIsTankFull,
+               p_remarks: adblueRemarks.trim() || null
+             }
+           );
+
+           if (error) {
+             alert("Error: " + error.message);
+             return;
+           }
+         } else if (paymentMode === "CREDIT") {
+           const { error } = await supabase.rpc(
+             "record_adblue_credit_atomic",
+             {
+               p_vehicle_id: Number(adblueVehicleId),
+               p_adblue_date: adblueDate,
+               p_litres_filled: litres,
+               p_adblue_rate_per_litre: rate,
+               p_filling_odometer_km: fillingKm,
+               p_vendor_id: vendorId,
+               p_trip_id: tripId,
+               p_lr_number: adblueLrNo.trim().toUpperCase() || null,
+               p_invoice_number: adblueInvoiceNumber.trim() || null,
+               p_due_date: adblueDueDate || null,
+               p_is_tank_full: adblueIsTankFull,
+               p_remarks: adblueRemarks.trim() || null,
+               p_created_by: "FuelAdvanceModule",
+               p_reading_at: new Date().toISOString()
+             }
+           );
+
+           if (error) {
+             alert("Error: " + error.message);
+             return;
+           }
+         } else {
+           const { error } = await supabase.rpc(
+             "record_adblue_filling_atomic",
+             {
+               p_vehicle_id: Number(adblueVehicleId),
+               p_adblue_date: adblueDate,
+               p_litres_filled: litres,
+               p_adblue_rate_per_litre: rate,
+               p_filling_odometer_km: fillingKm,
+               p_vendor_id: vendorId,
+               p_trip_id: tripId,
+               p_lr_number: adblueLrNo.trim().toUpperCase() || null,
+               p_is_tank_full: adblueIsTankFull,
+               p_remarks:
+                 [
+                   adblueRemarks.trim(),
+                   adbluePaymentReference.trim()
+                     ? `Payment Ref: ${adbluePaymentReference.trim()}`
+                     : ""
+                 ]
+                   .filter(Boolean)
+                   .join(" | ") || null,
+               p_reading_at: new Date().toISOString(),
+               p_entered_by: "FuelAdvanceModule"
+             }
+           );
+
+           if (error) {
+             alert("Error: " + error.message);
+             return;
+           }
+         }
+
+         clearAdblueForm();
+         await fetchData();
+         closeModal();
+       } catch (err: any) {
+         alert(
+           "Unexpected error: " +
+             (err?.message || String(err))
+         );
+       } finally {
+         setIsProcessing(false);
+       }
+     }
+   );
+ };
+
+ const handleDeleteAdblue = (id: number) => {
+   triggerModal(
+     "Delete AdBlue Record",
+     "This can only be deleted when no later authoritative odometer event exists for this truck.",
+     true,
+     "Delete Record",
+     async () => {
+       setIsProcessing(true);
+
+       try {
+         const { error } = await supabase.rpc(
+           "delete_adblue_atomic",
+           {
+             p_adblue_log_id: Number(id)
+           }
+         );
+
+         if (error) {
+           alert("Error: " + error.message);
+           return;
+         }
+
+         clearAdblueForm();
+         await fetchData();
+         closeModal();
+       } catch (err: any) {
+         alert(
+           "Unexpected error: " +
+             (err?.message || String(err))
+         );
+       } finally {
+         setIsProcessing(false);
+       }
+     }
+   );
+ };
+
  const handleRunAudit = async () => {
  setIsProcessing(true);
  let query = supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false });
@@ -361,7 +674,7 @@ export function FuelAdvanceModule() {
  <p className="text-xs text-fg-secondary mt-0.5">Manage diesel logs, full-to-full KMPL tracking, and fuel expense audits.</p>
  </div>
  <div className="flex flex-wrap gap-2">
- {[" Issue Diesel", " Fuel Audit", " Mileage Tracker"].map((tab) => (
+ {[" Issue Diesel", " Fuel Audit", " Mileage Tracker", " AdBlue"].map((tab) => (
  <Button
   key={tab}
   type="button"
@@ -576,6 +889,492 @@ export function FuelAdvanceModule() {
  </Table>
  </div>
  </div>
+ </div>
+ )}
+
+ {faNav === " AdBlue" && (
+ <div className="space-y-6 animate-in slide-in-from-bottom-4">
+
+   <div className="liquid-glass p-6 shadow-xl">
+     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-border pb-4 mb-6">
+       <div>
+         <h3 className="text-sm font-semibold text-fg tracking-wide">
+           {adblueEditId ? "Edit AdBlue Record" : "AdBlue Filling & Purchase"}
+         </h3>
+         <p className="text-[10px] text-fg-muted mt-1">
+           Authoritative odometer protection is applied before every new filling.
+         </p>
+       </div>
+
+       {adblueCurrentOdometer !== null && adblueVehicleId && !adblueEditId && (
+         <div className="px-3 py-2 rounded-xl border border-accent/30 bg-accent/5">
+           <div className="text-[9px] uppercase tracking-wider font-bold text-fg-muted">
+             Current authoritative KM
+           </div>
+           <div className="text-sm font-black text-accent">
+             {adblueCurrentOdometer.toLocaleString("en-IN")} km
+           </div>
+         </div>
+       )}
+     </div>
+
+     <form onSubmit={handleSaveAdblue} className="space-y-6">
+
+       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+         <div>
+           <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+             AdBlue Date *
+           </label>
+           <Input
+             type="date"
+             value={adblueDate}
+             onChange={e => setAdblueDate(e.target.value)}
+             className="text-fg font-semibold"
+             required
+           />
+         </div>
+
+         <div>
+           <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+             Truck *
+           </label>
+           <Select
+             value={adblueVehicleId}
+             onChange={e => setAdblueVehicleId(e.target.value)}
+             className="text-fg font-bold"
+             disabled={!!adblueEditId}
+             required
+           >
+             <option value="">Select Truck</option>
+             {vehicles.map(v => (
+               <option key={v.vehicle_id} value={v.vehicle_id}>
+                 {v.vehicle_number}
+               </option>
+             ))}
+           </Select>
+         </div>
+
+         <div>
+           <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+             Trip ID
+           </label>
+           <Input
+             type="number"
+             min="1"
+             value={adblueTripId}
+             onChange={e => setAdblueTripId(e.target.value)}
+             disabled={!!adblueEditId}
+             placeholder="Optional"
+             className="text-fg font-semibold"
+           />
+         </div>
+
+         <div>
+           <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+             LR Number
+           </label>
+           <Input
+             value={adblueLrNo}
+             onChange={e => setAdblueLrNo(e.target.value.toUpperCase())}
+             placeholder="Optional"
+             className="text-fg font-semibold uppercase"
+           />
+         </div>
+
+       </div>
+
+       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+         <div>
+           <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+             Filling Odometer KM *
+           </label>
+           <Input
+             type="number"
+             min="0"
+             step="0.1"
+             value={adblueFillingKm}
+             onChange={e => {
+               const value = e.target.value === "" ? "" : Number(e.target.value);
+               setAdblueFillingKm(value);
+
+               if (
+                 !adblueEditId &&
+                 adblueCurrentOdometer !== null &&
+                 value !== "" &&
+                 Number(value) <= adblueCurrentOdometer
+               ) {
+                 setAdblueFillingKmError(
+                   `Must be greater than ${adblueCurrentOdometer} km`
+                 );
+               } else {
+                 setAdblueFillingKmError("");
+               }
+             }}
+             disabled={!!adblueEditId}
+             placeholder={adblueCurrentOdometer !== null ? String(adblueCurrentOdometer + 1) : "KM"}
+             className={`text-fg font-bold ${
+               adblueFillingKmError
+                 ? "border-danger ring-1 ring-danger/30"
+                 : ""
+             }`}
+             required={!adblueEditId}
+           />
+           {adblueFillingKmError && (
+             <p className="text-[10px] text-danger font-bold mt-1">
+               {adblueFillingKmError}
+             </p>
+           )}
+         </div>
+
+         <div>
+           <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+             AdBlue Litres *
+           </label>
+           <Input
+             type="number"
+             min="0.01"
+             step="0.01"
+             value={adblueLitres}
+             onChange={e =>
+               setAdblueLitres(
+                 e.target.value === "" ? "" : Number(e.target.value)
+               )
+             }
+             placeholder="Litres"
+             className="text-fg font-semibold"
+             required
+           />
+         </div>
+
+         <div>
+           <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+             Rate / Litre *
+           </label>
+           <Input
+             type="number"
+             min="0.01"
+             step="0.01"
+             value={adblueRate}
+             onChange={e =>
+               setAdblueRate(
+                 e.target.value === "" ? "" : Number(e.target.value)
+               )
+             }
+             placeholder="₹ / L"
+             className="text-fg font-semibold"
+             required
+           />
+         </div>
+
+         <div>
+           <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+             Vendor
+           </label>
+           <Select
+             value={adblueVendorId}
+             onChange={e => setAdblueVendorId(e.target.value)}
+             className="text-fg font-semibold"
+           >
+             <option value="">No Vendor</option>
+             {adblueVendors.map(v => (
+               <option key={v.vendor_id} value={v.vendor_id}>
+                 {v.vendor_name}
+               </option>
+             ))}
+           </Select>
+         </div>
+
+       </div>
+
+       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+         <div>
+           <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+             Payment Mode *
+           </label>
+           <Select
+             value={adbluePaymentMode}
+             onChange={e => setAdbluePaymentMode(e.target.value)}
+             disabled={!!adblueEditId}
+             className="text-fg font-bold"
+           >
+             <option value="CASH">CASH</option>
+             <option value="UPI">UPI</option>
+             <option value="BANK_TRANSFER">BANK TRANSFER</option>
+             <option value="CREDIT">CREDIT</option>
+           </Select>
+         </div>
+
+         {adbluePaymentMode === "CREDIT" && !adblueEditId && (
+           <>
+             <div>
+               <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+                 Invoice Number *
+               </label>
+               <Input
+                 value={adblueInvoiceNumber}
+                 onChange={e => setAdblueInvoiceNumber(e.target.value)}
+                 placeholder="Supplier invoice"
+                 className="text-fg font-semibold"
+                 required
+               />
+             </div>
+
+             <div>
+               <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+                 Due Date *
+               </label>
+               <Input
+                 type="date"
+                 value={adblueDueDate}
+                 onChange={e => setAdblueDueDate(e.target.value)}
+                 className="text-fg font-semibold"
+                 required
+               />
+             </div>
+           </>
+         )}
+
+         {adbluePaymentMode !== "CREDIT" && !adblueEditId && (
+           <div>
+             <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+               Payment Reference
+             </label>
+             <Input
+               value={adbluePaymentReference}
+               onChange={e => setAdbluePaymentReference(e.target.value)}
+               placeholder="UPI / bank reference"
+               className="text-fg font-semibold"
+             />
+           </div>
+         )}
+
+         <div className="flex items-end">
+           <label className="flex items-center gap-2 h-10 px-3 rounded-xl border border-border bg-surface-raised/30 cursor-pointer w-full">
+             <input
+               type="checkbox"
+               checked={adblueIsTankFull}
+               onChange={e => setAdblueIsTankFull(e.target.checked)}
+               className="accent-accent"
+             />
+             <span className="text-xs font-bold text-fg">
+               Tank Full
+             </span>
+           </label>
+         </div>
+
+       </div>
+
+       <div>
+         <label className="block text-[10px] font-bold text-fg-secondary mb-1">
+           Remarks
+         </label>
+         <Input
+           value={adblueRemarks}
+           onChange={e => setAdblueRemarks(e.target.value)}
+           placeholder="Optional remarks"
+           className="text-fg font-semibold"
+         />
+       </div>
+
+       {Number(adblueLitres) > 0 && Number(adblueRate) > 0 && (
+         <div className="flex items-center justify-between rounded-xl border border-accent/20 bg-accent/5 px-4 py-3">
+           <div>
+             <div className="text-[9px] uppercase tracking-wider font-bold text-fg-muted">
+               Estimated AdBlue Cost
+             </div>
+             <div className="text-[10px] text-fg-muted">
+               Final cost is calculated and validated server-side.
+             </div>
+           </div>
+           <div className="text-lg font-black text-accent">
+             ₹{(Number(adblueLitres) * Number(adblueRate)).toLocaleString("en-IN", {
+               minimumFractionDigits: 2,
+               maximumFractionDigits: 2
+             })}
+           </div>
+         </div>
+       )}
+
+       <div className="flex flex-wrap justify-end gap-3">
+         {adblueEditId && (
+           <Button
+             type="button"
+             variant="glass"
+             onClick={clearAdblueForm}
+             disabled={isProcessing}
+           >
+             Cancel Edit
+           </Button>
+         )}
+
+         <Button
+           type="submit"
+           disabled={
+             isProcessing ||
+             Boolean(
+               !adblueEditId &&
+               adblueFillingKmError
+             )
+           }
+           className="px-6"
+         >
+           {isProcessing
+             ? "Processing..."
+             : adblueEditId
+               ? "Update AdBlue"
+               : "Record AdBlue"}
+         </Button>
+       </div>
+
+     </form>
+   </div>
+
+   <div className="liquid-glass p-6 shadow-xl">
+     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-border pb-4 mb-5">
+       <div>
+         <h3 className="text-sm font-semibold text-fg tracking-wide">
+           Recent AdBlue Records
+         </h3>
+         <p className="text-[10px] text-fg-muted mt-1">
+           Latest 200 operational AdBlue entries.
+         </p>
+       </div>
+
+       <Input
+         value={adblueSearch}
+         onChange={e => setAdblueSearch(e.target.value)}
+         placeholder="Search truck, LR, vendor..."
+         className="md:w-72 text-fg font-semibold"
+       />
+     </div>
+
+     <div className="overflow-x-auto rounded-xl border border-border">
+       <Table>
+         <TableHeader>
+           <TableRow>
+             <TableHead>Date</TableHead>
+             <TableHead>Truck</TableHead>
+             <TableHead>LR / Vendor</TableHead>
+             <TableHead className="text-right">Litres</TableHead>
+             <TableHead className="text-right">Rate</TableHead>
+             <TableHead className="text-right">Cost</TableHead>
+             <TableHead className="text-right">KM</TableHead>
+             <TableHead className="text-right">Actions</TableHead>
+           </TableRow>
+         </TableHeader>
+
+         <TableBody>
+           {adblueLogs
+             .filter(log => {
+               const q = adblueSearch.trim().toLowerCase();
+               if (!q) return true;
+
+               return [
+                 log.adblue_date,
+                 log.vehicles?.vehicle_number,
+                 log.lr_number,
+                 log.vendors?.vendor_name,
+                 log.remarks
+               ]
+                 .filter(Boolean)
+                 .some(value =>
+                   String(value).toLowerCase().includes(q)
+                 );
+             })
+             .map(log => (
+               <TableRow key={log.adblue_log_id}>
+                 <TableCell className="font-semibold text-fg">
+                   {log.adblue_date}
+                 </TableCell>
+
+                 <TableCell className="font-bold text-fg">
+                   {log.vehicles?.vehicle_number || "—"}
+                 </TableCell>
+
+                 <TableCell className="text-fg-secondary">
+                   {log.lr_number || "—"}
+                   <br />
+                   <span className="text-[9px] text-fg-muted">
+                     {log.vendors?.vendor_name || log.adblue_vendor || "No vendor"}
+                   </span>
+                 </TableCell>
+
+                 <TableCell className="text-right font-semibold text-accent">
+                   {Number(log.litres_filled || 0).toFixed(2)} L
+                 </TableCell>
+
+                 <TableCell className="text-right text-fg-secondary">
+                   ₹{Number(log.adblue_rate_per_litre || 0).toFixed(2)}
+                 </TableCell>
+
+                 <TableCell className="text-right font-bold text-danger">
+                   ₹{Number(log.total_adblue_cost || 0).toLocaleString("en-IN", {
+                     minimumFractionDigits: 2
+                   })}
+                 </TableCell>
+
+                 <TableCell className="text-right text-fg-secondary">
+                   {Number(log.filling_odometer_km || 0).toLocaleString("en-IN")}
+                 </TableCell>
+
+                 <TableCell className="text-right">
+                   <div className="flex justify-end gap-2">
+                     <Button
+                       type="button"
+                       variant="glass"
+                       className="px-3 py-1.5 text-[10px]"
+                       onClick={() => handleEditAdblue(log)}
+                       disabled={isProcessing}
+                     >
+                       Edit
+                     </Button>
+
+                     <Button
+                       type="button"
+                       variant="glass"
+                       className="px-3 py-1.5 text-[10px] text-danger"
+                       onClick={() => handleDeleteAdblue(Number(log.adblue_log_id))}
+                       disabled={isProcessing}
+                     >
+                       Delete
+                     </Button>
+                   </div>
+                 </TableCell>
+               </TableRow>
+             ))}
+
+           {adblueLogs.filter(log => {
+             const q = adblueSearch.trim().toLowerCase();
+             if (!q) return true;
+             return [
+               log.adblue_date,
+               log.vehicles?.vehicle_number,
+               log.lr_number,
+               log.vendors?.vendor_name,
+               log.remarks
+             ]
+               .filter(Boolean)
+               .some(value =>
+                 String(value).toLowerCase().includes(q)
+               );
+           }).length === 0 && (
+             <TableRow>
+               <TableCell
+                 colSpan={8}
+                 className="p-8 text-center font-medium text-fg-muted"
+               >
+                 No AdBlue records found.
+               </TableCell>
+             </TableRow>
+           )}
+         </TableBody>
+       </Table>
+     </div>
+   </div>
+
  </div>
  )}
 
