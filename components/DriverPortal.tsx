@@ -45,14 +45,13 @@ export function DriverPortal() {
  const [activeTrips, setActiveTrips] = useState<any[]>([]);
  const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
  const [savedDriverCode, setSavedDriverCode] = useState("");
+ const [driverSessionToken, setDriverSessionToken] = useState("");
  const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState("");
  const [isDriverLocked, setIsDriverLocked] = useState(false);
  const [activeTab, setActiveTab] = useState<"STATUS" | "LEDGER">("STATUS");
  const [selectedTruckId, setSelectedTruckId] = useState("");
  const [driverCode, setDriverCode] = useState("");
  const [driverPin, setDriverPin] = useState("");
- const [confirmPin, setConfirmPin] = useState("");
- const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
  const [actionType, setActionType] = useState("START_TRIP");
  const [odometer, setOdometer] = useState<number | "">("");
  const [lastOdometer, setLastOdometer] = useState<number | "">("");
@@ -84,36 +83,45 @@ export function DriverPortal() {
  };
 
  const fetchPortalData = async () => {
- if (!supabase) return;
- const [vRes, dRes, tRes] = await Promise.all([
- supabase.from('vehicles').select('*').eq('is_active', true),
- supabase.from('drivers').select('*').eq('is_active', true),
- supabase.from('trips').select('trip_id, vehicle_id, trip_number, origin, destination, primary_driver_id, loaded_weight_mt, trip_status, trip_start_date, reached_at, unloaded_at, returning_at, start_km, destination_lat, destination_lng, origin_lat, origin_lng').neq('trip_status', 'COMPLETED')
- ]);
- setVehicles(vRes.data || []); setDrivers(dRes.data || []); setActiveTrips(tRes.data || []);
- };
+ if (!supabase || !driverSessionToken) return;
 
- const fetchDriverCurrentMonthReports = async (drvCode: string, drvId: number) => {
- if (!supabase) return;
+ const { data, error } = await supabase.rpc("get_driver_portal_data", {
+   p_session_token: driverSessionToken
+ });
+
+ if (error) {
+   console.error("Failed to fetch driver portal data:", error);
+   return;
+ }
+
+ setVehicles(data?.vehicles || []);
+ setActiveTrips(data?.active_trips || []);
+ };
+ const fetchDriverCurrentMonthReports = async () => {
+ if (!supabase || !driverSessionToken) return;
+
  const now = new Date();
  const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
- const [reqRes, tripRes, advRes] = await Promise.all([
- supabase.from('driver_pending_entries').select('*').eq('driver_code', drvCode).order('submitted_at', { ascending: false }).limit(10),
- supabase.from('trips').select('*').eq('primary_driver_id', drvId).gte('trip_start_date', firstDay).order('trip_start_date', { ascending: false }),
- supabase.from('driver_direct_advances').select('*').eq('driver_id', drvId).gte('advance_date', firstDay).order('advance_date', { ascending: false })
- ]);
- if (reqRes.data) setPendingRequests(reqRes.data);
- if (tripRes.data) setCurrentMonthTrips(tripRes.data);
- if (advRes.data) setCurrentMonthAdvances(advRes.data);
- };
 
+ const { data, error } = await supabase.rpc("get_driver_monthly_reports", {
+   p_session_token: driverSessionToken,
+   p_month_start: firstDay
+ });
+
+ if (error) {
+   console.error("Failed to fetch driver monthly reports:", error);
+   return;
+ }
+
+ setPendingRequests(data?.pending_requests || []);
+ setCurrentMonthTrips(data?.trips || []);
+ setCurrentMonthAdvances(data?.advances || []);
+ };
  useEffect(() => {
  if (!supabase) return;
  fetchPortalData();
- const storedDriver = localStorage.getItem("kss_device_driver");
  const enrolledBioDriver = localStorage.getItem("kss_biometric_enrolled_driver");
  if (enrolledBioDriver) setEnrolledBiometricDriver(enrolledBioDriver);
- if (storedDriver) { setSavedDriverCode(storedDriver); setDriverCode(storedDriver); setIsDriverLocked(true); }
  }, [supabase]);
 
  const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
@@ -139,9 +147,9 @@ export function DriverPortal() {
 
    if (activeTrip) setSelectedTruckId(String(activeTrip.vehicle_id));
 
-   fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
+   fetchDriverCurrentMonthReports();
  }
- }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab, activeDriverObj]);
+ }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab, activeDriverObj, driverSessionToken]);
 
  useEffect(() => {
 if (selectedTruckId && supabase) {
@@ -167,11 +175,6 @@ setLastOdometer("");
 }
 }, [selectedTruckId, supabase]);
 
- const handleDriverChange = (code: string) => {
- setDriverCode(code); setDriverPin(""); setConfirmPin("");
- if (code) { const drv = drivers.find(d => d.driver_code === code); setIsFirstTimeSetup(!drv || !drv.pin || drv.pin.trim() === ""); }
- else setIsFirstTimeSetup(false);
- };
 
  const displayDriverName = activeDriverObj ? `${activeDriverObj.full_name} (${activeDriverObj.driver_code})` : savedDriverCode;
  const isBulk = selectedTruckObj ? String(selectedTruckObj.truck_type).toUpperCase().includes("BULK") : true;
@@ -209,41 +212,79 @@ setLastOdometer("");
  };
 
  const handleManualFingerprint = async () => {
- if (!driverCode) return setAlertConfig({ isOpen: true, title: "Select Driver", message: "Select your profile first.", type: "error" });
- if (driverCode !== enrolledBiometricDriver) return setAlertConfig({ isOpen: true, title: "Security Lock", message: "Log in with PIN to link fingerprint.", type: "error" });
- try {
- const { NativeBiometric } = await import("capacitor-native-biometric");
- await NativeBiometric.verifyIdentity({ reason: "Log in to KSS Roadways Driver Portal", title: "Driver Authentication" });
- localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
- setSavedDriverCode(driverCode.toUpperCase().trim()); setIsDriverLocked(true);
- } catch (error) { console.error("Biometric error:", error); }
+ setAlertConfig({
+ isOpen: true,
+ title: "PIN Login Required",
+ message: "Biometric login will be available after secure driver session authentication is enabled.",
+ type: "info"
+ });
  };
 
  const handleLockDriver = async (e: React.FormEvent) => {
  e.preventDefault();
- if (!supabase || !driverCode) return;
- const selectedDrv = drivers.find(d => d.driver_code === driverCode);
- if (!selectedDrv) return;
+ if (!supabase) return;
 
- if (isFirstTimeSetup) {
- if (driverPin.length !== 4) return setAlertConfig({ isOpen: true, title: "Invalid", message: "PIN must be 4 digits.", type: "error" });
- if (driverPin !== confirmPin) return setAlertConfig({ isOpen: true, title: "Mismatch", message: "PINs do not match.", type: "error" });
- const { error } = await supabase.from('drivers').update({ pin: driverPin }).eq('driver_id', selectedDrv.driver_id);
- if (error) return setAlertConfig({ isOpen: true, title: "Setup Failed", message: error.message, type: "error" });
- setAlertConfig({ isOpen: true, title: "PIN Saved!", message: "PIN set successfully.", type: "success" });
- await fetchPortalData();
- } else {
- if (driverPin.trim() !== (selectedDrv.pin || "").toString().trim()) return setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "Incorrect PIN.", type: "error" });
+ const normalizedCode = driverCode.trim().toUpperCase();
+ const normalizedPin = driverPin.trim();
+
+ if (!normalizedCode) {
+ return setAlertConfig({ isOpen: true, title: "Driver Code Required", message: "Enter your driver code.", type: "error" });
  }
- localStorage.setItem("kss_biometric_enrolled_driver", driverCode.toUpperCase().trim());
- setEnrolledBiometricDriver(driverCode.toUpperCase().trim());
- localStorage.setItem("kss_device_driver", driverCode.toUpperCase().trim());
- setSavedDriverCode(driverCode.toUpperCase().trim()); setIsDriverLocked(true); setDriverPin(""); setConfirmPin("");
+
+ if (!/^\\d{4}$/.test(normalizedPin)) {
+ return setAlertConfig({ isOpen: true, title: "Invalid PIN", message: "PIN must be exactly 4 digits.", type: "error" });
+ }
+
+ setIsSubmitting(true);
+
+ const { data, error } = await supabase.rpc("authenticate_driver_session", {
+ p_driver_code: normalizedCode,
+ p_pin: normalizedPin
+ });
+
+ setIsSubmitting(false);
+
+ if (error || !data || !data.length) {
+ console.error("Driver authentication failed:", error);
+ return setAlertConfig({
+ title: "Login Failed",
+ message: error?.message || "Invalid driver credentials.",
+ type: "error",
+ isOpen: true
+ });
+ }
+
+ const authenticatedDriver = data[0];
+
+ if (!authenticatedDriver.session_token) {
+   console.error("Driver authentication succeeded without a session token");
+   return setAlertConfig({
+     title: "Login Failed",
+     message: "Secure driver session could not be created.",
+     type: "error",
+     isOpen: true
+   });
+ }
+
+ setDriverSessionToken(authenticatedDriver.session_token);
+ setDrivers([authenticatedDriver]);
+ setDriverCode(authenticatedDriver.driver_code);
+ setSavedDriverCode(authenticatedDriver.driver_code);
+ setIsDriverLocked(true);
+ setDriverPin("");
+ setEnrolledBiometricDriver("");
+
+ await fetchDriverCurrentMonthReports();
  };
 
  const handleResetDriver = () => {
- if (confirm("Switch driver profile on this device?")) {
- localStorage.removeItem("kss_device_driver"); setIsDriverLocked(false); setSavedDriverCode(""); setSelectedTruckId(""); setDriverPin(""); setConfirmPin("");
+ if (confirm("Sign out and switch driver?")) {
+ setIsDriverLocked(false);
+ setSavedDriverCode("");
+ setDrivers([]);
+ setSelectedTruckId("");
+ setDriverCode("");
+ setDriverPin("");
  }
  };
 
@@ -258,11 +299,11 @@ setLastOdometer("");
  if (actionType === "START_TRIP" && currentTrip) {
  const enteredOdometer = Number(odometer) || 0;
 
- const { error: tripError } = await supabase.rpc("start_existing_trip_atomic", {
+ const { error: tripError } = await supabase.rpc("start_driver_existing_trip_session_atomic", {
+   p_session_token: driverSessionToken,
    p_trip_id: Number(currentTrip.trip_id),
    p_start_km: enteredOdometer > 0 ? enteredOdometer : null,
-   p_reading_at: timestamp,
-   p_entered_by: savedDriverCode || "DriverPortal"
+   p_reading_at: timestamp
  });
 
  if (tripError) {
@@ -292,14 +333,13 @@ setLastOdometer("");
  if (!currentTrip && actionType === "START_TRIP") {
  const draftLr = `DRAFT-${Math.floor(Date.now() / 1000)}`;
 
- const { error: tripError } = await supabase.rpc("start_driver_draft_trip_atomic", {
+ const { error: tripError } = await supabase.rpc("start_driver_draft_trip_session_atomic", {
+   p_session_token: driverSessionToken,
    p_trip_number: draftLr,
    p_vehicle_id: Number(selectedTruckId),
-   p_primary_driver_id: Number(activeDriverObj.driver_id),
    p_trip_start_date: timestamp.split('T')[0],
    p_start_km: Number(odometer) || 0,
-   p_reading_at: timestamp,
-   p_entered_by: savedDriverCode || "DriverPortal"
+   p_reading_at: timestamp
  });
  if (tripError) { setIsSubmitting(false); return setAlertConfig({ isOpen: true, title: "Trip Error", message: tripError.message, type: "error" }); }
 
@@ -309,11 +349,13 @@ setLastOdometer("");
  }
 
  if (!currentTrip && actionType === "FUEL") {
- const { error } = await supabase.from('driver_pending_entries').insert([{
- vehicle_id: Number(selectedTruckId), driver_code: savedDriverCode || "DRV-MOBILE", entry_type: "FUEL",
- litres: Number(fuelLitres), amount_inr: 0, odometer_km: Number(odometer) || 0,
- receipt_remarks: `[LR: PRE-DISPATCH] ${remarks} [Truck: ${selectedTruckObj?.vehicle_number}]`.trim(), status: 'PENDING'
- }]);
+ const { error } = await supabase.rpc("submit_driver_fuel_pending_atomic", {
+   p_session_token: driverSessionToken,
+   p_vehicle_id: Number(selectedTruckId),
+   p_litres: Number(fuelLitres),
+   p_odometer_km: Number(odometer) || 0,
+   p_receipt_remarks: `[LR: PRE-DISPATCH] ${remarks} [Truck: ${selectedTruckObj?.vehicle_number}]`.trim()
+ });
  if (error) setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
  else setAlertConfig({ isOpen: true, title: "Success", message: "Fuel request sent to dispatch!", type: "success" });
  setOdometer(""); setFuelLitres(""); setRemarks(""); setIsSubmitting(false); return;
@@ -325,11 +367,13 @@ setLastOdometer("");
  }
 
  if (actionType === "FUEL") {
- const { error } = await supabase.from('driver_pending_entries').insert([{
- vehicle_id: Number(selectedTruckId), driver_code: savedDriverCode || "DRV-MOBILE", entry_type: "FUEL",
- litres: Number(fuelLitres), amount_inr: 0, odometer_km: Number(odometer) || 0,
- receipt_remarks: `[LR: ${currentTrip.trip_number}] ${remarks} [Truck: ${selectedTruckObj?.vehicle_number}]`.trim(), status: 'PENDING'
- }]);
+ const { error } = await supabase.rpc("submit_driver_fuel_pending_atomic", {
+   p_session_token: driverSessionToken,
+   p_vehicle_id: Number(selectedTruckId),
+   p_litres: Number(fuelLitres),
+   p_odometer_km: Number(odometer) || 0,
+   p_receipt_remarks: `[LR: ${currentTrip.trip_number}] ${remarks} [Truck: ${selectedTruckObj?.vehicle_number}]`.trim()
+ });
  if (error) setAlertConfig({ isOpen: true, title: "Failed", message: error.message, type: "error" });
  else setAlertConfig({ isOpen: true, title: "Success", message: "Fuel request sent to dispatch!", type: "success" });
  }
@@ -374,11 +418,11 @@ setLastOdometer("");
    });
  }
 
- const { error: closeTripError } = await supabase.rpc("close_driver_trip_atomic", {
+ const { error: closeTripError } = await supabase.rpc("close_driver_trip_session_atomic", {
+   p_session_token: driverSessionToken,
    p_trip_id: Number(currentTrip.trip_id),
    p_end_km: closingKm,
-   p_reading_at: timestamp,
-   p_entered_by: savedDriverCode || "DriverPortal"
+   p_reading_at: timestamp
  });
 
  if (closeTripError) {
@@ -398,12 +442,12 @@ setLastOdometer("");
  else if (actionType === "BREAKDOWN") {
  const breakdownKm = Number(odometer) || 0;
 
- const { error: breakdownError } = await supabase.rpc("record_driver_breakdown_atomic", {
+ const { error: breakdownError } = await supabase.rpc("record_driver_breakdown_session_atomic", {
+   p_session_token: driverSessionToken,
    p_trip_id: Number(currentTrip.trip_id),
    p_vehicle_id: Number(selectedTruckId),
    p_odometer_km: breakdownKm,
    p_reading_at: timestamp,
-   p_entered_by: savedDriverCode || "DriverPortal",
    p_breakdown_remarks: finalRemarks || "Enroute Breakdown"
  });
 
@@ -463,10 +507,20 @@ setLastOdometer("");
  };
 
  const handleCancelRequest = async (id: number) => {
- if (!supabase || !confirm("Delete this request?")) return;
- await supabase.from('driver_pending_entries').delete().eq('entry_id', id);
- if (activeDriverObj) fetchDriverCurrentMonthReports(savedDriverCode, activeDriverObj.driver_id);
- setAlertConfig({ isOpen: true, title: "Deleted", message: "Request cancelled.", type: "success" });
+ if (!supabase || !driverSessionToken || !confirm("Cancel this request?")) return;
+
+ const { error } = await supabase.rpc("cancel_driver_pending_entry_atomic", {
+   p_session_token: driverSessionToken,
+   p_entry_id: id
+ });
+
+ if (error) {
+   setAlertConfig({ isOpen: true, title: "Cancellation Failed", message: error.message, type: "error" });
+   return;
+ }
+
+ await fetchDriverCurrentMonthReports();
+ setAlertConfig({ isOpen: true, title: "Cancelled", message: "Request cancelled.", type: "success" });
  };
 
  const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:border-accent";
@@ -487,15 +541,54 @@ setLastOdometer("");
 
  {!isDriverLocked ? (
  <form onSubmit={handleLockDriver} className="flex flex-col">
- <div className="flex flex-col p-6 space-y-1"><h3 className="font-bold tracking-tight text-xl">{isFirstTimeSetup ? "First-Time PIN Setup" : "Secure Login"}</h3><p className="text-sm text-fg-secondary">{isFirstTimeSetup ? "Create a 4-digit PIN." : "Select your profile."}</p></div>
+ <div className="flex flex-col p-6 space-y-1">
+ <h3 className="font-bold tracking-tight text-xl">Secure Driver Login</h3>
+ <p className="text-sm text-fg-secondary">Enter your driver code and 4-digit security PIN.</p>
+ </div>
  <div className="p-6 pt-0 grid gap-5">
- <div className="grid gap-1.5"><label className={labelStyle}>Driver Name</label><select value={driverCode} onChange={e => handleDriverChange(e.target.value)} className={inputStyle} required><option value="">Select your profile...</option>{drivers.map(d => (<option key={d.driver_id} value={d.driver_code}>{d.full_name} ({d.driver_code})</option>))}</select></div>
- {!isFirstTimeSetup && driverCode && driverCode === enrolledBiometricDriver && (
- <div className="flex flex-col items-center justify-center py-2"><Button type="button" variant="ghost" onClick={handleManualFingerprint} className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95 p-0"><div className="absolute inset-0 rounded-full bg-accent/30 animate-ping opacity-75" style={{ animationDuration: '2.5s' }}></div><div className="absolute inset-1.5 rounded-full bg-accent/10 group-hover:bg-accent/20 border border-accent/20 transition-all duration-300 shadow-[0_0_15px_var(--accent-glow)]"></div><FingerprintIcon className="w-8 h-8 text-accent relative z-10 drop-shadow-sm group-hover:scale-105 transition-transform" /></Button></div>
+ <div className="grid gap-1.5">
+ <label className={labelStyle}>Driver Code</label>
+ <input
+ type="text"
+ value={driverCode}
+ onChange={e => setDriverCode(e.target.value.toUpperCase())}
+ placeholder="e.g. DRV001"
+ className={inputStyle}
+ autoCapitalize="characters"
+ autoComplete="username"
+ required
+ />
+ </div>
+
+ {driverCode && driverCode === enrolledBiometricDriver && (
+ <div className="flex flex-col items-center justify-center py-2">
+ <Button type="button" variant="ghost" onClick={handleManualFingerprint} className="relative flex items-center justify-center w-16 h-16 rounded-full group focus:outline-none transition-transform active:scale-95 p-0">
+ <div className="absolute inset-0 rounded-full bg-accent/30 animate-ping opacity-75" style={{ animationDuration: '2.5s' }}></div>
+ <div className="absolute inset-1.5 rounded-full bg-accent/10 group-hover:bg-accent/20 border border-accent/20 transition-all duration-300 shadow-[0_0_15px_var(--accent-glow)]"></div>
+ <FingerprintIcon className="w-8 h-8 text-accent relative z-10 drop-shadow-sm group-hover:scale-105 transition-transform" />
+ </Button>
+ </div>
  )}
- <div className="grid gap-1.5 relative mt-2"><label className={labelStyle}>{isFirstTimeSetup ? "Create 4-Digit PIN" : "Security PIN"}</label><input type="password" maxLength={4} value={driverPin} onChange={e => setDriverPin(e.target.value)} placeholder="" className={inputStyle} required={isFirstTimeSetup} /></div>
- {isFirstTimeSetup && <div className="grid gap-1.5"><label className={labelStyle}>Confirm 4-Digit PIN</label><input type="password" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value)} placeholder="" className={inputStyle} required /></div>}
- <Button type="submit" variant="default" className="w-full mt-2 h-10 rounded-lg text-sm font-bold bg-[var(--portal-accent)] text-[var(--portal-text-on-dark)] shadow-md hover:bg-[var(--portal-accent-hover)]">{isFirstTimeSetup ? "Save & Lock Device" : "Verify & Login with PIN"}</Button>
+
+ <div className="grid gap-1.5 relative mt-2">
+ <label className={labelStyle}>Security PIN</label>
+ <input
+ type="password"
+ inputMode="numeric"
+ pattern="[0-9]*"
+ maxLength={4}
+ value={driverPin}
+ onChange={e => setDriverPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+ placeholder="••••"
+ className={inputStyle}
+ autoComplete="current-password"
+ required
+ />
+ </div>
+
+ <Button type="submit" variant="default" disabled={isSubmitting} className="w-full mt-2 h-10 rounded-lg text-sm font-bold bg-[var(--portal-accent)] text-[var(--portal-text-on-dark)] shadow-md hover:bg-[var(--portal-accent-hover)] disabled:opacity-50">
+ {isSubmitting ? "Authenticating..." : "Verify & Login"}
+ </Button>
  </div>
  </form>
  ) : (
