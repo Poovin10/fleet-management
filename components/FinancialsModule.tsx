@@ -23,6 +23,17 @@ export function FinancialsModule() {
  const [fleetData, setFleetData] = useState<any[]>([]);
  const [driverScorecard, setDriverScorecard] = useState<any[]>([]);
  const [variantTypes, setVariantTypes] = useState<string[]>([]);
+ const [unassignedHistorical, setUnassignedHistorical] = useState({
+   trips: [] as any[],
+   tripCount: 0,
+   tons: 0,
+   freight: 0,
+   dieselLitres: 0,
+   dieselCost: 0,
+   retention: 0,
+   retentionPct: 0,
+   dieselPct: 0,
+ });
 
  const formatAmt = (amt: number) => (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
  const formatDec = (val: number) => (Number(val) || 0).toFixed(2);
@@ -38,7 +49,7 @@ export function FinancialsModule() {
  sDate = customStart; eDate = customEnd;
  }
 
- const { data: activeVehicles } = await supabase.from('vehicles').select('vehicle_id:id, vehicle_number, truck_type').eq('is_active', true);
+ const { data: activeVehicles } = await supabase.from('vehicles').select('vehicle_id, vehicle_number, truck_type').eq('is_active', true);
  const { data: activeDrivers } = await supabase.from('drivers').select('driver_id, driver_code, full_name').eq('is_active', true);
 
  let tQuery = supabase.from('trips').select('vehicle_id, primary_driver_id, trip_status, total_km_run, loaded_weight_mt, tonnage_loaded, freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance, fuel_litres');
@@ -57,6 +68,30 @@ export function FinancialsModule() {
 
  const fleetMetrics: any[] = [];
  const variants = new Set<string>();
+
+ const unassignedTrips = (trips || []).filter(t => t.vehicle_id == null);
+ const unassignedFuels = (fuels || []).filter(f => f.vehicle_id == null);
+ const unassignedTripCount = unassignedTrips.length;
+ const unassignedTons = unassignedTrips.reduce((sum, t) => sum + (Number(t.loaded_weight_mt) || Number(t.tonnage_loaded) || 0), 0);
+ const unassignedFreight = unassignedTrips.reduce((sum, t) => sum + (Number(t.freight_revenue) || 0), 0);
+ const unassignedDieselLitres = unassignedFuels.reduce((sum, f) => sum + (Number(f.litres_filled) || 0), 0);
+ const unassignedDieselCost = unassignedFuels.reduce((sum, f) => sum + (Number(f.total_fuel_cost) || 0), 0);
+ const unassignedTripCosts = unassignedTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0) + (Number(t.enroute_repairs_maintenance) || 0), 0);
+ const unassignedRetention = unassignedFreight - unassignedDieselCost - unassignedTripCosts;
+ const unassignedRetentionPct = unassignedFreight > 0 ? (unassignedRetention / unassignedFreight) * 100 : 0;
+ const unassignedDieselPct = unassignedFreight > 0 ? (unassignedDieselCost / unassignedFreight) * 100 : 0;
+
+ setUnassignedHistorical({
+   trips: unassignedTrips,
+   tripCount: unassignedTripCount,
+   tons: unassignedTons,
+   freight: unassignedFreight,
+   dieselLitres: unassignedDieselLitres,
+   dieselCost: unassignedDieselCost,
+   retention: unassignedRetention,
+   retentionPct: unassignedRetentionPct,
+   dieselPct: unassignedDieselPct,
+ });
 
  (activeVehicles || []).forEach(v => {
  variants.add(v.truck_type || "Unknown");
@@ -126,9 +161,9 @@ export function FinancialsModule() {
  };
 
  const sortedFleetData = getSortedFleetData();
- const aggFreight = sortedFleetData.reduce((acc, c) => acc + c.total_freight, 0);
- const aggDiesel = sortedFleetData.reduce((acc, c) => acc + c.total_diesel_cost, 0);
- const aggRetention = sortedFleetData.reduce((acc, c) => acc + c.net_retention, 0);
+ const aggFreight = sortedFleetData.reduce((acc, c) => acc + c.total_freight, 0) + unassignedHistorical.freight;
+ const aggDiesel = sortedFleetData.reduce((acc, c) => acc + c.total_diesel_cost, 0) + unassignedHistorical.dieselCost;
+ const aggRetention = sortedFleetData.reduce((acc, c) => acc + c.net_retention, 0) + unassignedHistorical.retention;
  const aggRetentionPct = aggFreight > 0 ? (aggRetention / aggFreight) * 100 : 0;
 
  const exportAnalyticsToCSV = () => {
@@ -228,11 +263,11 @@ export function FinancialsModule() {
  </div>
  )}
 
- <div className="overflow-x-auto rounded-xl border border-border relative min-h-[300px] w-full">
+ <div className="relative min-h-[300px] w-full">
  {isAnalyticsLoading && (<div className="absolute inset-0 liquid-glass z-10 flex items-center justify-center"><span className="font-bold text-accent animate-pulse">Aggregating Metrics...</span></div>)}
 
  {(analyticsSubTab === "Fleet Retention" || analyticsSubTab === "Variant Benchmarks") && (
- <Table className="min-w-full text-xs text-right whitespace-nowrap">
+ <Table className="text-xs text-right whitespace-nowrap">
 <TableHeader className="sticky top-0 z-10">
 <TableRow className="font-bold text-fg-secondary tracking-wider text-[10px]">
 <TableHead className="px-4 py-4 text-left">Truck No</TableHead>
@@ -266,6 +301,22 @@ export function FinancialsModule() {
 <TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(row.kmpl)}</TableCell>
 </TableRow>
 ))}
+{unassignedHistorical.tripCount > 0 && (
+<TableRow className="bg-warning/5 border-t-2 border-warning/30">
+<TableCell className="px-4 py-3 text-left font-bold text-warning">UNASSIGNED</TableCell>
+<TableCell className="px-4 py-3 text-left font-bold text-warning">HISTORICAL</TableCell>
+<TableCell className="px-4 py-3 text-right font-bold text-warning">{unassignedHistorical.tripCount}</TableCell>
+<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.tons)}</TableCell>
+<TableCell className="px-4 py-3 text-right font-bold text-warning">{unassignedHistorical.trips.filter((t: any) => t.trip_status !== 'COMPLETED').length}</TableCell>
+<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatAmt(unassignedHistorical.freight)}</TableCell>
+<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.dieselLitres)}</TableCell>
+<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatAmt(unassignedHistorical.dieselCost)}</TableCell>
+<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatAmt(unassignedHistorical.retention)}</TableCell>
+<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.retentionPct)}%</TableCell>
+<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.dieselPct)}%</TableCell>
+<TableCell className="px-4 py-3 text-right font-bold text-warning">—</TableCell>
+</TableRow>
+)}
 {sortedFleetData.length === 0 && !isAnalyticsLoading && (
 <TableRow>
 <TableCell colSpan={12} className="px-4 py-8 text-center text-fg-muted font-medium">

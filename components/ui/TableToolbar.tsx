@@ -1,4 +1,4 @@
-import { exportToCSV } from "@/lib/utils/exportManager";
+import { exportToCSV, exportToExcel } from "@/lib/utils/exportManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -41,7 +41,17 @@ export function TableToolbar({
           onClick={() => exportToCSV(exportData, exportFilename)}
           className="shrink-0"
         >
-          Export CSV
+          CSV
+        </Button>
+
+        <Button
+          type="button"
+          variant="glass"
+          size="sm"
+          onClick={() => exportToExcel(exportData, exportFilename)}
+          className="shrink-0"
+        >
+          Excel
         </Button>
       </div>
     </div>

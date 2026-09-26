@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -92,41 +91,11 @@ export function DriverSettlementModule() {
  const finalBalancePayable = grandTotalBata - grandTotalTripAdv - directAdvTotal;
  const selectedDriverObj = drivers.find(d => String(d.driver_id) === selectedDriverId);
 
- const exportToPDF = () => {
- if (!selectedDriverObj) return;
- const headers = ["Date", "Description / Route", "Freight", "Earned Bata", "Deducted Adv", "Net Balance"];
- const rows: any[][] = [];
-
- Object.entries(tripsByTruck).forEach(([truckNo, tArr]: any) => {
- rows.push([`-- TRUCK: ${truckNo} --`, "", "", "", "", ""]);
- let trBata = 0; let trAdv = 0;
- tArr.forEach((t: any) => {
- const tb = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0); const ta = Number(t.cash_advance_issued) || 0;
- trBata += tb; trAdv += ta;
- rows.push([formatDate(t.trip_start_date), `${t.trip_number||"-"} | ${t.origin} to ${t.destination}`, `Rs.${formatAmt(t.freight_revenue)}`, `Rs.${formatAmt(tb)}`, `Rs.${formatAmt(ta)}`, `Rs.${formatAmt(tb-ta)}`]);
- });
- rows.push(["SUBTOTAL", `For Truck ${truckNo}`, "", `Rs.${formatAmt(trBata)}`, `Rs.${formatAmt(trAdv)}`, `Rs.${formatAmt(trBata-trAdv)}`]);
- rows.push(["", "", "", "", "", ""]);
- });
-
- if (driverAdvances.length > 0) {
- rows.push(["-- DIRECT ADVANCES --", "", "", "", "", ""]);
- driverAdvances.forEach(a => { rows.push([formatDate(a.advance_date), `${a.advance_type} | ${a.reference_remarks || "-"}`, "-", "-", `Rs.${formatAmt(a.amount_inr)}`, `(Rs.${formatAmt(a.amount_inr)})`]); });
- rows.push(["SUBTOTAL", "Direct Advances", "", "-", `Rs.${formatAmt(directAdvTotal)}`, `(Rs.${formatAmt(directAdvTotal)})`]);
- }
-
- generateUniversalPdf(
- `Master Driver Settlement: ${selectedDriverObj.full_name} (${selectedDriverObj.driver_code})`,
- `Period: ${formatDate(fromDate)} to ${formatDate(toDate)} | Final Net Payable: Rs. ${formatAmt(finalBalancePayable)}`,
- headers, rows, `Settlement_${selectedDriverObj.driver_code}_${fromDate}_to_${toDate}`
- );
- };
-
  return (
  <div className="space-y-6">
  <div className="border-b border-border pb-4">
  <h2 className="text-xl font-semibold text-fg  tracking-tight">Driver Accounting & Settlements</h2>
- <p className="text-xs text-fg-secondary font-medium mt-0.5">Generate multi-truck ledgers, calculate net balances, and export statements.</p>
+ <p className="text-xs text-fg-secondary font-medium mt-0.5">Calculate driver-period settlement balances and close the settlement period. Detailed history is available in Reports.</p>
  </div>
 
  <div className="liquid-glass p-6 sm:p-8 shadow-2xl">
@@ -181,56 +150,23 @@ export function DriverSettlementModule() {
  <div className="kss-surface-raised border border-accent-border p-5"><p className="text-[9px] font-semibold text-accent  tracking-normal">Net Payable</p><p className="text-2xl sm:text-3xl font-semibold text-accent mt-2 font-mono">{formatAmt(finalBalancePayable)}</p></div>
  </div>
 
- <div className="space-y-6">
- {Object.entries(tripsByTruck).map(([truckNo, tArr]: any) => {
- let trFreight = 0; let trBata = 0; let trAdv = 0;
- return (
- <div key={truckNo} className="kss-surface overflow-hidden">
- <div className="bg-surface-raised px-6 py-3.5 border-b border-border flex justify-between items-center"><h4 className="text-xs font-semibold text-accent  tracking-wide">TRUCK: {truckNo}</h4></div>
- <div className="overflow-x-auto w-full max-h-80 overflow-y-auto">
- <Table className="text-xs whitespace-nowrap">
- <TableHeader className="sticky top-0 z-10"><TableRow className="text-left font-bold text-fg-secondary  tracking-wider text-[9px]"><TableHead className="px-5 py-3 border-b border-border">Date / LR No</TableHead><TableHead className="px-5 py-3 border-b border-border">Route</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Freight ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Bata ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Trip Adv ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Balance ()</TableHead><TableHead className="px-5 py-3 text-center border-b border-border">Status</TableHead></TableRow></TableHeader>
- <TableBody className="">
- {tArr.map((t: any) => {
- const tb = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0); const ta = Number(t.cash_advance_issued) || 0;
- trFreight += Number(t.freight_revenue) || 0; trBata += tb; trAdv += ta;
- return (
- <TableRow key={t.trip_id} className="animate-tab-focus hover:bg-surface-raised/50">
- <TableCell className="px-5 py-3.5 font-semibold text-fg">{formatDate(t.trip_start_date)}<br/><span className="text-fg-muted font-semibold text-[9px] font-mono">{t.trip_number || "-"}</span></TableCell>
- <TableCell className="px-5 py-3.5 text-fg-secondary font-bold"><span className="text-xs">{t.origin} {t.destination}</span></TableCell>
- <TableCell className="px-5 py-3.5 text-right font-semibold text-fg-secondary font-mono">{formatAmt(t.freight_revenue)}</TableCell>
- <TableCell className="px-5 py-3.5 text-right font-semibold text-success font-mono">{formatAmt(tb)}</TableCell>
- <TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(ta)}</TableCell>
- <TableCell className="px-5 py-3.5 text-right font-semibold text-accent font-mono">{formatAmt(tb - ta)}</TableCell>
- <TableCell className="px-5 py-3.5 text-center"><span className={`px-2.5 py-1 rounded-md text-[9px] font-semibold  tracking-wider ${t.settlement_status === 'SETTLED' ? 'bg-success-soft text-success border border-success/20' : 'bg-warning-soft text-warning border border-warning/20'}`}>{t.settlement_status || "PENDING"}</span></TableCell>
- </TableRow>
- );
- })}
- <TableRow className="bg-surface-raised"><TableCell colSpan={2} className="px-5 py-3.5 text-right font-semibold text-fg-secondary  tracking-normal text-[9px]">Truck Subtotal</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-fg font-mono">{formatAmt(trFreight)}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-success font-mono">{formatAmt(trBata)}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(trAdv)}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-accent font-mono">{formatAmt(trBata - trAdv)}</TableCell><TableCell className="px-5 py-3.5"></TableCell></TableRow>
- </TableBody>
- </Table>
- </div>
- </div>
- );
- })}
-
- {driverAdvances.length > 0 && (
- <div className="kss-surface overflow-hidden">
- <div className="bg-surface-raised px-6 py-3.5 border-b border-border"><h4 className="text-xs font-semibold text-danger  tracking-wide">Direct Cash Advances</h4></div>
- <div className="overflow-x-auto w-full max-h-60 overflow-y-auto">
- <Table className="text-xs whitespace-nowrap">
- <TableHeader className="sticky top-0 z-10"><TableRow className="text-left font-bold text-fg-secondary  tracking-wider text-[9px]"><TableHead className="px-5 py-3 border-b border-border">Date</TableHead><TableHead className="px-5 py-3 border-b border-border">Category</TableHead><TableHead className="px-5 py-3 border-b border-border">Remarks</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Amount ()</TableHead></TableRow></TableHeader>
- <TableBody className="">
- {driverAdvances.map(a => (<TableRow key={a.advance_id} className=""><TableCell className="px-5 py-3.5 font-semibold text-fg">{formatDate(a.advance_date)}</TableCell><TableCell className="px-5 py-3.5 text-fg-secondary font-bold">{a.advance_type}</TableCell><TableCell className="px-5 py-3.5 text-fg-muted">{a.reference_remarks || "-"}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(a.amount_inr)}</TableCell></TableRow>))}
- <TableRow className="bg-surface-raised"><TableCell colSpan={3} className="px-5 py-3.5 text-right font-semibold text-fg-secondary  tracking-normal text-[9px]">Advance Subtotal</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(directAdvTotal)}</TableCell></TableRow>
- </TableBody>
- </Table>
- </div>
- </div>
- )}
+ <div className="kss-surface p-6">
+   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+     <div>
+       <h4 className="text-sm font-semibold text-fg">Settlement period loaded</h4>
+       <p className="text-xs text-fg-muted mt-1">
+         {driverTrips.length} trip records and {driverAdvances.length} direct advance records loaded.
+         Detailed transaction history is available in Reports.
+       </p>
+     </div>
+     <div className="text-right">
+       <p className="text-[9px] font-semibold text-fg-secondary">Final Net Payable</p>
+       <p className="text-xl font-semibold text-accent font-mono">{formatAmt(finalBalancePayable)}</p>
+     </div>
+   </div>
  </div>
 
- <div className="pt-6 border-t border-border flex flex-wrap justify-between items-center gap-4">
+ <div className="pt-6 border-t border-border flex flex-wrap justify-end items-center gap-4">
  <Button
  type="button"
  variant="glass"

@@ -164,15 +164,15 @@ export function ApprovalQueue() {
  };
 
  return (
- <div className="animate-tab-focus liquid-glass p-6 sm:p-8 shadow-xl max-w-5xl mx-auto animate-in fade-in duration-300">
+ <div className="animate-tab-focus liquid-glass w-full max-w-none p-6 sm:p-8 shadow-xl animate-in fade-in duration-300">
  
  <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
  <ConfirmModal isOpen={rejectId !== null} title="Reject Request" message="Are you sure you want to REJECT this driver request? This cannot be undone." isDanger={true} confirmText="Yes, Reject" onConfirm={executeReject} onCancel={() => setRejectId(null)} isProcessing={isProcessing} />
 
  {approveData.isOpen && (
- <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
- <div className="liquid-glass">
+ <div className="kss-glass-overlay">
+ <div className="kss-glass-sheet w-full max-w-xl h-auto max-h-[88vh] overflow-y-auto">
  <form onSubmit={executeApprove}>
  <div className="p-6">
  <h3 className="text-lg font-semibold text-fg  tracking-wide mb-1">Approve Fuel Request</h3>
@@ -203,8 +203,8 @@ export function ApprovalQueue() {
  <span className="px-3 py-1 bg-warning-soft text-warning text-[10px] font-bold rounded-lg  tracking-normal">{queue.length} Pending</span>
  </div>
 
- <div className="overflow-x-auto w-full">
- <Table className="min-w-full text-xs text-left whitespace-nowrap">
+ <div className="w-full">
+ <Table className="text-xs text-left whitespace-nowrap">
  <TableHeader className="text-fg-secondary font-bold">
  <TableRow>
  <TableHead className="p-4 border-b border-border">Submitted At</TableHead>

@@ -5,11 +5,11 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+  <div className="kss-table-shell">
     <table
       ref={ref}
       className={cn(
-        "w-full caption-bottom text-sm border-separate border-spacing-0",
+        "w-full min-w-max caption-bottom text-[12px] border-separate border-spacing-0",
         className
       )}
       {...props}
@@ -25,7 +25,7 @@ const TableHeader = React.forwardRef<
   <thead
     ref={ref}
     className={cn(
-      "border-b border-border bg-surface-raised text-[10px] font-semibold uppercase tracking-[0.08em] text-fg-muted",
+      "border-b border-border bg-white/[0.025] text-[10px] font-semibold uppercase tracking-[0.08em] text-fg-muted",
       "[&_tr]:border-b [&_tr]:border-border",
       className
     )}
@@ -88,7 +88,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-10 px-4 text-left align-middle font-semibold text-fg-muted",
+      "h-11 px-4 text-left align-middle font-semibold text-fg-muted",
       "whitespace-nowrap",
       "[&:has([role=checkbox])]:pr-0",
       className
@@ -105,7 +105,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-4 py-3 align-middle text-sm text-fg-secondary",
+      "px-4 py-3 align-middle text-[12px] text-fg-secondary",
       "whitespace-nowrap",
       "[&:has([role=checkbox])]:pr-0",
       className

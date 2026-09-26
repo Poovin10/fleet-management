@@ -1,0 +1,1094 @@
+===== GIT =====
+ M components/AccountsModule.tsx
+ M supabase/.temp/cli-latest
+?? audit/
+?? components/ApprovalQueue.tsx.before-stage-9m
+?? components/DriverPortal.tsx.before-atomic-close
+?? components/DriverPortal.tsx.before-atomic-start
+?? components/DriverPortal.tsx.before-authoritative-odo-read
+?? components/DriverPortal.tsx.before-night8-auth
+?? components/FinancialsModule.tsx.before-stage-9g
+?? components/FleetTable.tsx.before-stage-9l
+?? components/FuelAdvanceModule.tsx.before-atomic-fuel
+?? components/FuelAdvanceModule.tsx.before-atomic-fuel-update
+?? components/FuelAdvanceModule.tsx.before-fuel-delete-rpc
+?? components/Insights.tsx.before-stage-9j
+?? components/LiveAlertsWidget.tsx.before-stage-9m
+?? components/ModifyTrips.tsx.before-atomic-rpc
+?? components/ModifyTrips.tsx.before-night1
+?? components/ModifyTrips.tsx.before-stage-9h
+?? components/PodClosure.tsx.before-night2
+?? components/PodClosure.tsx.before-pod-workflow-fix
+?? components/PodClosure.tsx.before-premium-ui
+?? components/ProfitLossModule.tsx.before-stage-9k
+?? components/SetupModule.tsx.before-stage-9i
+?? components/TelemetryHUD.tsx.before-command-center-v2
+?? components/TelemetryHUD.tsx.before-dashboard-refinement
+?? components/TelemetryHUD.tsx.before-fleet-drilldown
+?? components/TelemetryHUD.tsx.before-fleet-drilldown-final
+?? components/TelemetryHUD.tsx.before-fleet-drilldown-v2
+?? components/TripForm.tsx.before-atomic-dispatch
+?? components/TripForm.tsx.before-inline-validation
+?? components/TripForm.tsx.before-odometer-read
+?? components/TripForm.tsx.before-schema-fix
+?? components/TripForm.tsx.before-stage-5-validation
+?? components/WorkshopModule.tsx.before-night6-final-fix
+?? components/WorkshopModule.tsx.before-night6-retread-ui
+?? components/WorkshopModule.tsx.before-night6-tyre-rpc
+?? components/dashboard.tsx.before-premium-shell
+?? components/dashboard.tsx.before-shell-cleanup
+?? components/ui/TableToolbar.tsx.before-stage-9l
+?? components/ui/badge.tsx.before-stage-9l
+?? components/ui/table.tsx.before-stage-9l
+?? vercel-deployment.json
+16dad8c Secure driver portal actions with sessions
+93942e0 Complete AdBlue fuel management workflow
+344598c Harden tyre lifecycle and vendor workflows
+
+===== COMPONENTS =====
+components/AccountsModule.tsx
+components/AiInsightsDashboard.tsx
+components/AlertModal.tsx
+components/ApprovalQueue.tsx
+components/ApprovalQueue.tsx.before-stage-9m
+components/ConfirmModal.tsx
+components/DriverPortal.tsx
+components/DriverPortal.tsx.before-atomic-close
+components/DriverPortal.tsx.before-atomic-start
+components/DriverPortal.tsx.before-authoritative-odo-read
+components/DriverPortal.tsx.before-night8-auth
+components/DriverSettlementModule.tsx
+components/FinancialsModule.tsx
+components/FinancialsModule.tsx.before-stage-9g
+components/FleetTable.tsx
+components/FleetTable.tsx.before-stage-9l
+components/FuelAdvanceModule.tsx
+components/FuelAdvanceModule.tsx.before-atomic-fuel
+components/FuelAdvanceModule.tsx.before-atomic-fuel-update
+components/FuelAdvanceModule.tsx.before-fuel-delete-rpc
+components/Insights.tsx
+components/Insights.tsx.before-stage-9j
+components/LiquidGlassProvider.tsx
+components/LiveAlertsWidget.tsx
+components/LiveAlertsWidget.tsx.before-stage-9m
+components/LogoutButton.tsx
+components/ModifyTrips.tsx
+components/ModifyTrips.tsx.before-atomic-rpc
+components/ModifyTrips.tsx.before-night1
+components/ModifyTrips.tsx.before-stage-9h
+components/PodClosure.tsx
+components/PodClosure.tsx.before-night2
+components/PodClosure.tsx.before-pod-workflow-fix
+components/PodClosure.tsx.before-premium-ui
+components/ProfitLossModule.tsx
+components/ProfitLossModule.tsx.before-stage-9k
+components/SetupModule.tsx
+components/SetupModule.tsx.before-stage-9i
+components/TelemetryHUD.tsx
+components/TelemetryHUD.tsx.before-command-center-v2
+components/TelemetryHUD.tsx.before-dashboard-refinement
+components/TelemetryHUD.tsx.before-fleet-drilldown
+components/TelemetryHUD.tsx.before-fleet-drilldown-final
+components/TelemetryHUD.tsx.before-fleet-drilldown-v2
+components/TripForm.tsx
+components/TripForm.tsx.before-atomic-dispatch
+components/TripForm.tsx.before-button-migration
+components/TripForm.tsx.before-inline-validation
+components/TripForm.tsx.before-odometer-read
+components/TripForm.tsx.before-schema-fix
+components/TripForm.tsx.before-stage-5-validation
+components/UploadHub.tsx
+components/WorkshopModule.tsx
+components/WorkshopModule.tsx.before-night6-final-fix
+components/WorkshopModule.tsx.before-night6-retread-ui
+components/WorkshopModule.tsx.before-night6-tyre-rpc
+components/auth-button.tsx
+components/build
+components/dashboard.tsx
+components/dashboard.tsx.before-premium-shell
+components/dashboard.tsx.before-shell-cleanup
+components/deploy-button.tsx
+components/env-var-warning.tsx
+components/forgot-password-form.tsx
+components/hero.tsx
+components/login-form.tsx
+components/logout-button.tsx
+components/next
+components/next-logo.tsx
+components/sign-up-form.tsx
+components/supabase-logo.tsx
+components/theme-switcher.tsx
+components/ui/TabBar.tsx
+components/ui/TableToolbar.tsx
+components/ui/TableToolbar.tsx.before-stage-9l
+components/ui/badge.tsx
+components/ui/badge.tsx.before-stage-9l
+components/ui/button.tsx
+components/ui/card.tsx
+components/ui/checkbox.tsx
+components/ui/dropdown-menu.tsx
+components/ui/input.tsx
+components/ui/label.tsx
+components/ui/select.tsx
+components/ui/table.tsx
+components/ui/table.tsx.before-stage-9l
+components/update-password-form.tsx
+
+===== SUPABASE FILES =====
+supabase/.temp/cli-latest
+supabase/.temp/gotrue-version
+supabase/.temp/linked-project.json
+supabase/.temp/pooler-url
+supabase/.temp/postgres-version
+supabase/.temp/project-ref
+supabase/.temp/rest-version
+supabase/.temp/storage-migration
+supabase/.temp/storage-version
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql
+
+===== MASTER / FREIGHT / BATA / DOCUMENT REFERENCES =====
+components/AccountsModule.tsx:15: const [drivers, setDrivers] = useState<any[]>([]);
+components/AccountsModule.tsx:27: const [advDriverId, setAdvDriverId] = useState("");
+components/AccountsModule.tsx:34: const [expVehicleId, setExpVehicleId] = useState("");
+components/AccountsModule.tsx:46: const [driversRes, trucksRes, advRes, billsRes] = await Promise.all([
+components/AccountsModule.tsx:47: supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
+components/AccountsModule.tsx:48: supabase.from('vehicles').select("*").order("vehicle_number"),
+components/AccountsModule.tsx:49: supabase.from("driver_direct_advances").select("*, drivers(full_name, driver_code)").order("advance_date", { ascending: false }).limit(200),
+components/AccountsModule.tsx:50: supabase.from("workshop_spares_bills").select("*, vehicles(vehicle_number)").order("bill_date", { ascending: false }).limit(400)
+components/AccountsModule.tsx:53: if (driversRes.data) setDrivers(driversRes.data);
+components/AccountsModule.tsx:68: setAdvDriverId(String(adv.driver_id));
+components/AccountsModule.tsx:77: if (!advDriverId || Number(advAmount) <= 0) return alert("Invalid amount.");
+components/AccountsModule.tsx:82:   driver_id: Number(advDriverId),
+components/AccountsModule.tsx:91:   const res = await supabase.rpc("save_driver_advance_atomic", {
+components/AccountsModule.tsx:94:     p_driver_id: payload.driver_id,
+components/AccountsModule.tsx:102:   const res = await supabase.rpc("save_driver_advance_atomic", {
+components/AccountsModule.tsx:104:     p_driver_id: payload.driver_id,
+components/AccountsModule.tsx:129: const { error } = await supabase.rpc("delete_driver_advance_atomic", {
+components/AccountsModule.tsx:147:   p_vehicle_id: expVehicleId ? Number(expVehicleId) : null,
+components/AccountsModule.tsx:164: const filteredAdvances = recentAdvances.filter(a => (a.drivers?.full_name || "").toLowerCase().includes(advancesSearch.toLowerCase()) || (a.advance_type || "").toLowerCase().includes(advancesSearch.toLowerCase()));
+components/AccountsModule.tsx:165: const exportAdvances = filteredAdvances.map(a => ({ "Date": formatDate(a.advance_date), "Driver": a.drivers?.full_name || "-", "Type": a.advance_type, "Amount (INR)": a.amount_inr, "Remarks": a.reference_remarks || "-" }));
+components/AccountsModule.tsx:167: const filteredWorkshop = workshopBills.filter(b => (b.vehicles?.vehicle_number || "").toLowerCase().includes(workshopSearch.toLowerCase()) || (b.vendor_name || "").toLowerCase().includes(workshopSearch.toLowerCase()) || (b.spare_parts_details || "").toLowerCase().includes(workshopSearch.toLowerCase()));
+components/AccountsModule.tsx:168: const exportWorkshop = filteredWorkshop.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.vehicles?.vehicle_number || "GENERAL", "Vendor": b.vendor_name, "Description": b.spare_parts_details, "Amount (INR)": b.total_bill_amount }));
+components/AccountsModule.tsx:170: const filteredPetty = pettyExpenses.filter(b => (b.vehicles?.vehicle_number || "").toLowerCase().includes(pettySearch.toLowerCase()) || (b.vendor_name || "").toLowerCase().includes(pettySearch.toLowerCase()) || (b.spare_parts_details || "").toLowerCase().includes(pettySearch.toLowerCase()));
+components/AccountsModule.tsx:171: const exportPetty = filteredPetty.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.vehicles?.vehicle_number || "GENERAL", "Category": b.vendor_name, "Description": b.spare_parts_details, "Amount (INR)": b.total_bill_amount }));
+components/AccountsModule.tsx:178: {[{ id: "advances", label: "Driver Advances" }, { id: "petty", label: "Petty Expenses" }, { id: "workshop", label: "Workshop Ledger" }].map((tab) => (
+components/AccountsModule.tsx:190: <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Driver *</label><select value={advDriverId} onChange={e => setAdvDriverId(e.target.value)} className="input-glass text-fg outline-none focus:border-accent font-bold" required><option value="">-- SELECT --</option>{drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}</select></div>
+components/AccountsModule.tsx:192: <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Category</label><select value={advCategory} onChange={e => setAdvCategory(e.target.value)} className="input-glass text-fg outline-none focus:border-accent font-semibold"><option value="GENERAL_ADVANCE">GENERAL ADVANCE</option><option value="BATA_ADVANCE">BATA ADVANCE</option><option value="SALARY_ADVANCE">SALARY ADVANCE</option></select></div>
+components/AccountsModule.tsx:201: <TableToolbar title="Advance History" searchQuery={advancesSearch} setSearchQuery={setAdvancesSearch} exportData={exportAdvances} exportFilename="Driver_Advances" />
+components/AccountsModule.tsx:207:     <TableHead className="px-5 py-3.5 text-left">Driver</TableHead>
+components/AccountsModule.tsx:230:         {adv.drivers?.full_name}
+components/AccountsModule.tsx:283: <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Expense Type</label><select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass"><option value="TOLL_FASTAG">TOLL / FASTAG</option><option value="POLICE_RTO">RTO / PERMITS</option><option value="LOADING">HAMALI / LOADING</option><option value="OFFICE">OFFICE MISC</option></select></div>
+components/AccountsModule.tsx:284: <div><label className="block text-[10px] font-bold text-fg/60  mb-1">Truck (Optional)</label><select value={expVehicleId} onChange={e => setExpVehicleId(e.target.value)} className="w-full text-xs p-3 rounded-xl input-glass"><option value="">-- GENERAL --</option>{trucksList.map(t => <option key={t.vehicle_id} value={t.vehicle_id}>{t.vehicle_number}</option>)}</select></div>
+components/AccountsModule.tsx:316:         {b.vehicles?.vehicle_number || "-"}
+components/AccountsModule.tsx:369:         {b.vehicles?.vehicle_number || "-"}
+components/AiInsightsDashboard.tsx:99:                <p className="text-xs text-fg-muted text-center py-10 font-medium">All vehicle fuel and maintenance metrics are within normal parameters.</p>
+components/ApprovalQueue.tsx:27: const { data: qData, error: qError } = await supabase.from('driver_pending_entries').select('*').eq('status', 'PENDING').order('submitted_at', { ascending: false });
+components/ApprovalQueue.tsx:35: const { data: vData } = await supabase.from('vehicles').select('vehicle_id, vehicle_number');
+components/ApprovalQueue.tsx:37: const truck = vData?.find(v => v.vehicle_id === req.vehicle_id);
+components/ApprovalQueue.tsx:38: return { ...req, truck_number: truck ? truck.vehicle_number : `Truck ID: ${req.vehicle_id}` };
+components/ApprovalQueue.tsx:58: message: "This request type is no longer approved from this queue. Start Trip requests are handled directly by the atomic driver workflow.",
+components/ApprovalQueue.tsx:83: const { error } = await supabase.rpc("approve_driver_fuel_atomic", {
+components/ApprovalQueue.tsx:102: } else if (message.includes("VEHICLE_NOT_FOUND")) {
+components/ApprovalQueue.tsx:103: title = "Vehicle Not Found";
+components/ApprovalQueue.tsx:132: const { error } = await supabase.rpc("reject_driver_pending_entry_atomic", {
+components/ApprovalQueue.tsx:141: const message = error.message || "Unable to reject driver request.";
+components/ApprovalQueue.tsx:171: <ConfirmModal isOpen={rejectId !== null} title="Reject Request" message="Are you sure you want to REJECT this driver request? This cannot be undone." isDanger={true} confirmText="Yes, Reject" onConfirm={executeReject} onCancel={() => setRejectId(null)} isProcessing={isProcessing} />
+components/ApprovalQueue.tsx:183: <div className="flex justify-between items-center"><span className="text-[10px] text-fg-secondary font-bold  tracking-wider">Driver</span> <span className="text-fg-secondary font-bold">{approveData.req?.driver_code}</span></div>
+components/ApprovalQueue.tsx:202: <h3 className="text-sm font-semibold text-fg  tracking-wide">Driver Submissions Approval Queue</h3>
+components/ApprovalQueue.tsx:211: <TableHead className="p-4 border-b border-border">Driver / Truck</TableHead>
+components/ApprovalQueue.tsx:213: <TableHead className="p-4 border-b border-border">Driver Remarks</TableHead>
+components/ApprovalQueue.tsx:221: <TableCell className="p-4"><span className="font-semibold text-fg">{req.truck_number}</span><br/><span className="text-[10px] font-bold text-accent">{req.driver_code}</span></TableCell>
+components/ApprovalQueue.tsx:238: <TableRow><TableCell colSpan={5} className="p-8 text-center text-fg-muted font-medium">All driver requests have been processed. The queue is currently empty.</TableCell></TableRow>
+components/dashboard.tsx:20:import { DriverPortal } from "@/components/DriverPortal";
+components/dashboard.tsx:23:import { DriverSettlementModule } from "@/components/DriverSettlementModule";
+components/dashboard.tsx:44:  const [isDriverRoute, setIsDriverRoute] = useState(false);
+components/dashboard.tsx:56:  const [liveVehicles, setLiveVehicles] = useState<any[]>([]);
+components/dashboard.tsx:58:  const [monthFreight, setMonthFreight] = useState<number>(0);
+components/dashboard.tsx:62:  const [pendingDriverCount, setPendingDriverCount] = useState<number>(0);
+components/dashboard.tsx:63:  const [statusCounts, setStatusCounts] = useState({ "Plant Loading": 0, "In Transit": 0, "Workshop / Repairs": 0, "No Driver / Leave": 0 });
+components/dashboard.tsx:69:  const opTabs = ["Trips", "POD Closure", "Modify Trips", "Quick Status", "Driver Approvals"];
+components/dashboard.tsx:73:    if (typeof window !== "undefined") { if (window.location.pathname.startsWith('/driver')) setIsDriverRoute(true); }
+components/dashboard.tsx:91:        if (!isDriverRoute) { router.replace("/auth/login"); }
+components/dashboard.tsx:94:    if (!isDriverRoute) { checkAuth(); } else { setIsAuthLoading(false); }
+components/dashboard.tsx:95:  }, [supabase, router, isDriverRoute]);
+components/dashboard.tsx:103:    const { data: vehiclesData } = await supabase.from('vehicles').select('*');
+components/dashboard.tsx:104:    if (vehiclesData && vehiclesData.length > 0) {
+components/dashboard.tsx:105:      setLiveVehicles(vehiclesData);
+components/dashboard.tsx:107:        "Plant Loading": vehiclesData.filter((v: any) => resolveFleetOperationalState(extractFleetRawStatus(v)) === "PLANT_LOADING").length,
+components/dashboard.tsx:108:        "In Transit": vehiclesData.filter((v: any) =>
+components/dashboard.tsx:113:        "Workshop / Repairs": vehiclesData.filter((v: any) => resolveFleetOperationalState(extractFleetRawStatus(v)) === "WORKSHOP").length,
+components/dashboard.tsx:114:        "No Driver / Leave": vehiclesData.filter((v: any) => resolveFleetOperationalState(extractFleetRawStatus(v)) === "DRIVER_UNAVAILABLE").length
+components/dashboard.tsx:121:    const { count: driverPendingCount } = await supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
+components/dashboard.tsx:122:    setPendingDriverCount(driverPendingCount || 0);
+components/dashboard.tsx:127:      supabase.from('trips').select('freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance').gte('trip_start_date', firstDay),
+components/dashboard.tsx:134:      let totalFreight = 0; let nonFuelExpenses = 0; let totalDieselCost = 0; let totalWorkshop = 0;
+components/dashboard.tsx:135:      tripsRes.data.forEach((t: any) => { totalFreight += Number(t.freight_revenue) || 0; nonFuelExpenses += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0) + (Number(t.enroute_repairs_maintenance) || 0); });
+components/dashboard.tsx:138:      setMonthFreight(totalFreight); setMonthDieselCost(totalDieselCost);
+components/dashboard.tsx:139:      setMonthNetRetention(totalFreight - totalDieselCost - nonFuelExpenses - totalWorkshop);
+components/dashboard.tsx:152:  if (isDriverRoute) {
+components/dashboard.tsx:160:            <p className="text-xs text-accent tracking-wide font-medium mt-1">Driver Highway Portal</p>
+components/dashboard.tsx:162:          <DriverPortal/>
+components/dashboard.tsx:177:      items: ["Driver Settlement", "Accounts", "Fleet Analytics", "P&L Statement"]
+components/dashboard.tsx:201:    "Driver Settlement": "Driver advances and settlement",
+components/dashboard.tsx:351:                    {liveVehicles.length} units
+components/dashboard.tsx:421:                {opSubTab === "Driver Approvals" && <ApprovalQueue/>}
+components/dashboard.tsx:427:                      const { error } = await supabase.rpc("update_vehicle_status_atomic", {
+components/dashboard.tsx:428:                        p_vehicle_id: Number(qsTruckId),
+components/dashboard.tsx:440:                          <option value="">Select vehicle...</option>
+components/dashboard.tsx:441:                          {liveVehicles.map(v => (
+components/dashboard.tsx:442:                            <option key={v.vehicle_id} value={v.vehicle_id}>
+components/dashboard.tsx:443:                              {v.vehicle_number} ({v.carrying_capacity_tons}MT)
+components/dashboard.tsx:457:                          <option value="DRIVER_UNAVAILABLE">No Driver / Leave</option>
+components/dashboard.tsx:482:            {activeTab === "Driver Settlement" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><DriverSettlementModule /></div>}
+components/DriverPortal.tsx:36:export function DriverPortal() {
+components/DriverPortal.tsx:43: const [vehicles, setVehicles] = useState<any[]>([]);
+components/DriverPortal.tsx:44: const [drivers, setDrivers] = useState<any[]>([]);
+components/DriverPortal.tsx:47: const [savedDriverCode, setSavedDriverCode] = useState("");
+components/DriverPortal.tsx:48: const [driverSessionToken, setDriverSessionToken] = useState("");
+components/DriverPortal.tsx:49: const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState("");
+components/DriverPortal.tsx:50: const [isDriverLocked, setIsDriverLocked] = useState(false);
+components/DriverPortal.tsx:53: const [driverCode, setDriverCode] = useState("");
+components/DriverPortal.tsx:54: const [driverPin, setDriverPin] = useState("");
+components/DriverPortal.tsx:86: if (!supabase || !driverSessionToken) return;
+components/DriverPortal.tsx:88: const { data, error } = await supabase.rpc("get_driver_portal_data", {
+components/DriverPortal.tsx:89:   p_session_token: driverSessionToken
+components/DriverPortal.tsx:93:   console.error("Failed to fetch driver portal data:", error);
+components/DriverPortal.tsx:97: setVehicles(data?.vehicles || []);
+components/DriverPortal.tsx:100: const fetchDriverCurrentMonthReports = async () => {
+components/DriverPortal.tsx:101: if (!supabase || !driverSessionToken) return;
+components/DriverPortal.tsx:106: const { data, error } = await supabase.rpc("get_driver_monthly_reports", {
+components/DriverPortal.tsx:107:   p_session_token: driverSessionToken,
+components/DriverPortal.tsx:112:   console.error("Failed to fetch driver monthly reports:", error);
+components/DriverPortal.tsx:123: const enrolledBioDriver = localStorage.getItem("kss_biometric_enrolled_driver");
+components/DriverPortal.tsx:124: if (enrolledBioDriver) setEnrolledBiometricDriver(enrolledBioDriver);
+components/DriverPortal.tsx:127: const activeDriverObj = drivers.find(d => d.driver_code === savedDriverCode);
+components/DriverPortal.tsx:128: const selectedTruckObj = vehicles.find(v => String(v.vehicle_id) === String(selectedTruckId));
+components/DriverPortal.tsx:133:     String(t.vehicle_id) === String(selectedTruckId) &&
+components/DriverPortal.tsx:134:     String(t.primary_driver_id) === String(activeDriverObj?.driver_id)
+components/DriverPortal.tsx:139: if (isDriverLocked && drivers.length > 0 && activeDriverObj) {
+components/DriverPortal.tsx:143:         String(t.primary_driver_id) === String(activeDriverObj.driver_id) &&
+components/DriverPortal.tsx:144:         String(t.vehicle_id) !== ""
+components/DriverPortal.tsx:148:   if (activeTrip) setSelectedTruckId(String(activeTrip.vehicle_id));
+components/DriverPortal.tsx:150:   fetchDriverCurrentMonthReports();
+components/DriverPortal.tsx:152: }, [isDriverLocked, drivers, activeTrips, savedDriverCode, activeTab, activeDriverObj, driverSessionToken]);
+components/DriverPortal.tsx:158:"get_vehicle_current_odometer",
+components/DriverPortal.tsx:159:{ p_vehicle_id: Number(selectedTruckId) }
+components/DriverPortal.tsx:179: const displayDriverName = activeDriverObj ? `${activeDriverObj.full_name} (${activeDriverObj.driver_code})` : savedDriverCode;
+components/DriverPortal.tsx:182: const monthEarnedBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0), 0);
+components/DriverPortal.tsx:183: const monthHaltBata = currentMonthTrips.reduce((sum, t) => sum + (Number(t.halt_bata) || 0), 0);
+components/DriverPortal.tsx:186: const totalMonthEarnings = monthEarnedBata + monthHaltBata;
+components/DriverPortal.tsx:191: const headers = ["LR Number", "Date", "Route", "Bata ()", "Halt ()", "Trip Adv ()"];
+components/DriverPortal.tsx:196: `${t.origin || 'N/A'} -> ${t.destination || 'N/A'}`,
+components/DriverPortal.tsx:197: `Rs. ${Number(t.driver_bata || 0).toLocaleString('en-IN')}`,
+components/DriverPortal.tsx:198: `Rs. ${Number(t.halt_bata || 0).toLocaleString('en-IN')}`,
+components/DriverPortal.tsx:206: `Driver Statement: ${activeDriverObj?.full_name || savedDriverCode} (${savedDriverCode})`,
+components/DriverPortal.tsx:210: `Ledger_${savedDriverCode}_${currentMonthStr}`
+components/DriverPortal.tsx:218: message: "Biometric login will be available after secure driver session authentication is enabled.",
+components/DriverPortal.tsx:223: const handleLockDriver = async (e: React.FormEvent) => {
+components/DriverPortal.tsx:227: const normalizedCode = driverCode.trim().toUpperCase();
+components/DriverPortal.tsx:228: const normalizedPin = driverPin.trim();
+components/DriverPortal.tsx:231: return setAlertConfig({ isOpen: true, title: "Driver Code Required", message: "Enter your driver code.", type: "error" });
+components/DriverPortal.tsx:240: const { data, error } = await supabase.rpc("authenticate_driver_session", {
+components/DriverPortal.tsx:241: p_driver_code: normalizedCode,
+components/DriverPortal.tsx:248: console.error("Driver authentication failed:", error);
+components/DriverPortal.tsx:251: message: error?.message || "Invalid driver credentials.",
+components/DriverPortal.tsx:257: const authenticatedDriver = data[0];
+components/DriverPortal.tsx:259: if (!authenticatedDriver.session_token) {
+components/DriverPortal.tsx:260:   console.error("Driver authentication succeeded without a session token");
+components/DriverPortal.tsx:263:     message: "Secure driver session could not be created.",
+components/DriverPortal.tsx:269: setDriverSessionToken(authenticatedDriver.session_token);
+components/DriverPortal.tsx:270: setDrivers([authenticatedDriver]);
+components/DriverPortal.tsx:271: setDriverCode(authenticatedDriver.driver_code);
+components/DriverPortal.tsx:272: setSavedDriverCode(authenticatedDriver.driver_code);
+components/DriverPortal.tsx:273: setIsDriverLocked(true);
+components/DriverPortal.tsx:274: setDriverPin("");
+components/DriverPortal.tsx:275: setEnrolledBiometricDriver("");
+components/DriverPortal.tsx:277: await fetchDriverCurrentMonthReports();
+components/DriverPortal.tsx:280: const handleResetDriver = () => {
+components/DriverPortal.tsx:281: if (confirm("Sign out and switch driver?")) {
+components/DriverPortal.tsx:282: setIsDriverLocked(false);
+components/DriverPortal.tsx:283: setSavedDriverCode("");
+components/DriverPortal.tsx:284: setDrivers([]);
+components/DriverPortal.tsx:286: setDriverCode("");
+components/DriverPortal.tsx:287: setDriverPin("");
+components/DriverPortal.tsx:291: const handleDriverSubmit = async (e: React.FormEvent) => {
+components/DriverPortal.tsx:302: const { error: tripError } = await supabase.rpc("start_driver_existing_trip_session_atomic", {
+components/DriverPortal.tsx:303:   p_session_token: driverSessionToken,
+components/DriverPortal.tsx:336: const { error: tripError } = await supabase.rpc("start_driver_draft_trip_session_atomic", {
+components/DriverPortal.tsx:337:   p_session_token: driverSessionToken,
+components/DriverPortal.tsx:339:   p_vehicle_id: Number(selectedTruckId),
+components/DriverPortal.tsx:352: const { error } = await supabase.rpc("submit_driver_fuel_pending_atomic", {
+components/DriverPortal.tsx:353:   p_session_token: driverSessionToken,
+components/DriverPortal.tsx:354:   p_vehicle_id: Number(selectedTruckId),
+components/DriverPortal.tsx:357:   p_receipt_remarks: `[LR: PRE-DISPATCH] ${remarks} [Truck: ${selectedTruckObj?.vehicle_number}]`.trim()
+components/DriverPortal.tsx:370: const { error } = await supabase.rpc("submit_driver_fuel_pending_atomic", {
+components/DriverPortal.tsx:371:   p_session_token: driverSessionToken,
+components/DriverPortal.tsx:372:   p_vehicle_id: Number(selectedTruckId),
+components/DriverPortal.tsx:375:   p_receipt_remarks: `[LR: ${currentTrip.trip_number}] ${remarks} [Truck: ${selectedTruckObj?.vehicle_number}]`.trim()
+components/DriverPortal.tsx:381: let updatePayload: any = {}; let finalRemarks = remarks; let vehicleStatusUpdate = "IN_TRANSIT"; let statusRemarksText = "";
+components/DriverPortal.tsx:384: updatePayload.reached_at = timestamp; updatePayload.trip_status = "REACHED_DESTINATION";
+components/DriverPortal.tsx:385: vehicleStatusUpdate = "WAITING_FOR_UNLOAD";
+components/DriverPortal.tsx:386: statusRemarksText = `Reached ${currentTrip.destination} — waiting for unload`;
+components/DriverPortal.tsx:390: vehicleStatusUpdate = "UNLOADED";
+components/DriverPortal.tsx:401: statusRemarksText = `Unloaded at ${currentTrip.destination}`;
+components/DriverPortal.tsx:405: vehicleStatusUpdate = "RETURNING";
+components/DriverPortal.tsx:406: statusRemarksText = `Returning from ${currentTrip.destination}`;
+components/DriverPortal.tsx:421: const { error: closeTripError } = await supabase.rpc("close_driver_trip_session_atomic", {
+components/DriverPortal.tsx:422:   p_session_token: driverSessionToken,
+components/DriverPortal.tsx:438: vehicleStatusUpdate = "WAITING_FOR_LOAD";
+components/DriverPortal.tsx:445: const { error: breakdownError } = await supabase.rpc("record_driver_breakdown_session_atomic", {
+components/DriverPortal.tsx:446:   p_session_token: driverSessionToken,
+components/DriverPortal.tsx:448:   p_vehicle_id: Number(selectedTruckId),
+components/DriverPortal.tsx:481: const finalVehicleRemarks = (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) ? finalRemarks : statusRemarksText;
+components/DriverPortal.tsx:486:     p_vehicle_id: Number(selectedTruckId),
+components/DriverPortal.tsx:488:     p_vehicle_status: vehicleStatusUpdate,
+components/DriverPortal.tsx:489:     p_vehicle_remarks: finalVehicleRemarks
+components/DriverPortal.tsx:510: if (!supabase || !driverSessionToken || !confirm("Cancel this request?")) return;
+components/DriverPortal.tsx:512: const { error } = await supabase.rpc("cancel_driver_pending_entry_atomic", {
+components/DriverPortal.tsx:513:   p_session_token: driverSessionToken,
+components/DriverPortal.tsx:522: await fetchDriverCurrentMonthReports();
+components/DriverPortal.tsx:531: <div className="kss-driver-portal w-full max-w-sm rounded-2xl border border-border bg-surface shadow-lg relative mx-auto mt-4 overflow-hidden mb-10" style={{ colorScheme: "light" }}>
+components/DriverPortal.tsx:536: <div><h1 className="text-sm font-bold text-[var(--portal-text-on-dark)] tracking-tight leading-none">KSS Roadways</h1><p className="text-[9px] text-accent font-bold  tracking-normal mt-0.5">Driver Portal</p></div>
+components/DriverPortal.tsx:542: {!isDriverLocked ? (
+components/DriverPortal.tsx:543: <form onSubmit={handleLockDriver} className="flex flex-col">
+components/DriverPortal.tsx:545: <h3 className="font-bold tracking-tight text-xl">Secure Driver Login</h3>
+components/DriverPortal.tsx:546: <p className="text-sm text-fg-secondary">Enter your driver code and 4-digit security PIN.</p>
+components/DriverPortal.tsx:550: <label className={labelStyle}>Driver Code</label>
+components/DriverPortal.tsx:553: value={driverCode}
+components/DriverPortal.tsx:554: onChange={e => setDriverCode(e.target.value.toUpperCase())}
+components/DriverPortal.tsx:563: {driverCode && driverCode === enrolledBiometricDriver && (
+components/DriverPortal.tsx:580: value={driverPin}
+components/DriverPortal.tsx:581: onChange={e => setDriverPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+components/DriverPortal.tsx:597: <div><p className="text-[10px] text-fg-secondary font-bold ">Active Driver</p><span className="text-sm font-bold text-fg">{displayDriverName}</span></div>
+components/DriverPortal.tsx:598: <Button type="button" variant="ghost" size="xs" onClick={handleResetDriver} className="text-xs font-bold text-[var(--portal-accent)] hover:text-[var(--portal-accent-hover)] underline transition-colors p-0 h-auto">Switch</Button>
+components/DriverPortal.tsx:607: <form onSubmit={handleDriverSubmit} className="p-6 grid gap-5 animate-in fade-in">
+components/DriverPortal.tsx:611: <option value="">Select assigned vehicle...</option>
+components/DriverPortal.tsx:612: {vehicles.map(v => (<option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number} ({v.truck_type})</option>))}
+components/DriverPortal.tsx:619: <p className="text-xs font-bold text-fg">{currentTrip.origin} {currentTrip.destination}</p>
+components/DriverPortal.tsx:674: <div>Earned Bata: <strong className="text-[var(--portal-text-on-dark)]">{monthEarnedBata}</strong></div><div>Halt Bata (Exp): <strong className="text-[var(--portal-warning)]">{monthHaltBata}</strong></div>
+components/DriverPortal.tsx:711: const tripBata = Number(t.driver_bata) || 0; const halt = Number(t.halt_bata) || 0; const adv = Number(t.cash_advance_issued) || 0;
+components/DriverPortal.tsx:715: <div><p className="text-sm font-bold text-fg">{t.trip_number}</p><p className="text-[10px] font-bold text-fg-secondary truncate max-w-[150px]">{t.origin} {t.destination}</p></div>
+components/DriverPortal.tsx:719: <div>Bata: <strong className="text-[var(--portal-success)]">{tripBata}</strong></div><div>Halt: <strong className="text-[var(--portal-warning)]">{halt}</strong></div><div>Adv: <strong className="text-[var(--portal-danger)]">{adv}</strong></div>
+components/DriverSettlementModule.tsx:11:export function DriverSettlementModule() {
+components/DriverSettlementModule.tsx:16: const [drivers, setDrivers] = useState<any[]>([]);
+components/DriverSettlementModule.tsx:17: const [selectedDriverId, setSelectedDriverId] = useState("");
+components/DriverSettlementModule.tsx:21: const [driverTrips, setDriverTrips] = useState<any[]>([]);
+components/DriverSettlementModule.tsx:22: const [driverAdvances, setDriverAdvances] = useState<any[]>([]);
+components/DriverSettlementModule.tsx:32: async function fetchDrivers() {
+components/DriverSettlementModule.tsx:33: const { data } = await supabase.from('drivers').select('*').eq('is_active', true).order('full_name');
+components/DriverSettlementModule.tsx:34: if (data) setDrivers(data);
+components/DriverSettlementModule.tsx:36: fetchDrivers();
+components/DriverSettlementModule.tsx:40: if (!selectedDriverId) return alert("Please select a driver first.");
+components/DriverSettlementModule.tsx:43: const { data: trips } = await supabase.from('trips').select(`trip_id, trip_start_date, trip_number, origin, destination, freight_revenue, driver_bata, halt_bata, cash_advance_issued, settlement_status, vehicles(vehicle_number)`).eq('primary_driver_id', selectedDriverId).gte('trip_start_date', fromDate).lte('trip_start_date', toDate).order('trip_start_date', { ascending: true });
+components/DriverSettlementModule.tsx:44: const { data: advances } = await supabase.from('driver_direct_advances').select('*').eq('driver_id', selectedDriverId).gte('advance_date', fromDate).lte('advance_date', toDate).order('advance_date', { ascending: true });
+components/DriverSettlementModule.tsx:46: if (trips) setDriverTrips(trips);
+components/DriverSettlementModule.tsx:47: if (advances) setDriverAdvances(advances);
+components/DriverSettlementModule.tsx:54: const { data, error } = await supabase.rpc("settle_driver_period_atomic", {
+components/DriverSettlementModule.tsx:55:   p_driver_id: Number(selectedDriverId),
+components/DriverSettlementModule.tsx:74: const tripsByTruck = driverTrips.reduce((acc: any, trip: any) => {
+components/DriverSettlementModule.tsx:75: const truckNo = trip.vehicles?.vehicle_number || "UNKNOWN TRUCK";
+components/DriverSettlementModule.tsx:81: let grandTotalBata = 0; let grandTotalTripAdv = 0;
+components/DriverSettlementModule.tsx:84: grandTotalBata += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0);
+components/DriverSettlementModule.tsx:90: driverAdvances.forEach(a => directAdvTotal += Number(a.amount_inr) || 0);
+components/DriverSettlementModule.tsx:92: const finalBalancePayable = grandTotalBata - grandTotalTripAdv - directAdvTotal;
+components/DriverSettlementModule.tsx:93: const selectedDriverObj = drivers.find(d => String(d.driver_id) === selectedDriverId);
+components/DriverSettlementModule.tsx:96: if (!selectedDriverObj) return;
+components/DriverSettlementModule.tsx:97: const headers = ["Date", "Description / Route", "Freight", "Earned Bata", "Deducted Adv", "Net Balance"];
+components/DriverSettlementModule.tsx:102: let trBata = 0; let trAdv = 0;
+components/DriverSettlementModule.tsx:104: const tb = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0); const ta = Number(t.cash_advance_issued) || 0;
+components/DriverSettlementModule.tsx:105: trBata += tb; trAdv += ta;
+components/DriverSettlementModule.tsx:106: rows.push([formatDate(t.trip_start_date), `${t.trip_number||"-"} | ${t.origin} to ${t.destination}`, `Rs.${formatAmt(t.freight_revenue)}`, `Rs.${formatAmt(tb)}`, `Rs.${formatAmt(ta)}`, `Rs.${formatAmt(tb-ta)}`]);
+components/DriverSettlementModule.tsx:108: rows.push(["SUBTOTAL", `For Truck ${truckNo}`, "", `Rs.${formatAmt(trBata)}`, `Rs.${formatAmt(trAdv)}`, `Rs.${formatAmt(trBata-trAdv)}`]);
+components/DriverSettlementModule.tsx:112: if (driverAdvances.length > 0) {
+components/DriverSettlementModule.tsx:114: driverAdvances.forEach(a => { rows.push([formatDate(a.advance_date), `${a.advance_type} | ${a.reference_remarks || "-"}`, "-", "-", `Rs.${formatAmt(a.amount_inr)}`, `(Rs.${formatAmt(a.amount_inr)})`]); });
+components/DriverSettlementModule.tsx:119: `Master Driver Settlement: ${selectedDriverObj.full_name} (${selectedDriverObj.driver_code})`,
+components/DriverSettlementModule.tsx:121: headers, rows, `Settlement_${selectedDriverObj.driver_code}_${fromDate}_to_${toDate}`
+components/DriverSettlementModule.tsx:128: <h2 className="text-xl font-semibold text-fg  tracking-tight">Driver Accounting & Settlements</h2>
+components/DriverSettlementModule.tsx:135: <label className="block text-[10px] font-semibold text-fg-secondary  tracking-normal mb-2">Select Driver *</label>
+components/DriverSettlementModule.tsx:137: value={selectedDriverId}
+components/DriverSettlementModule.tsx:139:   setSelectedDriverId(e.target.value);
+components/DriverSettlementModule.tsx:144: <option value="">-- SELECT DRIVER --</option>
+components/DriverSettlementModule.tsx:145: {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
+components/DriverSettlementModule.tsx:167: <Button type="button" onClick={generateSettlement} disabled={isProcessing || !selectedDriverId} size="lg">
+components/DriverSettlementModule.tsx:178: <div className="kss-surface-raised border border-border p-5"><p className="text-[9px] font-semibold text-fg-secondary  tracking-normal">Total Trips</p><p className="text-2xl font-semibold text-fg mt-2 font-mono">{driverTrips.length}</p></div>
+components/DriverSettlementModule.tsx:179: <div className="kss-surface-raised border border-success/20 p-5"><p className="text-[9px] font-semibold text-success  tracking-normal">Gross Bata Earned</p><p className="text-2xl font-semibold text-success mt-2 font-mono">{formatAmt(grandTotalBata)}</p></div>
+components/DriverSettlementModule.tsx:186: let trFreight = 0; let trBata = 0; let trAdv = 0;
+components/DriverSettlementModule.tsx:192: <TableHeader className="sticky top-0 z-10"><TableRow className="text-left font-bold text-fg-secondary  tracking-wider text-[9px]"><TableHead className="px-5 py-3 border-b border-border">Date / LR No</TableHead><TableHead className="px-5 py-3 border-b border-border">Route</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Freight ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Bata ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Trip Adv ()</TableHead><TableHead className="px-5 py-3 text-right border-b border-border">Balance ()</TableHead><TableHead className="px-5 py-3 text-center border-b border-border">Status</TableHead></TableRow></TableHeader>
+components/DriverSettlementModule.tsx:195: const tb = (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0); const ta = Number(t.cash_advance_issued) || 0;
+components/DriverSettlementModule.tsx:196: trFreight += Number(t.freight_revenue) || 0; trBata += tb; trAdv += ta;
+components/DriverSettlementModule.tsx:200: <TableCell className="px-5 py-3.5 text-fg-secondary font-bold"><span className="text-xs">{t.origin} {t.destination}</span></TableCell>
+components/DriverSettlementModule.tsx:201: <TableCell className="px-5 py-3.5 text-right font-semibold text-fg-secondary font-mono">{formatAmt(t.freight_revenue)}</TableCell>
+components/DriverSettlementModule.tsx:209: <TableRow className="bg-surface-raised"><TableCell colSpan={2} className="px-5 py-3.5 text-right font-semibold text-fg-secondary  tracking-normal text-[9px]">Truck Subtotal</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-fg font-mono">{formatAmt(trFreight)}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-success font-mono">{formatAmt(trBata)}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(trAdv)}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-accent font-mono">{formatAmt(trBata - trAdv)}</TableCell><TableCell className="px-5 py-3.5"></TableCell></TableRow>
+components/DriverSettlementModule.tsx:217: {driverAdvances.length > 0 && (
+components/DriverSettlementModule.tsx:224: {driverAdvances.map(a => (<TableRow key={a.advance_id} className=""><TableCell className="px-5 py-3.5 font-semibold text-fg">{formatDate(a.advance_date)}</TableCell><TableCell className="px-5 py-3.5 text-fg-secondary font-bold">{a.advance_type}</TableCell><TableCell className="px-5 py-3.5 text-fg-muted">{a.reference_remarks || "-"}</TableCell><TableCell className="px-5 py-3.5 text-right font-semibold text-danger font-mono">{formatAmt(a.amount_inr)}</TableCell></TableRow>))}
+components/FinancialsModule.tsx:24: const [driverScorecard, setDriverScorecard] = useState<any[]>([]);
+components/FinancialsModule.tsx:41: const { data: activeVehicles } = await supabase.from('vehicles').select('vehicle_id:id, vehicle_number, truck_type').eq('is_active', true);
+components/FinancialsModule.tsx:42: const { data: activeDrivers } = await supabase.from('drivers').select('driver_id, driver_code, full_name').eq('is_active', true);
+components/FinancialsModule.tsx:44: let tQuery = supabase.from('trips').select('vehicle_id, primary_driver_id, trip_status, total_km_run, loaded_weight_mt, tonnage_loaded, freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance, fuel_litres');
+components/FinancialsModule.tsx:45: let fQuery = supabase.from('diesel_fuel_logs').select('vehicle_id, litres_filled, total_fuel_cost');
+components/FinancialsModule.tsx:46: let wQuery = supabase.from('workshop_spares_bills').select('vehicle_id, bill_amount');
+components/FinancialsModule.tsx:61: (activeVehicles || []).forEach(v => {
+components/FinancialsModule.tsx:63: const vTrips = (trips || []).filter(t => t.vehicle_id === v.vehicle_id);
+components/FinancialsModule.tsx:64: const vFuels = (fuels || []).filter(f => f.vehicle_id === v.vehicle_id);
+components/FinancialsModule.tsx:65: const vBills = (bills || []).filter(b => b.vehicle_id === v.vehicle_id);
+components/FinancialsModule.tsx:69: let total_km = 0; let total_tons = 0; let total_freight = 0; let non_fuel_costs = 0;
+components/FinancialsModule.tsx:74: total_freight += Number(t.freight_revenue) || 0;
+components/FinancialsModule.tsx:75: non_fuel_costs += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0) + (Number(t.enroute_repairs_maintenance) || 0);
+components/FinancialsModule.tsx:88: const net_retention = total_freight - total_diesel_cost - non_fuel_costs - total_workshop;
+components/FinancialsModule.tsx:89: const retention_pct = total_freight > 0 ? (net_retention / total_freight) * 100 : 0;
+components/FinancialsModule.tsx:90: const diesel_pct = total_freight > 0 ? (total_diesel_cost / total_freight) * 100 : 0;
+components/FinancialsModule.tsx:94: vehicle_number: v.vehicle_number, truck_type: v.truck_type || "Unknown",
+components/FinancialsModule.tsx:95: total_trips: trips_count, incomplete_trips, total_tons, total_freight,
+components/FinancialsModule.tsx:104: const driverMetrics: any[] = [];
+components/FinancialsModule.tsx:105: (activeDrivers || []).forEach(d => {
+components/FinancialsModule.tsx:106: const dTrips = (trips || []).filter(t => t.primary_driver_id === d.driver_id);
+components/FinancialsModule.tsx:109: dTrips.forEach(t => { d_km += Number(t.total_km_run) || 0; d_rev += Number(t.freight_revenue) || 0; d_fuel += Number(t.fuel_litres) || 0; });
+components/FinancialsModule.tsx:110: driverMetrics.push({ driver_code: d.driver_code, full_name: d.full_name, trips: tripsCount, total_km: d_km, revenue: d_rev, kmpl: d_fuel > 0 ? d_km / d_fuel : 0 });
+components/FinancialsModule.tsx:114: setDriverScorecard(driverMetrics.sort((a, b) => b.revenue - a.revenue));
+components/FinancialsModule.tsx:121: const METRIC_MAP: any = { "Total Net Retention (INR)": "net_retention", "Total Freight Revenue (INR)": "total_freight", "Total Trips": "total_trips", "Incomplete Trips": "incomplete_trips", "Total Tons (MT)": "total_tons", "Total Diesel (L)": "total_diesel_litres", "Total Diesel Expense (INR)": "total_diesel_cost", "Retention %": "retention_pct", "Diesel %": "diesel_pct", "KMPL": "kmpl" };
+components/FinancialsModule.tsx:129: const aggFreight = sortedFleetData.reduce((acc, c) => acc + c.total_freight, 0);
+components/FinancialsModule.tsx:132: const aggRetentionPct = aggFreight > 0 ? (aggRetention / aggFreight) * 100 : 0;
+components/FinancialsModule.tsx:137: if (analyticsSubTab === "Driver Scorecard") {
+components/FinancialsModule.tsx:138: if (driverScorecard.length === 0) return alert("No data to export.");
+components/FinancialsModule.tsx:139: headers = ["Driver Code", "Full Name", "Total Trips", "Total KM", "Est KMPL", "Revenue (INR)"];
+components/FinancialsModule.tsx:140: rows = driverScorecard.map(d => [d.driver_code, d.full_name, d.trips, d.total_km.toFixed(1), d.kmpl.toFixed(2), d.revenue.toFixed(2)].map(sanitizeCsv).join(","));
+components/FinancialsModule.tsx:141: filename = `Driver_Scorecard_${new Date().toISOString().split('T')[0]}.csv`;
+components/FinancialsModule.tsx:144: headers = ["Truck No", "Type", "Trips", "Tons (MT)", "Inc. Trips", "Freight (INR)", "Diesel (L)", "Diesel Cost (INR)", "Net Retention (INR)", "Retention %", "Diesel %", "KMPL"];
+components/FinancialsModule.tsx:145: rows = sortedFleetData.map(r => [r.vehicle_number, r.truck_type, r.total_trips, r.total_tons.toFixed(2), r.incomplete_trips, r.total_freight.toFixed(2), r.total_diesel_litres.toFixed(2), r.total_diesel_cost.toFixed(2), r.net_retention.toFixed(2), r.retention_pct.toFixed(2), r.diesel_pct.toFixed(2), r.kmpl.toFixed(2)].map(sanitizeCsv).join(","));
+components/FinancialsModule.tsx:149: const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.setAttribute("download", filename);
+components/FinancialsModule.tsx:150: document.body.appendChild(link); link.click(); document.body.removeChild(link);
+components/FinancialsModule.tsx:182:><option value="Total Net Retention (INR)">Total Net Retention (INR)</option><option value="Total Freight Revenue (INR)">Total Freight Revenue (INR)</option><option value="Total Trips">Total Trips</option><option value="Incomplete Trips">Incomplete Trips</option><option value="Total Tons (MT)">Total Tons (MT)</option><option value="Total Diesel (L)">Total Diesel (L)</option><option value="Total Diesel Expense (INR)">Total Diesel Expense (INR)</option><option value="Retention %">Retention %</option><option value="Diesel %">Diesel %</option><option value="KMPL">KMPL</option></Select></div>
+components/FinancialsModule.tsx:192: {["Fleet Retention", "Variant Benchmarks", "Driver Scorecard"].map((tab) => (<Button
+components/FinancialsModule.tsx:222: {analyticsSubTab !== "Driver Scorecard" && (
+components/FinancialsModule.tsx:224: <div className="kss-surface-raised p-4 min-w-0"><p className="text-[9px] sm:text-[10px] font-bold text-fg-secondary  mb-1 truncate">Fleet Revenue</p><p style={{ fontSize: 'clamp(1.1rem, 2vw, 1.875rem)' }} className="font-semibold text-fg leading-none whitespace-nowrap">{formatAmt(aggFreight)}</p></div>
+components/FinancialsModule.tsx:243:<TableHead className="px-4 py-4 text-right">Freight (INR)</TableHead>
+components/FinancialsModule.tsx:254:<TableRow key={row.vehicle_number} className="hover:bg-surface-raised/50">
+components/FinancialsModule.tsx:255:<TableCell className="px-4 py-3 text-left font-semibold text-fg">{row.vehicle_number}</TableCell>
+components/FinancialsModule.tsx:260:<TableCell className="px-4 py-3 text-right font-bold text-fg-secondary">{formatAmt(row.total_freight)}</TableCell>
+components/FinancialsModule.tsx:280: {analyticsSubTab === "Driver Scorecard" && (
+components/FinancialsModule.tsx:284:<TableHead className="px-6 py-4 text-left">Driver Code</TableHead>
+components/FinancialsModule.tsx:293:{driverScorecard.map((row: any) => (
+components/FinancialsModule.tsx:294:<TableRow key={row.driver_code} className="hover:bg-surface-raised/50">
+components/FinancialsModule.tsx:295:<TableCell className="px-6 py-4 text-left font-semibold text-fg">{row.driver_code}</TableCell>
+components/FinancialsModule.tsx:303:{driverScorecard.length === 0 && !isAnalyticsLoading && (
+components/FinancialsModule.tsx:306:No driver activity logged in this period.
+components/FleetTable.tsx:9:  const [vehicles, setVehicles] = useState<any[]>([]);
+components/FleetTable.tsx:17:      case "DRIVER_UNAVAILABLE":
+components/FleetTable.tsx:33:    async function fetchVehicles() {
+components/FleetTable.tsx:35:        .from('vehicles')
+components/FleetTable.tsx:37:        .order('vehicle_number', { ascending: true });
+components/FleetTable.tsx:40:        setVehicles(data);
+components/FleetTable.tsx:44:    fetchVehicles();
+components/FleetTable.tsx:56:              <TableHead className="p-3">Vehicle No</TableHead>
+components/FleetTable.tsx:64:            {vehicles.map((v) => (
+components/FleetTable.tsx:65:              <TableRow key={v.id || v.vehicle_number}>
+components/FleetTable.tsx:66:                <TableCell className="p-3 font-bold text-fg">{v.vehicle_number}</TableCell>
+components/FuelAdvanceModule.tsx:28: const [vehicles, setVehicles] = useState<any[]>([]);
+components/FuelAdvanceModule.tsx:36: const [adblueVehicleId, setAdblueVehicleId] = useState("");
+components/FuelAdvanceModule.tsx:66: const [fVehicleId, setFVehicleId] = useState("");
+components/FuelAdvanceModule.tsx:100: supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number'),
+components/FuelAdvanceModule.tsx:101: supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false }).limit(200),
+components/FuelAdvanceModule.tsx:103: supabase.from("pending_scans").select("*").eq("document_type", "FUEL_SLIP").eq("status", "PENDING").order("created_at", { ascending: false }),
+components/FuelAdvanceModule.tsx:104: supabase.from('adblue_logs').select('*, vehicles(vehicle_number), vendors(vendor_name, vendor_type)').order('adblue_date', { ascending: false }).order('adblue_log_id', { ascending: false }).limit(200),
+components/FuelAdvanceModule.tsx:108: if (vehRes.data) setVehicles(vehRes.data);
+components/FuelAdvanceModule.tsx:140: if (!fVehicleId) {
+components/FuelAdvanceModule.tsx:148: "get_vehicle_current_odometer",
+components/FuelAdvanceModule.tsx:149: { p_vehicle_id: Number(fVehicleId) }
+components/FuelAdvanceModule.tsx:165: }, [fVehicleId, supabase]);
+components/FuelAdvanceModule.tsx:168:   if (!adblueVehicleId) {
+components/FuelAdvanceModule.tsx:176:       "get_vehicle_current_odometer",
+components/FuelAdvanceModule.tsx:177:       { p_vehicle_id: Number(adblueVehicleId) }
+components/FuelAdvanceModule.tsx:193: }, [adblueVehicleId, supabase]);
+components/FuelAdvanceModule.tsx:197: setFVehicleId(""); setFCategory("TRIP_DIESEL"); setFLrNo(""); setFFillingKm("");
+components/FuelAdvanceModule.tsx:207: const matchedTruck = vehicles.find(v => {
+components/FuelAdvanceModule.tsx:208: const dbTruck = String(v.vehicle_number).replace(/[^A-Z0-9]/g, '').toUpperCase();
+components/FuelAdvanceModule.tsx:212: setFVehicleId(String(matchedTruck.vehicle_id));
+components/FuelAdvanceModule.tsx:224: setFDate(log.fuel_date || ""); setFVehicleId(String(log.vehicle_id) || ""); setFCategory(log.diesel_category || "TRIP_DIESEL");
+components/FuelAdvanceModule.tsx:232: if (!fVehicleId || Number(fLitres) <= 0 || Number(fDieselRate) <= 0) return alert("Invalid inputs.");
+components/FuelAdvanceModule.tsx:253:     // Fuel odometer, vehicle and trip linkage are immutable through normal editing.
+components/FuelAdvanceModule.tsx:275:       p_vehicle_id: Number(fVehicleId),
+components/FuelAdvanceModule.tsx:333:   setAdblueVehicleId("");
+components/FuelAdvanceModule.tsx:354:   setAdblueVehicleId(String(log.vehicle_id || ""));
+components/FuelAdvanceModule.tsx:380:   if (!adblueVehicleId) {
+components/FuelAdvanceModule.tsx:445:       ? "Update the editable AdBlue details? Vehicle, trip and authoritative odometer remain protected."
+components/FuelAdvanceModule.tsx:478:               p_vehicle_id: Number(adblueVehicleId),
+components/FuelAdvanceModule.tsx:503:               p_vehicle_id: Number(adblueVehicleId),
+components/FuelAdvanceModule.tsx:586: let query = supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false });
+components/FuelAdvanceModule.tsx:591: if (auditTruck !== "All Trucks") query = query.eq('vehicles.vehicle_number', auditTruck);
+components/FuelAdvanceModule.tsx:603: const { data: logs } = await supabase.from('diesel_fuel_logs').select('*').eq('vehicle_id', truckId).gt('filling_odometer_km', 0).order('filling_odometer_km', { ascending: true });
+components/FuelAdvanceModule.tsx:641: (l.vehicles?.vehicle_number || "").toLowerCase().includes(recentSearch.toLowerCase()) ||
+components/FuelAdvanceModule.tsx:645: "Date": formatDate(l.fuel_date), "Truck": l.vehicles?.vehicle_number, "Category": l.diesel_category, "LR No": l.lr_number || "-",
+components/FuelAdvanceModule.tsx:650: (l.vehicles?.vehicle_number || "").toLowerCase().includes(auditSearch.toLowerCase()) ||
+components/FuelAdvanceModule.tsx:654: "Log ID": l.fuel_log_id, "Date": formatDate(l.fuel_date), "Truck": l.vehicles?.vehicle_number || "Unknown",
+components/FuelAdvanceModule.tsx:728: <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Select Truck *</label><Select value={fVehicleId} onChange={e => setFVehicleId(e.target.value)} className="text-fg font-bold" required disabled={isLoading}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}</Select></div>
+components/FuelAdvanceModule.tsx:809:    !fVehicleId ||
+components/FuelAdvanceModule.tsx:852:         {log.vehicles?.vehicle_number}
+components/FuelAdvanceModule.tsx:909:       {adblueCurrentOdometer !== null && adblueVehicleId && !adblueEditId && (
+components/FuelAdvanceModule.tsx:943:             value={adblueVehicleId}
+components/FuelAdvanceModule.tsx:944:             onChange={e => setAdblueVehicleId(e.target.value)}
+components/FuelAdvanceModule.tsx:950:             {vehicles.map(v => (
+components/FuelAdvanceModule.tsx:951:               <option key={v.vehicle_id} value={v.vehicle_id}>
+components/FuelAdvanceModule.tsx:952:                 {v.vehicle_number}
+components/FuelAdvanceModule.tsx:1277:                 log.vehicles?.vehicle_number,
+components/FuelAdvanceModule.tsx:1294:                   {log.vehicles?.vehicle_number || "—"}
+components/FuelAdvanceModule.tsx:1354:               log.vehicles?.vehicle_number,
+components/FuelAdvanceModule.tsx:1390: <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Truck No</label><Select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="text-fg font-bold"><option value="All Trucks">All Trucks</option>{vehicles.map(v => <option key={v.vehicle_id} value={v.vehicle_number}>{v.vehicle_number}</option>)}</Select></div>
+components/FuelAdvanceModule.tsx:1438:         {l.vehicles?.vehicle_number}
+components/FuelAdvanceModule.tsx:1488: <div><h3 className="text-sm font-semibold text-fg  tracking-wide">Vehicle Mileage (KMPL) Tracker</h3><p className="text-xs text-fg-secondary mt-1">Calculates true mileage using the "Full-to-Full" standard formula.</p></div>
+components/FuelAdvanceModule.tsx:1489: <div className="w-full md:w-64"><Select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>))}</Select></div>
+components/Insights.tsx:21:          .select("*, vehicles(vehicle_number)")
+components/Insights.tsx:25:          .select("*, vehicles(vehicle_number)")
+components/LiveAlertsWidget.tsx:29: gain.connect(ctx.destination);
+components/LiveAlertsWidget.tsx:64: const { data: vehicles } = await supabase.from('vehicles').select('*').eq('is_active', true);
+components/LiveAlertsWidget.tsx:65: const { data: drivers } = await supabase.from('drivers').select('*').eq('is_active', true);
+components/LiveAlertsWidget.tsx:67: vehicles?.forEach((v: any) => {
+components/LiveAlertsWidget.tsx:71: check(v.fc_expiry_date, 'FC');
+components/LiveAlertsWidget.tsx:72: check(v.insurance_expiry_date, 'Insurance');
+components/LiveAlertsWidget.tsx:73: check(v.puc_expiry_date, 'PUC');
+components/LiveAlertsWidget.tsx:74: check(v.np_expiry_date, 'NP');
+components/LiveAlertsWidget.tsx:75: check(v.tank_cert_expiry_date, 'Tank Cert');
+components/LiveAlertsWidget.tsx:82: message: `${v.vehicle_number} docs expiring: ${expiries.join(', ')}`,
+components/LiveAlertsWidget.tsx:89: drivers?.forEach((d: any) => {
+components/LiveAlertsWidget.tsx:90: if (d.license_expiry_date && new Date(d.license_expiry_date) <= tenDaysFromNow) {
+components/LiveAlertsWidget.tsx:92: id: `exp_d_${d.driver_id}`,
+components/LiveAlertsWidget.tsx:94: title: "License Expiry",
+components/LiveAlertsWidget.tsx:103: const { data: recentTrips } = await supabase.from('trips').select('trip_id, trip_number, trip_start_date, origin, destination, vehicles(vehicle_number)').gte('trip_start_date', tenMinutesAgo).order('trip_start_date', { ascending: false });
+components/LiveAlertsWidget.tsx:106: const vehData = Array.isArray(t.vehicles) ? t.vehicles[0] : t.vehicles;
+components/LiveAlertsWidget.tsx:111: message: `${vehData?.vehicle_number || "Truck"} : ${t.origin || 'Origin'} ${t.destination || 'Dest'}`,
+components/LiveAlertsWidget.tsx:117: const { data: recentFuel } = await supabase.from('diesel_fuel_logs').select('fuel_log_id, fuel_date, litres_filled, vehicles(vehicle_number)').gte('fuel_date', tenMinutesAgo.split('T')[0]).order('fuel_log_id', { ascending: false }).limit(3);
+components/LiveAlertsWidget.tsx:120: const vehData = Array.isArray(f.vehicles) ? f.vehicles[0] : f.vehicles;
+components/LiveAlertsWidget.tsx:125: message: `${f.litres_filled}L added to ${vehData?.vehicle_number || "Truck"}`,
+components/ModifyTrips.tsx:13: const [vehicles, setVehicles] = useState<any[]>([]);
+components/ModifyTrips.tsx:14: const [drivers, setDrivers] = useState<any[]>([]);
+components/ModifyTrips.tsx:32: const [destination, setDestination] = useState("");
+components/ModifyTrips.tsx:33: const [driverId, setDriverId] = useState("");
+components/ModifyTrips.tsx:40: const [driverBata, setDriverBata] = useState<number | "">("");
+components/ModifyTrips.tsx:44: const [haltBata, setHaltBata] = useState<number | "">("");
+components/ModifyTrips.tsx:46: const grossFreight = Math.round((Number(tonnage) || 0) * (Number(spotRate) || 0) * 100) / 100;
+components/ModifyTrips.tsx:62: const { data: vData } = await supabase.from('vehicles').select('vehicle_id:id, vehicle_number').order('vehicle_number');
+components/ModifyTrips.tsx:63: if (vData) setVehicles(vData);
+components/ModifyTrips.tsx:64: const { data: dData } = await supabase.from('drivers').select('driver_id, full_name, driver_code').order('full_name');
+components/ModifyTrips.tsx:65: if (dData) setDrivers(dData);
+components/ModifyTrips.tsx:73: const selectString = auditTruck !== "All Trucks" ? '*, vehicles!inner(vehicle_number), drivers(full_name)' : '*, vehicles(vehicle_number), drivers(full_name)';
+components/ModifyTrips.tsx:78: if (auditTruck !== "All Trucks") query = query.eq('vehicles.vehicle_number', auditTruck);
+components/ModifyTrips.tsx:92: setOrigin(trip.origin || ""); setDestination(trip.destination || ""); setDriverId(trip.primary_driver_id ? String(trip.primary_driver_id) : "");
+components/ModifyTrips.tsx:94: const rate = trip.spot_freight_rate || (trip.freight_revenue && trip.tonnage_loaded ? (trip.freight_revenue / trip.tonnage_loaded).toFixed(2) : "");
+components/ModifyTrips.tsx:97: setDriverBata(trip.driver_bata || ""); setAdvanceIssued(trip.cash_advance_issued || "");
+components/ModifyTrips.tsx:98: setEndDate(trip.trip_end_date ? trip.trip_end_date.split('T')[0] : ""); setUnloadedMt(trip.unloaded_weight_mt || ""); setHaltBata(trip.halt_bata || "");
+components/ModifyTrips.tsx:102: const clearForm = () => { setEditTripId(null); setCurrentTrip(null); setTripNumber(""); setStartDate(""); setStatus("DISPATCHED"); setOrigin(""); setDestination(""); setDriverId(""); setTonnage(""); setSpotRate(""); setDieselL(""); setIsTankFull(false); setStartKm(""); setEndKm(""); setDriverBata(""); setAdvanceIssued(""); setEndDate(""); setUnloadedMt(""); setHaltBata(""); };
+components/ModifyTrips.tsx:118:     const normalizedDestination = destination.toUpperCase().trim();
+components/ModifyTrips.tsx:147:       destination: normalizedDestination,
+components/ModifyTrips.tsx:148:       primary_driver_id: driverId ? Number(driverId) : null,
+components/ModifyTrips.tsx:150:       freight_revenue: grossFreight,
+components/ModifyTrips.tsx:151:       driver_bata: driverBata !== "" ? Number(driverBata) : 0,
+components/ModifyTrips.tsx:157:       halt_bata: haltBata !== "" ? Number(haltBata) : 0,
+components/ModifyTrips.tsx:178:       if (message.includes("TRIP_VEHICLE_REQUIRED")) {
+components/ModifyTrips.tsx:180:           "This historical trip has no assigned vehicle and cannot be modified in the new integrity workflow."
+components/ModifyTrips.tsx:229: <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Destination</label><Input type="text" value={destination} onChange={e => setDestination(e.target.value)} className="text-fg font-bold" /></div>
+components/ModifyTrips.tsx:230: <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Primary Driver</label><Select value={driverId} onChange={e => setDriverId(e.target.value)} className="text-fg font-bold"><option value="">-- UNASSIGNED --</option>{drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}</Select></div>
+components/ModifyTrips.tsx:234: <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Freight Rate / MT ()</label><Input type="number" step="0.01" value={spotRate} onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-success font-bold" /></div>
+components/ModifyTrips.tsx:235: <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Auto-Calc Gross Freight ()</label><Input type="text" value={`${grossFreight.toLocaleString('en-IN', {minimumFractionDigits: 2})}`} disabled className="w-full text-sm p-3 rounded-lg border border-success/20 bg-success-soft text-success font-semibold cursor-not-allowed"  /></div>
+components/ModifyTrips.tsx:243: <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Driver Bata ()</label><Input type="number" value={driverBata} onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" /></div>
+components/ModifyTrips.tsx:244: <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Halt Bata ()</label><Input type="number" value={haltBata} onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" /></div>
+components/ModifyTrips.tsx:267: <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Truck No</label><Select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="text-fg font-bold"><option value="All Trucks">All Trucks</option>{vehicles.map(v => <option key={v.vehicle_number} value={v.vehicle_number}>{v.vehicle_number}</option>)}</Select></div>
+components/ModifyTrips.tsx:284:  <TableHead className="px-5 py-3">Truck & Driver</TableHead>
+components/ModifyTrips.tsx:303: <TableCell className="px-5 py-3.5 text-fg-secondary"><span className="font-bold text-fg">{t.vehicles?.vehicle_number}</span><br/><span className="text-[10px] text-fg-muted">{t.drivers?.full_name}</span></TableCell>
+components/ModifyTrips.tsx:304: <TableCell className="px-5 py-3.5 text-fg-secondary">{t.origin} {t.destination}</TableCell>
+components/PodClosure.tsx:33: const [haltBata, setHaltBata] = useState<number | "">("");
+components/PodClosure.tsx:52: trip_id, trip_number, trip_start_date, origin, destination, loaded_weight_mt, start_km, fuel_litres, vehicle_id, primary_driver_id,
+components/PodClosure.tsx:54: vehicles ( vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date ),
+components/PodClosure.tsx:55: drivers ( full_name, phone_number, driver_code, license_expiry_date )
+components/PodClosure.tsx:58: supabase.from("pending_scans").select("*").eq("document_type", "POD_CLOSURE").eq("status", "PENDING").order("created_at", { ascending: false })
+components/PodClosure.tsx:122: setClosingKm(""); setHaltBata(""); setClaims(""); setClosingDiesel(""); setIsTankFull(false);
+components/PodClosure.tsx:143: const d = currentTrip.drivers;
+components/PodClosure.tsx:144: if (d) checkWarning(`Driver ${d.driver_code}`, "License", d.license_expiry_date);
+components/PodClosure.tsx:146: const v = currentTrip.vehicles;
+components/PodClosure.tsx:148: const tName = `Truck ${v.vehicle_number}`;
+components/PodClosure.tsx:149: checkWarning(tName, "FC", v.fc_expiry_date);
+components/PodClosure.tsx:150: checkWarning(tName, "Insurance", v.insurance_expiry_date);
+components/PodClosure.tsx:151: checkWarning(tName, "Q-Tax", v.qtax_expiry_date);
+components/PodClosure.tsx:152: checkWarning(tName, "PUC", v.puc_expiry_date);
+components/PodClosure.tsx:153: checkWarning(tName, "NP", v.np_expiry_date);
+components/PodClosure.tsx:154: checkWarning(tName, "State Permit", v.state_permit_expiry_date);
+components/PodClosure.tsx:155: if (String(v.truck_type).toUpperCase().includes("BULK")) checkWarning(tName, "Tank Cert", v.tank_cert_expiry_date);
+components/PodClosure.tsx:212:     p_halt_bata: Number(haltBata) || 0,
+components/PodClosure.tsx:230:     } else if (message.includes("TRIP_VEHICLE_REQUIRED")) {
+components/PodClosure.tsx:231:       title = "Vehicle Required";
+components/PodClosure.tsx:283:   t.vehicles?.vehicle_number,
+components/PodClosure.tsx:284:   t.destination,
+components/PodClosure.tsx:286:   t.drivers?.full_name,
+components/PodClosure.tsx:410:                   <p className={`text-xs font-semibold mt-1 truncate ${currentTrip.vehicles?.vehicle_number ? "text-fg" : "text-warning"}`}>
+components/PodClosure.tsx:411:                     {currentTrip.vehicles?.vehicle_number || "UNASSIGNED"}
+components/PodClosure.tsx:415:                   <p className="text-[9px] uppercase tracking-wider text-fg-muted font-semibold">Driver</p>
+components/PodClosure.tsx:416:                   <p className="text-xs font-semibold text-fg mt-1 truncate">{currentTrip.drivers?.full_name || "Unassigned"}</p>
+components/PodClosure.tsx:420:                   <p className="text-xs font-semibold text-fg mt-1 truncate">{currentTrip.origin} <span className="text-fg-muted mx-1">→</span> {currentTrip.destination}</p>
+components/PodClosure.tsx:491:                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Halt bata (₹)</label>
+components/PodClosure.tsx:492:                   <Input type="number" {...numProps} value={haltBata} onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`text-accent font-semibold ${noSpinClass}`} />
+components/PodClosure.tsx:556:         placeholder="Search LR, truck, destination or driver..."
+components/PodClosure.tsx:576:             const hasTruck = Boolean(t.vehicles?.vehicle_number);
+components/PodClosure.tsx:594:                     <span className="text-xs font-semibold text-fg">{t.vehicles.vehicle_number}</span>
+components/ProfitLossModule.tsx:22:          .select("*, vehicles(vehicle_number)")
+components/ProfitLossModule.tsx:30:          .select("*, vehicles(vehicle_number)")
+components/ProfitLossModule.tsx:44:  const totalRevenue = trips.reduce((acc, t) => acc + Number(t.freight_revenue || 0), 0);
+components/ProfitLossModule.tsx:46:  const totalBata = trips.reduce((acc, t) => acc + Number(t.driver_bata || 0) + Number(t.halt_bata || 0), 0);
+components/ProfitLossModule.tsx:48:  const totalExpenses = totalFuel + totalBata + totalSpares;
+components/ProfitLossModule.tsx:65:            <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">Total Freight Revenue</span>
+components/SetupModule.tsx:15:  const [drivers, setDrivers] = useState<any[]>([]);
+components/SetupModule.tsx:16:  const [destinations, setDestinations] = useState<any[]>([]);
+components/SetupModule.tsx:17:  const [bataRules, setBataRules] = useState<any[]>([]);
+components/SetupModule.tsx:39:  // Form states for Drivers
+components/SetupModule.tsx:40:  const [driverName, setDriverName] = useState("");
+components/SetupModule.tsx:41:  const [driverPhone, setDriverPhone] = useState("");
+components/SetupModule.tsx:44:  const [editDriverId, setEditDriverId] = useState<string | null>(null);
+components/SetupModule.tsx:48:      supabase.from('vehicles').select('*').order('vehicle_number'),
+components/SetupModule.tsx:49:      supabase.from('drivers').select('*').order('full_name'),
+components/SetupModule.tsx:50:      supabase.from('destinations_freight_master').select('*').order('destination_name'),
+components/SetupModule.tsx:51:      supabase.from('driver_bata_master').select('*').order('destination_name'),
+components/SetupModule.tsx:57:    if (dRes.data) setDrivers(dRes.data);
+components/SetupModule.tsx:58:    if (destRes.data) setDestinations(destRes.data);
+components/SetupModule.tsx:59:    if (bRes.data) setBataRules(bRes.data);
+components/SetupModule.tsx:73:      vehicle_number: truckNo.toUpperCase().trim(),
+components/SetupModule.tsx:80:      await supabase.from('vehicles').update(payload).eq('vehicle_id', editTruckId);
+components/SetupModule.tsx:83:      await supabase.from('vehicles').insert([{ ...payload, current_status: "WAITING_FOR_LOAD" }]);
+components/SetupModule.tsx:89:  const handleSaveDriver = async (e: React.FormEvent) => {
+components/SetupModule.tsx:91:    if (!driverName.trim()) return alert("Please enter driver name.");
+components/SetupModule.tsx:94:    if (drivers.length > 0) {
+components/SetupModule.tsx:95:      const maxId = drivers.reduce((max, d) => {
+components/SetupModule.tsx:96:        const numMatch = (d.driver_code || "").match(/\d+/);
+components/SetupModule.tsx:104:      full_name: driverName.toUpperCase().trim(),
+components/SetupModule.tsx:105:      phone_number: driverPhone,
+components/SetupModule.tsx:107:      license_expiry_date: licenseExp || null,
+components/SetupModule.tsx:111:    if (editDriverId) {
+components/SetupModule.tsx:112:      await supabase.from('drivers').update(payload).eq('driver_id', editDriverId);
+components/SetupModule.tsx:113:      alert("Driver updated successfully!");
+components/SetupModule.tsx:115:      await supabase.from('drivers').insert([{ ...payload, driver_code: autoGenCode, pin: "1234" }]);
+components/SetupModule.tsx:116:      alert(`Driver registered successfully with code ${autoGenCode}!`);
+components/SetupModule.tsx:118:    setDriverName(""); setDriverPhone(""); setLicenseNo(""); setLicenseExp(""); setEditDriverId(null); fetchData();
+components/SetupModule.tsx:177:  const subTabs = ["Trucks", "Drivers", "Vendors", "Freight Slabs", "Bata", "User Control"];
+components/SetupModule.tsx:190:        <p className="text-xs text-fg-secondary font-medium mt-0.5">Manage enterprise assets, active fleet units, driver rosters, and operational rates.</p>
+components/SetupModule.tsx:241:                    <TableRow key={t.vehicle_id} className="hover:bg-surface-raised/50 transition-colors">
+components/SetupModule.tsx:242:                      <TableCell className="px-4 py-3.5 font-bold text-fg font-mono">{t.vehicle_number}</TableCell>
+components/SetupModule.tsx:247:                        <Button onClick={() => { setTruckNo(t.vehicle_number); setTruckType(t.truck_type); setCapacity(String(t.carrying_capacity_tons)); setEditTruckId(t.vehicle_id); }} variant="glass" size="xs">Edit</Button>
+components/SetupModule.tsx:258:      {activeSubTab === "Drivers" && (
+components/SetupModule.tsx:261:            <h3 className="text-xs font-bold text-fg tracking-wider mb-4">{editDriverId ? "Edit Driver Record" : "Register New Driver"}</h3>
+components/SetupModule.tsx:262:            <form onSubmit={handleSaveDriver} className="space-y-4">
+components/SetupModule.tsx:265:                <Input type="text" value={driverName} onChange={e => setDriverName(e.target.value)} placeholder="e.g. Aneesh CR" className="input-glass" required />
+components/SetupModule.tsx:270:                  <Input type="text" value={driverPhone} onChange={e => setDriverPhone(e.target.value)} placeholder="10-digit mobile" className={`input-glass font-mono`} />
+components/SetupModule.tsx:273:                  <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">License Expiry</label>
+components/SetupModule.tsx:278:                {editDriverId ? "Update Driver" : "Register Driver"}
+components/SetupModule.tsx:284:            <h3 className="text-xs font-bold text-fg tracking-wider mb-4">Active Driver Roster ({drivers.length} Drivers)</h3>
+components/SetupModule.tsx:287:                <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Code</TableHead><TableHead className="px-4 py-3">Full Name</TableHead><TableHead className="px-4 py-3">Phone</TableHead><TableHead className="px-4 py-3">License Expiry</TableHead><TableHead className="px-4 py-3 text-right">Actions</TableHead></TableRow></TableHeader>
+components/SetupModule.tsx:289:                  {drivers.map(d => (
+components/SetupModule.tsx:290:                    <TableRow key={d.driver_id} className="hover:bg-surface-raised/50 transition-colors">
+components/SetupModule.tsx:291:                      <TableCell className="px-4 py-3.5 font-bold text-accent font-mono">{d.driver_code}</TableCell>
+components/SetupModule.tsx:294:                      <TableCell className="px-4 py-3.5 text-fg-secondary font-mono">{d.license_expiry_date || "-"}</TableCell>
+components/SetupModule.tsx:296:                        <Button onClick={() => { setDriverName(d.full_name); setDriverPhone(d.phone_number || ""); setLicenseNo(d.license_number || ""); setLicenseExp(d.license_expiry_date || ""); setEditDriverId(d.driver_id); }} variant="glass" size="xs">Edit</Button>
+components/SetupModule.tsx:376:                    <option value="INSURANCE">Insurance</option>
+components/SetupModule.tsx:377:                    <option value="PERMIT_COMPLIANCE">Permit / Compliance</option>
+components/SetupModule.tsx:580:      {activeSubTab === "Freight Slabs" && (
+components/SetupModule.tsx:582:          <h3 className="text-xs font-bold text-fg tracking-wider mb-4">Destinations & Freight Master Slabs ({destinations.length})</h3>
+components/SetupModule.tsx:585:              <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Destination</TableHead><TableHead className="px-4 py-3">Origin</TableHead><TableHead className="px-4 py-3 text-right">Rate / MT (₹)</TableHead></TableRow></TableHeader>
+components/SetupModule.tsx:587:                {destinations.map((d) => (
+components/SetupModule.tsx:588:                  <TableRow key={d.destination_id} className="hover:bg-surface-raised/50 transition-colors">
+components/SetupModule.tsx:589:                    <TableCell className="px-4 py-3.5 font-bold text-fg">{d.destination_name}</TableCell>
+components/SetupModule.tsx:591:                    <TableCell className="px-4 py-3.5 text-right font-bold text-success font-mono">{(Number(d.freight_rate_per_ton)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+components/SetupModule.tsx:600:      {activeSubTab === "Bata" && (
+components/SetupModule.tsx:602:          <h3 className="text-xs font-bold text-fg tracking-wider mb-4">Driver Bata Rules ({bataRules.length})</h3>
+components/SetupModule.tsx:605:              <TableHeader><TableRow className="text-left font-bold text-fg-muted uppercase tracking-wider text-[9px]"><TableHead className="px-4 py-3">Destination</TableHead><TableHead className="px-4 py-3 text-right">Standard Bata (₹)</TableHead></TableRow></TableHeader>
+components/SetupModule.tsx:607:                {bataRules.map((b) => (
+components/SetupModule.tsx:608:                  <TableRow key={b.bata_rule_id} className="hover:bg-surface-raised/50 transition-colors">
+components/SetupModule.tsx:609:                    <TableCell className="px-4 py-3.5 font-bold text-fg">{b.destination_name || "Unknown"}</TableCell>
+components/SetupModule.tsx:610:                    <TableCell className="px-4 py-3.5 text-right font-bold text-accent font-mono">{(Number(b.standard_bata_inr)||0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+components/TelemetryHUD.tsx:20: const [vehicles, setVehicles] = useState<any[]>([]);
+components/TelemetryHUD.tsx:25: noDriver: 0,
+components/TelemetryHUD.tsx:59: driversRes,
+components/TelemetryHUD.tsx:61: supabase.from('vehicles').select("*").order("vehicle_number"),
+components/TelemetryHUD.tsx:72: .from("driver_pending_entries")
+components/TelemetryHUD.tsx:77: .select("freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance")
+components/TelemetryHUD.tsx:91: .from("drivers")
+components/TelemetryHUD.tsx:92: .select("driver_code, full_name, license_expiry_date")
+components/TelemetryHUD.tsx:97: setVehicles(trucks);
+components/TelemetryHUD.tsx:103: noDriver: 0,
+components/TelemetryHUD.tsx:118: } else if (state === "DRIVER_UNAVAILABLE") {
+components/TelemetryHUD.tsx:119:   dist.noDriver++;
+components/TelemetryHUD.tsx:133: grossRev += Number(tr.freight_revenue) || 0;
+components/TelemetryHUD.tsx:135: (Number(tr.driver_bata) || 0) +
+components/TelemetryHUD.tsx:136: (Number(tr.halt_bata) || 0) +
+components/TelemetryHUD.tsx:159: (driversRes.data || []).forEach((d: any) => {
+components/TelemetryHUD.tsx:160: if (d.license_expiry_date) {
+components/TelemetryHUD.tsx:161: const exp = new Date(d.license_expiry_date);
+components/TelemetryHUD.tsx:164: id: `lic-${d.driver_code}`,
+components/TelemetryHUD.tsx:165: type: "EXPIRY",
+components/TelemetryHUD.tsx:167: desc: `${d.full_name} (${d.driver_code}) - ${d.license_expiry_date}`,
+components/TelemetryHUD.tsx:199: { key: "noDriver", label: "Driver Unavailable", shortLabel: "No Driver", color: "warning", match: (s: string) => resolveFleetOperationalState(s) === "DRIVER_UNAVAILABLE" },
+components/TelemetryHUD.tsx:206: const selectedVehicles = selectedFleet
+components/TelemetryHUD.tsx:207: ? vehicles.filter((vehicle) => {
+components/TelemetryHUD.tsx:208: const status = extractFleetRawStatus(vehicle);
+components/TelemetryHUD.tsx:238:              {vehicles.length} Units Online
+components/TelemetryHUD.tsx:350:              Gross Freight
+components/TelemetryHUD.tsx:413:              Select a fleet state to inspect the actual vehicles currently assigned to it.
+components/TelemetryHUD.tsx:526:                  {selectedVehicles.length}{" "}
+components/TelemetryHUD.tsx:527:                  {selectedVehicles.length === 1 ? "vehicle" : "vehicles"} in this state
+components/TelemetryHUD.tsx:536:            {selectedVehicles.length === 0 ? (
+components/TelemetryHUD.tsx:544:                  No vehicles in this state
+components/TelemetryHUD.tsx:552:                {selectedVehicles.map((vehicle) => (
+components/TelemetryHUD.tsx:554:                    key={vehicle.id}
+components/TelemetryHUD.tsx:561:                            {vehicle.vehicle_number || "Unnamed vehicle"}
+components/TelemetryHUD.tsx:565:                            {vehicle.vehicle_type || "Fleet Unit"}
+components/TelemetryHUD.tsx:573:                              {vehicle.current_status || "WAITING_FOR_LOAD"}
+components/TelemetryHUD.tsx:577:                          {vehicle.status_remarks && (
+components/TelemetryHUD.tsx:581:                                {vehicle.status_remarks}
+components/TelemetryHUD.tsx:588:                      {vehicle.status_updated_at && (
+components/TelemetryHUD.tsx:591:                          {new Date(vehicle.status_updated_at).toLocaleString("en-IN", {
+components/TripForm.tsx:15:  const [vehicles, setVehicles] = useState<any[]>([]);
+components/TripForm.tsx:16:  const [drivers, setDrivers] = useState<any[]>([]);
+components/TripForm.tsx:17:  const [freightMasters, setFreightMasters] = useState<any[]>([]);
+components/TripForm.tsx:18:  const [bataMasters, setBataMasters] = useState<any[]>([]);
+components/TripForm.tsx:20:  const [historicalDestinations, setHistoricalDestinations] = useState<string[]>([]);
+components/TripForm.tsx:28:  // Driver States
+components/TripForm.tsx:29:  const [driverMode, setDriverMode] = useState<"select" | "manual">("select");
+components/TripForm.tsx:30:  const [driverId, setDriverId] = useState("");
+components/TripForm.tsx:31:  const [newDriverName, setNewDriverName] = useState("");
+components/TripForm.tsx:32:  const [newDriverPhone, setNewDriverPhone] = useState("");
+components/TripForm.tsx:33:  const [newDriverLicense, setNewDriverLicense] = useState("");
+components/TripForm.tsx:34:  const [newDriverExpiry, setNewDriverExpiry] = useState("");
+components/TripForm.tsx:40:  const [destination, setDestination] = useState("");
+components/TripForm.tsx:44:  const [freightRevenue, setFreightRevenue] = useState("");
+components/TripForm.tsx:45:  const [freightMasterRate, setFreightMasterRate] = useState<number | null>(null);
+components/TripForm.tsx:46:  const [freightMasterStatus, setFreightMasterStatus] = useState("");
+components/TripForm.tsx:47:  const [freightManualOverride, setFreightManualOverride] = useState(false);
+components/TripForm.tsx:48:  const [driverBata, setDriverBata] = useState("");
+components/TripForm.tsx:49:  const [bataMasterAmount, setBataMasterAmount] = useState<number | null>(null);
+components/TripForm.tsx:50:  const [bataMasterStatus, setBataMasterStatus] = useState("");
+components/TripForm.tsx:51:  const [bataManualOverride, setBataManualOverride] = useState(false);
+components/TripForm.tsx:65:  const [lastDriverId, setLastDriverId] = useState<string>("");
+components/TripForm.tsx:71:      const { data: vData } = await supabase.from("vehicles").select("*").eq("is_active", true);
+components/TripForm.tsx:72:      if (vData) setVehicles(vData);
+components/TripForm.tsx:75:        .from("drivers")
+components/TripForm.tsx:76:        .select("driver_id, driver_code, full_name, phone_number, license_number, license_expiry_date")
+components/TripForm.tsx:79:      if (dData) setDrivers(dData);
+components/TripForm.tsx:81:      const { data: freightData } = await supabase
+components/TripForm.tsx:82:        .from("destinations_freight_master")
+components/TripForm.tsx:85:      if (freightData) setFreightMasters(freightData);
+components/TripForm.tsx:87:      const { data: bataData } = await supabase
+components/TripForm.tsx:88:        .from("driver_bata_master")
+components/TripForm.tsx:90:      if (bataData) setBataMasters(bataData);
+components/TripForm.tsx:114:      const { data: tData } = await supabase.from("trips").select("origin, destination").order("created_at", { ascending: false }).limit(300);
+components/TripForm.tsx:117:        const uniqueD = Array.from(new Set(tData.map(t => t.destination).filter(Boolean))) as string[];
+components/TripForm.tsx:119:        setHistoricalDestinations(uniqueD.length ? uniqueD : ["Kochi", "Erode", "Chennai"]);
+components/TripForm.tsx:137:        .rpc("get_vehicle_current_odometer", {
+components/TripForm.tsx:138:          p_vehicle_id: Number(truckId)
+components/TripForm.tsx:162:  const filteredVehicles = useMemo(() => {
+components/TripForm.tsx:163:    return vehicles.filter(v => {
+components/TripForm.tsx:167:  }, [vehicles, cargoType]);
+components/TripForm.tsx:169:  const selectedVehicle = useMemo(
+components/TripForm.tsx:170:    () => vehicles.find(v => String(v.vehicle_id) === truckId) || null,
+components/TripForm.tsx:171:    [vehicles, truckId]
+components/TripForm.tsx:174:  const selectedCapacity = Number(selectedVehicle?.carrying_capacity_tons || 0);
+components/TripForm.tsx:239:    if (!source || !destination || !cargoType || selectedCapacity <= 0) {
+components/TripForm.tsx:240:      setFreightMasterRate(null);
+components/TripForm.tsx:241:      setFreightMasterStatus("");
+components/TripForm.tsx:242:      setFreightManualOverride(false);
+components/TripForm.tsx:246:    const matches = freightMasters.filter(rule =>
+components/TripForm.tsx:249:      normalize(rule.destination_name) === normalize(destination) &&
+components/TripForm.tsx:254:      setFreightMasterRate(null);
+components/TripForm.tsx:255:      setFreightMasterStatus("No matching freight master found — manual freight required.");
+components/TripForm.tsx:256:      setFreightManualOverride(false);
+components/TripForm.tsx:260:    const exactVehicleCapacity = matches.find(rule =>
+components/TripForm.tsx:264:    const selectedRule = exactVehicleCapacity || matches[0];
+components/TripForm.tsx:265:    const rate = Number(selectedRule.freight_rate_per_ton);
+components/TripForm.tsx:268:      setFreightMasterRate(null);
+components/TripForm.tsx:269:      setFreightMasterStatus("Freight master rate is invalid — manual freight required.");
+components/TripForm.tsx:273:    setFreightMasterRate(rate);
+components/TripForm.tsx:274:    setFreightMasterStatus("Master freight rate matched.");
+components/TripForm.tsx:275:    setFreightManualOverride(false);
+components/TripForm.tsx:278:    destination,
+components/TripForm.tsx:281:    freightMasters
+components/TripForm.tsx:285:    if (freightMasterRate === null || !tonnage || freightManualOverride) return;
+components/TripForm.tsx:291:    setFreightRevenue(String(Number((load * freightMasterRate).toFixed(2))));
+components/TripForm.tsx:292:  }, [tonnage, freightMasterRate, freightManualOverride]);
+components/TripForm.tsx:295:    if (!source || !destination || !cargoType || selectedCapacity <= 0) {
+components/TripForm.tsx:296:      setBataMasterAmount(null);
+components/TripForm.tsx:297:      setBataMasterStatus("");
+components/TripForm.tsx:298:      setBataManualOverride(false);
+components/TripForm.tsx:302:    const matches = bataMasters.filter(rule =>
+components/TripForm.tsx:305:      normalize(rule.destination_name) === normalize(destination) &&
+components/TripForm.tsx:310:      setBataMasterAmount(null);
+components/TripForm.tsx:311:      setBataMasterStatus("No Bata master found — manual Bata required.");
+components/TripForm.tsx:312:      setBataManualOverride(false);
+components/TripForm.tsx:316:    const vehicleSpecific = matches.find(rule =>
+components/TripForm.tsx:317:      Number(rule.vehicle_id) === Number(truckId)
+components/TripForm.tsx:320:    const selectedRule = vehicleSpecific || matches[0];
+components/TripForm.tsx:321:    const amount = Number(selectedRule.standard_bata_inr);
+components/TripForm.tsx:324:      setBataMasterAmount(null);
+components/TripForm.tsx:325:      setBataMasterStatus("Bata master amount is invalid — manual Bata required.");
+components/TripForm.tsx:329:    setBataMasterAmount(amount);
+components/TripForm.tsx:330:    setDriverBata(String(amount));
+components/TripForm.tsx:331:    setBataMasterStatus("Master Bata matched.");
+components/TripForm.tsx:332:    setBataManualOverride(false);
+components/TripForm.tsx:335:    destination,
+components/TripForm.tsx:339:    bataMasters
+components/TripForm.tsx:344:      setLastDriverId("");
+components/TripForm.tsx:348:    const fetchPreviousDriver = async () => {
+components/TripForm.tsx:351:        .select("primary_driver_id, trip_start_date, created_at")
+components/TripForm.tsx:352:        .eq("vehicle_id", Number(truckId))
+components/TripForm.tsx:353:        .not("primary_driver_id", "is", null)
+components/TripForm.tsx:359:      if (error || !data?.primary_driver_id) {
+components/TripForm.tsx:360:        setLastDriverId("");
+components/TripForm.tsx:364:      const previousDriver = drivers.find(
+components/TripForm.tsx:365:        driver => Number(driver.driver_id) === Number(data.primary_driver_id)
+components/TripForm.tsx:368:      if (previousDriver) {
+components/TripForm.tsx:369:        setLastDriverId(String(previousDriver.driver_id));
+components/TripForm.tsx:370:        setDriverId(String(previousDriver.driver_id));
+components/TripForm.tsx:372:        setLastDriverId("");
+components/TripForm.tsx:376:    fetchPreviousDriver();
+components/TripForm.tsx:377:  }, [truckId, drivers, supabase]);
+components/TripForm.tsx:379:  const totalRevenue = Number(freightRevenue || 0);
+components/TripForm.tsx:381:  const totalExpense = Number(driverBata || 0) + Number(advance || 0) + fuelExpense;
+components/TripForm.tsx:390:    setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination("");
+components/TripForm.tsx:391:    setTonnage(""); setFreightRevenue(""); setFreightManualOverride(false);
+components/TripForm.tsx:392:    setDriverBata(""); setBataManualOverride(false); setAdvance("");
+components/TripForm.tsx:394:    if (driverMode === "manual") {
+components/TripForm.tsx:395:      setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
+components/TripForm.tsx:407:    const normalizedDestination = destination.toUpperCase().trim();
+components/TripForm.tsx:420:    if (!normalizedDestination) hardErrors.push("Destination is required.");
+components/TripForm.tsx:422:    if (driverMode === "select") {
+components/TripForm.tsx:423:      if (!driverId) {
+components/TripForm.tsx:424:        hardErrors.push("Driver selection is required.");
+components/TripForm.tsx:427:      if (!newDriverName.trim()) hardErrors.push("New driver name is required.");
+components/TripForm.tsx:428:      if (!newDriverPhone.trim()) hardErrors.push("New driver phone is required.");
+components/TripForm.tsx:433:      ["Freight", freightRevenue, true],
+components/TripForm.tsx:434:      ["Bata", driverBata, true],
+components/TripForm.tsx:524:    if (freightManualOverride) {
+components/TripForm.tsx:526:        freightMasterRate !== null
+components/TripForm.tsx:527:          ? Number((Number(tonnage) * freightMasterRate).toFixed(2))
+components/TripForm.tsx:532:          `Freight override: entered ₹${Number(freightRevenue).toLocaleString("en-IN")} differs from master-calculated ₹${masterCalculated.toLocaleString("en-IN")}.`
+components/TripForm.tsx:535:        warnings.push("Freight has been manually overridden because no matching master rate is active.");
+components/TripForm.tsx:537:    } else if (freightMasterRate === null) {
+components/TripForm.tsx:538:      warnings.push("No matching freight master found. Freight is being entered manually.");
+components/TripForm.tsx:541:    if (bataManualOverride) {
+components/TripForm.tsx:542:      if (bataMasterAmount !== null) {
+components/TripForm.tsx:544:          `Bata override: entered ₹${Number(driverBata).toLocaleString("en-IN")} differs from master Bata ₹${bataMasterAmount.toLocaleString("en-IN")}.`
+components/TripForm.tsx:547:        warnings.push("Bata has been manually overridden because no matching master amount is active.");
+components/TripForm.tsx:549:    } else if (bataMasterAmount === null) {
+components/TripForm.tsx:550:      warnings.push("No matching Bata master found. Bata is being entered manually.");
+components/TripForm.tsx:560:    let finalDriverId = driverId;
+components/TripForm.tsx:561:    if (driverMode === "manual") {
+components/TripForm.tsx:562:      const { data: newDriver, error: driverErr } = await supabase.from("drivers").insert([{
+components/TripForm.tsx:563:        full_name: newDriverName,
+components/TripForm.tsx:564:        phone_number: newDriverPhone,
+components/TripForm.tsx:565:        license_number: newDriverLicense,
+components/TripForm.tsx:566:        license_expiry_date: newDriverExpiry,
+components/TripForm.tsx:570:      if (driverErr) { alert("Failed to register new driver. Error: " + driverErr.message); setLoading(false); setShowConfirm(false); return; }
+components/TripForm.tsx:571:      finalDriverId = newDriver.driver_id;
+components/TripForm.tsx:576:      p_vehicle_id: Number(truckId),
+components/TripForm.tsx:577:      p_primary_driver_id: Number(finalDriverId),
+components/TripForm.tsx:580:      p_destination: destination.toUpperCase().trim(),
+components/TripForm.tsx:582:      p_freight_revenue: Number(freightRevenue),
+components/TripForm.tsx:585:      p_driver_bata: Number(driverBata),
+components/TripForm.tsx:617:                <span className="text-fg-muted uppercase tracking-wider font-semibold">Total Revenue (Freight):</span>
+components/TripForm.tsx:625:                <span>(Advance + Bata + Fuel Cost)</span>
+components/TripForm.tsx:698:              {filteredVehicles.map(v => (
+components/TripForm.tsx:699:                <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>
+components/TripForm.tsx:705:        {/* ROW 2: Routing & Driver */}
+components/TripForm.tsx:726:              <label className="block text-[10px] font-semibold text-accent uppercase tracking-wider">Destination</label>
+components/TripForm.tsx:732:              <Select value={destination} onChange={(e) => setDestination(e.target.value)} required>
+components/TripForm.tsx:734:                {historicalDestinations.map(d => <option key={d} value={d}>{d}</option>)}
+components/TripForm.tsx:737:              <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Type new destination..." className="input-glass" required />
+components/TripForm.tsx:743:              <label className="block text-[10px] font-semibold text-accent uppercase tracking-wider">Driver</label>
+components/TripForm.tsx:744:              <Button type="button" variant="ghost" size="xs" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="h-7 px-2.5 rounded-md bg-accent-soft text-accent border border-accent-border hover:bg-accent/15 uppercase tracking-wider text-[9px] font-bold">
+components/TripForm.tsx:745:                {driverMode === "select" ? "+ New" : "≡ List"}
+components/TripForm.tsx:748:            {driverMode === "select" ? (
+components/TripForm.tsx:750:                <Select value={driverId} onChange={(e) => setDriverId(e.target.value)} required>
+components/TripForm.tsx:751:                  <option value="">Select driver...</option>
+components/TripForm.tsx:752:                  {drivers.map(d => (
+components/TripForm.tsx:753:                    <option key={d.driver_id} value={d.driver_id}>
+components/TripForm.tsx:754:                      {d.driver_code ? `${d.driver_code} — ` : ""}{d.full_name}
+components/TripForm.tsx:758:                {lastDriverId && (
+components/TripForm.tsx:760:                    Previous driver selected by default — you can change it.
+components/TripForm.tsx:766:                <input type="text" placeholder="Name" value={newDriverName} onChange={e => setNewDriverName(e.target.value)} className="input-glass" required />
+components/TripForm.tsx:767:                <input type="tel" placeholder="Phone" value={newDriverPhone} onChange={e => setNewDriverPhone(e.target.value)} className="input-glass" required />
+components/TripForm.tsx:801:              Freight (₹)
+components/TripForm.tsx:807:              value={freightRevenue}
+components/TripForm.tsx:809:                setFreightRevenue(e.target.value);
+components/TripForm.tsx:810:                setFreightManualOverride(
+components/TripForm.tsx:811:                  freightMasterRate !== null &&
+components/TripForm.tsx:812:                  Number(e.target.value || 0) !== Number((Number(tonnage || 0) * freightMasterRate).toFixed(2))
+components/TripForm.tsx:815:              className={`input-glass ${freightManualOverride ? "border-warning focus:border-warning" : ""}`}
+components/TripForm.tsx:819:            {freightMasterRate !== null && (
+components/TripForm.tsx:821:                Master: <span className="font-bold text-fg">₹{freightMasterRate.toLocaleString("en-IN")}/MT</span>
+components/TripForm.tsx:823:                  <> · Calculated: <span className="font-bold text-fg">₹{(Number(tonnage) * freightMasterRate).toLocaleString("en-IN")}</span></>
+components/TripForm.tsx:827:            {freightMasterStatus && (
+components/TripForm.tsx:828:              <p className={`text-[9px] font-semibold mt-1 ${freightManualOverride ? "text-warning" : freightMasterRate !== null ? "text-success" : "text-warning"}`}>
+components/TripForm.tsx:829:                {freightManualOverride ? "Manual freight override." : freightMasterStatus}
+components/TripForm.tsx:836:              Bata (₹)
+components/TripForm.tsx:842:              value={driverBata}
+components/TripForm.tsx:844:                setDriverBata(e.target.value);
+components/TripForm.tsx:845:                setBataManualOverride(
+components/TripForm.tsx:846:                  bataMasterAmount !== null &&
+components/TripForm.tsx:847:                  Number(e.target.value || 0) !== bataMasterAmount
+components/TripForm.tsx:850:              className={`input-glass ${bataManualOverride ? "border-warning focus:border-warning" : ""}`}
+components/TripForm.tsx:854:            {bataMasterAmount !== null && (
+components/TripForm.tsx:856:                Master Bata: <span className="font-bold text-fg">₹{bataMasterAmount.toLocaleString("en-IN")}</span>
+components/TripForm.tsx:859:            {bataMasterStatus && (
+components/TripForm.tsx:860:              <p className={`text-[9px] font-semibold mt-1 ${bataManualOverride ? "text-warning" : bataMasterAmount !== null ? "text-success" : "text-warning"}`}>
+components/TripForm.tsx:861:                {bataManualOverride ? "Manual Bata override." : bataMasterStatus}
+components/TripForm.tsx:941:              <p className="text-sm font-bold text-danger" title={`Bata (₹${driverBata || 0}) + Advance (₹${advance || 0}) + Fuel (₹${fuelExpense || 0})`}>
+components/UploadHub.tsx:10: const [documentType, setDocumentType] = useState("TRIP_INVOICE");
+components/UploadHub.tsx:24: const res = await fetch("/api/parse-document", {
+components/UploadHub.tsx:28: documentType,
+components/UploadHub.tsx:51: document_type: documentType,
+components/UploadHub.tsx:57: alert("Document saved to verification queue successfully!");
+components/UploadHub.tsx:70: <h3 className="text-sm font-semibold text-fg  tracking-wider mb-4">Manual Document Entry Hub</h3>
+components/UploadHub.tsx:73: <label className="block text-xs font-bold text-fg-secondary mb-1">Select Document Type</label>
+components/UploadHub.tsx:75: value={documentType}
+components/UploadHub.tsx:76: onChange={(e) => setDocumentType(e.target.value)}
+components/UploadHub.tsx:86: <label className="block text-xs font-bold text-fg-secondary mb-1">Enter Details (Vehicle, LR, Tonnage, etc.)</label>
+components/UploadHub.tsx:91: placeholder="Type details e.g., VEHICLE: TN88K8413, LR: 687/2026, QTY: 34.400 MT..."
+components/WorkshopModule.tsx:15: const [vehicles, setVehicles] = useState<any[]>([]);
+components/WorkshopModule.tsx:75: const { data: vData } = await supabase.from('vehicles').select('*').order('vehicle_number');
+components/WorkshopModule.tsx:76: if (vData) setVehicles(vData);
+components/WorkshopModule.tsx:85: const { data: tData } = await supabase.from('fleet_tyres').select('*, vehicles(vehicle_number)').order('recorded_date', { ascending: false });
+components/WorkshopModule.tsx:88: const { data: bData } = await supabase.from('workshop_spares_bills').select('*, vehicles(vehicle_number)').order('bill_date', { ascending: false });
+components/WorkshopModule.tsx:95: const getWheelPositions = (vehicle: any) => {
+components/WorkshopModule.tsx:96:   if (!vehicle) return [];
+components/WorkshopModule.tsx:98:   const capacity = Number(vehicle.carrying_capacity_tons);
+components/WorkshopModule.tsx:99:   const type = String(vehicle.truck_type || "").toLowerCase();
+components/WorkshopModule.tsx:191: const selectedVehicle =
+components/WorkshopModule.tsx:193:     ? vehicles.find(v => String(v.vehicle_id) === String(truckId))
+components/WorkshopModule.tsx:197:   if (!selectedVehicle || !mountOdo) {
+components/WorkshopModule.tsx:201:   if (!getWheelPositions(selectedVehicle).includes(position)) {
+components/WorkshopModule.tsx:234:           vehicle_id: regMode === "MOUNTED" ? Number(truckId) : null,
+components/WorkshopModule.tsx:299:       const selectedVehicle = vehicles.find(
+components/WorkshopModule.tsx:300:         v => String(v.vehicle_id) === String(actionTruckId)
+components/WorkshopModule.tsx:303:       if (!selectedVehicle) {
+components/WorkshopModule.tsx:304:         throw new Error("Selected vehicle was not found.");
+components/WorkshopModule.tsx:307:       if (!getWheelPositions(selectedVehicle).includes(actionPos)) {
+components/WorkshopModule.tsx:313:         p_vehicle_id: Number(actionTruckId),
+components/WorkshopModule.tsx:330:         throw new Error("Vehicle odometer at retread removal is required.");
+components/WorkshopModule.tsx:356:       let selectedVehicle = null as any;
+components/WorkshopModule.tsx:367:         selectedVehicle = vehicles.find(
+components/WorkshopModule.tsx:368:           v => String(v.vehicle_id) === String(actionTruckId)
+components/WorkshopModule.tsx:371:         if (!selectedVehicle) {
+components/WorkshopModule.tsx:372:           throw new Error("Selected vehicle was not found.");
+components/WorkshopModule.tsx:375:         const allowedPositions = getWheelPositions(selectedVehicle);
+components/WorkshopModule.tsx:396:         p_vehicle_id: isMounted ? Number(actionTruckId) : null,
+components/WorkshopModule.tsx:495:   p_vehicle_id: Number(wsTruckId),
+components/WorkshopModule.tsx:508: const mountedTyres = activeTyres.filter(t => t.tyre_status === 'MOUNTED' || (!t.tyre_status && t.vehicle_id));
+components/WorkshopModule.tsx:513:   (!t.tyre_status && !t.vehicle_id)
+components/WorkshopModule.tsx:517: const filteredMounted = mountedTyres.filter(t => (t.serial_number || "").toLowerCase().includes(mountedSearch.toLowerCase()) || (t.vehicles?.vehicle_number || "").toLowerCase().includes(mountedSearch.toLowerCase()));
+components/WorkshopModule.tsx:518: const exportMounted = filteredMounted.map(t => ({ "Truck": t.vehicles?.vehicle_number || "-", "Serial": t.serial_number, "Brand": t.brand_model, "Position": t.placement_position, "Mounted Date": formatDate(t.recorded_date), "Current KM Run": t.total_km_run || 0 }));
+components/WorkshopModule.tsx:526: const filteredBills = activeBills.filter(b => (b.vendor_name || "").toLowerCase().includes(billsSearch.toLowerCase()) || (b.vehicles?.vehicle_number || "").toLowerCase().includes(billsSearch.toLowerCase()));
+components/WorkshopModule.tsx:527: const exportBills = filteredBills.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.vehicles?.vehicle_number || "GENERAL", "Vendor": b.vendor_name, "Description": b.spare_parts_details, "Amount (INR)": b.total_bill_amount }));
+components/WorkshopModule.tsx:559: <div className="text-[10px] font-bold text-fg-secondary mb-1">Next Destination</div>
+components/WorkshopModule.tsx:571: <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Assign to Truck *</label><Select value={actionTruckId} onChange={e=>{ setActionTruckId(e.target.value); setActionPos(""); }} className="input-glass"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}</Select></div>
+components/WorkshopModule.tsx:580: {(vehicles.find(v => String(v.vehicle_id) === String(actionTruckId))
+components/WorkshopModule.tsx:581:   ? getWheelPositions(vehicles.find(v => String(v.vehicle_id) === String(actionTruckId)))
+components/WorkshopModule.tsx:669:     {vehicles.map(v => (
+components/WorkshopModule.tsx:670:      <option key={v.vehicle_id} value={String(v.vehicle_id)}>
+components/WorkshopModule.tsx:671:       {v.vehicle_number}
+components/WorkshopModule.tsx:687:     {(vehicles.find(v => String(v.vehicle_id) === String(actionTruckId))
+components/WorkshopModule.tsx:689:           vehicles.find(v => String(v.vehicle_id) === String(actionTruckId))
+components/WorkshopModule.tsx:772:   This will remove the tyre from the vehicle and record it as BURST.
+components/WorkshopModule.tsx:790:   placeholder="Current vehicle odometer"
+components/WorkshopModule.tsx:885: <div className="md:col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Destination *</label><Select value={regMode} onChange={e => setRegMode(e.target.value)} className="input-glass text-fg"><option value="IN_STORE">Add to Store / Inventory</option><option value="MOUNTED">Mount Directly to Truck</option></Select></div>
+components/WorkshopModule.tsx:905: <div><label className="block text-[10px] font-bold text-accent  mb-1">Select Truck *</label><Select value={truckId} onChange={e => { setTruckId(e.target.value); setPosition(""); }} className="input-glass"><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}</Select></div>
+components/WorkshopModule.tsx:914: {(vehicles.find(v => String(v.vehicle_id) === String(truckId))
+components/WorkshopModule.tsx:915:   ? getWheelPositions(vehicles.find(v => String(v.vehicle_id) === String(truckId)))
+components/WorkshopModule.tsx:938: <TableCell className="px-5 py-3.5 font-semibold text-fg">{t.vehicles?.vehicle_number || "UNKNOWN"}</TableCell>
+components/WorkshopModule.tsx:1045: <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Select Truck *</label><Select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="input-glass text-fg" required><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}</Select></div>
+components/WorkshopModule.tsx:1064: <TableCell className="px-5 py-4 font-semibold text-fg">{b.vehicles?.vehicle_number || "UNKNOWN"}</TableCell>
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:1:-- Secure driver trip close and breakdown actions behind driver sessions.
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:4:CREATE OR REPLACE FUNCTION public.close_driver_trip_session_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:16:  v_driver_id integer;
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:20:  v_driver_id := public.resolve_driver_session(p_session_token);
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:32:  IF v_trip.primary_driver_id IS DISTINCT FROM v_driver_id THEN
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:33:    RAISE EXCEPTION 'DRIVER_NOT_ASSIGNED_TO_TRIP';
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:36:  v_result := public.close_driver_trip_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:40:    'DRIVER_SESSION'
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:48:CREATE OR REPLACE FUNCTION public.record_driver_breakdown_session_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:51:  p_vehicle_id integer,
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:62:  v_driver_id integer;
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:65:  v_driver_id := public.resolve_driver_session(p_session_token);
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:77:  IF v_trip.primary_driver_id IS DISTINCT FROM v_driver_id THEN
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:78:    RAISE EXCEPTION 'DRIVER_NOT_ASSIGNED_TO_TRIP';
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:81:  IF v_trip.vehicle_id IS DISTINCT FROM p_vehicle_id THEN
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:82:    RAISE EXCEPTION 'TRIP_VEHICLE_MISMATCH';
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:85:  PERFORM public.record_driver_breakdown_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:87:    p_vehicle_id,
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:90:    'DRIVER_SESSION',
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:97:REVOKE EXECUTE ON FUNCTION public.close_driver_trip_session_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:105:REVOKE EXECUTE ON FUNCTION public.record_driver_breakdown_session_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:115:REVOKE EXECUTE ON FUNCTION public.close_driver_trip_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:122:REVOKE EXECUTE ON FUNCTION public.close_driver_trip_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:130:REVOKE EXECUTE ON FUNCTION public.record_driver_breakdown_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:139:REVOKE EXECUTE ON FUNCTION public.record_driver_breakdown_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:149:GRANT EXECUTE ON FUNCTION public.close_driver_trip_session_atomic(
+supabase/migrations/20260926103000_secure_driver_trip_actions.sql:157:GRANT EXECUTE ON FUNCTION public.record_driver_breakdown_session_atomic(
+
+===== FRONTEND RPC REFERENCES =====
+rpc("approve_driver_fuel_atomic
+rpc("authenticate_driver_session
+rpc("cancel_driver_pending_entry_atomic
+rpc("close_driver_trip_atomic
+rpc("close_driver_trip_session_atomic
+rpc("close_pod_atomic
+rpc("complete_tyre_retread_atomic
+rpc("create_dispatch_trip_atomic
+rpc("create_tyre_purchase_atomic
+rpc("create_vendor_atomic
+rpc("create_workshop_bill_atomic
+rpc("delete_driver_advance_atomic
+rpc("delete_fuel_atomic
+rpc("dispose_tyre_atomic
+rpc("get_driver_monthly_reports
+rpc("get_driver_portal_data
+rpc("get_vehicle_current_odometer
+rpc("modify_trip_atomic
+rpc("mount_tyre_atomic
+rpc("record_driver_breakdown_atomic
+rpc("record_driver_breakdown_session_atomic
+rpc("record_fuel_atomic
+rpc("reject_driver_pending_entry_atomic
+rpc("save_driver_advance_atomic
+rpc("send_tyre_for_retread_atomic
+rpc("settle_driver_period_atomic
+rpc("start_driver_draft_trip_atomic
+rpc("start_driver_draft_trip_session_atomic
+rpc("start_driver_existing_trip_session_atomic
+rpc("start_existing_trip_atomic
+rpc("submit_driver_fuel_pending_atomic
+rpc("unmount_tyre_to_store_atomic
+rpc("update_fuel_atomic
+rpc("update_trip_status_atomic
+rpc("update_vehicle_status_atomic
+rpc("update_vendor_atomic
+
+===== FRONTEND TABLE REFERENCES =====
+.from("daily_ai_audits
+.from("destinations_freight_master
+.from("diesel_fuel_logs
+.from("driver_bata_master
+.from("driver_direct_advances
+.from("driver_pending_entries
+.from("drivers
+.from("pending_scans
+.from("trips
+.from("vehicles
+.from("workshop_spares_bills
+.from('adblue_logs
+.from('app_users
+.from('daily_ai_audits
+.from('destinations_freight_master
+.from('diesel_fuel_logs
+.from('driver_bata_master
+.from('driver_direct_advances
+.from('driver_pending_entries
+.from('drivers
+.from('fleet_tyres
+.from('pending_scans
+.from('trips
+.from('vehicles
+.from('vendors
+.from('workshop_repairs
+.from('workshop_spares_bills

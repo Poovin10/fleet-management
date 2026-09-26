@@ -298,7 +298,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
    <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
    {/* LEFT PANEL: POD settlement workspace */}
-   <div className="xl:col-span-7 liquid-glass p-5 md:p-6">
+   <div className="xl:col-span-8 liquid-glass p-5 md:p-6 min-w-0">
 
      <div className="flex items-start justify-between gap-4 pb-5 mb-5 border-b border-border">
        <div>
@@ -534,7 +534,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
    </div>
 
    {/* RIGHT PANEL: Pending POD queue */}
-   <div className="xl:col-span-5 liquid-glass overflow-hidden flex flex-col">
+   <div className="xl:col-span-4 liquid-glass overflow-hidden flex flex-col min-w-0">
      <div className="px-5 py-5 border-b border-border">
        <div className="flex items-start justify-between gap-4 mb-4">
          <div>

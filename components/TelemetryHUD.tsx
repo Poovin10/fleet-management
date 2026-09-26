@@ -31,6 +31,7 @@ export default function TelemetryHUD() {
 
  // Live Alerts & Feed State
  const [liveAlerts, setLiveAlerts] = useState<any[]>([]);
+ const [selectedAlert, setSelectedAlert] = useState<any | null>(null);
 
  // Formatters
  const formatINR = (val: number) =>
@@ -549,9 +550,9 @@ export default function TelemetryHUD() {
               </div>
             ) : (
               <div className="divide-y divide-border-subtle">
-                {selectedVehicles.map((vehicle) => (
+                {selectedVehicles.map((vehicle, index) => (
                   <div
-                    key={vehicle.id}
+                    key={`${vehicle.id ?? vehicle.vehicle_number ?? "vehicle"}-${index}`}
                     className="px-5 py-4 transition-colors hover:bg-glass-hover"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -647,12 +648,14 @@ export default function TelemetryHUD() {
                   alert.severity === "HIGH" || alert.severity === "URGENT";
 
                 return (
-                  <div
+                  <button
                     key={alert.id}
-                    className="flex gap-3 px-4 py-4 transition-colors hover:bg-glass-hover sm:px-5"
+                    type="button"
+                    onClick={() => setSelectedAlert(alert)}
+                    className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all duration-200 hover:bg-glass-hover focus-visible:outline-none sm:px-5"
                   >
                     <div
-                      className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                         isHigh
                           ? "bg-danger/10 text-danger"
                           : "bg-warning/10 text-warning"
@@ -662,13 +665,13 @@ export default function TelemetryHUD() {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-[13px] font-semibold text-fg">
+                      <div className="flex items-center gap-2">
+                        <div className="truncate text-[12px] font-semibold text-fg">
                           {alert.title}
                         </div>
 
                         <span
-                          className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                          className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
                             isHigh
                               ? "border-danger/20 bg-danger/10 text-danger"
                               : "border-warning/20 bg-warning/10 text-warning"
@@ -678,17 +681,95 @@ export default function TelemetryHUD() {
                         </span>
                       </div>
 
-                      <div className="mt-1 text-[11px] leading-5 text-fg-muted">
-                        {alert.desc}
+                      <div className="mt-0.5 text-[10px] text-fg-muted">
+                        Click to view details
                       </div>
                     </div>
-                  </div>
+
+                    <svg
+                      className="h-4 w-4 shrink-0 text-fg-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-fg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
                 );
               })}
             </div>
           )}
         </div>
       </div>
+
+      {selectedAlert && (
+        <div
+          className="kss-glass-overlay"
+          onClick={() => setSelectedAlert(null)}
+        >
+          <div
+            className="kss-glass-sheet"
+            style={{ width: "min(620px, 92vw)", height: "auto", maxHeight: "88vh" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="kss-glass-sheet-content">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="kss-eyebrow">Telemetry Radar</div>
+                  <h3 className="mt-2 text-xl font-semibold tracking-tight text-fg">
+                    {selectedAlert.title}
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedAlert(null)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-raised/70 text-fg-secondary transition-colors hover:bg-surface-elevated hover:text-fg"
+                  aria-label="Close alert details"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-border bg-surface-raised/45 p-5">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      selectedAlert.severity === "HIGH" ||
+                      selectedAlert.severity === "URGENT"
+                        ? "bg-danger"
+                        : "bg-warning"
+                    }`}
+                  />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-muted">
+                    Severity
+                  </span>
+                  <span className="text-xs font-bold text-fg">
+                    {selectedAlert.severity}
+                  </span>
+                </div>
+
+                <div className="mt-5">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-muted">
+                    Details
+                  </div>
+                  <p className="mt-2 text-sm leading-7 text-fg-secondary">
+                    {selectedAlert.desc}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedAlert(null)}
+                className="mt-6 w-full rounded-2xl bg-accent px-4 py-3 text-sm font-bold text-accent-fg shadow-orange transition-all hover:bg-accent-hover"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   </div>
  )

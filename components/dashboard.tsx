@@ -13,6 +13,7 @@ import { AccountsModule } from "@/components/AccountsModule";
 import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
 import { FinancialsModule } from "@/components/FinancialsModule";
 import { ProfitLossModule } from "@/components/ProfitLossModule";
+import ReportsModule from "./ReportsModule";
 import { WorkshopModule } from "@/components/WorkshopModule";
 import { SetupModule } from "@/components/SetupModule";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -46,10 +47,12 @@ export default function Dashboard() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string>("VIEWER");
+  const [userEmail, setUserEmail] = useState<string>("");
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [opSubTab, setOpSubTab] = useState("Trips");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [currentMonthText, setCurrentMonthText] = useState("");
@@ -80,10 +83,11 @@ export default function Dashboard() {
       const { data: { user }, error } = await supabase.auth.getUser();
       if (user && !error) {
         setIsAuthenticated(true);
+        setUserEmail(user.email || "");
         const sessionUsername = user.email?.split('@')[0];
         if (sessionUsername) {
           const { data: userData } = await supabase.from('app_users').select('role').eq('username', sessionUsername).maybeSingle();
-          if (userData && userData.role) { setUserRole(userData.role.toUpperCase()); } else { setUserRole("ADMIN"); }
+          if (userData && userData.role) { setUserRole(userData.role.toUpperCase()); } else { setUserRole("VIEWER"); }
         }
         setIsAuthLoading(false);
       } else {
@@ -174,7 +178,7 @@ export default function Dashboard() {
     },
     {
       category: "Finance & Analytics",
-      items: ["Driver Settlement", "Accounts", "Fleet Analytics", "P&L Statement"]
+      items: ["Driver Settlement", "Accounts", "Reports", "Fleet Analytics", "P&L Statement"]
     },
     {
       category: "System",
@@ -187,7 +191,7 @@ export default function Dashboard() {
       ? erpNavigation
       : [
           { category: "Overview", items: ["Dashboard"] },
-          { category: "Finance", items: ["Fleet Analytics", "P&L Statement", "Insights"] }
+          { category: "Finance", items: ["Reports", "Fleet Analytics", "P&L Statement", "Insights"] }
         ];
 
   const activeGroup =
@@ -200,6 +204,7 @@ export default function Dashboard() {
     "Workshop & Tyres": "Maintenance and tyre control",
     "Driver Settlement": "Driver advances and settlement",
     Accounts: "Accounts and financial control",
+    "Reports": "Operational and financial reports",
     "Fleet Analytics": "Fleet financial performance",
     "P&L Statement": "Profit and loss statement",
     Insights: "Operational intelligence",
@@ -207,7 +212,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-app text-fg font-sans selection:bg-accent/30 selection:text-accent relative overflow-x-hidden">
+    <div className="kss-app-atmosphere text-fg font-sans selection:bg-accent/30 selection:text-accent">
 
       {/* Global Ambient Refraction */}
       <div
@@ -234,35 +239,71 @@ export default function Dashboard() {
         />
 
         {/* Desktop Command Sidebar */}
-        <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-[252px] p-4">
-          <div className="liquid-glass w-full h-full rounded-[28px] flex flex-col overflow-hidden">
+        <aside
+          className="kss-sidebar hidden lg:flex fixed inset-y-0 left-0 z-40"
+          style={{ width: sidebarCollapsed ? "88px" : "252px" }}
+        >
+          <div className="kss-sidebar-inner">
 
-            <div className="px-5 pt-5 pb-4 border-b border-border-subtle">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-[14px] bg-surface-elevated border border-border-strong flex items-center justify-center shadow-inner shrink-0">
-                  <KssLogo className="w-5 h-5" />
+            <div className="px-3 pt-3 pb-3 border-b border-border-subtle">
+              <div className={`flex ${
+                sidebarCollapsed
+                  ? "flex-col items-center justify-center gap-2"
+                  : "items-center justify-between gap-3"
+              }`}>
+                <div className={`flex min-w-0 items-center ${
+                  sidebarCollapsed ? "justify-center" : "gap-3"
+                }`}>
+                  <div className="w-10 h-10 rounded-[14px] bg-surface-elevated border border-border-strong flex items-center justify-center shadow-inner shrink-0">
+                    <KssLogo className="w-5 h-5" />
+                  </div>
+
+                  {!sidebarCollapsed && (
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold tracking-wide text-fg">
+                        KSS Roadways
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                        <span className="text-[9px] uppercase tracking-[0.14em] font-medium text-fg-muted">
+                          Fleet Command
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold tracking-wide text-fg">
-                    KSS Roadways
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                    <span className="text-[9px] uppercase tracking-[0.14em] font-medium text-fg-muted">
-                      Fleet Command
-                    </span>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed((value) => !value)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-surface-raised/60 text-fg-muted transition-all duration-200 hover:bg-surface-elevated hover:text-fg"
+                  aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                >
+                  <svg
+                    className={`h-4 w-4 transition-transform duration-300 ${
+                      sidebarCollapsed ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
               </div>
             </div>
 
-            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+            <nav className={`flex-1 min-h-0 overflow-y-auto ${
+              sidebarCollapsed ? "px-2 py-3 space-y-3" : "px-3 py-4 space-y-5"
+            }`}>
               {allowedCategories.map((group) => (
                 <div key={group.category}>
-                  <div className="px-3 mb-2 text-[9px] uppercase tracking-[0.16em] font-semibold text-fg-muted">
-                    {group.category}
-                  </div>
+                  {!sidebarCollapsed && (
+                    <div className="px-3 mb-2 text-[9px] uppercase tracking-[0.16em] font-semibold text-fg-muted">
+                      {group.category}
+                    </div>
+                  )}
 
                   <div className="space-y-1">
                     {group.items.map((item) => {
@@ -274,16 +315,30 @@ export default function Dashboard() {
                           type="button"
                           variant="ghost"
                           onClick={() => setActiveTab(item)}
-                          className={`w-full justify-start h-10 rounded-xl px-3.5 text-[11.5px] transition-all duration-200 ${
+                          className={`w-full ${
+                            sidebarCollapsed
+                              ? "justify-center h-10 rounded-xl px-0"
+                              : "justify-start h-10 rounded-xl px-3.5"
+                          } text-[11.5px] transition-all duration-200 ${
                             isActive
                               ? "bg-accent text-accent-fg font-bold shadow-orange hover:bg-accent-hover hover:text-accent-fg"
                               : "text-fg-secondary font-medium hover:text-fg hover:bg-surface-raised"
                           }`}
+                          title={sidebarCollapsed ? item : undefined}
+                          aria-label={sidebarCollapsed ? item : undefined}
                         >
-                          <span className={`mr-3 w-1.5 h-1.5 rounded-full shrink-0 ${
-                            isActive ? "bg-accent-fg" : "bg-fg-muted/50"
-                          }`} />
-                          <span className="truncate">{item}</span>
+                          <span className={`flex items-center justify-center shrink-0 ${
+                            sidebarCollapsed
+                              ? "h-7 w-7 rounded-lg border border-current/20 bg-black/10 text-[9px] font-bold uppercase"
+                              : "w-1.5 h-1.5 rounded-full mr-3"
+                          } ${
+                            isActive ? "bg-accent-fg/15" : ""
+                          }`}>
+                            {sidebarCollapsed ? item.charAt(0) : ""}
+                          </span>
+                          {!sidebarCollapsed && (
+                            <span className="truncate">{item}</span>
+                          )}
                         </Button>
                       );
                     })}
@@ -292,40 +347,64 @@ export default function Dashboard() {
               ))}
             </nav>
 
-            <div className="p-3 border-t border-border-subtle">
-              <div className="rounded-2xl bg-surface-raised/70 border border-border-subtle p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-[9px] uppercase tracking-[0.14em] text-fg-muted font-semibold">
-                      Session
-                    </div>
-                    <div className="text-xs font-semibold text-fg mt-1 truncate">
-                      {userRole}
+            <div className="px-2.5 py-2 border-t border-border-subtle shrink-0">
+              <div className={`flex items-center ${
+                sidebarCollapsed ? "justify-center" : "justify-between"
+              } gap-2 rounded-xl border border-accent/20 bg-accent/[0.06] px-2.5 py-2`}>
+
+                {!sidebarCollapsed && (
+                  <div className="min-w-0 flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent shadow-[0_0_8px_rgba(255,159,10,0.65)]" />
+
+                    <div className="min-w-0 leading-none">
+                      <div className="truncate text-[11px] font-semibold text-fg">
+                        {userEmail ? userEmail.split("@")[0] : "KSS User"}
+                      </div>
+
+                      <div className="mt-1 text-[7px] font-bold uppercase tracking-[0.14em] text-accent">
+                        {userRole}
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  <span className="kss-status-dot kss-status-dot-success" />
-                </div>
-
-                <Button
+                <button
                   type="button"
-                  variant="glass"
                   onClick={() => setIsLogoutModalOpen(true)}
-                  className="w-full mt-3 h-9 rounded-xl text-[10.5px] font-semibold"
+                  className={`flex shrink-0 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-all duration-200 hover:border-accent/60 hover:bg-accent/20 hover:shadow-[0_0_16px_rgba(255,159,10,0.18)] active:scale-95 ${
+                    sidebarCollapsed ? "h-9 w-9" : "h-8 w-8"
+                  }`}
+                  title={`Sign out (${userRole})`}
+                  aria-label={`Sign out (${userRole})`}
                 >
-                  Sign Out
-                </Button>
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <path d="M16 17l5-5-5-5" />
+                    <path d="M21 12H9" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
         </aside>
 
         {/* Main Application Frame */}
-        <div className="lg:pl-[252px] min-h-screen">
+        <div
+  className="h-screen min-h-0 min-w-0 max-w-full overflow-hidden flex flex-col transition-[padding-left] duration-300"
+  style={{ paddingLeft: typeof window !== "undefined" && window.innerWidth >= 1024 ? (sidebarCollapsed ? "88px" : "252px") : undefined }}
+>
 
           {/* Premium Command Bar */}
-          <header className="sticky top-0 z-30 px-3 sm:px-5 lg:px-6 pt-3 lg:pt-4">
-            <div className="liquid-glass rounded-[22px] min-h-[68px] px-4 sm:px-5 flex items-center justify-between gap-4">
+          <header className="shrink-0 z-30 px-3 sm:px-5 lg:px-6 pt-3 lg:pt-4">
+            <div className="kss-command-bar min-h-[68px] px-4 sm:px-5 flex items-center justify-between gap-4">
 
               <div className="min-w-0">
                 <div className="mb-1">
@@ -366,7 +445,7 @@ export default function Dashboard() {
 
           {/* Mobile Navigation */}
           <div className="lg:hidden px-3 sm:px-5 pt-3">
-            <div className="liquid-glass rounded-[20px] p-2 overflow-x-auto">
+            <div className="kss-mobile-nav rounded-[20px] p-2 overflow-x-auto">
               <div className="flex items-center gap-1.5 min-w-max">
                 {allowedCategories.flatMap((group) => group.items).map((item) => {
                   const isActive = activeTab === item;
@@ -391,12 +470,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <main className="max-w-[1500px] mx-auto px-3 sm:px-5 lg:px-6 py-5 lg:py-6">
+          <main className="kss-workspace my-3 lg:my-4 flex-1 min-h-0 overflow-auto">
             <div>
-              {activeTab === "Dashboard" && <TelemetryHUD />}
+              {activeTab === "Dashboard" && <div className="kss-workspace-content"><TelemetryHUD /></div>}
 
             {activeTab === "Operations" && (userRole === "ADMIN" || userRole === "SUPERADMIN") && (
-              <div className="liquid-glass rounded-[32px] p-6 sm:p-8 min-h-[60vh]">
+              <div className="kss-workspace-content">
                 <div className="flex flex-wrap gap-2 border-b border-border pb-6 mb-8">
                   {opTabs.map((sub) => (
                     <Button
@@ -420,7 +499,7 @@ export default function Dashboard() {
                 {opSubTab === "Modify Trips" && <ModifyTrips />}
                 {opSubTab === "Driver Approvals" && <ApprovalQueue/>}
                 {opSubTab === "Quick Status" && (
-                  <div className="liquid-glass rounded-3xl p-8 max-w-xl border border-border-strong">
+                  <div className="kss-panel max-w-xl">
                     <h3 className="text-sm font-semibold text-fg mb-6 tracking-wide border-b border-border pb-4">Manual Status Override</h3>
                     <form onSubmit={async (e) => {
                       e.preventDefault(); if (!supabase || !qsTruckId) return;
@@ -479,14 +558,15 @@ export default function Dashboard() {
               </div>
             )}
 
-            {activeTab === "Driver Settlement" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><DriverSettlementModule /></div>}
-            {activeTab === "Accounts" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><AccountsModule /></div>}
-            {activeTab === "Fuel" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><FuelAdvanceModule /></div>}
-            {activeTab === "Workshop & Tyres" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><WorkshopModule /></div>}
-            {activeTab === "Fleet Analytics" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><FinancialsModule /></div>}
-            {activeTab === "P&L Statement" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><ProfitLossModule /></div>}
-            {activeTab === "Insights" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><AiInsightsDashboard /></div>}
-            {activeTab === "Master" && <div className="liquid-glass rounded-[32px] p-6 sm:p-8"><SetupModule /></div>}
+            {activeTab === "Driver Settlement" && <div className="kss-workspace-content"><DriverSettlementModule /></div>}
+            {activeTab === "Accounts" && <div className="kss-workspace-content"><AccountsModule /></div>}
+            {activeTab === "Fuel" && <div className="kss-workspace-content"><FuelAdvanceModule /></div>}
+            {activeTab === "Workshop & Tyres" && <div className="kss-workspace-content"><WorkshopModule /></div>}
+            {activeTab === "Reports" && <div className="kss-workspace-content"><ReportsModule /></div>}
+            {activeTab === "Fleet Analytics" && <div className="kss-workspace-content"><FinancialsModule /></div>}
+            {activeTab === "P&L Statement" && <div className="kss-workspace-content"><ProfitLossModule /></div>}
+            {activeTab === "Insights" && <div className="kss-workspace-content"><AiInsightsDashboard /></div>}
+            {activeTab === "Master" && <div className="kss-workspace-content"><SetupModule /></div>}
             </div>
           </main>
         </div>

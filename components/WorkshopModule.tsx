@@ -532,8 +532,8 @@ export function WorkshopModule() {
 
  {/* CUSTOM LIFECYCLE MODAL */}
  {actionModal.isOpen && (
- <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xl animate-in fade-in">
- <div className="liquid-glass shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
+ <div className="kss-glass-overlay">
+ <div className="liquid-glass w-full max-w-md max-h-[88vh] overflow-y-auto p-6 shadow-2xl animate-in zoom-in-95">
  <div className="flex justify-between items-center mb-5 border-b border-border pb-3">
  <h3 className="text-lg font-semibold text-fg  tracking-tight">
  {actionModal.mode === "UNMOUNT" && "Unmount Tyre"}

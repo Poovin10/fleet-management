@@ -7,6 +7,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/components/ui/usePagination";
 
 export function ModifyTrips() {
  const supabase = createClient();
@@ -16,6 +18,15 @@ export function ModifyTrips() {
  const [editTripId, setEditTripId] = useState<number | null>(null);
  const [currentTrip, setCurrentTrip] = useState<any>(null);
  const [isProcessing, setIsProcessing] = useState(false);
+
+ const {
+   page: tripsPage,
+   setPage: setTripsPage,
+   totalPages: tripsTotalPages,
+   totalItems: tripsTotalItems,
+   paginatedItems: paginatedTrips,
+   reset: resetTripsPage,
+ } = usePagination(tripsList, { pageSize: 10 });
 
  const [auditDateMode, setAuditDateMode] = useState("All Time");
  const [auditSpecificDate, setAuditSpecificDate] = useState(new Date().toISOString().split('T')[0]);
@@ -69,6 +80,7 @@ export function ModifyTrips() {
  useEffect(() => { loadInitialData(); }, []);
 
  const handleSearchTrips = async () => {
+ resetTripsPage();
  setIsProcessing(true);
  const selectString = auditTruck !== "All Trucks" ? '*, vehicles!inner(vehicle_number), drivers(full_name)' : '*, vehicles(vehicle_number), drivers(full_name)';
  let query = supabase.from('trips').select(selectString).order('trip_start_date', { ascending: false }).order('trip_id', { ascending: false }).limit(200);
@@ -276,8 +288,8 @@ export function ModifyTrips() {
  </div>
  </div>
 
- <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
- <Table className="min-w-full text-xs text-left whitespace-nowrap">
+ <div className="w-full">
+ <Table className="text-xs text-left whitespace-nowrap">
  <TableHeader className="sticky top-0 z-10"><TableRow>
   <TableHead className="px-5 py-3">Date</TableHead>
   <TableHead className="px-5 py-3">Trip LR</TableHead>
@@ -286,7 +298,7 @@ export function ModifyTrips() {
   <TableHead className="px-5 py-3 text-center">Status</TableHead>
 </TableRow></TableHeader>
  <TableBody className="liquid-glass">
- {tripsList.map(t => {
+ {paginatedTrips.map(t => {
  const isEditing = editTripId === t.trip_id;
  return (
  <TableRow
@@ -320,6 +332,18 @@ export function ModifyTrips() {
  </TableBody>
  </Table>
  </div>
+
+ <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-4 py-2">
+   <span className="text-[10px] font-medium text-fg-muted">
+     {tripsTotalItems} result{tripsTotalItems === 1 ? "" : "s"} • Page {tripsPage} of {tripsTotalPages}
+   </span>
+ </div>
+
+ <Pagination
+   page={tripsPage}
+   totalPages={tripsTotalPages}
+   onPageChange={setTripsPage}
+ />
  </div>
  </div>
  );

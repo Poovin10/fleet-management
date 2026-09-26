@@ -49,8 +49,8 @@ export function FleetTable() {
   return (
     <div className="animate-tab-focus kss-surface p-6 space-y-4">
       <h3 className="text-lg font-bold text-fg border-b border-border pb-2">Active Fleet Assets</h3>
-      <div className="overflow-x-auto">
-        <Table className="w-full text-left text-sm text-fg-secondary">
+      <div className="w-full">
+        <Table className="text-left text-sm text-fg-secondary">
           <TableHeader>
             <TableRow>
               <TableHead className="p-3">Vehicle No</TableHead>

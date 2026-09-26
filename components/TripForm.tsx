@@ -600,10 +600,10 @@ export function TripForm() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 relative">
+    <div className="w-full max-w-none space-y-4 relative">
 
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl px-4">
+        <div className="kss-glass-overlay">
           <div className="liquid-glass p-6 sm:p-8 w-full max-w-md scale-in-center">
             <h3 className="text-lg font-bold text-fg mb-2">Confirm Trip Dispatch</h3>
             <p className="text-xs text-fg-secondary mb-6">Verify the calculated operational financials before locking this trip.</p>

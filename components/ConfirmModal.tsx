@@ -25,7 +25,7 @@ export function ConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-in fade-in duration-200"
+      className="kss-glass-overlay z-[100] p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-modal-title"
