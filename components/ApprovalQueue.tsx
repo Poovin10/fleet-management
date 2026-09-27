@@ -5,11 +5,17 @@ import { createClient } from "@/lib/supabase/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { AlertModal } from "@/components/AlertModal";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/components/ui/usePagination";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function ApprovalQueue() {
  const supabase = createClient();
  const [queue, setQueue] = useState<any[]>([]);
+ const showApprovalQueue = true;
+ const [queueSearch, setQueueSearch] = useState("");
  const [isLoading, setIsLoading] = useState(true);
  const [isProcessing, setIsProcessing] = useState(false);
  const [dieselRate, setDieselRate] = useState(95.0);
@@ -163,6 +169,21 @@ export function ApprovalQueue() {
  return `${d.toLocaleDateString('en-GB')} at ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
  };
 
+ const filteredQueue = queue.filter(req => {
+   const query = queueSearch.trim().toLowerCase();
+   if (!query) return true;
+   return [
+     req.truck_number,
+     req.driver_code,
+     req.entry_type,
+     req.receipt_remarks,
+     req.submitted_at,
+     req.litres,
+     req.odometer_km,
+   ].some(value => String(value ?? "").toLowerCase().includes(query));
+ });
+ const queuePagination = usePagination(filteredQueue, { pageSize: 10 });
+
  return (
  <div className="animate-tab-focus liquid-glass w-full max-w-none p-6 sm:p-8 shadow-xl animate-in fade-in duration-300">
  
@@ -170,76 +191,155 @@ export function ApprovalQueue() {
 
  <ConfirmModal isOpen={rejectId !== null} title="Reject Request" message="Are you sure you want to REJECT this driver request? This cannot be undone." isDanger={true} confirmText="Yes, Reject" onConfirm={executeReject} onCancel={() => setRejectId(null)} isProcessing={isProcessing} />
 
- {approveData.isOpen && (
- <div className="kss-glass-overlay">
- <div className="kss-glass-sheet w-full max-w-xl h-auto max-h-[88vh] overflow-y-auto">
- <form onSubmit={executeApprove}>
- <div className="p-6">
- <h3 className="text-lg font-semibold text-fg  tracking-wide mb-1">Approve Fuel Request</h3>
- <p className="text-xs text-fg-secondary mb-6">Review the details and confirm the final bill amount.</p>
- 
- <div className="kss-surface-raised p-4 rounded-lg border border-border mb-6 space-y-3 text-sm">
- <div className="flex justify-between items-center"><span className="text-[10px] text-fg-secondary font-bold  tracking-wider">Truck</span> <span className="text-fg font-semibold">{approveData.req?.truck_number}</span></div>
- <div className="flex justify-between items-center"><span className="text-[10px] text-fg-secondary font-bold  tracking-wider">Driver</span> <span className="text-fg-secondary font-bold">{approveData.req?.driver_code}</span></div>
- <div className="flex justify-between items-center pt-2 border-t border-border"><span className="text-[10px] text-fg-secondary font-bold  tracking-wider">Requested Litres</span> <span className="text-accent font-semibold text-lg">{approveData.req?.litres} L</span></div>
- </div>
+ <Dialog
+   open={approveData.isOpen}
+   onOpenChange={(open) => {
+     if (!open && !isProcessing) {
+       setApproveData({ isOpen: false, req: null, amount: "" });
+     }
+   }}
+ >
+   <DialogContent
+     layout="modal"
+     size="md"
+     className="flex max-h-[88dvh] flex-col overflow-hidden p-0"
+   >
+     <DialogHeader className="px-6 py-5">
+       <DialogTitle>Approve Fuel Request</DialogTitle>
+       <p className="text-xs text-fg-secondary">Review the details and confirm the final bill amount.</p>
+     </DialogHeader>
 
- <label className="block text-[10px] font-bold text-success  mb-2">Final Bill Amount () *</label>
- <input type="number" step="0.01" required value={approveData.amount} onChange={e => setApproveData({...approveData, amount: e.target.value})} className="w-full text-xl p-4 rounded-lg border border-border input-glass text-fg font-semibold outline-none focus:border-success focus:ring-1 focus:ring-success transition-all" />
- </div>
- <div className="flex gap-3 p-6 pt-0">
- <Button type="button" variant="glass" className="flex-1" onClick={() => setApproveData({isOpen: false, req: null, amount: ""})} disabled={isProcessing}>Cancel</Button>
- <Button type="submit" variant="default" size="lg" className="flex-[2]" disabled={isProcessing}>
- {isProcessing ? "Processing..." : "Approve & Log Expense"}
- </Button>
- </div>
- </form>
- </div>
- </div>
- )}
+     <DialogBody className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+       <form onSubmit={executeApprove} className="space-y-6">
+         <div className="kss-surface-raised space-y-3 rounded-lg border border-border p-4 text-sm">
+           <div className="flex items-center justify-between">
+             <span className="text-[10px] font-bold tracking-wider text-fg-secondary">Truck</span>
+             <span className="font-semibold text-fg">{approveData.req?.truck_number}</span>
+           </div>
+           <div className="flex items-center justify-between">
+             <span className="text-[10px] font-bold tracking-wider text-fg-secondary">Driver</span>
+             <span className="font-bold text-fg-secondary">{approveData.req?.driver_code}</span>
+           </div>
+           <div className="flex items-center justify-between border-t border-border pt-2">
+             <span className="text-[10px] font-bold tracking-wider text-fg-secondary">Requested Litres</span>
+             <span className="text-lg font-semibold text-accent">{approveData.req?.litres} L</span>
+           </div>
+         </div>
 
- <div className="flex justify-between items-center border-b border-border pb-3 mb-6">
- <h3 className="text-sm font-semibold text-fg  tracking-wide">Driver Submissions Approval Queue</h3>
- <span className="px-3 py-1 bg-warning-soft text-warning text-[10px] font-bold rounded-lg  tracking-normal">{queue.length} Pending</span>
- </div>
+         <div>
+           <label className="mb-2 block text-[10px] font-bold text-success">Final Bill Amount *</label>
+           <input
+             type="number"
+             step="0.01"
+             required
+             value={approveData.amount}
+             onChange={e => setApproveData({...approveData, amount: e.target.value})}
+             className="input-glass w-full rounded-lg border border-border p-4 text-xl font-semibold text-fg outline-none transition-all focus:border-success focus:ring-1 focus:ring-success"
+           />
+         </div>
 
- <div className="w-full">
- <Table className="text-xs text-left whitespace-nowrap">
- <TableHeader className="text-fg-secondary font-bold">
- <TableRow>
- <TableHead className="p-4 border-b border-border">Submitted At</TableHead>
- <TableHead className="p-4 border-b border-border">Driver / Truck</TableHead>
- <TableHead className="p-4 border-b border-border">Request Details</TableHead>
- <TableHead className="p-4 border-b border-border">Driver Remarks</TableHead>
- <TableHead className="p-4 border-b border-border text-right">Actions</TableHead>
- </TableRow>
- </TableHeader>
- <TableBody className="">
- {queue.map(req => (
- <TableRow key={req.entry_id} className="">
- <TableCell className="p-4 font-semibold text-fg-secondary">{formatDateTime(req.submitted_at)}</TableCell>
- <TableCell className="p-4"><span className="font-semibold text-fg">{req.truck_number}</span><br/><span className="text-[10px] font-bold text-accent">{req.driver_code}</span></TableCell>
- <TableCell className="p-4">
- <span className="px-2 py-1 rounded bg-info-soft text-info font-semibold text-[10px]  mr-2">{req.entry_type}</span>
- <span className="font-bold text-fg/90">
- {req.entry_type === 'FUEL' ? `${req.litres} Litres (Odo: ${req.odometer_km})` : `${req.odometer_km} KM logged`}
- </span>
- </TableCell>
- <TableCell className="p-4 text-fg-secondary italic text-[11px] max-w-[200px] truncate" title={req.receipt_remarks}>{req.receipt_remarks || "No remarks"}</TableCell>
- <TableCell className="p-4 text-right space-x-2">
- <Button type="button" variant="destructive" size="sm" onClick={() => setRejectId(req.entry_id)}>Reject</Button>
- <Button type="button" variant="secondary" size="sm" onClick={() => handleApproveClick(req)}>
- {req.entry_type === 'FUEL' ? 'Approve' : 'Acknowledge'}
- </Button>
- </TableCell>
- </TableRow>
- ))}
- {queue.length === 0 && !isLoading && (
- <TableRow><TableCell colSpan={5} className="p-8 text-center text-fg-muted font-medium">All driver requests have been processed. The queue is currently empty.</TableCell></TableRow>
- )}
- </TableBody>
- </Table>
- </div>
+         <div className="flex gap-3 border-t border-border pt-5">
+           <Button
+             type="button"
+             variant="glass"
+             className="flex-1"
+             onClick={() => setApproveData({isOpen: false, req: null, amount: ""})}
+             disabled={isProcessing}
+           >
+             Cancel
+           </Button>
+           <Button type="submit" variant="default" size="lg" className="flex-[2]" disabled={isProcessing}>
+             {isProcessing ? "Processing..." : "Approve & Log Expense"}
+           </Button>
+         </div>
+       </form>
+     </DialogBody>
+   </DialogContent>
+ </Dialog>
+
+ <Dialog open={showApprovalQueue}>
+   <DialogContent
+     layout="modal"
+     size="full"
+     className="flex h-[92dvh] max-h-[92dvh] flex-col overflow-hidden p-0"
+   >
+     <DialogHeader className="px-5 py-4 sm:px-6">
+       <DialogTitle className="text-lg">Driver Submissions Approval Queue</DialogTitle>
+     </DialogHeader>
+
+     <DialogBody className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+       <div className="mx-auto w-full max-w-[1450px]">
+         <p className="mb-4 text-xs text-fg-muted">
+           {filteredQueue.length} of {queue.length} pending submissions
+         </p>
+
+         <Input
+           value={queueSearch}
+           onChange={e => setQueueSearch(e.target.value)}
+           placeholder="Search driver, truck, request type or remarks..."
+           aria-label="Search approval queue"
+           className="mb-4 w-full max-w-lg"
+         />
+
+         <div className="max-h-[62vh] overflow-auto rounded-xl border border-border">
+           <Table className="min-w-[760px] text-xs text-left whitespace-nowrap">
+             <TableHeader className="sticky top-0 z-10 bg-surface-raised text-fg-secondary font-bold">
+               <TableRow>
+                 <TableHead className="p-4 border-b border-border">Submitted At</TableHead>
+                 <TableHead className="p-4 border-b border-border">Driver / Truck</TableHead>
+                 <TableHead className="p-4 border-b border-border">Request Details</TableHead>
+                 <TableHead className="p-4 border-b border-border">Driver Remarks</TableHead>
+                 <TableHead className="p-4 border-b border-border text-right">Actions</TableHead>
+               </TableRow>
+             </TableHeader>
+             <TableBody>
+               {queuePagination.paginatedItems.map(req => (
+                 <TableRow key={req.entry_id}>
+                   <TableCell className="p-4 font-semibold text-fg-secondary">{formatDateTime(req.submitted_at)}</TableCell>
+                   <TableCell className="p-4">
+                     <span className="font-semibold text-fg">{req.truck_number}</span><br/>
+                     <span className="text-[10px] font-bold text-accent">{req.driver_code}</span>
+                   </TableCell>
+                   <TableCell className="p-4">
+                     <span className="mr-2 rounded bg-info-soft px-2 py-1 text-[10px] font-semibold text-info">{req.entry_type}</span>
+                     <span className="font-bold text-fg/90">
+                       {req.entry_type === 'FUEL' ? `${req.litres} Litres (Odo: ${req.odometer_km})` : `${req.odometer_km} KM logged`}
+                     </span>
+                   </TableCell>
+                   <TableCell className="max-w-[200px] truncate p-4 text-[11px] italic text-fg-secondary" title={req.receipt_remarks}>
+                     {req.receipt_remarks || "No remarks"}
+                   </TableCell>
+                   <TableCell className="space-x-2 p-4 text-right">
+                     <Button type="button" variant="destructive" size="sm" onClick={() => setRejectId(req.entry_id)}>
+                       Reject
+                     </Button>
+                     <Button type="button" variant="secondary" size="sm" onClick={() => handleApproveClick(req)}>
+                       {req.entry_type === 'FUEL' ? 'Approve' : 'Acknowledge'}
+                     </Button>
+                   </TableCell>
+                 </TableRow>
+               ))}
+               {filteredQueue.length === 0 && (
+                 <TableRow>
+                   <TableCell colSpan={5} className="p-8 text-center text-fg-muted font-medium">
+                     {queueSearch.trim() ? "No pending submissions match this search." : "The approval queue is currently empty."}
+                   </TableCell>
+                 </TableRow>
+               )}
+             </TableBody>
+           </Table>
+         </div>
+
+         <Pagination
+           page={queuePagination.page}
+           totalPages={queuePagination.totalPages}
+           onPageChange={queuePagination.setPage}
+         />
+       </div>
+     </DialogBody>
+   </DialogContent>
+ </Dialog>
+
  </div>
  );
 }

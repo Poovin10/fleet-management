@@ -4,11 +4,10 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { TableToolbar } from "@/components/ui/TableToolbar";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { exportToCSV } from "@/lib/utils/exportManager";
 
 export function FuelAdvanceModule() {
  const supabase = createClient();
@@ -28,9 +27,13 @@ export function FuelAdvanceModule() {
  const [vehicles, setVehicles] = useState<any[]>([]);
  const [dieselRate, setDieselRate] = useState<number>(95.0);
  const [recentFuelLogs, setRecentFuelLogs] = useState<any[]>([]);
+ const [showFuelRecords, setShowFuelRecords] = useState(false);
+ const [showDieselWorkspace, setShowDieselWorkspace] = useState(false);
  const [adblueLogs, setAdblueLogs] = useState<any[]>([]);
  const [adblueVendors, setAdblueVendors] = useState<any[]>([]);
  const [adblueSearch, setAdblueSearch] = useState("");
+ const [showAdblueRecords, setShowAdblueRecords] = useState(false);
+ const [showAdblueWorkspace, setShowAdblueWorkspace] = useState(false);
  const [adblueEditId, setAdblueEditId] = useState<number | null>(null);
  const [adblueDate, setAdblueDate] = useState(new Date().toISOString().split('T')[0]);
  const [adblueVehicleId, setAdblueVehicleId] = useState("");
@@ -50,10 +53,8 @@ export function FuelAdvanceModule() {
  const [adblueRemarks, setAdblueRemarks] = useState("");
 
  
- // Search States
+ // Search used to find existing records for operational edits.
  const [recentSearch, setRecentSearch] = useState("");
- const [auditSearch, setAuditSearch] = useState("");
- const [kmplSearch, setKmplSearch] = useState("");
 
  // INBOX STATES
  const [pendingScans, setPendingScans] = useState<any[]>([]);
@@ -73,18 +74,6 @@ export function FuelAdvanceModule() {
  const [fDieselRate, setFDieselRate] = useState<number | "">(95.0);
  const [fIsTankFull, setFIsTankFull] = useState(false);
 
- const [auditDateMode, setAuditDateMode] = useState("All Time");
- const [auditSpecificDate, setAuditSpecificDate] = useState(new Date().toISOString().split('T')[0]);
- const [auditFromDate, setAuditFromDate] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; });
- const [auditToDate, setAuditToDate] = useState(new Date().toISOString().split('T')[0]);
- const [auditTruck, setAuditTruck] = useState("All Trucks");
- const [auditCategory, setAuditCategory] = useState("All Categories");
- const [auditResults, setAuditResults] = useState<any[]>([]);
-
- // KMPL TRACKER STATES
- const [kmplTruckId, setKmplTruckId] = useState("");
- const [kmplSpans, setKmplSpans] = useState<any[]>([]);
- const [ongoingKmplSpan, setOngoingKmplSpan] = useState<any>(null);
 
  const formatDate = (dateStr: string) => {
  if (!dateStr) return 'N/A';
@@ -127,14 +116,7 @@ export function FuelAdvanceModule() {
 
  useEffect(() => {
  fetchData();
- if (faNav === " Fuel Audit") handleRunAudit();
  }, [faNav]);
-
- useEffect(() => {
- if (faNav === " Mileage Tracker" && kmplTruckId) {
- calculateKMPLHistory(kmplTruckId);
- }
- }, [faNav, kmplTruckId]);
 
  useEffect(() => {
  if (!fVehicleId) {
@@ -322,7 +304,7 @@ export function FuelAdvanceModule() {
    p_fuel_log_id: Number(id)
  });
  if (error) alert("Error: " + error.message);
- clearFuelForm(); fetchData(); if (faNav === " Fuel Audit") handleRunAudit(); 
+ clearFuelForm(); fetchData();
  setIsProcessing(false); closeModal();
  });
  };
@@ -581,88 +563,10 @@ export function FuelAdvanceModule() {
    );
  };
 
- const handleRunAudit = async () => {
- setIsProcessing(true);
- let query = supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).order('fuel_log_id', { ascending: false });
- 
- if (auditDateMode === "Specific Date") query = query.eq('fuel_date', auditSpecificDate);
- else if (auditDateMode === "Date Range") query = query.gte('fuel_date', auditFromDate).lte('fuel_date', auditToDate);
- 
- if (auditTruck !== "All Trucks") query = query.eq('vehicles.vehicle_number', auditTruck);
- if (auditCategory !== "All Categories") query = query.eq('diesel_category', auditCategory);
-
- const { data, error } = await query;
- if (error) alert("Error fetching audit: " + error.message);
- setAuditResults(data || []);
- setIsProcessing(false);
- };
-
- // KMPL ALGORITHM
- const calculateKMPLHistory = async (truckId: string) => {
- setIsProcessing(true);
- const { data: logs } = await supabase.from('diesel_fuel_logs').select('*').eq('vehicle_id', truckId).gt('filling_odometer_km', 0).order('filling_odometer_km', { ascending: true });
-
- if (!logs || logs.length === 0) {
- setKmplSpans([]); setOngoingKmplSpan(null); setIsProcessing(false); return;
- }
-
- const spans: any[] = [];
- let currentSpan: any = null;
-
- for (const log of logs) {
- if (!currentSpan) {
- if (log.is_tank_full) currentSpan = { start_date: log.fuel_date, start_odo: Number(log.filling_odometer_km), accumulated_litres: 0, accumulated_cost: 0, logs_count: 0 };
- } else {
- currentSpan.accumulated_litres += Number(log.litres_filled);
- currentSpan.accumulated_cost += Number(log.total_fuel_cost);
- currentSpan.logs_count += 1;
-
- if (log.is_tank_full) {
- const end_odo = Number(log.filling_odometer_km);
- const distance = end_odo - currentSpan.start_odo;
-
- if (distance > 0 && currentSpan.accumulated_litres > 0) {
- spans.push({
- start_date: currentSpan.start_date, end_date: log.fuel_date, start_odo: currentSpan.start_odo, end_odo: end_odo,
- distance: distance, consumed_litres: currentSpan.accumulated_litres, total_cost: currentSpan.accumulated_cost,
- kmpl: (distance / currentSpan.accumulated_litres).toFixed(2), cost_per_km: (currentSpan.accumulated_cost / distance).toFixed(2),
- logs_count: currentSpan.logs_count
- });
- }
- currentSpan = { start_date: log.fuel_date, start_odo: end_odo, accumulated_litres: 0, accumulated_cost: 0, logs_count: 0 };
- }
- }
- }
- setKmplSpans(spans.reverse()); setOngoingKmplSpan(currentSpan); setIsProcessing(false);
- };
-
- // --- PREMIUM EXPORT MAPPINGS ---
- const filteredRecent = recentFuelLogs.filter(l => 
- (l.vehicles?.vehicle_number || "").toLowerCase().includes(recentSearch.toLowerCase()) ||
- (l.lr_number || "").toLowerCase().includes(recentSearch.toLowerCase())
+ const filteredRecent = recentFuelLogs.filter(l =>
+   (l.vehicles?.vehicle_number || "").toLowerCase().includes(recentSearch.toLowerCase()) ||
+   (l.lr_number || "").toLowerCase().includes(recentSearch.toLowerCase())
  );
- const exportRecent = filteredRecent.map(l => ({
- "Date": formatDate(l.fuel_date), "Truck": l.vehicles?.vehicle_number, "Category": l.diesel_category, "LR No": l.lr_number || "-",
- "Litres": l.litres_filled, "Total Cost (INR)": l.total_fuel_cost, "Tank Full": l.is_tank_full ? "Yes" : "No"
- }));
-
- const filteredAudit = auditResults.filter(l => 
- (l.vehicles?.vehicle_number || "").toLowerCase().includes(auditSearch.toLowerCase()) ||
- (l.lr_number || "").toLowerCase().includes(auditSearch.toLowerCase())
- );
- const exportAudit = filteredAudit.map(l => ({
- "Log ID": l.fuel_log_id, "Date": formatDate(l.fuel_date), "Truck": l.vehicles?.vehicle_number || "Unknown",
- "Category": l.diesel_category, "LR Number": l.lr_number || "-", "Odometer": l.filling_odometer_km || 0,
- "Litres": l.litres_filled || 0, "Cost (INR)": l.total_fuel_cost || 0, "Tank Full": l.is_tank_full ? "Yes" : "No"
- }));
-
- const filteredKmpl = kmplSpans.filter(s => 
- formatDate(s.start_date).includes(kmplSearch) || formatDate(s.end_date).includes(kmplSearch)
- );
- const exportKmpl = filteredKmpl.map(s => ({
- "Span": `${formatDate(s.start_date)} to ${formatDate(s.end_date)}`, "Odo Start": s.start_odo, "Odo End": s.end_odo,
- "Distance (KM)": s.distance, "Consumed (L)": s.consumed_litres.toFixed(1), "KMPL": s.kmpl, "Cost/KM (INR)": s.cost_per_km
- }));
 
  return (
  <div className="space-y-6 animate-in fade-in duration-300">
@@ -671,14 +575,19 @@ export function FuelAdvanceModule() {
  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
  <div>
  <h2 className="text-xl font-semibold text-fg  tracking-tight">Fuel & Mileage</h2>
- <p className="text-xs text-fg-secondary mt-0.5">Manage diesel logs, full-to-full KMPL tracking, and fuel expense audits.</p>
+ <p className="text-xs text-fg-secondary mt-0.5">Record diesel and AdBlue entries with odometer validation.</p>
  </div>
  <div className="flex flex-wrap gap-2">
- {[" Issue Diesel", " Fuel Audit", " Mileage Tracker", " AdBlue"].map((tab) => (
+ {[" Issue Diesel", " AdBlue"].map((tab) => (
  <Button
   key={tab}
   type="button"
-  onClick={() => setFaNav(tab)}
+  onClick={() => {
+   setFaNav(tab);
+   if (tab === " Issue Diesel") {
+     setShowDieselWorkspace(true);
+   }
+ }}
   variant={faNav === tab ? "default" : "glass"}
   className={`px-4 py-2.5 rounded-xl text-xs font-bold ${
     faNav === tab
@@ -692,8 +601,51 @@ export function FuelAdvanceModule() {
  </div>
  </div>
 
- {faNav === " Issue Diesel" && (
- <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
+ {faNav === " Issue Diesel" && !showDieselWorkspace && (
+ <div className="grid grid-cols-1 gap-6 animate-in slide-in-from-bottom-4">
+   <div className="liquid-glass p-6 shadow-xl">
+     <h3 className="text-sm font-semibold text-fg">Diesel</h3>
+     <p className="mt-1 text-xs text-fg-muted">
+       Record a new diesel issue or find an existing diesel entry.
+     </p>
+     <div className="mt-4 flex flex-wrap gap-3">
+       <Button type="button" variant="default" onClick={() => setShowDieselWorkspace(true)}>
+         Issue Diesel
+       </Button>
+       <Button type="button" variant="glass" onClick={() => setShowFuelRecords(true)}>
+         Find Existing Diesel Entry
+       </Button>
+     </div>
+   </div>
+ </div>
+)}
+
+{faNav === " Issue Diesel" && showDieselWorkspace && (
+ <Dialog
+   open={showDieselWorkspace}
+   onOpenChange={(open) => {
+     if (!open) {
+       setShowDieselWorkspace(false);
+       if (!editLogId) clearFuelForm();
+     }
+   }}
+ >
+   <DialogContent
+     layout="modal"
+     size="full"
+     className="flex h-[94dvh] max-h-[94dvh] flex-col overflow-hidden p-0"
+   >
+     <DialogHeader className="px-5 py-4 sm:px-6">
+       <DialogTitle className="text-lg">
+         {editLogId ? "Edit Diesel Log" : "Record Fuel Bill"}
+       </DialogTitle>
+       <p className="text-xs text-fg-muted">
+         Record diesel with authoritative odometer validation.
+       </p>
+     </DialogHeader>
+     <DialogBody className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+       <div className="mx-auto w-full max-w-[1450px]">
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4">
  <div className="lg:col-span-4 liquid-glass p-6 shadow-xl h-fit">
  
  {/* Inbox UI */}
@@ -819,81 +771,72 @@ export function FuelAdvanceModule() {
  </form>
  </div>
 
- <div className="lg:col-span-8 liquid-glass overflow-hidden flex flex-col shadow-xl h-fit">
- <TableToolbar title="Recent Fuel Entries" searchQuery={recentSearch} setSearchQuery={setRecentSearch} exportData={exportRecent} exportFilename="Recent_Fuel_Logs" />
- <div className="overflow-x-auto flex-1 max-h-[600px] overflow-y-auto w-full">
- <Table className="min-w-full whitespace-nowrap">
- <TableHeader className="sticky top-0 z-10">
-   <TableRow>
-     <TableHead className="px-5 py-3 text-left">Date</TableHead>
-     <TableHead className="px-5 py-3 text-left">Truck</TableHead>
-     <TableHead className="px-5 py-3 text-left">Category / LR</TableHead>
-     <TableHead className="px-5 py-3 text-right">Litres</TableHead>
-     <TableHead className="px-5 py-3 text-right">Cost ()</TableHead>
-   </TableRow>
- </TableHeader>
-
- <TableBody>
-   {filteredRecent.map((log) => (
-     <TableRow
-       key={log.fuel_log_id}
-       onClick={() => handleEditClick(log)}
-       className={`cursor-pointer border-l-2 ${
-         editLogId === log.fuel_log_id
-           ? "border-l-accent bg-accent/10"
-           : "border-l-transparent"
-       }`}
-     >
-       <TableCell className="px-5 py-3.5 font-semibold text-fg-secondary">
-         {formatDate(log.fuel_date)}
-       </TableCell>
-
-       <TableCell className="px-5 py-3.5 font-semibold text-fg">
-         {log.vehicles?.vehicle_number}
-       </TableCell>
-
-       <TableCell className="px-5 py-3.5 text-fg-secondary">
-         {log.diesel_category}
-         <br />
-         <span className="text-[9px] text-fg-muted">
-           {log.lr_number}
-         </span>
-       </TableCell>
-
-       <TableCell className="px-5 py-3.5 text-right font-semibold text-accent">
-         {log.litres_filled} L{" "}
-         {log.is_tank_full && (
-           <span title="Tank Full" className="ml-1 text-sm"></span>
-         )}
-       </TableCell>
-
-       <TableCell className="px-5 py-3.5 text-right font-bold text-danger">
-         {(log.total_fuel_cost || 0).toLocaleString("en-IN", {
-           minimumFractionDigits: 2,
-         })}
-       </TableCell>
-     </TableRow>
-   ))}
-
-   {filteredRecent.length === 0 && (
-     <TableRow>
-       <TableCell
-         colSpan={5}
-         className="p-8 text-center font-medium text-fg-muted"
-       >
-         No logs found.
-       </TableCell>
-     </TableRow>
-   )}
- </TableBody>
- </Table>
- </div>
- </div>
- </div>
+       </div>
+       </div>
+     </DialogBody>
+   </DialogContent>
+ </Dialog>
  )}
 
- {faNav === " AdBlue" && (
+ {faNav === " AdBlue" && !showAdblueWorkspace && (
  <div className="space-y-6 animate-in slide-in-from-bottom-4">
+   <div className="liquid-glass p-6 shadow-xl">
+     <div className="flex flex-col gap-4">
+       <div>
+         <h3 className="text-sm font-semibold text-fg tracking-wide">
+           AdBlue Management
+         </h3>
+         <p className="text-[10px] text-fg-muted mt-1">
+           Record a new AdBlue purchase or find an existing entry.
+         </p>
+       </div>
+       <div className="flex flex-wrap gap-3">
+         <Button
+           type="button"
+           variant="glass"
+           onClick={() => setShowAdblueWorkspace(true)}
+         >
+           AdBlue Filling & Purchase
+         </Button>
+         <Button
+           type="button"
+           variant="glass"
+           onClick={() => setShowAdblueRecords(true)}
+         >
+           Find Existing AdBlue Entry
+         </Button>
+       </div>
+     </div>
+   </div>
+ </div>
+)}
+
+{faNav === " AdBlue" && showAdblueWorkspace && (
+ <Dialog
+   open={showAdblueWorkspace}
+   onOpenChange={(open) => {
+     if (!open) {
+       setShowAdblueWorkspace(false);
+       if (!adblueEditId) clearAdblueForm();
+     }
+   }}
+ >
+   <DialogContent
+     layout="modal"
+     size="full"
+     className="flex h-[94dvh] max-h-[94dvh] flex-col overflow-hidden p-0"
+   >
+     <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
+       <DialogTitle>
+         {adblueEditId ? "Edit AdBlue Record" : "AdBlue Filling & Purchase"}
+       </DialogTitle>
+       <p className="text-xs text-fg-muted">
+         Record AdBlue with authoritative odometer validation.
+       </p>
+     </DialogHeader>
+
+     <DialogBody className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+       <div className="mx-auto w-full max-w-[1450px]">
 
    <div className="liquid-glass p-6 shadow-xl">
      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-border pb-4 mb-6">
@@ -1232,112 +1175,85 @@ export function FuelAdvanceModule() {
      </form>
    </div>
 
-   <div className="liquid-glass p-6 shadow-xl">
-     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-border pb-4 mb-5">
-       <div>
-         <h3 className="text-sm font-semibold text-fg tracking-wide">
-           Recent AdBlue Records
-         </h3>
-         <p className="text-[10px] text-fg-muted mt-1">
-           Latest 200 operational AdBlue entries.
-         </p>
        </div>
+     </DialogBody>
+   </DialogContent>
+ </Dialog>
+ )}
 
+
+ <Dialog
+   open={showFuelRecords}
+   onOpenChange={(open) => {
+     if (!open) setShowFuelRecords(false);
+   }}
+ >
+   <DialogContent
+     layout="modal"
+     size="lg"
+     className="flex max-h-[88dvh] flex-col overflow-hidden p-0"
+   >
+     <DialogHeader className="px-5 py-4 sm:px-6">
+       <DialogTitle className="text-lg">Find Existing Diesel Entry</DialogTitle>
+       <p className="text-xs text-fg-muted">
+         Select a record to edit it, or use its delete action.
+       </p>
+     </DialogHeader>
+
+     <DialogBody className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
        <Input
-         value={adblueSearch}
-         onChange={e => setAdblueSearch(e.target.value)}
-         placeholder="Search truck, LR, vendor..."
-         className="md:w-72 text-fg font-semibold"
+         value={recentSearch}
+         onChange={e => setRecentSearch(e.target.value)}
+         placeholder="Search truck or LR number"
+         className="mb-4 text-fg font-semibold"
        />
-     </div>
 
-     <div className="overflow-x-auto rounded-xl border border-border">
-       <Table>
-         <TableHeader>
-           <TableRow>
-             <TableHead>Date</TableHead>
-             <TableHead>Truck</TableHead>
-             <TableHead>LR / Vendor</TableHead>
-             <TableHead className="text-right">Litres</TableHead>
-             <TableHead className="text-right">Rate</TableHead>
-             <TableHead className="text-right">Cost</TableHead>
-             <TableHead className="text-right">KM</TableHead>
-             <TableHead className="text-right">Actions</TableHead>
-           </TableRow>
-         </TableHeader>
-
-         <TableBody>
-           {adblueLogs
-             .filter(log => {
-               const q = adblueSearch.trim().toLowerCase();
-               if (!q) return true;
-
-               return [
-                 log.adblue_date,
-                 log.vehicles?.vehicle_number,
-                 log.lr_number,
-                 log.vendors?.vendor_name,
-                 log.remarks
-               ]
-                 .filter(Boolean)
-                 .some(value =>
-                   String(value).toLowerCase().includes(q)
-                 );
-             })
-             .map(log => (
-               <TableRow key={log.adblue_log_id}>
-                 <TableCell className="font-semibold text-fg">
-                   {log.adblue_date}
-                 </TableCell>
-
-                 <TableCell className="font-bold text-fg">
-                   {log.vehicles?.vehicle_number || "—"}
-                 </TableCell>
-
-                 <TableCell className="text-fg-secondary">
-                   {log.lr_number || "—"}
+       <div className="overflow-auto rounded-xl border border-border">
+         <Table className="min-w-full whitespace-nowrap">
+           <TableHeader>
+             <TableRow>
+               <TableHead>Date</TableHead>
+               <TableHead>Truck</TableHead>
+               <TableHead>Category / LR</TableHead>
+               <TableHead className="text-right">Litres</TableHead>
+               <TableHead className="text-right">Cost</TableHead>
+               <TableHead className="text-right">Actions</TableHead>
+             </TableRow>
+           </TableHeader>
+           <TableBody>
+             {filteredRecent.map(log => (
+               <TableRow key={log.fuel_log_id}>
+                 <TableCell>{formatDate(log.fuel_date)}</TableCell>
+                 <TableCell>{log.vehicles?.vehicle_number}</TableCell>
+                 <TableCell>
+                   {log.diesel_category}
                    <br />
-                   <span className="text-[9px] text-fg-muted">
-                     {log.vendors?.vendor_name || log.adblue_vendor || "No vendor"}
-                   </span>
+                   <span className="text-[9px] text-fg-muted">{log.lr_number}</span>
                  </TableCell>
-
-                 <TableCell className="text-right font-semibold text-accent">
-                   {Number(log.litres_filled || 0).toFixed(2)} L
-                 </TableCell>
-
-                 <TableCell className="text-right text-fg-secondary">
-                   ₹{Number(log.adblue_rate_per_litre || 0).toFixed(2)}
-                 </TableCell>
-
-                 <TableCell className="text-right font-bold text-danger">
-                   ₹{Number(log.total_adblue_cost || 0).toLocaleString("en-IN", {
+                 <TableCell className="text-right">{log.litres_filled} L</TableCell>
+                 <TableCell className="text-right">
+                   {(log.total_fuel_cost || 0).toLocaleString("en-IN", {
                      minimumFractionDigits: 2
                    })}
                  </TableCell>
-
-                 <TableCell className="text-right text-fg-secondary">
-                   {Number(log.filling_odometer_km || 0).toLocaleString("en-IN")}
-                 </TableCell>
-
                  <TableCell className="text-right">
                    <div className="flex justify-end gap-2">
                      <Button
                        type="button"
                        variant="glass"
-                       className="px-3 py-1.5 text-[10px]"
-                       onClick={() => handleEditAdblue(log)}
-                       disabled={isProcessing}
+                       onClick={() => {
+                         handleEditClick(log);
+                         setShowFuelRecords(false);
+                       }}
                      >
                        Edit
                      </Button>
-
                      <Button
                        type="button"
                        variant="glass"
-                       className="px-3 py-1.5 text-[10px] text-danger"
-                       onClick={() => handleDeleteAdblue(Number(log.adblue_log_id))}
+                       className="text-danger"
                        disabled={isProcessing}
+                       onClick={() => handleDeleteFuel(String(log.fuel_log_id))}
                      >
                        Delete
                      </Button>
@@ -1345,232 +1261,121 @@ export function FuelAdvanceModule() {
                  </TableCell>
                </TableRow>
              ))}
+             {filteredRecent.length === 0 && (
+               <TableRow>
+                 <TableCell colSpan={6} className="p-8 text-center text-fg-muted">
+                   No diesel entries found.
+                 </TableCell>
+               </TableRow>
+             )}
+           </TableBody>
+         </Table>
+       </div>
+     </DialogBody>
+   </DialogContent>
+ </Dialog>
 
-           {adblueLogs.filter(log => {
-             const q = adblueSearch.trim().toLowerCase();
-             if (!q) return true;
-             return [
-               log.adblue_date,
-               log.vehicles?.vehicle_number,
-               log.lr_number,
-               log.vendors?.vendor_name,
-               log.remarks
-             ]
-               .filter(Boolean)
-               .some(value =>
+ <Dialog
+   open={showAdblueRecords}
+   onOpenChange={(open) => {
+     if (!open) setShowAdblueRecords(false);
+   }}
+ >
+   <DialogContent
+     layout="modal"
+     size="lg"
+     className="flex max-h-[88dvh] flex-col overflow-hidden p-0"
+   >
+     <DialogHeader className="px-5 py-4 sm:px-6">
+       <DialogTitle className="text-lg">Find Existing AdBlue Entry</DialogTitle>
+       <p className="text-xs text-fg-muted">
+         Select a record to edit it, or use its delete action.
+       </p>
+     </DialogHeader>
+
+     <DialogBody className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+       <Input
+         value={adblueSearch}
+         onChange={e => setAdblueSearch(e.target.value)}
+         placeholder="Search truck, LR or vendor"
+         className="mb-4 text-fg font-semibold"
+       />
+
+       <div className="overflow-auto rounded-xl border border-border">
+         <Table className="min-w-full whitespace-nowrap">
+           <TableHeader>
+             <TableRow>
+               <TableHead>Date</TableHead>
+               <TableHead>Truck</TableHead>
+               <TableHead>LR / Vendor</TableHead>
+               <TableHead className="text-right">Litres</TableHead>
+               <TableHead className="text-right">Cost</TableHead>
+               <TableHead className="text-right">Actions</TableHead>
+             </TableRow>
+           </TableHeader>
+           <TableBody>
+             {adblueLogs.filter(log => {
+               const q = adblueSearch.trim().toLowerCase();
+               return !q || [
+                 log.adblue_date,
+                 log.vehicles?.vehicle_number,
+                 log.lr_number,
+                 log.vendors?.vendor_name,
+                 log.remarks
+               ].filter(Boolean).some(value =>
                  String(value).toLowerCase().includes(q)
                );
-           }).length === 0 && (
-             <TableRow>
-               <TableCell
-                 colSpan={8}
-                 className="p-8 text-center font-medium text-fg-muted"
-               >
-                 No AdBlue records found.
-               </TableCell>
-             </TableRow>
-           )}
-         </TableBody>
-       </Table>
-     </div>
-   </div>
+             }).map(log => (
+               <TableRow key={log.adblue_log_id}>
+                 <TableCell>{log.adblue_date}</TableCell>
+                 <TableCell>{log.vehicles?.vehicle_number || "—"}</TableCell>
+                 <TableCell>
+                   {log.lr_number || "—"}
+                   <br />
+                   <span className="text-[9px] text-fg-muted">
+                     {log.vendors?.vendor_name || log.adblue_vendor || "No vendor"}
+                   </span>
+                 </TableCell>
+                 <TableCell className="text-right">
+                   {Number(log.litres_filled || 0).toFixed(2)} L
+                 </TableCell>
+                 <TableCell className="text-right">
+                   ₹{Number(log.total_adblue_cost || 0).toLocaleString("en-IN", {
+                     minimumFractionDigits: 2
+                   })}
+                 </TableCell>
+                 <TableCell className="text-right">
+                   <div className="flex justify-end gap-2">
+                     <Button
+                       type="button"
+                       variant="glass"
+                       onClick={() => {
+                         handleEditAdblue(log);
+                         setShowAdblueRecords(false);
+                       }}
+                     >
+                       Edit
+                     </Button>
+                     <Button
+                       type="button"
+                       variant="glass"
+                       className="text-danger"
+                       disabled={isProcessing}
+                       onClick={() => handleDeleteAdblue(Number(log.adblue_log_id))}
+                     >
+                       Delete
+                     </Button>
+                   </div>
+                 </TableCell>
+               </TableRow>
+             ))}
+           </TableBody>
+         </Table>
+       </div>
+     </DialogBody>
+   </DialogContent>
+ </Dialog>
 
- </div>
- )}
-
- {faNav === " Fuel Audit" && (
- <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
- <h3 className="text-sm font-semibold text-fg  tracking-wide border-b border-border pb-3 mb-5">Advanced Fuel Audit Engine</h3>
- 
- <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Date Mode</label><Select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="text-fg font-semibold"><option value="All Time">All Time</option><option value="Specific Date">Specific Date</option><option value="Date Range">Date Range</option></Select></div>
- {auditDateMode === "Specific Date" && <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Date</label><Input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="text-fg font-semibold" /></div>}
- {auditDateMode === "Date Range" && <><div className="col-span-1"><label className="block text-[10px] font-bold text-fg-secondary  mb-1">From</label><Input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="text-fg font-semibold" /></div><div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">To</label><Input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="text-fg font-semibold" /></div></>}
- {auditDateMode === "All Time" && <div className="hidden md:block md:col-span-2"></div>}
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Truck No</label><Select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="text-fg font-bold"><option value="All Trucks">All Trucks</option>{vehicles.map(v => <option key={v.vehicle_id} value={v.vehicle_number}>{v.vehicle_number}</option>)}</Select></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Category</label><Select value={auditCategory} onChange={e => setAuditCategory(e.target.value)} className="text-fg font-semibold"><option value="All Categories">All Categories</option><option value="TRIP_DIESEL">TRIP_DIESEL</option><option value="SUNDRY_DIESEL">SUNDRY_DIESEL</option></Select></div>
- </div>
-
- <div className="flex justify-end mb-6">
- <Button
-   type="button"
-   variant="default"
-   size="lg"
-   onClick={handleRunAudit}
- >
-   Fetch Database Records
- </Button>
- </div>
-
- <div className="kss-surface overflow-hidden">
- <TableToolbar title="Audit Results" searchQuery={auditSearch} setSearchQuery={setAuditSearch} exportData={exportAudit} exportFilename="Fuel_Audit_Report" />
- <div className="overflow-x-auto w-full max-h-[500px] overflow-y-auto">
- <Table className="min-w-full whitespace-nowrap text-xs">
- <TableHeader className="sticky top-0 z-10">
-   <TableRow>
-     <TableHead className="px-5 py-4 text-left">Log ID</TableHead>
-     <TableHead className="px-5 py-4 text-left">Date</TableHead>
-     <TableHead className="px-5 py-4 text-left">Truck</TableHead>
-     <TableHead className="px-5 py-4 text-left">Category</TableHead>
-     <TableHead className="px-5 py-4 text-left">LR No</TableHead>
-     <TableHead className="px-5 py-4 text-right">Odometer</TableHead>
-     <TableHead className="px-5 py-4 text-right">Litres</TableHead>
-     <TableHead className="px-5 py-4 text-right">Cost ()</TableHead>
-   </TableRow>
- </TableHeader>
-
- <TableBody>
-   {filteredAudit.map((l) => (
-     <TableRow
-       key={l.fuel_log_id}
-       onClick={() => handleEditClick(l)}
-       className="cursor-pointer"
-     >
-       <TableCell className="px-5 py-3 font-bold text-fg-muted">
-         #{l.fuel_log_id}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 font-semibold text-fg-secondary">
-         {formatDate(l.fuel_date)}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 font-semibold text-fg">
-         {l.vehicles?.vehicle_number}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-fg-secondary">
-         {l.diesel_category}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 font-bold text-accent">
-         {l.lr_number}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-right text-fg-secondary">
-         {l.filling_odometer_km}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-right font-semibold text-accent">
-         {l.litres_filled} L{" "}
-         {l.is_tank_full && (
-           <span title="Tank Full" className="ml-1 text-sm"></span>
-         )}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-right font-bold text-danger">
-         {(l.total_fuel_cost || 0).toLocaleString("en-IN", {
-           minimumFractionDigits: 2,
-         })}
-       </TableCell>
-     </TableRow>
-   ))}
-
-   {filteredAudit.length === 0 && (
-     <TableRow>
-       <TableCell
-         colSpan={8}
-         className="p-8 text-center font-medium text-fg-muted"
-       >
-         No audit records found.
-       </TableCell>
-     </TableRow>
-   )}
- </TableBody>
- </Table>
- </div>
- </div>
- </div>
- )}
-
- {faNav === " Mileage Tracker" && (
- <div className="liquid-glass p-6 shadow-xl animate-in slide-in-from-bottom-4">
- <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-border pb-4 mb-6 gap-4">
- <div><h3 className="text-sm font-semibold text-fg  tracking-wide">Vehicle Mileage (KMPL) Tracker</h3><p className="text-xs text-fg-secondary mt-1">Calculates true mileage using the "Full-to-Full" standard formula.</p></div>
- <div className="w-full md:w-64"><Select value={kmplTruckId} onChange={e => setKmplTruckId(e.target.value)}><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => (<option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>))}</Select></div>
- </div>
-
- {!kmplTruckId ? (
- <div className="p-12 text-center kss-surface-raised"><span className="text-4xl mb-4"></span><p className="text-sm font-bold text-fg-muted">Select a truck above to view its automated full-to-full mileage history.</p></div>
- ) : isProcessing ? (
- <div className="p-12 text-center"><p className="text-sm font-bold text-accent animate-pulse">Calculating algorithms...</p></div>
- ) : (
- <div className="space-y-6">
- {ongoingKmplSpan && (
- <div className="bg-info-soft border border-info/20 p-5 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-4">
- <div><h4 className="text-[10px] font-semibold text-info  tracking-normal mb-1">Current Ongoing Span (Awaiting Next Tank Full)</h4><p className="text-sm font-semibold text-fg-secondary">Started at Odo <span className="font-semibold text-fg">{ongoingKmplSpan.start_odo} KM</span> on {formatDate(ongoingKmplSpan.start_date)}</p></div>
- <div className="text-right"><p className="text-2xl font-semibold text-info">{ongoingKmplSpan.accumulated_litres.toFixed(1)} L</p><p className="text-[10px] font-bold text-info ">Accumulated so far</p></div>
- </div>
- )}
- <div className="kss-surface overflow-hidden w-full">
- <TableToolbar title="KMPL History" searchQuery={kmplSearch} setSearchQuery={setKmplSearch} exportData={exportKmpl} exportFilename="KMPL_Report" />
- <Table className="min-w-full whitespace-nowrap text-xs">
- <TableHeader className="sticky top-0 z-10">
-   <TableRow>
-     <TableHead className="px-5 py-4 text-left">Period</TableHead>
-     <TableHead className="px-5 py-4 text-right">Odo Start</TableHead>
-     <TableHead className="px-5 py-4 text-right">Odo End</TableHead>
-     <TableHead className="px-5 py-4 text-right">Distance</TableHead>
-     <TableHead className="px-5 py-4 text-right">Fuel Used</TableHead>
-     <TableHead className="px-5 py-4 text-right">KMPL</TableHead>
-     <TableHead className="px-5 py-4 text-right">Cost / KM</TableHead>
-     <TableHead className="px-5 py-4 text-right">Logs</TableHead>
-   </TableRow>
- </TableHeader>
-
- <TableBody>
-   {filteredKmpl.map((s) => (
-     <TableRow key={`${s.start_date}-${s.end_date}-${s.start_odo}`}>
-       <TableCell className="px-5 py-3 font-semibold text-fg">
-         {formatDate(s.start_date)} → {formatDate(s.end_date)}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-right text-fg-secondary">
-         {s.start_odo}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-right text-fg-secondary">
-         {s.end_odo}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-right font-semibold text-fg-secondary">
-         {s.distance}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-right text-fg-secondary">
-         {s.consumed_litres.toFixed(1)} L
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-right font-bold text-accent">
-         {s.kmpl}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-right font-semibold text-fg-secondary">
-         {s.cost_per_km}
-       </TableCell>
-
-       <TableCell className="px-5 py-3 text-right text-fg-muted">
-         {s.logs_count}
-       </TableCell>
-     </TableRow>
-   ))}
-
-   {filteredKmpl.length === 0 && (
-     <TableRow>
-       <TableCell
-         colSpan={8}
-         className="p-8 text-center font-medium text-fg-muted"
-       >
-         No KMPL records found.
-       </TableCell>
-     </TableRow>
-   )}
- </TableBody>
- </Table>
- </div>
- </div>
- )}
- </div>
- )}
  </div>
  );
 }

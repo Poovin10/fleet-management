@@ -9,7 +9,7 @@ const Table = React.forwardRef<
     <table
       ref={ref}
       className={cn(
-        "w-full min-w-max caption-bottom text-[12px] border-separate border-spacing-0",
+        "w-full min-w-max caption-bottom text-[13px] border-separate border-spacing-0",
         className
       )}
       {...props}
@@ -71,9 +71,10 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b border-border/70 transition-all duration-fast ease-standard",
-      "hover:bg-surface-raised/50",
-      "data-[state=selected]:bg-accent-soft",
+      "border-b border-border-subtle transition-colors duration-fast ease-standard",
+      "hover:bg-white/[0.025]",
+      "focus-within:bg-white/[0.035]",
+      "data-[state=selected]:bg-accent-soft/70",
       className
     )}
     {...props}
@@ -88,7 +89,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-11 px-4 text-left align-middle font-semibold text-fg-muted",
+      "h-10 px-3 text-left align-middle text-[11px] font-semibold tracking-wide text-fg-muted",
       "whitespace-nowrap",
       "[&:has([role=checkbox])]:pr-0",
       className
@@ -105,7 +106,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-4 py-3 align-middle text-[12px] text-fg-secondary",
+      "px-3 py-3 align-middle text-[13px] leading-5 text-fg-secondary",
       "whitespace-nowrap",
       "[&:has([role=checkbox])]:pr-0",
       className

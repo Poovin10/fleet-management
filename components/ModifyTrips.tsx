@@ -1,32 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/Pagination";
-import { usePagination } from "@/components/ui/usePagination";
 
 export function ModifyTrips() {
  const supabase = createClient();
  const [vehicles, setVehicles] = useState<any[]>([]);
  const [drivers, setDrivers] = useState<any[]>([]);
  const [tripsList, setTripsList] = useState<any[]>([]);
+ const [tripsPage, setTripsPage] = useState(1);
+ const [tripsTotalItems, setTripsTotalItems] = useState(0);
+ const [isSearchingTrips, setIsSearchingTrips] = useState(false);
+ const [showTripPicker, setShowTripPicker] = useState(false);
+ const [showModifyModal, setShowModifyModal] = useState(true);
  const [editTripId, setEditTripId] = useState<number | null>(null);
  const [currentTrip, setCurrentTrip] = useState<any>(null);
+ const [isLrEditing, setIsLrEditing] = useState(false);
  const [isProcessing, setIsProcessing] = useState(false);
 
- const {
-   page: tripsPage,
-   setPage: setTripsPage,
-   totalPages: tripsTotalPages,
-   totalItems: tripsTotalItems,
-   paginatedItems: paginatedTrips,
-   reset: resetTripsPage,
- } = usePagination(tripsList, { pageSize: 10 });
+ const tripsPageSize = 10;
+ const tripsTotalPages = Math.max(1, Math.ceil(tripsTotalItems / tripsPageSize));
+ const tripSearchRequest = useRef(0);
+ const tripSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
  const [auditDateMode, setAuditDateMode] = useState("All Time");
  const [auditSpecificDate, setAuditSpecificDate] = useState(new Date().toISOString().split('T')[0]);
@@ -74,277 +76,546 @@ export function ModifyTrips() {
  if (vData) setVehicles(vData);
  const { data: dData } = await supabase.from('drivers').select('driver_id, full_name, driver_code').order('full_name');
  if (dData) setDrivers(dData);
- await handleSearchTrips();
+ setIsProcessing(false);
  };
 
  useEffect(() => { loadInitialData(); }, []);
 
- const handleSearchTrips = async () => {
- resetTripsPage();
- setIsProcessing(true);
- const selectString = auditTruck !== "All Trucks" ? '*, vehicles!inner(vehicle_number), drivers(full_name)' : '*, vehicles(vehicle_number), drivers(full_name)';
- let query = supabase.from('trips').select(selectString).order('trip_start_date', { ascending: false }).order('trip_id', { ascending: false }).limit(200);
-
- if (auditDateMode === "Specific Date") query = query.eq('trip_start_date', auditSpecificDate);
- else if (auditDateMode === "Date Range") query = query.gte('trip_start_date', auditFromDate).lte('trip_start_date', auditToDate);
- if (auditTruck !== "All Trucks") query = query.eq('vehicles.vehicle_number', auditTruck);
- if (auditStatus !== "All Statuses") query = query.eq('trip_status', auditStatus);
- if (auditSearchLr) query = query.ilike('trip_number', `%${auditSearchLr}%`);
-
- const { data } = await query;
- if (data) setTripsList(data); else setTripsList([]);
- setIsProcessing(false);
+ type TripSearchFilters = {
+   dateMode: string;
+   specificDate: string;
+   fromDate: string;
+   toDate: string;
+   truck: string;
+   status: string;
+   searchLr: string;
  };
 
- const exportTripsToCSV = () => { /* Logic maintained */ };
+ const currentTripSearchFilters = (): TripSearchFilters => ({
+   dateMode: auditDateMode,
+   specificDate: auditSpecificDate,
+   fromDate: auditFromDate,
+   toDate: auditToDate,
+   truck: auditTruck,
+   status: auditStatus,
+   searchLr: auditSearchLr,
+ });
 
- const handleEditClick = (trip: any) => {
- setEditTripId(trip.trip_id); setCurrentTrip(trip);
- setTripNumber(trip.trip_number || ""); setStartDate(trip.trip_start_date ? trip.trip_start_date.split('T')[0] : ""); setStatus(trip.trip_status || "DISPATCHED");
- setOrigin(trip.origin || ""); setDestination(trip.destination || ""); setDriverId(trip.primary_driver_id ? String(trip.primary_driver_id) : "");
- setTonnage(trip.tonnage_loaded || "");
- const rate = trip.spot_freight_rate || (trip.freight_revenue && trip.tonnage_loaded ? (trip.freight_revenue / trip.tonnage_loaded).toFixed(2) : "");
- setSpotRate(Number(rate));
- setDieselL(trip.fuel_litres || ""); setIsTankFull(trip.is_tank_full || false); setStartKm(trip.start_km || ""); setEndKm(trip.end_km || "");
- setDriverBata(trip.driver_bata || ""); setAdvanceIssued(trip.cash_advance_issued || "");
- setEndDate(trip.trip_end_date ? trip.trip_end_date.split('T')[0] : ""); setUnloadedMt(trip.unloaded_weight_mt || ""); setHaltBata(trip.halt_bata || "");
- window.scrollTo({ top: 0, behavior: 'smooth' });
+ const invalidateTripSearch = () => {
+   tripSearchRequest.current += 1;
+   if (tripSearchTimer.current) clearTimeout(tripSearchTimer.current);
+   setTripsPage(1);
+   setTripsTotalItems(0);
+   setTripsList([]);
+   setIsSearchingTrips(true);
  };
 
- const clearForm = () => { setEditTripId(null); setCurrentTrip(null); setTripNumber(""); setStartDate(""); setStatus("DISPATCHED"); setOrigin(""); setDestination(""); setDriverId(""); setTonnage(""); setSpotRate(""); setDieselL(""); setIsTankFull(false); setStartKm(""); setEndKm(""); setDriverBata(""); setAdvanceIssued(""); setEndDate(""); setUnloadedMt(""); setHaltBata(""); };
+ const handleSearchTrips = async (requestedPage = 1, filters = currentTripSearchFilters()) => {
+   const requestId = ++tripSearchRequest.current;
+   setIsSearchingTrips(true);
+   setTripsPage(requestedPage);
+   setTripsList([]);
 
- const handleUpdateTrip = (e: React.FormEvent) => {
- e.preventDefault();
- if (!currentTrip) return;
+   try {
+     const selectString = filters.truck !== "All Trucks"
+       ? '*, vehicles!inner(vehicle_number), drivers(full_name)'
+       : '*, vehicles(vehicle_number), drivers(full_name)';
+     let query: any = (supabase.from('trips') as any)
+       .select(selectString, { count: "exact" })
+       .order('trip_start_date', { ascending: false })
+       .order('trip_id', { ascending: false });
 
- triggerModal(
-   "Update Trip & Sync Ledgers",
-   `Save modifications for Trip #${currentTrip.trip_number}?`,
-   false,
-   "Save & Sync",
-   async () => {
-     setIsProcessing(true);
+     if (filters.dateMode === "Specific Date") query = query.eq('trip_start_date', filters.specificDate);
+     else if (filters.dateMode === "Date Range") query = query.gte('trip_start_date', filters.fromDate).lte('trip_start_date', filters.toDate);
+     if (filters.truck !== "All Trucks") query = query.eq('vehicles.vehicle_number', filters.truck);
+     if (filters.status !== "All Statuses") query = query.eq('trip_status', filters.status);
+     if (filters.searchLr.trim()) query = query.ilike('trip_number', `%${filters.searchLr.trim()}%`);
 
-     const normalizedTripNumber = tripNumber.toUpperCase().trim();
-     const normalizedOrigin = origin.toUpperCase().trim();
-     const normalizedDestination = destination.toUpperCase().trim();
+     const from = (requestedPage - 1) * tripsPageSize;
+     const { data, error, count } = await query.range(from, from + tripsPageSize - 1);
+     if (requestId !== tripSearchRequest.current) return;
+     if (error) throw error;
 
-     let currentDieselRate = 95.0;
-
-     if (currentTrip.fuel_litres && currentTrip.fuel_expense) {
-       currentDieselRate =
-         Number(currentTrip.fuel_expense) / Number(currentTrip.fuel_litres);
-     } else {
-       const { data: dData } = await supabase
-         .from("diesel_fuel_logs")
-         .select("diesel_rate_per_litre")
-         .order("fuel_date", { ascending: false })
-         .limit(1);
-
-       if (dData && dData.length > 0) {
-         currentDieselRate = Number(dData[0].diesel_rate_per_litre);
-       }
+     const matchingCount = count ?? data?.length ?? 0;
+     const lastPage = Math.max(1, Math.ceil(matchingCount / tripsPageSize));
+     if (requestedPage > lastPage) {
+       setTripsPage(lastPage);
+       void handleSearchTrips(lastPage, filters);
+       return;
      }
+     setTripsList(data || []);
+     setTripsTotalItems(matchingCount);
+   } catch (error) {
+     if (requestId !== tripSearchRequest.current) return;
+     console.error("Trip search error:", error);
+     setTripsList([]);
+     setTripsTotalItems(0);
+   } finally {
+     if (requestId === tripSearchRequest.current) setIsSearchingTrips(false);
+   }
+ };
 
-     const finalDieselLitres = Number(dieselL) || 0;
-     const newFuelCost = Math.round(
-       finalDieselLitres * currentDieselRate * 100
-     ) / 100;
+ useEffect(() => {
+   if (!showTripPicker) return;
 
-     const payload = {
-       trip_number: normalizedTripNumber,
-       trip_start_date: startDate || null,
-       trip_end_date: endDate || null,
-       origin: normalizedOrigin,
-       destination: normalizedDestination,
-       primary_driver_id: driverId ? Number(driverId) : null,
-       tonnage_loaded: tonnage !== "" ? Number(tonnage) : null,
-       freight_revenue: grossFreight,
-       driver_bata: driverBata !== "" ? Number(driverBata) : 0,
-       cash_advance_issued:
-         advanceIssued !== "" ? Number(advanceIssued) : 0,
-       trip_status: status,
-       unloaded_weight_mt:
-         unloadedMt !== "" ? Number(unloadedMt) : 0,
-       halt_bata: haltBata !== "" ? Number(haltBata) : 0,
+   tripSearchRequest.current += 1;
+   setTripsPage(1);
+   setTripsTotalItems(0);
+   setTripsList([]);
+   setIsSearchingTrips(true);
+   if (tripSearchTimer.current) clearTimeout(tripSearchTimer.current);
 
-       fuel_litres: finalDieselLitres,
-       fuel_expense: newFuelCost,
-       diesel_rate_per_litre: currentDieselRate,
-       fuel_date: startDate || new Date().toISOString().split("T")[0],
-       diesel_category: "TRIP_DIESEL",
-       lr_number: normalizedTripNumber || "SUNDRY",
-       fuel_station_vendor: null,
-       fuel_remarks: null,
-       is_tank_full: isTankFull
-     };
+   const filters = currentTripSearchFilters();
+   tripSearchTimer.current = setTimeout(() => {
+     void handleSearchTrips(1, filters);
+   }, filters.searchLr ? 250 : 0);
 
-     const { error } = await supabase.rpc("modify_trip_atomic", {
-       p_trip_id: Number(currentTrip.trip_id),
-       p_payload: payload
-     });
+   return () => {
+     if (tripSearchTimer.current) clearTimeout(tripSearchTimer.current);
+   };
+ }, [showTripPicker, auditDateMode, auditSpecificDate, auditFromDate, auditToDate, auditTruck, auditStatus, auditSearchLr]);
 
-     if (error) {
-       const message = error.message || "";
+ const clearForm = () => {
+   setEditTripId(null);
+   setCurrentTrip(null);
+   setIsLrEditing(false);
+   setTripNumber("");
+   setStartDate("");
+   setStatus("DISPATCHED");
+   setOrigin("");
+   setDestination("");
+   setDriverId("");
+   setTonnage("");
+   setSpotRate("");
+   setDieselL("");
+   setIsTankFull(false);
+   setStartKm("");
+   setEndKm("");
+   setDriverBata("");
+   setAdvanceIssued("");
+   setEndDate("");
+   setUnloadedMt("");
+   setHaltBata("");
+ };
 
-       if (message.includes("TRIP_VEHICLE_REQUIRED")) {
-         alert(
-           "This historical trip has no assigned vehicle and cannot be modified in the new integrity workflow."
-         );
-       } else if (
-         message.includes("FUEL_RECORD_REQUIRED_USE_FUEL_ADVANCE")
-       ) {
-         alert(
-           "No fuel record exists for this trip. Please create the fuel entry through Fuel Advance before modifying diesel details."
-         );
-       } else {
-         alert("Trip update blocked: " + message);
-       }
+ const handleSearchByLr = async () => {
+   const searchLr = tripNumber.trim().toUpperCase();
 
-       setIsProcessing(false);
-       closeModal();
+   if (!searchLr) {
+     alert("Please enter an LR number.");
+     return;
+   }
+
+   setIsSearchingTrips(true);
+   setCurrentTrip(null);
+   setEditTripId(null);
+   setAuditSearchLr(searchLr);
+
+   try {
+     const { data, error } = await (supabase.from("trips") as any)
+       .select('*, vehicles(vehicle_number), drivers(full_name)')
+       .eq("trip_number", searchLr)
+       .maybeSingle();
+
+     if (error) throw error;
+
+     if (!data) {
+       alert("LR Number not found.");
        return;
      }
 
-     await handleSearchTrips();
-     clearForm();
-     setIsProcessing(false);
-     closeModal();
+     handleEditClick(data);
+   } catch (error: any) {
+     console.error("LR lookup error:", error);
+     alert(error?.message ? `LR search failed: ${error.message}` : "LR search failed.");
+   } finally {
+     setIsSearchingTrips(false);
    }
- );
  };
 
+ const handleEditClick = (trip: any) => {
+   setShowTripPicker(false);
+   setEditTripId(trip.trip_id);
+   setCurrentTrip(trip);
+   setIsLrEditing(false);
+   setShowModifyModal(true);
 
+   setTripNumber(trip.trip_number || "");
+   setStartDate(trip.trip_start_date ? trip.trip_start_date.split('T')[0] : "");
+   setStatus(trip.trip_status || "DISPATCHED");
+   setOrigin(trip.origin || "");
+   setDestination(trip.destination || "");
+   setDriverId(trip.primary_driver_id ? String(trip.primary_driver_id) : "");
+   setTonnage(trip.tonnage_loaded || "");
 
- return (
- <div className="space-y-6 animate-in fade-in duration-300">
- <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
- 
- <div className="liquid-glass p-6 sm:p-8 shadow-xl max-w-5xl mx-auto h-fit">
- <div className="flex justify-between items-center border-b border-border pb-3 mb-6">
- <h3 className="text-sm font-semibold text-fg tracking-wide">{currentTrip ? `Modify Trip: ${currentTrip.trip_number}` : "Modify Existing Trip"}</h3>
- {currentTrip && <span className="px-3 py-1 bg-warning-soft text-warning text-[10px] font-bold rounded-lg tracking-normal animate-pulse">Editing Mode</span>}
- </div>
+   const rate = trip.spot_freight_rate ||
+     (trip.freight_revenue && trip.tonnage_loaded
+       ? (trip.freight_revenue / trip.tonnage_loaded).toFixed(2)
+       : "");
 
- {!currentTrip ? (
- <div className="py-12 text-center border-2 border-dashed border-border rounded-lg kss-surface-raised"><p className="text-fg-secondary font-bold text-sm">Select a trip from the Search & Audit Log below to modify its details.</p></div>
- ) : (
- <form onSubmit={handleUpdateTrip} className="space-y-5 animate-in slide-in-from-bottom-4">
- <div className="flex flex-wrap gap-4 bg-success-soft p-3 rounded-lg border border-success/20"><span className="text-xs text-success font-bold tracking-wider">Integrity Sync: Save validates trip and fuel records atomically. Missing fuel records must be created through Fuel Advance.</span></div>
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">LR Number</label><Input type="text" value={tripNumber} onChange={e => setTripNumber(e.target.value)} className="text-fg font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Dispatch Date</label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-fg font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Trip Status</label><Select value={status} onChange={e => setStatus(e.target.value)} className="text-fg font-bold"><option value="DISPATCHED">DISPATCHED</option><option value="IN_TRANSIT">IN_TRANSIT</option><option value="COMPLETED">COMPLETED</option><option value="CANCELLED">CANCELLED</option></Select></div>
- </div>
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Source (Origin)</label><Input type="text" value={origin} onChange={e => setOrigin(e.target.value)} className="text-fg font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Destination</label><Input type="text" value={destination} onChange={e => setDestination(e.target.value)} className="text-fg font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Primary Driver</label><Select value={driverId} onChange={e => setDriverId(e.target.value)} className="text-fg font-bold"><option value="">-- UNASSIGNED --</option>{drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}</Select></div>
- </div>
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 kss-surface-raised rounded-lg border border-border">
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Loaded MT</label><Input type="number" step="0.01" value={tonnage} onChange={e => setTonnage(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-fg font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Freight Rate / MT ()</label><Input type="number" step="0.01" value={spotRate} onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-success font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Auto-Calc Gross Freight ()</label><Input type="text" value={`${grossFreight.toLocaleString('en-IN', {minimumFractionDigits: 2})}`} disabled className="w-full text-sm p-3 rounded-lg border border-success/20 bg-success-soft text-success font-semibold cursor-not-allowed"  /></div>
- </div>
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div><div className="flex justify-between items-end mb-1"><label className="block text-[10px] font-bold text-fg-secondary">Diesel Issued (L)</label><label className="flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="w-3 h-3 rounded text-accent focus:ring-accent bg-surface-raised border-border" /><span className="text-[9px] font-semibold text-fg">Tank Full</span></label></div><Input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Start KM</label><Input type="number" value={startKm} disabled={!!currentTrip} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold disabled:opacity-60 disabled:cursor-not-allowed" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">End KM</label><Input type="number" value={endKm} disabled={!!currentTrip} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold disabled:opacity-60 disabled:cursor-not-allowed" /></div>
- </div>
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Driver Bata ()</label><Input type="number" value={driverBata} onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Halt Bata ()</label><Input type="number" value={haltBata} onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Cash Adv Issued ()</label><Input type="number" value={advanceIssued} onChange={e => setAdvanceIssued(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-warning font-bold" /></div>
- </div>
- <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">POD Closing Date</label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-fg font-bold" /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Unloaded MT</label><Input type="number" step="0.01" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-fg font-bold" /></div>
- </div>
- <div className="pt-4 flex gap-3">
- <Button type="button" variant="glass" size="lg" className="flex-1" onClick={clearForm}>Cancel Edit</Button>
- <Button type="submit" disabled={isProcessing} size="lg" className="flex-[2]">Save Trip Updates</Button>
- </div>
- </form>
- )}
- </div>
+   setSpotRate(Number(rate));
+   setDieselL(trip.fuel_litres || "");
+   setIsTankFull(trip.is_tank_full || false);
+   setStartKm(trip.start_km || "");
+   setEndKm(trip.end_km || "");
+   setDriverBata(trip.driver_bata || "");
+   setAdvanceIssued(trip.cash_advance_issued || "");
+   setEndDate(trip.trip_end_date ? trip.trip_end_date.split('T')[0] : "");
+   setUnloadedMt(trip.unloaded_weight_mt || "");
+   setHaltBata(trip.halt_bata || "");
+ };
 
- <div className="liquid-glass overflow-hidden flex flex-col shadow-xl max-w-5xl mx-auto h-fit mt-6">
- <div className="bg-surface-raised px-6 py-4 flex justify-between items-center border-b border-border"><h3 className="text-sm font-semibold text-fg tracking-wide">Trip Audit & Search</h3></div>
- <div className="p-6 border-b border-border bg-surface-raised">
- <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Date Mode</label><Select value={auditDateMode} onChange={e => setAuditDateMode(e.target.value)} className="text-fg font-semibold"><option value="All Time">All Time</option><option value="Specific Date">Specific Date</option><option value="Date Range">Date Range</option></Select></div>
- {auditDateMode === "Specific Date" && (<div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Date</label><Input type="date" value={auditSpecificDate} onChange={e => setAuditSpecificDate(e.target.value)} className="text-fg font-semibold" /></div>)}
- {auditDateMode === "Date Range" && (<><div><label className="block text-[10px] font-bold text-fg-secondary mb-1">From</label><Input type="date" value={auditFromDate} onChange={e => setAuditFromDate(e.target.value)} className="text-fg font-semibold" /></div><div><label className="block text-[10px] font-bold text-fg-secondary mb-1">To</label><Input type="date" value={auditToDate} onChange={e => setAuditToDate(e.target.value)} className="text-fg font-semibold" /></div></>)}
- {auditDateMode === "All Time" && <div className="hidden md:block md:col-span-2"></div>}
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Truck No</label><Select value={auditTruck} onChange={e => setAuditTruck(e.target.value)} className="text-fg font-bold"><option value="All Trucks">All Trucks</option>{vehicles.map(v => <option key={v.vehicle_number} value={v.vehicle_number}>{v.vehicle_number}</option>)}</Select></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Status</label><Select value={auditStatus} onChange={e => setAuditStatus(e.target.value)} className="text-fg font-semibold"><option value="All Statuses">All Statuses</option><option value="DISPATCHED">DISPATCHED</option><option value="IN_TRANSIT">IN_TRANSIT</option><option value="COMPLETED">COMPLETED</option><option value="CANCELLED">CANCELLED</option></Select></div>
- </div>
- <div className="flex flex-col md:flex-row gap-4">
- <div className="flex-1"><label className="block text-[10px] font-bold text-fg-secondary mb-1">Search LR No</label><Input type="text" value={auditSearchLr} onChange={e => setAuditSearchLr(e.target.value.toUpperCase())} placeholder="e.g. 400..." className="text-fg font-semibold" /></div>
- <div className="flex items-end gap-3">
- <Button onClick={handleSearchTrips} disabled={isProcessing} size="lg">{isProcessing ? "Searching..." : "Search Trips"}</Button>
- <Button onClick={exportTripsToCSV} variant="glass" size="lg"><span className="text-lg leading-none">Export CSV</span></Button>
- </div>
- </div>
- </div>
+ const handleUpdateTrip = async (e: React.FormEvent) => {
+   e.preventDefault();
 
- <div className="w-full">
- <Table className="text-xs text-left whitespace-nowrap">
- <TableHeader className="sticky top-0 z-10"><TableRow>
-  <TableHead className="px-5 py-3">Date</TableHead>
-  <TableHead className="px-5 py-3">Trip LR</TableHead>
-  <TableHead className="px-5 py-3">Truck & Driver</TableHead>
-  <TableHead className="px-5 py-3">Route</TableHead>
-  <TableHead className="px-5 py-3 text-center">Status</TableHead>
-</TableRow></TableHeader>
- <TableBody className="liquid-glass">
- {paginatedTrips.map(t => {
- const isEditing = editTripId === t.trip_id;
- return (
- <TableRow
-  key={t.trip_id}
-  onClick={() => handleEditClick(t)}
-  className={`cursor-pointer ${
-    isEditing
-      ? "bg-accent-soft border-l-2 border-l-accent"
-      : "hover:bg-surface-raised/50 border-l-2 border-transparent"
-  }`}
->
- <TableCell className="animate-tab-focus px-5 py-3.5 font-semibold text-fg-secondary">{formatDate(t.trip_start_date)}</TableCell>
- <TableCell className="px-5 py-3.5 font-semibold text-fg">{t.trip_number}</TableCell>
- <TableCell className="px-5 py-3.5 text-fg-secondary"><span className="font-bold text-fg">{t.vehicles?.vehicle_number}</span><br/><span className="text-[10px] text-fg-muted">{t.drivers?.full_name}</span></TableCell>
- <TableCell className="px-5 py-3.5 text-fg-secondary">{t.origin} {t.destination}</TableCell>
- <TableCell className="px-5 py-3.5 text-center">
-  <span className={`px-2.5 py-1 rounded text-[10px] font-bold ${
-    t.trip_status === 'COMPLETED'
-      ? 'bg-success-soft text-success border border-success/20'
-      : t.trip_status === 'CANCELLED'
-        ? 'bg-danger-soft text-danger border border-danger/20'
-        : 'bg-warning-soft text-warning border border-warning/30'
-  }`}>
-    {t.trip_status}
-  </span>
-</TableCell>
- </TableRow>
+   if (!currentTrip?.trip_id) {
+     alert("Please search and load a trip first.");
+     return;
+   }
+
+   const normalizedTripNumber = tripNumber.trim().toUpperCase();
+   const normalizedOrigin = origin.trim();
+   const normalizedDestination = destination.trim();
+
+   if (!normalizedTripNumber || !normalizedOrigin || !normalizedDestination) {
+     alert("LR number, source and destination are required.");
+     return;
+   }
+
+   setIsProcessing(true);
+
+   triggerModal(
+     "Confirm Trip Update",
+     `Save the changes made to LR ${normalizedTripNumber}?`,
+     false,
+     "Save Updates",
+     async () => {
+       let currentDieselRate = Number(currentTrip?.diesel_rate_per_litre) || 0;
+
+       if (!currentDieselRate && Number(currentTrip?.fuel_litres) > 0) {
+         currentDieselRate =
+           Number(currentTrip?.fuel_expense || 0) /
+           Number(currentTrip?.fuel_litres || 1);
+       }
+
+       if (!currentDieselRate) {
+         const { data: dData } = await (supabase.from("diesel_fuel_logs") as any)
+           .select("diesel_rate_per_litre")
+           .order("fuel_date", { ascending: false })
+           .limit(1);
+
+         if (dData?.[0]?.diesel_rate_per_litre) {
+           currentDieselRate = Number(dData[0].diesel_rate_per_litre);
+         }
+       }
+
+       if (!currentDieselRate) currentDieselRate = 95;
+
+       const finalDieselLitres = Number(dieselL) || 0;
+       const newFuelCost =
+         Math.round(finalDieselLitres * currentDieselRate * 100) / 100;
+
+       const payload = {
+         trip_number: normalizedTripNumber,
+         trip_start_date: startDate || null,
+         trip_end_date: endDate || null,
+         origin: normalizedOrigin,
+         destination: normalizedDestination,
+         primary_driver_id: driverId ? Number(driverId) : null,
+         tonnage_loaded: tonnage !== "" ? Number(tonnage) : null,
+         freight_revenue: grossFreight,
+         driver_bata: driverBata !== "" ? Number(driverBata) : 0,
+         cash_advance_issued:
+           advanceIssued !== "" ? Number(advanceIssued) : 0,
+         trip_status: status,
+         unloaded_weight_mt:
+           unloadedMt !== "" ? Number(unloadedMt) : 0,
+         halt_bata: haltBata !== "" ? Number(haltBata) : 0,
+         fuel_litres: finalDieselLitres,
+         fuel_expense: newFuelCost,
+         diesel_rate_per_litre: currentDieselRate,
+         fuel_date: startDate || new Date().toISOString().split("T")[0],
+         diesel_category: "TRIP_DIESEL",
+         lr_number: normalizedTripNumber || "SUNDRY",
+         fuel_station_vendor: null,
+         fuel_remarks: null,
+         is_tank_full: isTankFull
+       };
+
+       const { error } = await supabase.rpc("modify_trip_atomic", {
+         p_trip_id: Number(currentTrip.trip_id),
+         p_payload: payload
+       });
+
+       if (error) {
+         const message = error.message || "";
+
+         if (message.includes("TRIP_VEHICLE_REQUIRED")) {
+           alert(
+             "This historical trip has no assigned vehicle and cannot be modified in the new integrity workflow."
+           );
+         } else if (
+           message.includes("FUEL_RECORD_REQUIRED_USE_FUEL_ADVANCE")
+         ) {
+           alert(
+             "No fuel record exists for this trip. Please create the fuel entry through Fuel Advance before modifying diesel details."
+           );
+         } else {
+           alert("Trip update blocked: " + message);
+         }
+
+         setIsProcessing(false);
+         closeModal();
+         return;
+       }
+
+       await handleSearchTrips();
+       clearForm();
+       setIsProcessing(false);
+       closeModal();
+     }
+   );
+ };
+
+ const renderEditWorkspace = () => (
+   <form onSubmit={handleUpdateTrip} className="space-y-5 animate-in slide-in-from-bottom-4">
+     <div className="flex flex-wrap gap-4 rounded-lg border border-success/20 bg-success-soft p-3">
+       <span className="text-xs font-bold tracking-wider text-success">
+         Integrity Sync: Save validates trip and fuel records atomically. Missing fuel records must be created through Fuel Advance.
+       </span>
+     </div>
+
+     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+       <div>
+         <div className="mb-1 flex items-center justify-between">
+           <label className="block text-[10px] font-bold text-fg-secondary">LR Number</label>
+           <button
+             type="button"
+             onClick={() => setIsLrEditing((value) => !value)}
+             className="text-[10px] font-bold text-accent hover:underline"
+           >
+             {isLrEditing ? "Lock LR" : "Edit LR"}
+           </button>
+         </div>
+         <Input
+           type="text"
+           value={tripNumber}
+           disabled={!isLrEditing}
+           onChange={e => setTripNumber(e.target.value.toUpperCase())}
+           className="text-fg font-bold disabled:cursor-not-allowed disabled:opacity-60"
+         />
+       </div>
+
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Dispatch Date</label>
+         <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-fg font-bold" />
+       </div>
+
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Trip Status</label>
+         <Select value={status} onChange={e => setStatus(e.target.value)} className="text-fg font-bold">
+           <option value="DISPATCHED">DISPATCHED</option>
+           <option value="IN_TRANSIT">IN_TRANSIT</option>
+           <option value="COMPLETED">COMPLETED</option>
+           <option value="CANCELLED">CANCELLED</option>
+         </Select>
+       </div>
+     </div>
+
+     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Source (Origin)</label>
+         <Input type="text" value={origin} onChange={e => setOrigin(e.target.value)} className="text-fg font-bold" />
+       </div>
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Destination</label>
+         <Input type="text" value={destination} onChange={e => setDestination(e.target.value)} className="text-fg font-bold" />
+       </div>
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Primary Driver</label>
+         <Select value={driverId} onChange={e => setDriverId(e.target.value)} className="text-fg font-bold">
+           <option value="">-- UNASSIGNED --</option>
+           {drivers.map(d => <option key={d.driver_id} value={d.driver_id}>{d.driver_code} - {d.full_name}</option>)}
+         </Select>
+       </div>
+     </div>
+
+     <div className="grid grid-cols-1 gap-4 rounded-lg border border-border p-3 kss-surface-raised md:grid-cols-3">
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Loaded MT</label>
+         <Input type="number" step="0.01" value={tonnage} onChange={e => setTonnage(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-fg font-bold" />
+       </div>
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Freight Rate / MT ()</label>
+         <Input type="number" step="0.01" value={spotRate} onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-success font-bold" />
+       </div>
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Auto-Calc Gross Freight ()</label>
+         <Input type="text" value={grossFreight.toLocaleString('en-IN', {minimumFractionDigits: 2})} disabled className="w-full cursor-not-allowed rounded-lg border border-success/20 bg-success-soft p-3 text-sm font-semibold text-success" />
+       </div>
+     </div>
+
+     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+       <div>
+         <div className="mb-1 flex items-end justify-between">
+           <label className="block text-[10px] font-bold text-fg-secondary">Diesel Issued (L)</label>
+           <label className="flex cursor-pointer select-none items-center gap-1">
+             <input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="h-3 w-3 rounded border-border bg-surface-raised text-accent focus:ring-accent" />
+             <span className="text-[9px] font-semibold text-fg">Tank Full</span>
+           </label>
+         </div>
+         <Input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" />
+       </div>
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Start KM</label>
+         <Input type="number" value={startKm} disabled={!!currentTrip} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold disabled:cursor-not-allowed disabled:opacity-60" />
+       </div>
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">End KM</label>
+         <Input type="number" value={endKm} disabled={!!currentTrip} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold disabled:cursor-not-allowed disabled:opacity-60" />
+       </div>
+     </div>
+
+     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Driver Bata ()</label>
+         <Input type="number" value={driverBata} onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" />
+       </div>
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Halt Bata ()</label>
+         <Input type="number" value={haltBata} onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" />
+       </div>
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Cash Adv Issued ()</label>
+         <Input type="number" value={advanceIssued} onChange={e => setAdvanceIssued(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-warning font-bold" />
+       </div>
+     </div>
+
+     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">POD Closing Date</label>
+         <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-fg font-bold" />
+       </div>
+       <div>
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Unloaded MT</label>
+         <Input type="number" step="0.01" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-fg font-bold" />
+       </div>
+     </div>
+
+     <div className="flex gap-3 pt-4">
+       <Button type="button" variant="glass" size="lg" className="flex-1" onClick={clearForm}>Cancel Edit</Button>
+       <Button type="submit" disabled={isProcessing} size="lg" className="flex-[2]">Save Trip Updates</Button>
+     </div>
+   </form>
  );
- })}
- {tripsList.length === 0 && !isProcessing && (<TableRow><TableCell colSpan={5} className="p-8 text-center text-fg-muted font-medium">No trips found matching your search.</TableCell></TableRow>)}
- </TableBody>
- </Table>
- </div>
 
- <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-4 py-2">
-   <span className="text-[10px] font-medium text-fg-muted">
-     {tripsTotalItems} result{tripsTotalItems === 1 ? "" : "s"} • Page {tripsPage} of {tripsTotalPages}
-   </span>
- </div>
+ return (
+   <div className="min-h-full animate-in fade-in duration-300">
+     <ConfirmModal
+       isOpen={modalConfig.isOpen}
+       title={modalConfig.title}
+       message={modalConfig.message}
+       isDanger={modalConfig.isDanger}
+       confirmText={modalConfig.confirmText}
+       onConfirm={modalConfig.action}
+       onCancel={closeModal}
+       isProcessing={isProcessing}
+     />
 
- <Pagination
-   page={tripsPage}
-   totalPages={tripsTotalPages}
-   onPageChange={setTripsPage}
- />
- </div>
- </div>
+     <Dialog
+       open={showModifyModal}
+       onOpenChange={(open) => {
+         setShowModifyModal(open);
+         if (!open) {
+           clearForm();
+         }
+       }}
+     >
+       <DialogContent
+         layout="modal"
+         size="full"
+         className="flex h-[96dvh] max-h-[96dvh] flex-col overflow-hidden p-0"
+       >
+         <DialogHeader>
+           <div className="flex items-center gap-3">
+             <div>
+               <DialogTitle>Modify Trip</DialogTitle>
+               <DialogDescription>
+                 Search by LR number to load the trip and edit its operational details.
+               </DialogDescription>
+             </div>
+             {currentTrip ? (
+               <span className="ml-auto mr-8 rounded-lg border border-accent-border bg-accent-soft px-3 py-1 text-[10px] font-bold tracking-wide text-accent">
+                 EDITING {currentTrip.trip_number}
+               </span>
+             ) : null}
+           </div>
+         </DialogHeader>
+
+         <DialogBody className="min-h-0 flex-1 overflow-y-auto">
+           <div className="w-full space-y-5">
+             <div className="border-b border-border-subtle pb-5">
+               <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
+                 <div className="min-w-0">
+                   <label className="mb-1 block text-[10px] font-bold tracking-wide text-fg-secondary">
+                     LR NUMBER
+                   </label>
+                   <Input
+                     type="text"
+                     value={tripNumber}
+                     onChange={(e) => setTripNumber(e.target.value.toUpperCase())}
+                     placeholder="Enter LR number and search"
+                     className="h-11 text-fg font-bold"
+                     autoFocus
+                   />
+                 </div>
+
+                 <Button
+                   type="button"
+                   size="lg"
+                   className="lg:min-w-36"
+                   onClick={() => void handleSearchByLr()}
+                   disabled={isSearchingTrips || !tripNumber.trim()}
+                 >
+                   {isSearchingTrips ? "Searching..." : "Search LR"}
+                 </Button>
+
+                 <Button
+                   type="button"
+                   variant="glass"
+                   size="lg"
+                   className="lg:min-w-28"
+                   onClick={() => setIsLrEditing((value) => !value)}
+                   disabled={!currentTrip}
+                 >
+                   {isLrEditing ? "Lock LR" : "Edit LR"}
+                 </Button>
+               </div>
+
+               <p className="mt-3 text-xs text-fg-muted">
+                 Enter an LR number to load its existing trip details into this form. The LR remains locked unless Edit LR is enabled.
+               </p>
+             </div>
+
+             <div className="pt-1">
+               <div className="mb-5 flex justify-end border-b border-border pb-4">
+                 {currentTrip ? (
+                   <span className="rounded-lg border border-accent-border bg-accent-soft px-3 py-1 text-[10px] font-bold tracking-wide text-accent">
+                     LOADED · {currentTrip.trip_number}
+                   </span>
+                 ) : (
+                   <span className="rounded-lg bg-surface-raised px-3 py-1 text-[10px] font-bold tracking-wide text-fg-muted">
+                     AWAITING LR SEARCH
+                   </span>
+                 )}
+               </div>
+
+               {renderEditWorkspace()}
+             </div>
+           </div>
+         </DialogBody>
+       </DialogContent>
+     </Dialog>
+   </div>
  );
 }

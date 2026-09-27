@@ -1,10 +1,68 @@
 import { createClient } from '@supabase/supabase-js';
+import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { createClient as createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const maxDuration = 60;
 
+function hasValidCronAuthorization(request: Request, cronSecret: string) {
+  const authorization = request.headers.get('authorization') || '';
+  const suppliedToken = authorization.startsWith('Bearer ')
+    ? authorization.slice('Bearer '.length)
+    : '';
+  const expected = Buffer.from(cronSecret);
+  const supplied = Buffer.from(suppliedToken);
+
+  return expected.length === supplied.length && timingSafeEqual(expected, supplied);
+}
+
+async function hasAuthorizedStaffSession() {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user?.email) return false;
+
+  const username = user.email.split('@')[0];
+  const { data: appUser, error: roleError } = await supabase
+    .from('app_users')
+    .select('role')
+    .eq('username', username)
+    .maybeSingle();
+
+  if (roleError) {
+    console.error('Cron audit staff authorization lookup failed.');
+    return false;
+  }
+
+  const role = String(appUser?.role || '').toUpperCase();
+  return role === 'ADMIN' || role === 'SUPERADMIN';
+}
+
 export async function GET(req: Request) {
   try {
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (!cronSecret) {
+      console.error('Cron audit authorization is not configured.');
+      return NextResponse.json(
+        { error: 'Cron authorization is not configured.' },
+        { status: 503 }
+      );
+    }
+
+    const isAuthorized = hasValidCronAuthorization(req, cronSecret) ||
+      await hasAuthorizedStaffSession();
+
+    if (!isAuthorized) {
+      const supabase = await createSupabaseServerClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      return NextResponse.json(
+        { error: user ? 'Forbidden.' : 'Unauthorized.' },
+        { status: user ? 403 : 401 }
+      );
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

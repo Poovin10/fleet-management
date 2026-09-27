@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/Pagination";
-import { usePagination } from "@/components/ui/usePagination";
 import { exportToCSV, exportToExcel } from "@/lib/utils/exportManager";
 import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
 
@@ -21,26 +20,28 @@ type ReportType =
   | "Fleet/Vehicle"
   | "Financial/P&L";
 
-export default function ReportsModule() {
-  const supabase = createClient();
+type ReportsModuleProps = {
+  initialReportType?: ReportType;
+};
 
-  const [reportType, setReportType] = useState<ReportType>("Trips");
+export default function ReportsModule({ initialReportType = "Trips" }: ReportsModuleProps) {
+  const supabase = useMemo(() => createClient(), []);
+
+  const [reportType, setReportType] = useState<ReportType>(initialReportType);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
   const [rows, setRows] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-
-  const {
-    page,
-    setPage,
-    totalPages,
-    totalItems,
-    paginatedItems,
-    reset,
-  } = usePagination(rows, { pageSize: 10 });
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const requestSequence = useRef(0);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   const reportTypes: ReportType[] = [
     "Trips",
@@ -53,365 +54,325 @@ export default function ReportsModule() {
     "Financial/P&L",
   ];
 
-  const runReport = async () => {
+  type ReportFilters = {
+    reportType: ReportType;
+    fromDate: string;
+    toDate: string;
+    search: string;
+    status: string;
+  };
+
+  type SearchIds = { vehicleIds: number[]; driverIds: number[] };
+
+  const currentFilters = (): ReportFilters => ({
+    reportType,
+    fromDate,
+    toDate,
+    search,
+    status,
+  });
+
+  const escapeFilterText = (value: string) =>
+    value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/%/g, "\\%").replace(/_/g, "\\_");
+
+  const ilikeClause = (column: string, value: string) =>
+    `${column}.ilike."%${escapeFilterText(value)}%"`;
+
+  const resolveSearchIds = async (filters: ReportFilters): Promise<SearchIds> => {
+    const result: SearchIds = { vehicleIds: [], driverIds: [] };
+    const term = filters.search.trim();
+    if (!term) return result;
+
+    const lookupIds = async (table: "vehicles" | "drivers", idColumn: string, fields: string[]) => {
+      const { data, error } = await (supabase.from(table) as any)
+        .select(idColumn)
+        .or(fields.map((field) => ilikeClause(field, term)).join(","));
+      if (error) throw error;
+      return (data || []).map((row: any) => Number(row[idColumn])).filter(Number.isFinite);
+    };
+
+    if (["Diesel/Fuel", "Driver Bata", "Driver Settlement", "Workshop", "Financial/P&L"].includes(filters.reportType)) {
+      result.vehicleIds = await lookupIds("vehicles", "vehicle_id", ["vehicle_number"]);
+    }
+    if (["Driver Bata", "Driver Settlement"].includes(filters.reportType)) {
+      result.driverIds = await lookupIds("drivers", "driver_id", ["full_name", "driver_code"]);
+    }
+    return result;
+  };
+
+  const addOrSearch = (query: any, term: string, fields: string[], ids: Array<{ column: string; values: number[] }> = []) => {
+    const normalizedTerm = term.trim();
+    const clauses = normalizedTerm ? fields.map((field) => ilikeClause(field, normalizedTerm)) : [];
+    ids.forEach(({ column, values }) => {
+      if (values.length) clauses.push(`${column}.in.(${values.join(",")})`);
+    });
+    return clauses.length ? query.or(clauses.join(",")) : query;
+  };
+
+  const buildReportQuery = (filters: ReportFilters, ids: SearchIds, withCount: boolean) => {
+    const options = withCount ? { count: "exact" as const } : undefined;
+    const term = filters.search.trim();
+    let query: any;
+
+    if (filters.reportType === "Trips") {
+      query = supabase.from("trips").select(`
+        trip_id, trip_number, trip_start_date, trip_end_date, origin, destination,
+        loaded_weight_mt, tonnage_loaded, total_km_run, start_km, end_km,
+        freight_revenue, driver_bata, halt_bata, cash_advance_issued, fuel_litres,
+        trip_status, settlement_status, vehicles(vehicle_number), drivers(full_name)
+      `, options).order("trip_start_date", { ascending: false }).order("trip_id", { ascending: false });
+      if (filters.fromDate) query = query.gte("trip_start_date", filters.fromDate);
+      if (filters.toDate) query = query.lte("trip_start_date", filters.toDate);
+      if (filters.status !== "All") query = query.eq("trip_status", filters.status);
+      if (term) query = query.ilike("trip_number", `%${term}%`);
+    } else if (filters.reportType === "POD") {
+      query = supabase.from("trips").select(`
+        trip_id, trip_number, trip_start_date, trip_end_date, origin, destination,
+        loaded_weight_mt, unloaded_weight_mt, shortage_mt, pod_status, pod_number,
+        pod_received_date, halt_bata, enroute_repairs_maintenance,
+        vehicles(vehicle_number), drivers(full_name)
+      `, options).order("trip_start_date", { ascending: false }).order("trip_id", { ascending: false });
+      if (filters.fromDate) query = query.gte("trip_start_date", filters.fromDate);
+      if (filters.toDate) query = query.lte("trip_start_date", filters.toDate);
+      if (filters.status !== "All") query = query.eq("pod_status", filters.status);
+      if (term) query = addOrSearch(query, term, ["trip_number", "pod_number"]);
+    } else if (filters.reportType === "Diesel/Fuel") {
+      query = supabase.from("diesel_fuel_logs").select(`*, vehicles(vehicle_number)`, options)
+        .order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false });
+      if (filters.fromDate) query = query.gte("fuel_date", filters.fromDate);
+      if (filters.toDate) query = query.lte("fuel_date", filters.toDate);
+      if (filters.status !== "All") query = query.eq("diesel_category", filters.status);
+      if (term) query = addOrSearch(query, term, ["diesel_category"], [{ column: "vehicle_id", values: ids.vehicleIds }]);
+    } else if (filters.reportType === "Driver Bata" || filters.reportType === "Driver Settlement" || filters.reportType === "Financial/P&L") {
+      const selection = filters.reportType === "Driver Bata" ? `
+        trip_id, trip_number, trip_start_date, origin, destination, driver_bata, halt_bata,
+        cash_advance_issued, settlement_status, primary_driver_id,
+        vehicles(vehicle_number), drivers(full_name, driver_code)
+      ` : filters.reportType === "Driver Settlement" ? `
+        trip_id, trip_number, trip_start_date, origin, destination, freight_revenue,
+        driver_bata, halt_bata, cash_advance_issued, settlement_status, primary_driver_id,
+        vehicles(vehicle_number), drivers(full_name, driver_code)
+      ` : `
+        trip_id, trip_number, trip_start_date, freight_revenue, driver_bata, halt_bata,
+        enroute_repairs_maintenance, fuel_litres, total_km_run, trip_status, vehicles(vehicle_number)
+      `;
+      query = (supabase.from("trips") as any).select(selection, options)
+        .order("trip_start_date", { ascending: false }).order("trip_id", { ascending: false });
+      if (filters.fromDate) query = query.gte("trip_start_date", filters.fromDate);
+      if (filters.toDate) query = query.lte("trip_start_date", filters.toDate);
+      if (filters.status !== "All") {
+        query = query.eq(filters.reportType === "Financial/P&L" ? "trip_status" : "settlement_status", filters.status);
+      }
+      if (term) {
+        const matchIds: Array<{ column: string; values: number[] }> = [{ column: "vehicle_id", values: ids.vehicleIds }];
+        if (filters.reportType !== "Financial/P&L") matchIds.push({ column: "primary_driver_id", values: ids.driverIds });
+        query = addOrSearch(query, term, ["trip_number"], matchIds);
+      }
+    } else if (filters.reportType === "Workshop") {
+      query = supabase.from("workshop_spares_bills").select(`*, vehicles(vehicle_number)`, options)
+        .order("bill_date", { ascending: false }).order("bill_id", { ascending: false });
+      if (filters.fromDate) query = query.gte("bill_date", filters.fromDate);
+      if (filters.toDate) query = query.lte("bill_date", filters.toDate);
+      if (term) query = addOrSearch(query, term, ["vendor_name", "spare_parts_details"], [{ column: "vehicle_id", values: ids.vehicleIds }]);
+    } else {
+      query = supabase.from("vehicles").select("*", options).order("vehicle_number", { ascending: true }).order("vehicle_id", { ascending: true });
+      if (filters.status !== "All") query = query.eq("current_status", filters.status);
+      if (term) query = addOrSearch(query, term, ["vehicle_number", "truck_type", "current_status"]);
+    }
+    return query;
+  };
+
+  const buildSettlementTripsQuery = (filters: ReportFilters, ids: SearchIds, withCount: boolean, countOnly = false) => {
+    const options = countOnly ? { count: "exact" as const, head: true } : withCount ? { count: "exact" as const } : undefined;
+    let query: any = supabase.from("trips").select(countOnly ? "trip_id" : `
+      trip_id, trip_number, trip_start_date, origin, destination, freight_revenue,
+      driver_bata, halt_bata, cash_advance_issued, settlement_status, primary_driver_id,
+      vehicles(vehicle_number), drivers(full_name, driver_code)
+    `, options).order("trip_start_date", { ascending: false }).order("trip_id", { ascending: false });
+    if (filters.fromDate) query = query.gte("trip_start_date", filters.fromDate);
+    if (filters.toDate) query = query.lte("trip_start_date", filters.toDate);
+    if (filters.status !== "All") query = query.eq("settlement_status", filters.status);
+    if (filters.search.trim()) query = addOrSearch(query, filters.search, ["trip_number"], [
+      { column: "vehicle_id", values: ids.vehicleIds },
+      { column: "primary_driver_id", values: ids.driverIds },
+    ]);
+    return query;
+  };
+
+  const buildSettlementAdvancesQuery = (filters: ReportFilters, ids: SearchIds, withCount: boolean, countOnly = false) => {
+    const options = countOnly ? { count: "exact" as const, head: true } : withCount ? { count: "exact" as const } : undefined;
+    let query: any = supabase.from("driver_direct_advances").select(countOnly ? "advance_id" : `
+      advance_id, driver_id, advance_date, advance_type, reference_remarks, amount_inr,
+      drivers(full_name, driver_code)
+    `, options).order("advance_date", { ascending: false }).order("advance_id", { ascending: false });
+    if (filters.search.trim()) query = addOrSearch(query, filters.search, ["advance_type", "reference_remarks"], [{ column: "driver_id", values: ids.driverIds }]);
+    return query;
+  };
+
+  const mapSettlementTrips = (data: any[]) => data.map((row: any) => ({
+    record_type: "TRIP", date: row.trip_start_date, reference: row.trip_number,
+    driver: row.drivers?.full_name || "Unassigned", driver_code: row.drivers?.driver_code || "",
+    vehicle: row.vehicles?.vehicle_number || "Unassigned", description: `${row.origin || ""} → ${row.destination || ""}`,
+    freight: Number(row.freight_revenue || 0), driver_bata: Number(row.driver_bata || 0),
+    halt_bata: Number(row.halt_bata || 0), cash_advance: Number(row.cash_advance_issued || 0),
+    direct_advance: 0, settlement_status: row.settlement_status || "",
+  }));
+
+  const mapSettlementAdvances = (data: any[]) => data.map((row: any) => ({
+    record_type: "DIRECT ADVANCE", date: row.advance_date, reference: row.advance_type || "Advance",
+    driver: row.drivers?.full_name || "Unassigned", driver_code: row.drivers?.driver_code || "",
+    vehicle: "", description: row.reference_remarks || "", freight: 0, driver_bata: 0,
+    halt_bata: 0, cash_advance: 0, direct_advance: Number(row.amount_inr || 0), settlement_status: "",
+  }));
+
+  const fetchReportPage = async (filters: ReportFilters, requestedPage: number) => {
+    const ids = await resolveSearchIds(filters);
+    const offset = (requestedPage - 1) * pageSize;
+    if (filters.reportType !== "Driver Settlement") {
+      const { data, error, count } = await buildReportQuery(filters, ids, true).range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      return { data: data || [], count: count ?? data?.length ?? 0 };
+    }
+
+    const [tripCountResult, advanceCountResult] = await Promise.all([
+      buildSettlementTripsQuery(filters, ids, true, true),
+      buildSettlementAdvancesQuery(filters, ids, true, true),
+    ]);
+    if (tripCountResult.error) throw tripCountResult.error;
+    if (advanceCountResult.error) throw advanceCountResult.error;
+    const tripCount = tripCountResult.count || 0;
+    const advanceCount = advanceCountResult.count || 0;
+    const tripFrom = Math.min(offset, tripCount);
+    const tripTo = Math.min(offset + pageSize - 1, tripCount - 1);
+    const advanceFrom = Math.max(0, offset - tripCount);
+    const advanceTo = Math.min(advanceCount - 1, offset + pageSize - 1 - tripCount);
+    const pageQueries: Promise<any>[] = [];
+    if (tripCount && tripFrom <= tripTo) {
+      pageQueries.push(buildSettlementTripsQuery(filters, ids, false).range(tripFrom, tripTo));
+    }
+    if (advanceCount && advanceFrom <= advanceTo) {
+      pageQueries.push(buildSettlementAdvancesQuery(filters, ids, false).range(advanceFrom, advanceTo));
+    }
+    const pageResults = await Promise.all(pageQueries);
+    pageResults.forEach((result) => { if (result.error) throw result.error; });
+    let pageIndex = 0;
+    const tripPage = tripCount && tripFrom <= tripTo ? pageResults[pageIndex++]?.data || [] : [];
+    const advancePage = advanceCount && advanceFrom <= advanceTo ? pageResults[pageIndex]?.data || [] : [];
+    return {
+      data: [...mapSettlementTrips(tripPage), ...mapSettlementAdvances(advancePage)],
+      count: tripCount + advanceCount,
+    };
+  };
+
+  const fetchAllFromQuery = async (queryFactory: () => any) => {
+    const allRows: any[] = [];
+    const batchSize = 1000;
+    for (let offset = 0; ; offset += batchSize) {
+      const { data, error } = await queryFactory().range(offset, offset + batchSize - 1);
+      if (error) throw error;
+      const batch = data || [];
+      allRows.push(...batch);
+      if (batch.length < batchSize) break;
+    }
+    return allRows;
+  };
+
+  const fetchFullReport = async (filters: ReportFilters) => {
+    const ids = await resolveSearchIds(filters);
+    if (filters.reportType !== "Driver Settlement") {
+      return fetchAllFromQuery(() => buildReportQuery(filters, ids, false));
+    }
+    const [tripRows, advanceRows] = await Promise.all([
+      fetchAllFromQuery(() => buildSettlementTripsQuery(filters, ids, false)),
+      fetchAllFromQuery(() => buildSettlementAdvancesQuery(filters, ids, false)),
+    ]);
+    return [...mapSettlementTrips(tripRows), ...mapSettlementAdvances(advanceRows)];
+  };
+
+  const loadReport = async (requestedPage: number, filters: ReportFilters) => {
+    const requestId = ++requestSequence.current;
     setIsLoading(true);
     setHasSearched(true);
-    reset();
-
+    setPage(requestedPage);
+    setRows([]);
     try {
-      let data: any[] = [];
-
-      if (reportType === "Trips") {
-        let query = supabase
-          .from("trips")
-          .select(`
-            trip_id,
-            trip_number,
-            trip_start_date,
-            trip_end_date,
-            origin,
-            destination,
-            loaded_weight_mt,
-            tonnage_loaded,
-            total_km_run,
-            start_km,
-            end_km,
-            freight_revenue,
-            driver_bata,
-            halt_bata,
-            cash_advance_issued,
-            fuel_litres,
-            trip_status,
-            settlement_status,
-            vehicles(vehicle_number),
-            drivers(full_name)
-          `)
-          .order("trip_start_date", { ascending: false })
-          .order("trip_id", { ascending: false })
-          .limit(1000);
-
-        if (fromDate) query = query.gte("trip_start_date", fromDate);
-        if (toDate) query = query.lte("trip_start_date", toDate);
-        if (status !== "All") query = query.eq("trip_status", status);
-        if (search.trim()) query = query.ilike("trip_number", `%${search.trim()}%`);
-
-        const result = await query;
-        if (result.error) throw result.error;
-        data = result.data || [];
+      const result = await fetchReportPage(filters, requestedPage);
+      if (requestId !== requestSequence.current) return;
+      const pages = Math.max(1, Math.ceil(result.count / pageSize));
+      if (requestedPage > pages) {
+        setPage(pages);
+        void loadReport(pages, filters);
+        return;
       }
-
-      if (reportType === "POD") {
-        let query = supabase
-          .from("trips")
-          .select(`
-            trip_id,
-            trip_number,
-            trip_start_date,
-            trip_end_date,
-            origin,
-            destination,
-            loaded_weight_mt,
-            unloaded_weight_mt,
-            shortage_mt,
-            pod_status,
-            pod_number,
-            pod_received_date,
-            halt_bata,
-            enroute_repairs_maintenance,
-            vehicles(vehicle_number),
-            drivers(full_name)
-          `)
-          .order("trip_start_date", { ascending: false })
-          .order("trip_id", { ascending: false })
-          .limit(1000);
-
-        if (fromDate) query = query.gte("trip_start_date", fromDate);
-        if (toDate) query = query.lte("trip_start_date", toDate);
-        if (status !== "All") query = query.eq("pod_status", status);
-
-        if (search.trim()) {
-          query = query.or(
-            `trip_number.ilike.%${search.trim()}%,pod_number.ilike.%${search.trim()}%`
-          );
-        }
-
-        const result = await query;
-        if (result.error) throw result.error;
-        data = result.data || [];
-      }
-
-      if (reportType === "Diesel/Fuel") {
-        let query = supabase
-          .from("diesel_fuel_logs")
-          .select(`
-            *,
-            vehicles(vehicle_number)
-          `)
-          .order("fuel_date", { ascending: false })
-          .order("fuel_log_id", { ascending: false })
-          .limit(1000);
-
-        if (fromDate) query = query.gte("fuel_date", fromDate);
-        if (toDate) query = query.lte("fuel_date", toDate);
-
-        if (status !== "All") {
-          query = query.eq("diesel_category", status);
-        }
-
-        const result = await query;
-        if (result.error) throw result.error;
-
-        data = (result.data || []).filter((row: any) => {
-          if (!search.trim()) return true;
-          const q = search.trim().toLowerCase();
-          return (
-            String(row.vehicles?.vehicle_number || "").toLowerCase().includes(q) ||
-            String(row.diesel_category || "").toLowerCase().includes(q)
-          );
-        });
-      }
-
-      if (reportType === "Driver Bata") {
-        let query = supabase
-          .from("trips")
-          .select(`
-            trip_id,
-            trip_number,
-            trip_start_date,
-            origin,
-            destination,
-            driver_bata,
-            halt_bata,
-            cash_advance_issued,
-            settlement_status,
-            primary_driver_id,
-            vehicles(vehicle_number),
-            drivers(full_name, driver_code)
-          `)
-          .order("trip_start_date", { ascending: false })
-          .order("trip_id", { ascending: false })
-          .limit(1000);
-
-        if (fromDate) query = query.gte("trip_start_date", fromDate);
-        if (toDate) query = query.lte("trip_start_date", toDate);
-        if (status !== "All") query = query.eq("settlement_status", status);
-
-        const result = await query;
-        if (result.error) throw result.error;
-
-        data = (result.data || []).filter((row: any) => {
-          if (!search.trim()) return true;
-          const q = search.trim().toLowerCase();
-          return (
-            String(row.trip_number || "").toLowerCase().includes(q) ||
-            String(row.drivers?.full_name || "").toLowerCase().includes(q) ||
-            String(row.drivers?.driver_code || "").toLowerCase().includes(q) ||
-            String(row.vehicles?.vehicle_number || "").toLowerCase().includes(q)
-          );
-        });
-      }
-
-      if (reportType === "Driver Settlement") {
-        let query = supabase
-          .from("trips")
-          .select(`
-            trip_id,
-            trip_number,
-            trip_start_date,
-            origin,
-            destination,
-            freight_revenue,
-            driver_bata,
-            halt_bata,
-            cash_advance_issued,
-            settlement_status,
-            primary_driver_id,
-            vehicles(vehicle_number),
-            drivers(full_name, driver_code)
-          `)
-          .order("trip_start_date", { ascending: false })
-          .order("trip_id", { ascending: false })
-          .limit(1000);
-
-        if (fromDate) query = query.gte("trip_start_date", fromDate);
-        if (toDate) query = query.lte("trip_start_date", toDate);
-        if (status !== "All") query = query.eq("settlement_status", status);
-
-        const result = await query;
-        if (result.error) throw result.error;
-
-        const tripRows = result.data || [];
-
-        const { data: advances, error: advanceError } = await supabase
-          .from("driver_direct_advances")
-          .select(`
-            advance_id,
-            driver_id,
-            advance_date,
-            advance_type,
-            reference_remarks,
-            amount_inr,
-            drivers(full_name, driver_code)
-          `)
-          .order("advance_date", { ascending: false })
-          .limit(1000);
-
-        if (advanceError) throw advanceError;
-
-        const filteredTrips = tripRows.filter((row: any) => {
-          if (!search.trim()) return true;
-          const q = search.trim().toLowerCase();
-          return (
-            String(row.trip_number || "").toLowerCase().includes(q) ||
-            String(row.drivers?.full_name || "").toLowerCase().includes(q) ||
-            String(row.drivers?.driver_code || "").toLowerCase().includes(q) ||
-            String(row.vehicles?.vehicle_number || "").toLowerCase().includes(q)
-          );
-        });
-
-        const filteredAdvances = (advances || []).filter((row: any) => {
-          if (!search.trim()) return true;
-          const q = search.trim().toLowerCase();
-          return (
-            String(row.drivers?.full_name || "").toLowerCase().includes(q) ||
-            String(row.drivers?.driver_code || "").toLowerCase().includes(q) ||
-            String(row.advance_type || "").toLowerCase().includes(q) ||
-            String(row.reference_remarks || "").toLowerCase().includes(q)
-          );
-        });
-
-        data = [
-          ...filteredTrips.map((row: any) => ({
-            record_type: "TRIP",
-            date: row.trip_start_date,
-            reference: row.trip_number,
-            driver: row.drivers?.full_name || "Unassigned",
-            driver_code: row.drivers?.driver_code || "",
-            vehicle: row.vehicles?.vehicle_number || "Unassigned",
-            description: `${row.origin || ""} → ${row.destination || ""}`,
-            freight: Number(row.freight_revenue || 0),
-            driver_bata: Number(row.driver_bata || 0),
-            halt_bata: Number(row.halt_bata || 0),
-            cash_advance: Number(row.cash_advance_issued || 0),
-            direct_advance: 0,
-            settlement_status: row.settlement_status || "",
-          })),
-          ...filteredAdvances.map((row: any) => ({
-            record_type: "DIRECT ADVANCE",
-            date: row.advance_date,
-            reference: row.advance_type || "Advance",
-            driver: row.drivers?.full_name || "Unassigned",
-            driver_code: row.drivers?.driver_code || "",
-            vehicle: "",
-            description: row.reference_remarks || "",
-            freight: 0,
-            driver_bata: 0,
-            halt_bata: 0,
-            cash_advance: 0,
-            direct_advance: Number(row.amount_inr || 0),
-            settlement_status: "",
-          })),
-        ];
-      }
-
-      if (reportType === "Workshop") {
-        let query = supabase
-          .from("workshop_spares_bills")
-          .select(`
-            *,
-            vehicles(vehicle_number)
-          `)
-          .order("bill_date", { ascending: false })
-          .limit(1000);
-
-        if (fromDate) query = query.gte("bill_date", fromDate);
-        if (toDate) query = query.lte("bill_date", toDate);
-
-        const result = await query;
-        if (result.error) throw result.error;
-
-        data = (result.data || []).filter((row: any) => {
-          if (!search.trim()) return true;
-          const q = search.trim().toLowerCase();
-          return (
-            String(row.vendor_name || "").toLowerCase().includes(q) ||
-            String(row.vehicles?.vehicle_number || "").toLowerCase().includes(q) ||
-            String(row.spare_parts_details || "").toLowerCase().includes(q)
-          );
-        });
-      }
-
-      if (reportType === "Fleet/Vehicle") {
-        let query = supabase
-          .from("vehicles")
-          .select("*")
-          .order("vehicle_number", { ascending: true })
-          .limit(1000);
-
-        if (status !== "All") query = query.eq("current_status", status);
-
-        const result = await query;
-        if (result.error) throw result.error;
-
-        data = (result.data || []).filter((row: any) => {
-          if (!search.trim()) return true;
-          const q = search.trim().toLowerCase();
-          return (
-            String(row.vehicle_number || "").toLowerCase().includes(q) ||
-            String(row.truck_type || "").toLowerCase().includes(q) ||
-            String(row.current_status || "").toLowerCase().includes(q)
-          );
-        });
-      }
-
-      if (reportType === "Financial/P&L") {
-        let query = supabase
-          .from("trips")
-          .select(`
-            trip_id,
-            trip_number,
-            trip_start_date,
-            freight_revenue,
-            driver_bata,
-            halt_bata,
-            enroute_repairs_maintenance,
-            fuel_litres,
-            total_km_run,
-            trip_status,
-            vehicles(vehicle_number)
-          `)
-          .order("trip_start_date", { ascending: false })
-          .order("trip_id", { ascending: false })
-          .limit(1000);
-
-        if (fromDate) query = query.gte("trip_start_date", fromDate);
-        if (toDate) query = query.lte("trip_start_date", toDate);
-        if (status !== "All") query = query.eq("trip_status", status);
-
-        const result = await query;
-        if (result.error) throw result.error;
-
-        data = (result.data || []).filter((row: any) => {
-          if (!search.trim()) return true;
-          const q = search.trim().toLowerCase();
-          return (
-            String(row.trip_number || "").toLowerCase().includes(q) ||
-            String(row.vehicles?.vehicle_number || "").toLowerCase().includes(q)
-          );
-        });
-      }
-
-      setRows(data);
+      setRows(result.data);
+      setTotalItems(result.count);
     } catch (error: any) {
+      if (requestId !== requestSequence.current) return;
       console.error("Report error:", error);
       alert(error?.message || "Unable to generate report.");
       setRows([]);
+      setTotalItems(0);
     } finally {
-      setIsLoading(false);
+      if (requestId === requestSequence.current) setIsLoading(false);
     }
   };
 
-  const normalizedRows = useMemo(() => {
+  const clearSearchTimer = () => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+  };
+
+  const runReport = () => {
+    clearSearchTimer();
+    setPage(1);
+    void loadReport(1, currentFilters());
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+    setRows([]);
+    setIsLoading(true);
+    setHasSearched(true);
+    clearSearchTimer();
+    const filters = { ...currentFilters(), search: value };
+    searchTimer.current = setTimeout(() => {
+      void loadReport(1, filters);
+    }, 250);
+  };
+
+  const handleDateChange = (field: "fromDate" | "toDate", value: string) => {
+    const filters = { ...currentFilters(), [field]: value };
+    if (field === "fromDate") setFromDate(value);
+    else setToDate(value);
+    clearSearchTimer();
+    setPage(1);
+    void loadReport(1, filters);
+  };
+
+  const handleStatusChange = (value: string) => {
+    const filters = { ...currentFilters(), status: value };
+    setStatus(value);
+    clearSearchTimer();
+    setPage(1);
+    void loadReport(1, filters);
+  };
+
+  const handleReportTypeChange = (type: ReportType) => {
+    const filters = { ...currentFilters(), reportType: type, search: "", status: "All" };
+    setReportType(type);
+    setRows([]);
+    setTotalItems(0);
+    setSearch("");
+    setStatus("All");
+    setPage(1);
+    clearSearchTimer();
+    void loadReport(1, filters);
+  };
+
+  const normalizeRows = (sourceRows: any[], selectedType: ReportType) => {
+    const rows = sourceRows;
+    const reportType = selectedType;
     if (reportType === "Trips") {
       return rows.map((row) => ({
         "LR No": row.trip_number ?? "",
@@ -539,11 +500,9 @@ export default function ReportsModule() {
     }
 
     return rows;
-  }, [rows, reportType]);
+  };
 
   const tableColumns = useMemo(() => {
-    if (!paginatedItems.length) return [];
-
     if (reportType === "Trips") {
       return ["LR No", "Date", "Vehicle", "Driver", "Route", "MT", "KM", "Freight", "Bata", "Status"];
     }
@@ -573,10 +532,10 @@ export default function ReportsModule() {
     }
 
     return ["LR No", "Date", "Vehicle", "Revenue", "Driver Bata", "Halt Bata", "Enroute Maintenance", "Fuel Litres", "KM Run", "Status"];
-  }, [paginatedItems.length, reportType]);
+  }, [reportType]);
 
   const displayRows = useMemo(() => {
-    return paginatedItems.map((row: any) => {
+    return rows.map((row: any) => {
       if (reportType === "Trips") {
         return [
           row.trip_number,
@@ -687,37 +646,59 @@ export default function ReportsModule() {
         row.trip_status ?? "",
       ];
     });
-  }, [paginatedItems, reportType]);
+  }, [rows, reportType]);
 
-  const exportCSV = () => {
-    exportToCSV(
-      normalizedRows,
-      `KSS_${reportType.replace(/[^A-Za-z0-9]+/g, "_")}_Report`
-    );
+  const getFullExportRows = async () => {
+    setIsExporting(true);
+    try {
+      const completeRows = await fetchFullReport(currentFilters());
+      return normalizeRows(completeRows, reportType);
+    } catch (error: any) {
+      console.error("Report export error:", error);
+      alert(error?.message || "Unable to export report.");
+      return null;
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-  const exportExcel = () => {
-    exportToExcel(
-      normalizedRows,
-      `KSS_${reportType.replace(/[^A-Za-z0-9]+/g, "_")}_Report`
-    );
+  const exportCSV = async () => {
+    const exportRows = await getFullExportRows();
+    if (!exportRows) return;
+    if (!exportRows.length) {
+      alert("No data available to export.");
+      return;
+    }
+    exportToCSV(exportRows, `KSS_${reportType.replace(/[^A-Za-z0-9]+/g, "_")}_Report`);
   };
 
-  const exportPDF = () => {
-    if (!normalizedRows.length) {
+  const exportExcel = async () => {
+    const exportRows = await getFullExportRows();
+    if (!exportRows) return;
+    if (!exportRows.length) {
+      alert("No data available to export.");
+      return;
+    }
+    exportToExcel(exportRows, `KSS_${reportType.replace(/[^A-Za-z0-9]+/g, "_")}_Report`);
+  };
+
+  const exportPDF = async () => {
+    const exportRows = await getFullExportRows();
+    if (!exportRows) return;
+    if (!exportRows.length) {
       alert("No data available to export.");
       return;
     }
 
-    const headers = Object.keys(normalizedRows[0]);
+    const headers = Object.keys(exportRows[0]);
 
-    const pdfRows = normalizedRows.map((row) =>
+    const pdfRows = exportRows.map((row) =>
       headers.map((header) => row[header])
     );
 
     generateUniversalPdf(
       `${reportType} Report`,
-      `${fromDate || "All dates"} to ${toDate || "All dates"} • ${totalItems} records`,
+      `${fromDate || "All dates"} to ${toDate || "All dates"} • ${exportRows.length} records`,
       headers,
       pdfRows,
       `KSS_${reportType.replace(/[^A-Za-z0-9]+/g, "_")}_Report`
@@ -766,14 +747,7 @@ export default function ReportsModule() {
               type="button"
               variant={reportType === type ? "default" : "glass"}
               size="sm"
-              onClick={() => {
-                setReportType(type);
-                setRows([]);
-                setHasSearched(false);
-                setSearch("");
-                setStatus("All");
-                reset();
-              }}
+              onClick={() => handleReportTypeChange(type)}
               className="h-9 text-[11px]"
             >
               {type}
@@ -790,7 +764,7 @@ export default function ReportsModule() {
             </label>
             <Input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="LR / Truck / Driver / Vendor"
               className="h-10"
             />
@@ -803,7 +777,7 @@ export default function ReportsModule() {
             <Input
               type="date"
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
+              onChange={(e) => handleDateChange("fromDate", e.target.value)}
               className="h-10"
             />
           </div>
@@ -815,7 +789,7 @@ export default function ReportsModule() {
             <Input
               type="date"
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
+              onChange={(e) => handleDateChange("toDate", e.target.value)}
               className="h-10"
             />
           </div>
@@ -826,7 +800,7 @@ export default function ReportsModule() {
             </label>
             <Select
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              onChange={(e) => handleStatusChange(e.target.value)}
               className="h-10"
             >
               {statusOptions.map((option) => (
@@ -863,13 +837,13 @@ export default function ReportsModule() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="glass" size="sm" onClick={exportCSV}>
+              <Button type="button" variant="glass" size="sm" onClick={exportCSV} disabled={isExporting}>
                 CSV
               </Button>
-              <Button type="button" variant="glass" size="sm" onClick={exportExcel}>
+              <Button type="button" variant="glass" size="sm" onClick={exportExcel} disabled={isExporting}>
                 Excel
               </Button>
-              <Button type="button" variant="glass" size="sm" onClick={exportPDF}>
+              <Button type="button" variant="glass" size="sm" onClick={exportPDF} disabled={isExporting}>
                 PDF
               </Button>
             </div>
@@ -905,7 +879,7 @@ export default function ReportsModule() {
                     colSpan={Math.max(tableColumns.length, 1)}
                     className="py-12 text-center text-xs text-fg-muted"
                   >
-                    No records found for the selected filters.
+                    {isLoading ? "Loading report…" : "No records found for the selected filters."}
                   </TableCell>
                 </TableRow>
               )}
@@ -921,7 +895,11 @@ export default function ReportsModule() {
           <Pagination
             page={page}
             totalPages={totalPages}
-            onPageChange={setPage}
+            onPageChange={(nextPage) => {
+              if (isLoading) return;
+              clearSearchTimer();
+              void loadReport(nextPage, currentFilters());
+            }}
           />
         </div>
       )}

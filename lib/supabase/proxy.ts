@@ -2,6 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  // The scheduler route authenticates Vercel Cron with CRON_SECRET itself.
+  // Let it reach that route-level guard instead of redirecting it to staff login.
+  if (request.nextUrl.pathname === '/api/cron/audit') {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })

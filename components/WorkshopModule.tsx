@@ -5,9 +5,12 @@ import { createClient } from "@/lib/supabase/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { TableToolbar } from "@/components/ui/TableToolbar";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/components/ui/usePagination";
 
 export function WorkshopModule() {
  const supabase = createClient();
@@ -50,18 +53,57 @@ export function WorkshopModule() {
  const [mountedSearch, setMountedSearch] = useState("");
  const [storeSearch, setStoreSearch] = useState("");
  const [scrapSearch, setScrapSearch] = useState("");
- const [billsSearch, setBillsSearch] = useState("");
+ const [historyOpen, setHistoryOpen] = useState(false);
 
  // Data Lists
  const [activeTyres, setActiveTyres] = useState<any[]>([]);
- const [activeBills, setActiveBills] = useState<any[]>([]);
 
  // Spares States
  const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
+ const [showServiceBillWorkspace, setShowServiceBillWorkspace] = useState(false);
+ const [showServiceBillHistory, setShowServiceBillHistory] = useState(false);
+ const [serviceBills, setServiceBills] = useState<any[]>([]);
+ const [serviceBillSearch, setServiceBillSearch] = useState("");
  const [wsTruckId, setWsTruckId] = useState("");
  const [vendor, setVendor] = useState("");
  const [description, setDescription] = useState("");
  const [amount, setAmount] = useState<number | "">("");
+
+ // Spare Parts Inventory States
+ const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+ const [inventoryStock, setInventoryStock] = useState<any[]>([]);
+ const [inventoryStockHistory, setInventoryStockHistory] = useState<any[]>([]);
+ const [inventorySearch, setInventorySearch] = useState("");
+ const [inventoryStockSearch, setInventoryStockSearch] = useState("");
+ const [inventoryLowStockSearch, setInventoryLowStockSearch] = useState("");
+ const [showInventoryItems, setShowInventoryItems] = useState(false);
+ const [showInventoryPurchase, setShowInventoryPurchase] = useState(false);
+ const [showInventoryIssue, setShowInventoryIssue] = useState(false);
+ const [showInventoryHistory, setShowInventoryHistory] = useState(false);
+ const [showInventoryLowStock, setShowInventoryLowStock] = useState(false);
+ const [showInventoryAddItem, setShowInventoryAddItem] = useState(false);
+ const [inventoryItemCode, setInventoryItemCode] = useState("");
+ const [inventoryItemName, setInventoryItemName] = useState("");
+ const [inventoryCategory, setInventoryCategory] = useState("");
+ const [inventoryUnit, setInventoryUnit] = useState("PCS");
+ const [inventoryMinimumStock, setInventoryMinimumStock] = useState<number | "">(0);
+ const [inventoryIssueItemId, setInventoryIssueItemId] = useState("");
+ const [inventoryIssueQuantity, setInventoryIssueQuantity] = useState<number | "">("");
+ const [inventoryIssueVehicleId, setInventoryIssueVehicleId] = useState("");
+ const [inventoryIssueReason, setInventoryIssueReason] = useState("");
+ const [inventoryPurchaseDate, setInventoryPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
+const [inventoryPurchaseInvoiceDate, setInventoryPurchaseInvoiceDate] = useState("");
+const [inventoryPurchaseInvoiceNumber, setInventoryPurchaseInvoiceNumber] = useState("");
+const [inventoryPurchaseVendorId, setInventoryPurchaseVendorId] = useState("");
+const [inventoryPurchasePaymentStatus, setInventoryPurchasePaymentStatus] = useState("PAID");
+const [inventoryPurchaseTax, setInventoryPurchaseTax] = useState<number | "">(0);
+const [inventoryPurchaseRemarks, setInventoryPurchaseRemarks] = useState("");
+const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
+  { itemId: string; quantity: number | ""; unitAmount: number | "" }[]
+>([
+  { itemId: "", quantity: "", unitAmount: "" },
+]);
+
 
  const formatDate = (dateStr: string) => {
  if (!dateStr) return 'N/A';
@@ -85,8 +127,46 @@ export function WorkshopModule() {
  const { data: tData } = await supabase.from('fleet_tyres').select('*, vehicles(vehicle_number)').order('recorded_date', { ascending: false });
  if (tData) setActiveTyres(tData);
 
- const { data: bData } = await supabase.from('workshop_spares_bills').select('*, vehicles(vehicle_number)').order('bill_date', { ascending: false });
- if (bData) setActiveBills(bData);
+ const { data: billData } = await supabase
+   .from('workshop_spares_bills')
+   .select('*, vehicles(vehicle_number)')
+   .order('bill_date', { ascending: false })
+   .order('bill_id', { ascending: false });
+ if (billData) setServiceBills(billData);
+
+ const { data: inventoryItemData } = await supabase
+   .from("inventory_items")
+   .select("*")
+   .eq("is_active", true)
+   .order("item_name");
+
+ if (inventoryItemData) {
+   setInventoryItems(inventoryItemData);
+ }
+
+ const { data: inventoryStockData } = await supabase
+   .from("inventory_stock_balance")
+   .select("*")
+   .order("item_name");
+
+ if (inventoryStockData) {
+   setInventoryStock(inventoryStockData);
+ }
+
+ const { data: inventoryStockHistoryData } = await supabase
+   .from("inventory_stock_movements")
+   .select(`
+    *,
+    inventory_items(item_code, item_name),
+    vehicles(vehicle_number)
+   `)
+   .order("created_at", { ascending: false })
+   .order("movement_id", { ascending: false });
+
+ if (inventoryStockHistoryData) {
+   setInventoryStockHistory(inventoryStockHistoryData);
+ }
+
  };
 
  useEffect(() => { fetchData(); }, []);
@@ -521,29 +601,186 @@ export function WorkshopModule() {
  const exportStore = filteredStore.map(t => ({ "Serial": t.serial_number, "Brand": t.brand_model, "Status": t.tyre_status || "IN_STORE", "Condition": t.condition_status, "Total Lifetime KM": t.total_km_run || 0 }));
 
  const filteredScrap = scrapTyres.filter(t => (t.serial_number || "").toLowerCase().includes(scrapSearch.toLowerCase()));
- const exportScrap = filteredScrap.map(t => ({ "Serial": t.serial_number, "Brand": t.brand_model, "Status": t.tyre_status, "Total Lifetime KM": t.total_km_run || 0 }));
 
- const filteredBills = activeBills.filter(b => (b.vendor_name || "").toLowerCase().includes(billsSearch.toLowerCase()) || (b.vehicles?.vehicle_number || "").toLowerCase().includes(billsSearch.toLowerCase()));
- const exportBills = filteredBills.map(b => ({ "Date": formatDate(b.bill_date), "Truck": b.vehicles?.vehicle_number || "GENERAL", "Vendor": b.vendor_name, "Description": b.spare_parts_details, "Amount (INR)": b.total_bill_amount }));
+ const filteredServiceBills = serviceBills.filter((bill: any) => {
+   const q = serviceBillSearch.trim().toLowerCase();
+   if (!q) return true;
+   return [
+     bill.bill_id,
+     bill.bill_date,
+     bill.vehicles?.vehicle_number,
+     bill.vendor_name,
+     bill.invoice_number,
+     bill.spare_parts_details,
+     bill.total_bill_amount,
+   ].some((value) => String(value ?? "").toLowerCase().includes(q));
+ });
+
+ const inventoryPurchaseSubtotal = inventoryPurchaseLines.reduce(
+  (sum, line) => {
+   const quantity = Number(line.quantity);
+   const unitAmount = Number(line.unitAmount);
+
+   if (!Number.isFinite(quantity) || !Number.isFinite(unitAmount)) {
+    return sum;
+   }
+
+   return sum + quantity * unitAmount;
+  },
+  0
+ );
+
+ const inventoryPurchaseTaxAmount = Number(inventoryPurchaseTax) || 0;
+ const inventoryPurchaseTotal = inventoryPurchaseSubtotal + inventoryPurchaseTaxAmount;
+
+ const filteredInventoryItems = inventoryItems.filter((item: any) => {
+   const q = inventorySearch.trim().toLowerCase();
+   if (!q) return true;
+   return [
+     item.item_code,
+     item.item_name,
+     item.category,
+     item.unit,
+   ].some((value) => String(value ?? "").toLowerCase().includes(q));
+ });
+
+ const historyPagination = usePagination(filteredScrap, { pageSize: 10 });
+ const serviceBillPagination = usePagination(filteredServiceBills, { pageSize: 10 });
+ const inventoryPagination = usePagination(filteredInventoryItems, { pageSize: 10 });
+
+ const filteredInventoryStockHistory = inventoryStockHistory.filter((movement: any) => {
+  const q = inventoryStockSearch.trim().toLowerCase();
+
+  if (!q) return true;
+
+  return [
+   movement.inventory_items?.item_code,
+   movement.inventory_items?.item_name,
+   movement.movement_type,
+   movement.reason,
+   movement.reference_type,
+   movement.reference_id,
+   movement.vehicles?.vehicle_number,
+  ].some((value) =>
+   String(value ?? "").toLowerCase().includes(q)
+  );
+ });
+
+ const inventoryHistoryPagination = usePagination(
+  filteredInventoryStockHistory,
+  { pageSize: 10 }
+ );
+
+ const filteredInventoryLowStock = inventoryStock.filter((item: any) => {
+  const current = Number(item.current_stock ?? 0);
+  const minimum = Number(item.minimum_stock ?? 0);
+
+  if (current > minimum) return false;
+
+  const q = inventoryLowStockSearch.trim().toLowerCase();
+
+  if (!q) return true;
+
+  return [
+   item.item_code,
+   item.item_name,
+   item.category,
+   item.unit,
+  ].some((value) =>
+   String(value ?? "").toLowerCase().includes(q)
+  );
+ });
+
+ const inventoryLowStockPagination = usePagination(
+  filteredInventoryLowStock,
+  { pageSize: 10 }
+ );
 
  return (
  <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300 text-fg">
  <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
 
+ {historyOpen && (
+  <Dialog
+   open={historyOpen}
+   onOpenChange={(open) => {
+    if (!open) setHistoryOpen(false);
+   }}
+  >
+   <DialogContent
+    layout="modal"
+    size="lg"
+    className="flex max-h-[88dvh] flex-col overflow-hidden p-0"
+   >
+    <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
+     <DialogTitle>Tyre History</DialogTitle>
+     <p className="text-xs text-fg-muted">{filteredScrap.length} disposed tyres</p>
+    </DialogHeader>
+    <DialogBody className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+     <div className="space-y-4">
+      <Input value={scrapSearch} onChange={event => setScrapSearch(event.target.value)} placeholder="Search by tyre serial..." aria-label="Search tyre history" className="w-full max-w-lg" />
+      <div className="max-h-[62vh] overflow-auto rounded-xl border border-border">
+       <Table className="min-w-[560px] text-xs text-left whitespace-nowrap">
+        <TableHeader className="sticky top-0 z-10 bg-surface-raised">
+         <TableRow className="font-bold text-fg-secondary text-[10px]">
+          <TableHead className="px-5 py-3.5">Serial & Brand</TableHead>
+          <TableHead className="px-5 py-3.5">Status</TableHead>
+          <TableHead className="px-5 py-3.5">Total Lifetime Run (KM)</TableHead>
+         </TableRow>
+        </TableHeader>
+        <TableBody>
+         {historyPagination.paginatedItems.map((t: any) => (
+          <TableRow key={t.tyre_id}>
+           <TableCell className="px-5 py-3.5 font-mono font-bold text-fg">
+            {t.serial_number}<br/>
+            <span className="font-sans font-semibold text-[10px] text-fg-secondary">{t.brand_model}</span>
+           </TableCell>
+           <TableCell className="px-5 py-3.5">
+            <span className="rounded border border-danger/20 bg-danger/10 px-2 py-1 text-[10px] font-semibold text-danger">{t.tyre_status}</span>
+           </TableCell>
+           <TableCell className="px-5 py-3.5 font-semibold text-fg-secondary">{t.total_km_run || 0} km</TableCell>
+          </TableRow>
+         ))}
+         {filteredScrap.length === 0 && (
+          <TableRow>
+           <TableCell colSpan={3} className="p-8 text-center text-fg-muted">No disposed tyres match your search.</TableCell>
+          </TableRow>
+         )}
+        </TableBody>
+       </Table>
+      </div>
+      <Pagination page={historyPagination.page} totalPages={historyPagination.totalPages} onPageChange={historyPagination.setPage} />
+     </div>
+    </DialogBody>
+   </DialogContent>
+  </Dialog>
+ )}
+
  {/* CUSTOM LIFECYCLE MODAL */}
  {actionModal.isOpen && (
- <div className="kss-glass-overlay">
- <div className="liquid-glass w-full max-w-md max-h-[88vh] overflow-y-auto p-6 shadow-2xl animate-in zoom-in-95">
- <div className="flex justify-between items-center mb-5 border-b border-border pb-3">
- <h3 className="text-lg font-semibold text-fg  tracking-tight">
- {actionModal.mode === "UNMOUNT" && "Unmount Tyre"}
- {actionModal.mode === "MOUNT" && "Mount to Truck"}
- {actionModal.mode === "RECEIVE_RETREAD" && "Receive from Retread"}
- {actionModal.mode === "BURST_TYRE" && "Record Tyre Burst"}
- {actionModal.mode === "SCRAP_FROM_STORE" && "Dispose Tyre"}
- </h3>
- <Button type="button" variant="ghost" onClick={() => setActionModal({ isOpen: false, tyre: null, mode: "" })} className="text-fg-muted hover:text-danger font-bold transition-colors"></Button>
- </div>
+ <Dialog
+  open={actionModal.isOpen}
+  onOpenChange={(open) => {
+   if (!open) {
+    setActionModal({ isOpen: false, tyre: null, mode: "" });
+   }
+  }}
+ >
+  <DialogContent
+   layout="modal"
+   size="md"
+   className="flex max-h-[88dvh] flex-col overflow-hidden p-0"
+  >
+   <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
+    <DialogTitle>
+     {actionModal.mode === "UNMOUNT" && "Unmount Tyre"}
+     {actionModal.mode === "MOUNT" && "Mount to Truck"}
+     {actionModal.mode === "RECEIVE_RETREAD" && "Receive from Retread"}
+     {actionModal.mode === "BURST_TYRE" && "Record Tyre Burst"}
+     {actionModal.mode === "SCRAP_FROM_STORE" && "Dispose Tyre"}
+    </DialogTitle>
+   </DialogHeader>
+   <DialogBody className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 
  <div className="kss-surface-raised p-4 rounded-lg border border-border mb-5">
  <p className="text-xs font-bold text-fg-muted ">Selected Tyre</p>
@@ -857,9 +1094,10 @@ export function WorkshopModule() {
  <Button type="button" variant="default" onClick={executeLifecycleAction} disabled={isProcessing} className="w-full py-3.5 mt-2 text-xs disabled:bg-surface-raised">
  {isProcessing ? "Processing..." : "Confirm Action"}
  </Button>
- </div>
- </div>
- </div>
+    </div>
+   </DialogBody>
+  </DialogContent>
+ </Dialog>
  )}
 
  {/* Main Tabs */}
@@ -869,7 +1107,7 @@ export function WorkshopModule() {
  <p className="text-xs text-fg-secondary mt-0.5">Manage tyre lifecycles, retreading, spares, and service billing.</p>
  </div>
  <div className="flex flex-wrap gap-2">
- {["Tyre Management", "Spares & Service Bills"].map((tab) => (
+ {["Tyre Management", "Spares & Service Bills", "Spare Parts Inventory"].map((tab) => (
  <Button type="button" variant="ghost" key={tab} onClick={() => setWTab(tab)} className={`px-4 py-2.5 rounded-xl text-xs font-bold ${wTab === tab ? "bg-accent text-accent-fg shadow-orange" : "bg-surface-raised text-fg-secondary hover:text-fg hover:bg-surface-elevated border border-border-strong"}`}>{tab}</Button>
  ))}
  </div>
@@ -1014,65 +1252,1361 @@ export function WorkshopModule() {
  </div>
  </div>
 
- {/* SCRAP YARD */}
- <div className="liquid-glass overflow-hidden shadow-xl">
- <TableToolbar title=" Disposed / Scrap Yard" searchQuery={scrapSearch} setSearchQuery={setScrapSearch} exportData={exportScrap} exportFilename="Scrapped_Tyres" />
- <div className="overflow-x-auto w-full max-h-[300px]">
- <Table className="text-xs text-left whitespace-nowrap">
- <TableHeader className="sticky top-0 z-10"><TableRow className="font-bold text-fg-secondary  tracking-wider text-[10px]"><TableHead className="px-5 py-3.5">Serial & Brand</TableHead><TableHead className="px-5 py-3.5">Status</TableHead><TableHead className="px-5 py-3.5">Total Lifetime Run (KM)</TableHead></TableRow></TableHeader>
- <TableBody className="">
- {filteredScrap.map(t => (
- <TableRow key={t.tyre_id} className="">
- <TableCell className="px-5 py-3.5 font-mono font-bold text-fg">{t.serial_number} <br/><span className="font-sans font-semibold text-[10px] text-fg-secondary">{t.brand_model}</span></TableCell>
- <TableCell className="px-5 py-3.5"><span className="px-2 py-1 rounded text-[10px] font-semibold bg-danger/10 text-danger border border-danger/20">{t.tyre_status}</span></TableCell>
- <TableCell className="px-5 py-3.5 font-semibold text-fg-secondary">{t.total_km_run || 0} km</TableCell>
- </TableRow>
- ))}
- {filteredScrap.length === 0 && <TableRow><TableCell colSpan={3} className="p-8 text-center text-fg-muted font-medium">No scrapped tyres.</TableCell></TableRow>}
- </TableBody>
- </Table>
+ {/* Historical disposed tyre records are available from the Workshop History popup. */}
+ <div className="flex justify-end"><Button type="button" variant="glass" onClick={() => setHistoryOpen(true)}>Tyre History ({scrapTyres.length})</Button></div>
  </div>
- </div>
+ )}
+
+ {showInventoryIssue && (
+  <Dialog
+   open={showInventoryIssue}
+   onOpenChange={(open) => {
+    setShowInventoryIssue(open);
+    if (!open) {
+     setInventoryIssueItemId("");
+     setInventoryIssueQuantity("");
+     setInventoryIssueVehicleId("");
+     setInventoryIssueReason("");
+    }
+   }}
+  >
+   <DialogContent layout="modal" size="md">
+    <DialogHeader>
+     <DialogTitle>Issue Spare Part</DialogTitle>
+     <p className="text-xs text-fg-muted">
+      Issue stock from the workshop store to a vehicle or workshop activity.
+     </p>
+    </DialogHeader>
+
+    <DialogBody>
+     <form
+      className="space-y-5"
+      onSubmit={async (e) => {
+       e.preventDefault();
+
+       const itemId = Number(inventoryIssueItemId);
+       const quantity = Number(inventoryIssueQuantity);
+       const vehicleId = inventoryIssueVehicleId
+        ? Number(inventoryIssueVehicleId)
+        : null;
+       const reason = inventoryIssueReason.trim();
+
+       if (!Number.isInteger(itemId) || itemId <= 0) {
+        alert("Please select a valid spare part.");
+        return;
+       }
+
+       if (!Number.isFinite(quantity) || quantity <= 0) {
+        alert("Issue quantity must be greater than zero.");
+        return;
+       }
+
+       if (vehicleId !== null && (!Number.isInteger(vehicleId) || vehicleId <= 0)) {
+        alert("Please select a valid vehicle.");
+        return;
+       }
+
+       if (!reason) {
+        alert("Issue reason is required.");
+        return;
+       }
+
+       if (
+        !window.confirm(
+         `Issue ${quantity} unit(s) of the selected spare part from stock?`
+        )
+       ) {
+        return;
+       }
+
+       setIsProcessing(true);
+
+       const { error } = await supabase.rpc("issue_inventory_stock", {
+        p_item_id: itemId,
+        p_quantity: quantity,
+        p_vehicle_id: vehicleId,
+        p_reason: reason,
+       });
+
+       if (error) {
+        alert("Failed to issue stock: " + error.message);
+       } else {
+        alert("Stock issued successfully.");
+
+        setInventoryIssueItemId("");
+        setInventoryIssueQuantity("");
+        setInventoryIssueVehicleId("");
+        setInventoryIssueReason("");
+        setShowInventoryIssue(false);
+
+        await fetchData();
+       }
+
+       setIsProcessing(false);
+      }}
+     >
+      <div className="space-y-1.5">
+       <label className="text-xs font-semibold text-fg-secondary">
+        Spare Part *
+       </label>
+       <Select
+        value={inventoryIssueItemId}
+        onChange={(e) => setInventoryIssueItemId(e.target.value)}
+        required
+       >
+        <option value="">Select item</option>
+        {inventoryItems.map((item: any) => (
+         <option key={item.item_id} value={item.item_id}>
+          {item.item_code} — {item.item_name}
+         </option>
+        ))}
+       </Select>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+       <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-fg-secondary">
+         Quantity *
+        </label>
+        <Input
+         type="number"
+         min="0.01"
+         step="0.01"
+         value={inventoryIssueQuantity}
+         onChange={(e) => {
+          const value = e.target.value;
+          setInventoryIssueQuantity(value === "" ? "" : Number(value));
+         }}
+         required
+        />
+       </div>
+
+       <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-fg-secondary">
+         Vehicle
+        </label>
+        <Select
+         value={inventoryIssueVehicleId}
+         onChange={(e) => setInventoryIssueVehicleId(e.target.value)}
+        >
+         <option value="">Workshop / General</option>
+         {vehicles.map((vehicle: any) => (
+          <option key={vehicle.vehicle_id} value={vehicle.vehicle_id}>
+           {vehicle.vehicle_number}
+          </option>
+         ))}
+        </Select>
+       </div>
+      </div>
+
+      <div className="space-y-1.5">
+       <label className="text-xs font-semibold text-fg-secondary">
+        Issue Reason *
+       </label>
+       <Input
+        value={inventoryIssueReason}
+        onChange={(e) => setInventoryIssueReason(e.target.value)}
+        placeholder="e.g. Brake replacement / service repair"
+        maxLength={300}
+        required
+       />
+      </div>
+
+      <div className="rounded-2xl border border-border px-4 py-3 text-xs text-fg-muted">
+       Stock availability is checked again by the database when the issue is
+       recorded. The stock ledger cannot be edited or deleted from this screen.
+      </div>
+
+      <div className="flex justify-end gap-3 border-t border-border pt-4">
+       <Button
+        type="button"
+        variant="glass"
+        onClick={() => setShowInventoryIssue(false)}
+        disabled={isProcessing}
+       >
+        Cancel
+       </Button>
+
+       <Button type="submit" disabled={isProcessing}>
+        {isProcessing ? "Issuing..." : "Issue Stock"}
+       </Button>
+      </div>
+     </form>
+    </DialogBody>
+   </DialogContent>
+  </Dialog>
+ )}
+
+
+ {showInventoryHistory && (
+  <Dialog
+   open={showInventoryHistory}
+   onOpenChange={(open) => {
+    setShowInventoryHistory(open);
+    if (!open) {
+     setInventoryStockSearch("");
+    }
+   }}
+  >
+   <DialogContent
+    layout="modal"
+    size="full"
+    className="max-h-[92dvh] overflow-hidden"
+   >
+    <DialogHeader>
+     <DialogTitle>Stock History</DialogTitle>
+     <p className="text-xs text-fg-muted">
+      Read-only inventory movement ledger. Purchases, issues, returns,
+      adjustments, and reversals are recorded here.
+     </p>
+    </DialogHeader>
+
+    <DialogBody>
+     <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+       <Input
+        value={inventoryStockSearch}
+        onChange={(e) => setInventoryStockSearch(e.target.value)}
+        placeholder="Search item, movement, vehicle, reason..."
+        className="sm:max-w-md"
+       />
+
+       <div className="text-xs text-fg-muted">
+        {filteredInventoryStockHistory.length} movement
+        {filteredInventoryStockHistory.length === 1 ? "" : "s"}
+       </div>
+      </div>
+
+      <div className="max-h-[62vh] overflow-auto rounded-2xl border border-border">
+       <Table className="min-w-[1100px] text-xs">
+        <TableHeader className="sticky top-0 z-10 bg-surface-raised">
+         <TableRow>
+          <TableHead>Date / Time</TableHead>
+          <TableHead>Item</TableHead>
+          <TableHead>Movement</TableHead>
+          <TableHead>Quantity</TableHead>
+          <TableHead>Vehicle</TableHead>
+          <TableHead>Reason</TableHead>
+          <TableHead>Reference</TableHead>
+         </TableRow>
+        </TableHeader>
+
+        <TableBody>
+         {inventoryHistoryPagination.paginatedItems.length === 0 ? (
+          <TableRow>
+           <TableCell
+            colSpan={7}
+            className="py-12 text-center text-sm text-fg-muted"
+           >
+            No stock movement history found.
+           </TableCell>
+          </TableRow>
+         ) : (
+          inventoryHistoryPagination.paginatedItems.map((movement: any) => (
+           <TableRow key={movement.movement_id}>
+            <TableCell className="whitespace-nowrap text-xs">
+             {movement.created_at
+              ? new Date(movement.created_at).toLocaleString()
+              : "—"}
+            </TableCell>
+
+            <TableCell>
+             <div className="min-w-[180px]">
+              <div className="font-medium text-fg">
+               {movement.inventory_items?.item_name ?? "Unknown item"}
+              </div>
+              <div className="text-[11px] text-fg-muted">
+               {movement.inventory_items?.item_code ?? "—"}
+              </div>
+             </div>
+            </TableCell>
+
+            <TableCell>
+             <span className="rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
+              {movement.movement_type ?? "—"}
+             </span>
+            </TableCell>
+
+            <TableCell className="font-semibold tabular-nums">
+             {Number(movement.quantity ?? 0).toFixed(2)}
+             {" "}
+             {movement.inventory_items?.unit ?? ""}
+            </TableCell>
+
+            <TableCell className="whitespace-nowrap">
+             {movement.vehicles?.vehicle_number ?? "Workshop / General"}
+            </TableCell>
+
+            <TableCell className="min-w-[240px] text-xs text-fg-secondary">
+             {movement.reason ?? "—"}
+            </TableCell>
+
+            <TableCell className="whitespace-nowrap text-xs text-fg-muted">
+             {movement.reference_type
+              ? `${movement.reference_type}${movement.reference_id ? ` #${movement.reference_id}` : ""}`
+              : "—"}
+            </TableCell>
+           </TableRow>
+          ))
+         )}
+        </TableBody>
+       </Table>
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+       <p className="text-xs text-fg-muted">
+        This ledger is immutable. Corrections must be recorded as new
+        movements rather than editing historical entries.
+       </p>
+
+       <Pagination
+        page={inventoryHistoryPagination.page}
+        totalPages={inventoryHistoryPagination.totalPages}
+        onPageChange={inventoryHistoryPagination.setPage}
+       />
+      </div>
+     </div>
+    </DialogBody>
+   </DialogContent>
+  </Dialog>
+ )}
+
+ {showInventoryLowStock && (
+  <Dialog
+   open={showInventoryLowStock}
+   onOpenChange={(open) => {
+    setShowInventoryLowStock(open);
+    if (!open) {
+     setInventoryLowStockSearch("");
+    }
+   }}
+  >
+   <DialogContent
+    layout="modal"
+    size="lg"
+    className="max-h-[92dvh] overflow-hidden"
+   >
+    <DialogHeader>
+     <DialogTitle>Low Stock</DialogTitle>
+     <p className="text-xs text-fg-muted">
+      Spare parts currently at or below their minimum stock level.
+     </p>
+    </DialogHeader>
+
+    <DialogBody>
+     <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+       <Input
+        value={inventoryLowStockSearch}
+        onChange={(e) => setInventoryLowStockSearch(e.target.value)}
+        placeholder="Search item, code, category..."
+        className="sm:max-w-md"
+       />
+
+       <div className="text-xs text-fg-muted">
+        {filteredInventoryLowStock.length} low-stock item
+        {filteredInventoryLowStock.length === 1 ? "" : "s"}
+       </div>
+      </div>
+
+      <div className="max-h-[58vh] overflow-auto rounded-2xl border border-border">
+       <Table className="min-w-[760px] text-xs">
+        <TableHeader className="sticky top-0 z-10 bg-surface-raised">
+         <TableRow>
+          <TableHead>Code</TableHead>
+          <TableHead>Item</TableHead>
+          <TableHead>Category</TableHead>
+          <TableHead>Unit</TableHead>
+          <TableHead className="text-right">Current Stock</TableHead>
+          <TableHead className="text-right">Minimum Stock</TableHead>
+          <TableHead className="text-center">Status</TableHead>
+         </TableRow>
+        </TableHeader>
+
+        <TableBody>
+         {inventoryLowStockPagination.paginatedItems.length === 0 ? (
+          <TableRow>
+           <TableCell
+            colSpan={7}
+            className="py-12 text-center text-sm text-fg-muted"
+           >
+            No low-stock items found.
+           </TableCell>
+          </TableRow>
+         ) : (
+          inventoryLowStockPagination.paginatedItems.map((item: any) => {
+           const current = Number(item.current_stock ?? 0);
+           const minimum = Number(item.minimum_stock ?? 0);
+
+           return (
+            <TableRow key={item.item_id}>
+             <TableCell className="font-mono font-semibold text-fg">
+              {item.item_code || "—"}
+             </TableCell>
+
+             <TableCell className="font-semibold text-fg">
+              {item.item_name || "—"}
+             </TableCell>
+
+             <TableCell className="text-fg-secondary">
+              {item.category || "—"}
+             </TableCell>
+
+             <TableCell className="text-fg-secondary">
+              {item.unit || "—"}
+             </TableCell>
+
+             <TableCell className="text-right font-semibold tabular-nums text-danger">
+              {current}
+             </TableCell>
+
+             <TableCell className="text-right font-semibold tabular-nums text-fg-secondary">
+              {minimum}
+             </TableCell>
+
+             <TableCell className="text-center">
+              <span className="inline-flex rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-[10px] font-semibold text-warning">
+               LOW STOCK
+              </span>
+             </TableCell>
+            </TableRow>
+           );
+          })
+         )}
+        </TableBody>
+       </Table>
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+       <p className="text-xs text-fg-muted">
+        Low-stock status is calculated from the current immutable stock
+        movement balance and each item's minimum-stock setting.
+       </p>
+
+       <Pagination
+        page={inventoryLowStockPagination.page}
+        totalPages={inventoryLowStockPagination.totalPages}
+        onPageChange={inventoryLowStockPagination.setPage}
+       />
+      </div>
+     </div>
+    </DialogBody>
+   </DialogContent>
+  </Dialog>
+ )}
+
+ {showInventoryPurchase && (
+  <Dialog
+   open={showInventoryPurchase}
+   onOpenChange={(open) => {
+    setShowInventoryPurchase(open);
+    if (!open) {
+     setInventoryPurchaseInvoiceDate("");
+     setInventoryPurchaseInvoiceNumber("");
+     setInventoryPurchaseVendorId("");
+     setInventoryPurchasePaymentStatus("PAID");
+     setInventoryPurchaseTax(0);
+     setInventoryPurchaseRemarks("");
+     setInventoryPurchaseLines([{ itemId: "", quantity: "", unitAmount: "" }]);
+    }
+   }}
+  >
+   <DialogContent
+    layout="modal"
+    size="lg"
+    className="max-h-[92dvh] overflow-hidden"
+   >
+    <DialogHeader>
+     <DialogTitle>Purchase Spare Parts</DialogTitle>
+     <p className="text-xs text-fg-muted">
+      Record purchased stock and receive it into the workshop store.
+     </p>
+    </DialogHeader>
+
+    <DialogBody>
+     <form
+      className="space-y-5"
+      onSubmit={async (e) => {
+       e.preventDefault();
+
+       if (!inventoryPurchaseDate) {
+        alert("Purchase date is required.");
+        return;
+       }
+
+       const vendorId = Number(inventoryPurchaseVendorId);
+
+       if (!Number.isInteger(vendorId) || vendorId <= 0) {
+        alert("Please select a valid vendor.");
+        return;
+       }
+
+       if (!["PAID", "CREDIT"].includes(inventoryPurchasePaymentStatus)) {
+        alert("Invalid payment status.");
+        return;
+       }
+
+       if (inventoryPurchaseLines.length === 0) {
+        alert("Add at least one purchase item.");
+        return;
+       }
+
+       const seenItems = new Set<number>();
+       const purchaseItems = [];
+
+       for (const line of inventoryPurchaseLines) {
+        const itemId = Number(line.itemId);
+        const quantity = Number(line.quantity);
+        const unitAmount = Number(line.unitAmount);
+
+        if (!Number.isInteger(itemId) || itemId <= 0) {
+         alert("Every purchase line must have a valid item.");
+         return;
+        }
+
+        if (seenItems.has(itemId)) {
+         alert("The same item cannot be entered more than once in the same purchase.");
+         return;
+        }
+
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+         alert("Every purchase line must have a quantity greater than zero.");
+         return;
+        }
+
+        if (!Number.isFinite(unitAmount) || unitAmount < 0) {
+         alert("Unit amount cannot be negative.");
+         return;
+        }
+
+        seenItems.add(itemId);
+
+        purchaseItems.push({
+         item_id: itemId,
+         quantity,
+         unit_amount: unitAmount,
+        });
+       }
+
+       const taxAmount = Number(inventoryPurchaseTax) || 0;
+
+       if (!Number.isFinite(taxAmount) || taxAmount < 0) {
+        alert("Tax amount cannot be negative.");
+        return;
+       }
+
+       if (inventoryPurchaseSubtotal <= 0) {
+        alert("Purchase subtotal must be greater than zero.");
+        return;
+       }
+
+       const calculatedTotal = Number(
+        (inventoryPurchaseSubtotal + taxAmount).toFixed(2)
+       );
+
+       if (calculatedTotal <= 0) {
+        alert("Purchase total must be greater than zero.");
+        return;
+       }
+
+       if (
+        !window.confirm(
+         `Save purchase of ₹${calculatedTotal.toFixed(2)} and receive the stock into inventory?`
+        )
+       ) {
+        return;
+       }
+
+       setIsProcessing(true);
+
+       const { error } = await supabase.rpc("create_inventory_purchase_atomic", {
+        p_bill_date: inventoryPurchaseDate,
+        p_invoice_date: inventoryPurchaseInvoiceDate || undefined,
+        p_invoice_number: inventoryPurchaseInvoiceNumber.trim() || undefined,
+        p_vendor_id: vendorId,
+        p_payment_status: inventoryPurchasePaymentStatus,
+        p_remarks: inventoryPurchaseRemarks.trim() || undefined,
+        p_subtotal_amount: Number(inventoryPurchaseSubtotal.toFixed(2)),
+        p_tax_amount: Number(taxAmount.toFixed(2)),
+        p_total_bill_amount: calculatedTotal,
+        p_items: purchaseItems,
+       });
+
+       if (error) {
+        alert("Failed to save purchase: " + error.message);
+       } else {
+        alert("Purchase recorded and stock received successfully.");
+
+        setInventoryPurchaseInvoiceDate("");
+        setInventoryPurchaseInvoiceNumber("");
+        setInventoryPurchaseVendorId("");
+        setInventoryPurchasePaymentStatus("PAID");
+        setInventoryPurchaseTax(0);
+        setInventoryPurchaseRemarks("");
+        setInventoryPurchaseLines([
+         { itemId: "", quantity: "", unitAmount: "" },
+        ]);
+
+        setShowInventoryPurchase(false);
+        await fetchData();
+       }
+
+       setIsProcessing(false);
+      }}
+     >
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+       <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-fg-secondary">
+         Purchase Date *
+        </label>
+        <Input
+         type="date"
+         value={inventoryPurchaseDate}
+         onChange={(e) => setInventoryPurchaseDate(e.target.value)}
+         required
+        />
+       </div>
+
+       <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-fg-secondary">
+         Invoice Date
+        </label>
+        <Input
+         type="date"
+         value={inventoryPurchaseInvoiceDate}
+         onChange={(e) => setInventoryPurchaseInvoiceDate(e.target.value)}
+        />
+       </div>
+
+       <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-fg-secondary">
+         Invoice Number
+        </label>
+        <Input
+         value={inventoryPurchaseInvoiceNumber}
+         onChange={(e) => setInventoryPurchaseInvoiceNumber(e.target.value)}
+         placeholder="Invoice / Bill No."
+         maxLength={100}
+        />
+       </div>
+
+       <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-fg-secondary">
+         Payment Status *
+        </label>
+        <Select
+         value={inventoryPurchasePaymentStatus}
+         onChange={(e) => setInventoryPurchasePaymentStatus(e.target.value)}
+        >
+         <option value="PAID">PAID</option>
+         <option value="CREDIT">CREDIT</option>
+        </Select>
+       </div>
+      </div>
+
+      <div className="space-y-1.5">
+       <label className="text-xs font-semibold text-fg-secondary">
+        Vendor *
+       </label>
+       <Select
+        value={inventoryPurchaseVendorId}
+        onChange={(e) => setInventoryPurchaseVendorId(e.target.value)}
+        required
+       >
+        <option value="">Select vendor</option>
+        {vendors.map((item: any) => (
+         <option key={item.vendor_id} value={item.vendor_id}>
+          {item.vendor_name}
+         </option>
+        ))}
+       </Select>
+
+       {vendors.length === 0 && (
+        <p className="text-[11px] text-warning">
+         No active vendors found. Add an active vendor before recording a purchase.
+        </p>
+       )}
+      </div>
+
+      <div className="space-y-3">
+       <div className="flex items-center justify-between">
+        <div>
+         <p className="text-sm font-semibold text-fg">Purchase Items</p>
+         <p className="text-[11px] text-fg-muted">
+          Each line increases stock when the purchase is saved.
+         </p>
+        </div>
+
+        <Button
+         type="button"
+         variant="glass"
+         onClick={() =>
+          setInventoryPurchaseLines((lines) => [
+           ...lines,
+           { itemId: "", quantity: "", unitAmount: "" },
+          ])
+         }
+        >
+         + Add Line
+        </Button>
+       </div>
+
+       <div className="space-y-3">
+        {inventoryPurchaseLines.map((line, index) => (
+         <div
+          key={index}
+          className="grid grid-cols-1 gap-3 rounded-2xl border border-border p-4 sm:grid-cols-[minmax(0,1fr)_140px_160px_auto]"
+         >
+          <div className="space-y-1.5">
+           <label className="text-[11px] font-semibold text-fg-muted">
+            Item
+           </label>
+           <Select
+            value={line.itemId}
+            onChange={(e) => {
+             const value = e.target.value;
+             setInventoryPurchaseLines((lines) =>
+              lines.map((current, currentIndex) =>
+               currentIndex === index
+                ? { ...current, itemId: value }
+                : current
+              )
+             );
+            }}
+            required
+           >
+            <option value="">Select item</option>
+            {inventoryItems.map((item: any) => (
+             <option key={item.item_id} value={item.item_id}>
+              {item.item_code} — {item.item_name}
+             </option>
+            ))}
+           </Select>
+          </div>
+
+          <div className="space-y-1.5">
+           <label className="text-[11px] font-semibold text-fg-muted">
+            Quantity
+           </label>
+           <Input
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={line.quantity}
+            onChange={(e) => {
+             const value = e.target.value;
+             setInventoryPurchaseLines((lines) =>
+              lines.map((current, currentIndex) =>
+               currentIndex === index
+                ? { ...current, quantity: value === "" ? "" : Number(value) }
+                : current
+              )
+             );
+            }}
+            required
+           />
+          </div>
+
+          <div className="space-y-1.5">
+           <label className="text-[11px] font-semibold text-fg-muted">
+            Unit Amount
+           </label>
+           <Input
+            type="number"
+            min="0"
+            step="0.01"
+            value={line.unitAmount}
+            onChange={(e) => {
+             const value = e.target.value;
+             setInventoryPurchaseLines((lines) =>
+              lines.map((current, currentIndex) =>
+               currentIndex === index
+                ? { ...current, unitAmount: value === "" ? "" : Number(value) }
+                : current
+              )
+             );
+            }}
+            required
+           />
+          </div>
+
+          <div className="flex items-end justify-end">
+           <Button
+            type="button"
+            variant="glass"
+            disabled={inventoryPurchaseLines.length === 1}
+            onClick={() =>
+             setInventoryPurchaseLines((lines) =>
+              lines.filter((_, currentIndex) => currentIndex !== index)
+             )
+            }
+           >
+            Remove
+           </Button>
+          </div>
+
+          <div className="sm:col-span-full text-right text-xs text-fg-muted">
+           Line Total: ₹
+           {(
+            Number(line.quantity || 0) * Number(line.unitAmount || 0)
+           ).toFixed(2)}
+          </div>
+         </div>
+        ))}
+       </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+       <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-fg-secondary">
+         Tax Amount
+        </label>
+        <Input
+         type="number"
+         min="0"
+         step="0.01"
+         value={inventoryPurchaseTax}
+         onChange={(e) => {
+          const value = e.target.value;
+          setInventoryPurchaseTax(value === "" ? "" : Number(value));
+         }}
+        />
+       </div>
+
+       <div className="rounded-2xl border border-border px-4 py-3">
+        <p className="text-[11px] text-fg-muted">Subtotal</p>
+        <p className="mt-1 text-lg font-semibold text-fg">
+         ₹{inventoryPurchaseSubtotal.toFixed(2)}
+        </p>
+       </div>
+
+       <div className="rounded-2xl border border-border px-4 py-3">
+        <p className="text-[11px] text-fg-muted">Grand Total</p>
+        <p className="mt-1 text-lg font-semibold text-fg">
+         ₹{inventoryPurchaseTotal.toFixed(2)}
+        </p>
+       </div>
+      </div>
+
+      <div className="space-y-1.5">
+       <label className="text-xs font-semibold text-fg-secondary">
+        Remarks
+       </label>
+       <Input
+        value={inventoryPurchaseRemarks}
+        onChange={(e) => setInventoryPurchaseRemarks(e.target.value)}
+        placeholder="Optional purchase remarks"
+        maxLength={500}
+       />
+      </div>
+
+      <div className="flex justify-end gap-3 border-t border-border pt-4">
+       <Button
+        type="button"
+        variant="glass"
+        onClick={() => setShowInventoryPurchase(false)}
+       >
+        Cancel
+       </Button>
+
+       <Button type="submit">
+        Save Purchase
+       </Button>
+      </div>
+     </form>
+    </DialogBody>
+   </DialogContent>
+  </Dialog>
+ )}
+
+ {showInventoryAddItem && (
+  <Dialog
+   open={showInventoryAddItem}
+   onOpenChange={(open) => {
+    setShowInventoryAddItem(open);
+    if (!open) {
+     setInventoryItemCode("");
+     setInventoryItemName("");
+     setInventoryCategory("");
+     setInventoryUnit("PCS");
+     setInventoryMinimumStock(0);
+    }
+   }}
+  >
+   <DialogContent layout="modal" size="md">
+    <DialogHeader>
+     <DialogTitle>Add Spare Part</DialogTitle>
+     <p className="text-xs text-fg-muted">
+      Create a new active spare-part master item.
+     </p>
+    </DialogHeader>
+
+    <DialogBody>
+     <form
+      className="space-y-5"
+      onSubmit={async (e) => {
+       e.preventDefault();
+
+       const code = inventoryItemCode.trim().toUpperCase();
+       const name = inventoryItemName.trim();
+       const category = inventoryCategory.trim();
+       const minimumStock = Number(inventoryMinimumStock);
+
+       if (!code || !name) {
+        alert("Item code and item name are required.");
+        return;
+       }
+
+       if (!inventoryUnit) {
+        alert("Unit is required.");
+        return;
+       }
+
+       if (!Number.isFinite(minimumStock) || minimumStock < 0) {
+        alert("Minimum stock must be zero or greater.");
+        return;
+       }
+
+       setIsProcessing(true);
+
+       const { error } = await supabase.rpc("create_inventory_item", {
+        p_item_code: code,
+        p_item_name: name,
+        p_category: category,
+        p_unit: inventoryUnit,
+        p_minimum_stock: minimumStock,
+       });
+
+       if (error) {
+        alert("Failed to create item: " + error.message);
+       } else {
+        alert("Spare part added successfully.");
+        setInventoryItemCode("");
+        setInventoryItemName("");
+        setInventoryCategory("");
+        setInventoryUnit("PCS");
+        setInventoryMinimumStock(0);
+        setShowInventoryAddItem(false);
+        await fetchData();
+       }
+
+       setIsProcessing(false);
+      }}
+     >
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+       <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-fg-secondary">
+         Item Code *
+        </label>
+        <Input
+         value={inventoryItemCode}
+         onChange={(e) => setInventoryItemCode(e.target.value.toUpperCase())}
+         placeholder="e.g. BRK-PAD-001"
+         maxLength={50}
+         required
+        />
+       </div>
+
+       <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-fg-secondary">
+         Unit *
+        </label>
+        <Select
+         value={inventoryUnit}
+         onChange={(e) => setInventoryUnit(e.target.value)}
+        >
+         <option value="PCS">PCS</option>
+         <option value="NOS">NOS</option>
+         <option value="SET">SET</option>
+         <option value="LTR">LTR</option>
+         <option value="KG">KG</option>
+         <option value="BOX">BOX</option>
+        </Select>
+       </div>
+      </div>
+
+      <div className="space-y-1.5">
+       <label className="text-xs font-semibold text-fg-secondary">
+        Item Name *
+       </label>
+       <Input
+        value={inventoryItemName}
+        onChange={(e) => setInventoryItemName(e.target.value)}
+        placeholder="e.g. Front Brake Pad"
+        maxLength={150}
+        required
+       />
+      </div>
+
+      <div className="space-y-1.5">
+       <label className="text-xs font-semibold text-fg-secondary">
+        Category
+       </label>
+       <Input
+        value={inventoryCategory}
+        onChange={(e) => setInventoryCategory(e.target.value)}
+        placeholder="e.g. Brake, Engine, Electrical"
+        maxLength={100}
+       />
+      </div>
+
+      <div className="space-y-1.5">
+       <label className="text-xs font-semibold text-fg-secondary">
+        Minimum Stock
+       </label>
+       <Input
+        type="number"
+        min="0"
+        step="0.01"
+        value={inventoryMinimumStock}
+        onChange={(e) => {
+         const value = e.target.value;
+         setInventoryMinimumStock(value === "" ? "" : Number(value));
+        }}
+       />
+       <p className="text-[11px] text-fg-muted">
+        Low-stock alerts trigger when current stock is at or below this level.
+       </p>
+      </div>
+
+      <div className="flex justify-end gap-3 border-t border-border pt-4">
+       <Button
+        type="button"
+        variant="glass"
+        onClick={() => setShowInventoryAddItem(false)}
+        disabled={isProcessing}
+       >
+        Cancel
+       </Button>
+
+       <Button type="submit" disabled={isProcessing}>
+        {isProcessing ? "Saving..." : "Create Item"}
+       </Button>
+      </div>
+     </form>
+    </DialogBody>
+   </DialogContent>
+  </Dialog>
+ )}
+
+ {showInventoryItems && (
+  <Dialog
+   open={showInventoryItems}
+   onOpenChange={(open) => {
+    setShowInventoryItems(open);
+    if (!open) setInventorySearch("");
+   }}
+  >
+   <DialogContent
+    layout="modal"
+    size="full"
+    className="flex h-[92dvh] max-h-[92dvh] flex-col overflow-hidden p-0"
+   >
+    <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
+     <DialogTitle>Spare Parts Store Items</DialogTitle>
+     <p className="text-xs text-fg-muted">
+      {filteredInventoryItems.length} matching active items
+     </p>
+    </DialogHeader>
+
+    <DialogBody className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+     <div className="mx-auto max-w-[1450px] space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+       <Input
+        value={inventorySearch}
+        onChange={(e) => setInventorySearch(e.target.value)}
+        placeholder="Search code, item, category or unit..."
+        className="input-glass sm:max-w-md"
+       />
+
+       <Button
+        type="button"
+        variant="glass"
+        onClick={() => setShowInventoryAddItem(true)}
+       >
+        Add Item
+       </Button>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-border">
+       <Table className="text-xs text-left whitespace-nowrap">
+        <TableHeader className="sticky top-0 z-10">
+         <TableRow className="font-bold text-fg-secondary tracking-wider text-[10px]">
+          <TableHead className="px-5 py-3.5">Code</TableHead>
+          <TableHead className="px-5 py-3.5">Item</TableHead>
+          <TableHead className="px-5 py-3.5">Category</TableHead>
+          <TableHead className="px-5 py-3.5">Unit</TableHead>
+          <TableHead className="px-5 py-3.5 text-right">Current Stock</TableHead>
+          <TableHead className="px-5 py-3.5 text-right">Minimum Stock</TableHead>
+          <TableHead className="px-5 py-3.5 text-center">Status</TableHead>
+         </TableRow>
+        </TableHeader>
+
+        <TableBody>
+         {inventoryPagination.paginatedItems.map((item: any) => {
+          const current = Number(item.current_stock ?? 0);
+          const minimum = Number(item.minimum_stock ?? 0);
+          const isLow = current <= minimum;
+
+          return (
+           <TableRow key={item.item_id}>
+            <TableCell className="px-5 py-3.5 font-mono font-semibold text-fg">
+             {item.item_code || "-"}
+            </TableCell>
+
+            <TableCell className="px-5 py-3.5 font-semibold text-fg">
+             {item.item_name || "-"}
+            </TableCell>
+
+            <TableCell className="px-5 py-3.5 text-fg-secondary">
+             {item.category || "-"}
+            </TableCell>
+
+            <TableCell className="px-5 py-3.5 text-fg-secondary">
+             {item.unit || "-"}
+            </TableCell>
+
+            <TableCell className="px-5 py-3.5 text-right font-semibold text-fg">
+             {current}
+            </TableCell>
+
+            <TableCell className="px-5 py-3.5 text-right text-fg-secondary">
+             {minimum}
+            </TableCell>
+
+            <TableCell className="px-5 py-3.5 text-center">
+             <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold border ${
+              isLow
+               ? "bg-warning/10 text-warning border-warning/30"
+               : "bg-success/10 text-success border-success/20"
+             }`}>
+              {isLow ? "LOW STOCK" : "OK"}
+             </span>
+            </TableCell>
+           </TableRow>
+          );
+         })}
+
+         {filteredInventoryItems.length === 0 && (
+          <TableRow>
+           <TableCell colSpan={7} className="p-10 text-center text-fg-muted font-medium">
+            No inventory items found.
+           </TableCell>
+          </TableRow>
+         )}
+        </TableBody>
+       </Table>
+      </div>
+
+      <div className="flex justify-end">
+       <Pagination
+        page={inventoryPagination.page}
+        totalPages={inventoryPagination.totalPages}
+        onPageChange={inventoryPagination.setPage}
+       />
+      </div>
+     </div>
+    </DialogBody>
+   </DialogContent>
+  </Dialog>
+ )}
+
+ {wTab === "Spare Parts Inventory" && (
+ <div className="liquid-glass p-6 sm:p-8 shadow-xl max-w-6xl mx-auto animate-in slide-in-from-bottom-4">
+  <div className="max-w-4xl mx-auto text-center py-8">
+   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fg-muted">Workshop Store</p>
+   <h3 className="mt-2 text-xl font-semibold text-fg">Spare Parts Inventory</h3>
+   <p className="mt-2 text-sm text-fg-secondary">
+    Manage spare-part masters, purchases, issues, stock history, and low-stock items without keeping lists open on the main workspace.
+   </p>
+
+   <div className="mt-7 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+    <Button type="button" variant="default" onClick={() => setShowInventoryItems(true)}>
+     Store Items
+    </Button>
+
+    <Button type="button" variant="glass" onClick={() => setShowInventoryAddItem(true)}>
+     Add Item
+    </Button>
+
+    <Button type="button" variant="glass" onClick={() => setShowInventoryPurchase(true)}>
+     Purchase Stock
+    </Button>
+
+    <Button type="button" variant="glass" onClick={() => setShowInventoryIssue(true)}>
+     Issue Stock
+    </Button>
+
+    <Button type="button" variant="glass" onClick={() => setShowInventoryHistory(true)}>
+     Stock History
+    </Button>
+
+    <Button type="button" variant="glass" onClick={() => setShowInventoryLowStock(true)}>
+     Low Stock
+    </Button>
+   </div>
+
+   <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+    <div className="kss-surface-raised rounded-xl border border-border p-4">
+     <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted">Active Items</p>
+     <p className="mt-1 text-2xl font-semibold text-fg">{inventoryItems.length}</p>
+    </div>
+
+    <div className="kss-surface-raised rounded-xl border border-border p-4">
+     <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted">Stock Lines</p>
+     <p className="mt-1 text-2xl font-semibold text-fg">{inventoryStock.length}</p>
+    </div>
+
+    <div className="kss-surface-raised rounded-xl border border-border p-4">
+     <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted">Low Stock</p>
+     <p className="mt-1 text-2xl font-semibold text-warning">
+      {inventoryStock.filter((item) =>
+       Number(item.current_stock ?? 0) <= Number(item.minimum_stock ?? 0)
+      ).length}
+     </p>
+    </div>
+   </div>
+  </div>
  </div>
  )}
 
  {wTab === "Spares & Service Bills" && (
  <div className="liquid-glass p-6 sm:p-8 shadow-xl max-w-5xl mx-auto animate-in slide-in-from-bottom-4">
- <h3 className="text-sm font-semibold text-fg  border-b border-border pb-3 mb-6">Log Service Bill</h3>
- <form onSubmit={handleSaveBill} className="space-y-5">
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Bill Date *</label><Input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="input-glass text-fg" required /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Select Truck *</label><Select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="input-glass text-fg" required><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}</Select></div>
- </div>
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Vendor / Workshop Name *</label><Input type="text" maxLength={60} value={vendor} onChange={e => setVendor(e.target.value.toUpperCase())} className="input-glass text-fg " required /></div>
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Total Bill Amount () *</label><Input type="number" min="1" max="1000000" value={amount} onChange={e => setAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass text-fg font-semibold text-danger" required /></div>
- </div>
- <div><label className="block text-[10px] font-bold text-fg-secondary  mb-1">Parts & Service Description</label><Input type="text" maxLength={150} value={description} onChange={e => setDescription(e.target.value.toUpperCase())} placeholder="e.g. Engine oil change, 2 brake pads" className="input-glass text-fg " /></div>
- <Button type="submit" variant="default" disabled={isProcessing} className="w-full py-3.5 text-xs disabled:bg-surface-raised">Save Service Record</Button>
- </form>
-
- <div className="mt-10 kss-surface overflow-hidden w-full">
- <TableToolbar title="Recent Workshop Bills" searchQuery={billsSearch} setSearchQuery={setBillsSearch} exportData={exportBills} exportFilename="Workshop_Spares_Bills" />
- <div className="overflow-x-auto w-full max-h-[400px]">
- <Table className="text-xs text-left whitespace-nowrap">
- <TableHeader className="sticky top-0 z-10"><TableRow className="font-bold text-fg-secondary  tracking-wider text-[10px]"><TableHead className="px-5 py-3.5">Date</TableHead><TableHead className="px-5 py-3.5">Truck</TableHead><TableHead className="px-5 py-3.5">Vendor & Details</TableHead><TableHead className="px-5 py-3.5 text-right">Amount ()</TableHead></TableRow></TableHeader>
- <TableBody className="">
- {filteredBills.map(b => (
- <TableRow key={b.bill_id} className="">
- <TableCell className="px-5 py-4 font-semibold text-fg-secondary">{formatDate(b.bill_date)}</TableCell>
- <TableCell className="px-5 py-4 font-semibold text-fg">{b.vehicles?.vehicle_number || "UNKNOWN"}</TableCell>
- <TableCell className="px-5 py-4 text-fg-secondary font-bold">{b.vendor_name} <br/><span className="text-[10px] text-fg-muted font-normal">{b.spare_parts_details}</span></TableCell>
- <TableCell className="px-5 py-4 text-right font-semibold text-danger">{(b.total_bill_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
- </TableRow>
- ))}
- {filteredBills.length === 0 && <TableRow><TableCell colSpan={4} className="p-8 text-center text-fg-muted font-medium">No service bills match your search.</TableCell></TableRow>}
- </TableBody>
- </Table>
- </div>
- </div>
+  <div className="max-w-3xl mx-auto text-center py-8">
+   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fg-muted">Workshop Accounts</p>
+   <h3 className="mt-2 text-xl font-semibold text-fg">Spares & Service Bills</h3>
+   <p className="mt-2 text-sm text-fg-secondary">Record workshop service expenses without keeping the full entry form open on the main workspace.</p>
+   <div className="mt-6 flex flex-wrap justify-center gap-3">
+    <Button type="button" variant="default" onClick={() => setShowServiceBillWorkspace(true)}>
+     Log Service Bill
+    </Button>
+    <Button
+     type="button"
+     variant="glass"
+     onClick={() => {
+       setServiceBillSearch("");
+       setShowServiceBillHistory(true);
+     }}
+    >
+     Find Existing Bills ({serviceBills.length})
+    </Button>
+   </div>
+  </div>
  </div>
  )}
+
+ <Dialog
+  open={showServiceBillHistory}
+  onOpenChange={(open) => {
+    setShowServiceBillHistory(open);
+    if (!open) setServiceBillSearch("");
+  }}
+ >
+  <DialogContent
+   layout="modal"
+   size="full"
+   className="flex h-[92dvh] max-h-[92dvh] flex-col overflow-hidden p-0"
+  >
+   <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
+    <DialogTitle>Workshop Service Bill History</DialogTitle>
+    <p className="text-xs text-fg-muted">{filteredServiceBills.length} matching records</p>
+   </DialogHeader>
+   <DialogBody className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+    <div className="mx-auto max-w-[1450px] space-y-4">
+     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <Input
+       value={serviceBillSearch}
+       onChange={(e) => setServiceBillSearch(e.target.value)}
+       placeholder="Search bill no, truck, vendor, invoice, description or amount..."
+       className="input-glass text-fg sm:max-w-xl"
+      />
+      <Button
+       type="button"
+       variant="glass"
+       onClick={() => setShowServiceBillHistory(false)}
+      >
+       Close
+      </Button>
+     </div>
+
+     <div className="overflow-x-auto rounded-xl border border-border">
+      <Table>
+       <TableHeader>
+        <TableRow>
+         <TableHead>Bill No.</TableHead>
+         <TableHead>Date</TableHead>
+         <TableHead>Truck</TableHead>
+         <TableHead>Vendor / Workshop</TableHead>
+         <TableHead>Invoice</TableHead>
+         <TableHead>Parts / Service</TableHead>
+         <TableHead className="text-right">Amount</TableHead>
+        </TableRow>
+       </TableHeader>
+       <TableBody>
+        {serviceBillPagination.paginatedItems.map((bill: any) => (
+         <TableRow key={bill.bill_id}>
+          <TableCell className="font-mono font-semibold text-fg">#{bill.bill_id}</TableCell>
+          <TableCell>{formatDate(bill.bill_date || "")}</TableCell>
+          <TableCell className="font-semibold text-fg">{bill.vehicles?.vehicle_number || "-"}</TableCell>
+          <TableCell>{bill.vendor_name || "-"}</TableCell>
+          <TableCell>{bill.invoice_number || "-"}</TableCell>
+          <TableCell className="min-w-[280px]">{bill.spare_parts_details || "-"}</TableCell>
+          <TableCell className="text-right font-semibold text-danger">
+           ₹{Number(bill.total_bill_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </TableCell>
+         </TableRow>
+        ))}
+        {filteredServiceBills.length === 0 && (
+         <TableRow>
+          <TableCell colSpan={7} className="p-10 text-center text-fg-muted">
+           No workshop service bills match your search.
+          </TableCell>
+         </TableRow>
+        )}
+       </TableBody>
+      </Table>
+     </div>
+
+     <Pagination
+      page={serviceBillPagination.page}
+      totalPages={serviceBillPagination.totalPages}
+      onPageChange={serviceBillPagination.setPage}
+     />
+    </div>
+   </DialogBody>
+  </DialogContent>
+ </Dialog>
+
+ <Dialog
+  open={showServiceBillWorkspace}
+  onOpenChange={setShowServiceBillWorkspace}
+ >
+  <DialogContent
+   layout="modal"
+   size="lg"
+   className="flex max-h-[88dvh] flex-col overflow-hidden p-0"
+  >
+   <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
+    <DialogTitle>Log Service Bill</DialogTitle>
+   </DialogHeader>
+   <DialogBody className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+    <form onSubmit={handleSaveBill} className="mx-auto max-w-3xl space-y-5">
+     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Bill Date *</label><Input type="date" value={billDate} onChange={e => setBillDate(e.target.value)} className="input-glass text-fg" required /></div>
+      <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Select Truck *</label><Select value={wsTruckId} onChange={e => setWsTruckId(e.target.value)} className="input-glass text-fg" required><option value="">-- SELECT TRUCK --</option>{vehicles.map(v => <option key={v.vehicle_id} value={String(v.vehicle_id)}>{v.vehicle_number}</option>)}</Select></div>
+     </div>
+     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Vendor / Workshop Name *</label><Input type="text" maxLength={60} value={vendor} onChange={e => setVendor(e.target.value.toUpperCase())} className="input-glass text-fg" required /></div>
+      <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Total Bill Amount *</label><Input type="number" min="1" max="1000000" value={amount} onChange={e => setAmount(e.target.value === "" ? "" : parseFloat(e.target.value))} className="input-glass text-fg font-semibold text-danger" required /></div>
+     </div>
+     <div><label className="block text-[10px] font-bold text-fg-secondary mb-1">Parts & Service Description</label><Input type="text" maxLength={150} value={description} onChange={e => setDescription(e.target.value.toUpperCase())} placeholder="e.g. Engine oil change, 2 brake pads" className="input-glass text-fg" /></div>
+     <Button type="submit" variant="default" disabled={isProcessing} className="w-full py-3.5 text-xs disabled:bg-surface-raised">
+      {isProcessing ? "Saving..." : "Save Service Record"}
+     </Button>
+    </form>
+   </DialogBody>
+  </DialogContent>
+ </Dialog>
  </div>
  );
 }

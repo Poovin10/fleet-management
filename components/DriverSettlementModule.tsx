@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export function DriverSettlementModule() {
  const supabase = createClient();
@@ -21,12 +20,6 @@ export function DriverSettlementModule() {
  const [driverAdvances, setDriverAdvances] = useState<any[]>([]);
 
  const formatAmt = (amt: number) => (Number(amt) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
- const formatDate = (dateStr: string) => {
- if (!dateStr) return 'N/A'; if (!dateStr.includes('-')) return dateStr;
- const parts = dateStr.split('T')[0].split('-');
- if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`; return dateStr;
- };
-
  useEffect(() => {
  async function fetchDrivers() {
  const { data } = await supabase.from('drivers').select('*').eq('is_active', true).order('full_name');
@@ -39,7 +32,7 @@ export function DriverSettlementModule() {
  if (!selectedDriverId) return alert("Please select a driver first.");
  setIsProcessing(true); setHasSearched(true);
 
- const { data: trips } = await supabase.from('trips').select(`trip_id, trip_start_date, trip_number, origin, destination, freight_revenue, driver_bata, halt_bata, cash_advance_issued, settlement_status, vehicles(vehicle_number)`).eq('primary_driver_id', selectedDriverId).gte('trip_start_date', fromDate).lte('trip_start_date', toDate).order('trip_start_date', { ascending: true });
+ const { data: trips } = await supabase.from('trips').select('trip_id, driver_bata, halt_bata, cash_advance_issued, settlement_status').eq('primary_driver_id', selectedDriverId).gte('trip_start_date', fromDate).lte('trip_start_date', toDate).order('trip_start_date', { ascending: true });
  const { data: advances } = await supabase.from('driver_direct_advances').select('*').eq('driver_id', selectedDriverId).gte('advance_date', fromDate).lte('advance_date', toDate).order('advance_date', { ascending: true });
 
  if (trips) setDriverTrips(trips);
@@ -70,27 +63,20 @@ export function DriverSettlementModule() {
  await generateSettlement();
  };
 
- const tripsByTruck = driverTrips.reduce((acc: any, trip: any) => {
- const truckNo = trip.vehicles?.vehicle_number || "UNKNOWN TRUCK";
- if (!acc[truckNo]) acc[truckNo] = [];
- acc[truckNo].push(trip);
- return acc;
- }, {});
+ const { grandTotalBata, grandTotalTripAdv } = driverTrips.reduce(
+   (totals, trip) => ({
+     grandTotalBata: totals.grandTotalBata + (Number(trip.driver_bata) || 0) + (Number(trip.halt_bata) || 0),
+     grandTotalTripAdv: totals.grandTotalTripAdv + (Number(trip.cash_advance_issued) || 0),
+   }),
+   { grandTotalBata: 0, grandTotalTripAdv: 0 }
+ );
 
- let grandTotalBata = 0; let grandTotalTripAdv = 0;
- Object.values(tripsByTruck).forEach((tripsArr: any) => {
- tripsArr.forEach((t: any) => {
- grandTotalBata += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0);
- grandTotalTripAdv += Number(t.cash_advance_issued) || 0;
- });
- });
-
- let directAdvTotal = 0;
- driverAdvances.forEach(a => directAdvTotal += Number(a.amount_inr) || 0);
+ const directAdvTotal = driverAdvances.reduce(
+   (total, advance) => total + (Number(advance.amount_inr) || 0),
+   0
+ );
 
  const finalBalancePayable = grandTotalBata - grandTotalTripAdv - directAdvTotal;
- const selectedDriverObj = drivers.find(d => String(d.driver_id) === selectedDriverId);
-
  return (
  <div className="space-y-6">
  <div className="border-b border-border pb-4">
@@ -167,15 +153,6 @@ export function DriverSettlementModule() {
  </div>
 
  <div className="pt-6 border-t border-border flex flex-wrap justify-end items-center gap-4">
- <Button
- type="button"
- variant="glass"
- size="lg"
- onClick={exportToPDF}
- disabled={isProcessing}
->
- Export PDF Statement
-</Button>
  <Button
  type="button"
  variant="secondary"

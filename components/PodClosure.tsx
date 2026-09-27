@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const supabase = createClient();
 export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
@@ -20,6 +21,10 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  const [selectedLr, setSelectedLr] = useState<string>("");
  const [podSearch, setPodSearch] = useState("");
  const [currentTrip, setCurrentTrip] = useState<any>(null);
+ const [lrSearch, setLrSearch] = useState("");
+ const [isSearchingLr, setIsSearchingLr] = useState(false);
+ const [showPodWorkspace, setShowPodWorkspace] = useState(true);
+ const [showPendingPodList, setShowPendingPodList] = useState(false);
 
  // INBOX STATES
  const [pendingScans, setPendingScans] = useState<any[]>([]); 
@@ -43,6 +48,98 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  const parts = dateStr.split('T')[0].split('-');
  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
  return dateStr;
+ };
+
+ const loadPendingPod = (trip: any) => {
+   setSelectedLr(trip.trip_number);
+   setCurrentTrip(trip);
+   setLrSearch(trip.trip_number || "");
+   setPodNo(trip.pod_number || "");
+   setClosingDate(
+     trip.pod_received_date
+       ? String(trip.pod_received_date).split("T")[0]
+       : new Date().toISOString().split("T")[0]
+   );
+   setUnloadedMt(trip.loaded_weight_mt || "");
+   setClosingKm("");
+   setHaltBata("");
+   setClaims("");
+   setClosingDiesel("");
+   setIsTankFull(false);
+   setScannedShortageKg(null);
+   setActiveScanId(null);
+   setShowPendingPodList(false);
+ };
+
+ const handleSearchByLr = async () => {
+ const searchLr = lrSearch.trim().toUpperCase();
+
+ if (!searchLr) {
+   setAlertConfig({
+     isOpen: true,
+     title: "LR Number Required",
+     message: "Please enter an LR number to search.",
+     type: "error"
+   });
+   return;
+ }
+
+ setIsSearchingLr(true);
+ setCurrentTrip(null);
+ setSelectedLr("");
+
+ try {
+   const { data, error } = await supabase
+     .from("trips")
+     .select(`
+       trip_id, trip_number, trip_start_date, origin, destination, loaded_weight_mt, start_km, fuel_litres, vehicle_id, primary_driver_id,
+       trip_status, pod_status, pod_number, pod_received_date,
+       vehicles ( vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date ),
+       drivers ( full_name, phone_number, driver_code, license_expiry_date )
+     `)
+     .eq("trip_number", searchLr)
+     .eq("pod_status", "PENDING_SUBMISSION")
+     .maybeSingle();
+
+   if (error) throw error;
+
+   if (!data) {
+     setAlertConfig({
+       isOpen: true,
+       title: "LR Number Not Found",
+       message: "LR Number not found.",
+       type: "error"
+     });
+     return;
+   }
+
+   setSelectedLr(data.trip_number);
+   setCurrentTrip(data);
+   setPodNo(data.pod_number || "");
+   setClosingDate(
+     data.pod_received_date
+       ? String(data.pod_received_date).split("T")[0]
+       : new Date().toISOString().split("T")[0]
+   );
+   setUnloadedMt(data.loaded_weight_mt || "");
+   setClosingKm("");
+   setHaltBata("");
+   setClaims("");
+   setClosingDiesel("");
+   setIsTankFull(false);
+   setScannedShortageKg(null);
+   setActiveScanId(null);
+ } catch (error: any) {
+   console.error("LR lookup error:", error);
+   setAlertConfig({
+     isOpen: true,
+     title: "LR Search Failed",
+     message: error?.message || "Unable to search for the LR number.",
+     type: "error"
+   });
+ } finally {
+   setIsSearchingLr(false);
+ }
  };
 
  const fetchActiveTrips = async () => {
@@ -294,26 +391,82 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  const numProps = { step: "any", onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur() };
 
  return (
- <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start kss-page-enter relative">
-   <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
+ <div className="w-full kss-page-enter">
+   <AlertModal
+     isOpen={alertConfig.isOpen}
+     title={alertConfig.title}
+     message={alertConfig.message}
+     type={alertConfig.type}
+     onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+   />
 
-   {/* LEFT PANEL: POD settlement workspace */}
-   <div className="xl:col-span-8 liquid-glass p-5 md:p-6 min-w-0">
+   <Dialog open={showPodWorkspace} onOpenChange={setShowPodWorkspace}>
+     <DialogContent
+       layout="modal"
+       size="full"
+       className="flex h-[96dvh] max-h-[96dvh] flex-col overflow-hidden p-0"
+     >
+       <DialogHeader>
+         <DialogTitle className="text-xl">POD Closure</DialogTitle>
+         <p className="mt-1 text-xs text-fg-secondary">
+           Search by LR number, verify delivery details and settle the POD.
+         </p>
+       </DialogHeader>
 
-     <div className="flex items-start justify-between gap-4 pb-5 mb-5 border-b border-border">
-       <div>
-         <div className="flex items-center gap-2 mb-1.5">
-           <span className="kss-status-dot bg-accent" />
-           <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-accent">Operations</span>
-         </div>
-         <h3 className="text-lg font-semibold tracking-tight text-fg">POD Closure</h3>
-         <p className="text-xs text-fg-secondary mt-1">Verify delivery, reconcile the trip and close the POD.</p>
+       <DialogBody className="min-h-0 flex-1 overflow-y-auto">
+            <div className="w-full liquid-glass p-5 md:p-6 min-w-0">
+
+     <div className="mb-5">
+       <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+         <Input
+           type="text"
+           value={lrSearch}
+           onChange={(e) => setLrSearch(e.target.value.toUpperCase())}
+           onKeyDown={(e) => {
+             if (e.key === "Enter") {
+               e.preventDefault();
+               void handleSearchByLr();
+             }
+           }}
+           placeholder="Enter LR number..."
+           className="h-11 text-sm font-semibold uppercase"
+           autoComplete="off"
+         />
+
+         <Button
+           type="button"
+           variant="secondary"
+           className="h-11 min-w-32 rounded-xl bg-accent text-accent-fg hover:bg-accent-hover"
+           onClick={() => void handleSearchByLr()}
+           disabled={isSearchingLr}
+         >
+           {isSearchingLr ? "Searching..." : "Search LR"}
+         </Button>
+
+         <Button
+           type="button"
+           variant="outline"
+           className="h-11 min-w-36 rounded-xl border-accent-border bg-accent-soft text-accent hover:bg-accent/15"
+           onClick={() => {
+             setPodSearch("");
+             setShowPendingPodList(true);
+           }}
+         >
+           Pending PODs
+           <span className="ml-2 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-fg">
+             {activeTrips.length}
+           </span>
+         </Button>
        </div>
 
-       {activeTrips.length > 0 && (
-         <div className="shrink-0 px-3 py-2 rounded-xl border border-border bg-surface-raised/60 text-right">
-           <p className="text-[9px] font-semibold uppercase tracking-wider text-fg-muted">Pending</p>
-           <p className="text-lg font-semibold leading-none text-fg mt-1">{activeTrips.length}</p>
+       {currentTrip && (
+         <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px]">
+           <span className="rounded-lg border border-success/20 bg-success/10 px-2.5 py-1 font-semibold text-success">
+             LR loaded
+           </span>
+           <span className="text-fg-muted">
+             {currentTrip.trip_number} · {currentTrip.origin} → {currentTrip.destination}
+           </span>
          </div>
        )}
      </div>
@@ -379,16 +532,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
        </div>
      )}
 
-     {activeTrips.length === 0 && !isLoading ? (
-       <div className="kss-surface p-8 text-center">
-         <div className="mx-auto mb-3 w-10 h-10 rounded-full bg-success/10 border border-success/20 flex items-center justify-center">
-           <span className="text-success text-lg">✓</span>
-         </div>
-         <p className="text-sm font-semibold text-fg">POD queue is clear</p>
-         <p className="text-xs text-fg-secondary mt-1">There are no pending PODs awaiting settlement.</p>
-       </div>
-     ) : (
-       <form onSubmit={handleSettlePod} className="space-y-5">
+     <form onSubmit={handleSettlePod} className="space-y-5">
 
          {currentTrip && (
            <>
@@ -530,95 +674,122 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
            </>
          )}
        </form>
-     )}
    </div>
 
-   {/* RIGHT PANEL: Pending POD queue */}
-   <div className="xl:col-span-4 liquid-glass overflow-hidden flex flex-col min-w-0">
-     <div className="px-5 py-5 border-b border-border">
-       <div className="flex items-start justify-between gap-4 mb-4">
-         <div>
-           <div className="flex items-center gap-2 mb-1">
-             <span className="kss-status-dot bg-warning" />
-             <h4 className="text-sm font-semibold text-fg tracking-tight">Pending POD queue</h4>
+
+       </DialogBody>
+     </DialogContent>
+   </Dialog>
+
+   <Dialog open={showPendingPodList} onOpenChange={setShowPendingPodList}>
+     <DialogContent
+       layout="modal"
+       size="xl"
+       className="flex max-h-[88dvh] flex-col overflow-hidden p-0"
+     >
+       <DialogHeader>
+         <DialogTitle className="text-lg">Pending PODs</DialogTitle>
+         <p className="mt-1 text-xs text-fg-secondary">
+           Select any pending trip to load its complete POD closure form.
+         </p>
+       </DialogHeader>
+
+       <DialogBody className="min-h-0 flex-1 overflow-y-auto">
+         <div className="space-y-4">
+           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+             <Input
+               type="text"
+               value={podSearch}
+               onChange={(e) => setPodSearch(e.target.value)}
+               placeholder="Search LR, truck, destination or driver..."
+               className="h-11 text-sm"
+               autoComplete="off"
+             />
+             <div className="flex h-11 items-center justify-center rounded-xl border border-border bg-surface-raised/60 px-4 text-xs font-semibold text-fg-secondary">
+               {filteredPodTrips.length} pending
+             </div>
            </div>
-           <p className="text-[10px] text-fg-muted">Select a trip to load its settlement workspace.</p>
-         </div>
-         <span className="shrink-0 px-2.5 py-1 rounded-lg border border-warning/20 bg-warning/10 text-warning text-[9px] font-semibold uppercase tracking-wider">
-           {filteredPodTrips.length} awaiting
-         </span>
-       </div>
 
-       <Input
-         type="text"
-         value={podSearch}
-         onChange={(e) => setPodSearch(e.target.value)}
-         placeholder="Search LR, truck, destination or driver..."
-         className="w-full !bg-[#11161e] !border-border !shadow-lg focus:!bg-[#11161e]"
-       />
-     </div>
+           {filteredPodTrips.length === 0 ? (
+             <div className="rounded-2xl border border-border bg-surface-raised/40 p-8 text-center">
+               <p className="text-sm font-semibold text-fg">No pending PODs found</p>
+               <p className="mt-1 text-xs text-fg-muted">
+                 Try another LR, truck, destination or driver search.
+               </p>
+             </div>
+           ) : (
+             <div className="grid gap-3 md:grid-cols-2">
+               {filteredPodTrips.map((trip: any) => (
+                 <button
+                   key={trip.trip_id}
+                   type="button"
+                   onClick={() => loadPendingPod(trip)}
+                   className="group rounded-2xl border border-border bg-surface-raised/45 p-4 text-left transition-all hover:border-accent-border hover:bg-accent-soft"
+                 >
+                   <div className="flex items-start justify-between gap-4">
+                     <div className="min-w-0">
+                       <div className="flex items-center gap-2">
+                         <span className="kss-status-dot bg-accent" />
+                         <span className="text-base font-semibold text-fg">
+                           LR {trip.trip_number}
+                         </span>
+                       </div>
 
-     <div className="overflow-x-auto overflow-y-auto max-h-[680px] w-full">
-       <table className="w-full text-left border-collapse">
-         <thead className="bg-[#11161e] sticky top-0 z-20 border-b border-border shadow-lg">
-           <tr>
-             <th className="py-3 px-5 text-[9px] font-semibold uppercase tracking-wider text-fg-muted border-b border-border">LR</th>
-             <th className="py-3 px-5 text-[9px] font-semibold uppercase tracking-wider text-fg-muted border-b border-border">Date</th>
-             <th className="py-3 px-5 text-[9px] font-semibold uppercase tracking-wider text-fg-muted border-b border-border">Truck</th>
-             <th className="py-3 px-5 text-[9px] font-semibold uppercase tracking-wider text-fg-muted border-b border-border text-right">Age</th>
-           </tr>
-         </thead>
+                       <p className="mt-2 truncate text-xs font-medium text-fg-secondary">
+                         {trip.origin} → {trip.destination}
+                       </p>
+                     </div>
 
-         <tbody className="divide-y divide-border-subtle">
-           {filteredPodTrips.map((t) => {
-             const days = getDaysPending(t.trip_start_date);
-             const isSelected = selectedLr === t.trip_number;
-             const hasTruck = Boolean(t.vehicles?.vehicle_number);
-
-             return (
-               <tr
-                 key={t.trip_id}
-                 onClick={() => setSelectedLr(t.trip_number)}
-                 className={`cursor-pointer transition-all duration-150 border-l-2 ${
-                   isSelected
-                     ? "bg-accent/10 border-l-accent"
-                     : "border-l-transparent hover:bg-surface-raised/60 hover:border-l-border-strong"
-                 }`}
-               >
-                 <td className="py-3.5 px-5">
-                   <span className={`text-xs font-semibold ${isSelected ? "text-accent" : "text-fg"}`}>{t.trip_number}</span>
-                 </td>
-                 <td className="py-3.5 px-5 text-xs font-medium text-fg-secondary">{formatDate(t.trip_start_date)}</td>
-                 <td className="py-3.5 px-5">
-                   {hasTruck ? (
-                     <span className="text-xs font-semibold text-fg">{t.vehicles.vehicle_number}</span>
-                   ) : (
-                     <span className="inline-flex items-center px-2 py-1 rounded-md border border-warning/20 bg-warning/10 text-[9px] font-semibold uppercase tracking-wider text-warning">
-                       Unassigned
+                     <span className="shrink-0 rounded-lg border border-accent-border bg-accent-soft px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-accent">
+                       Select
                      </span>
-                   )}
-                 </td>
-                 <td className={`py-3.5 px-5 text-xs font-semibold text-right ${days >= 2 ? "text-danger" : "text-warning"}`}>
-                   {days}d
-                 </td>
-               </tr>
-             );
-           })}
+                   </div>
 
-           {filteredPodTrips.length === 0 && (
-             <tr>
-               <td colSpan={4} className="py-12 px-5 text-center">
-                 <p className="text-sm font-semibold text-fg">{podSearch.trim() ? "No matches" : "No pending PODs"}</p>
-                 <p className="text-xs text-fg-muted mt-1">
-                   {podSearch.trim() ? `Nothing matches "${podSearch.trim()}".` : "The settlement queue is currently clear."}
-                 </p>
-               </td>
-             </tr>
+                   <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border-subtle pt-3">
+                     <div className="min-w-0">
+                       <p className="text-[9px] font-semibold uppercase tracking-wider text-fg-muted">
+                         Truck
+                       </p>
+                       <p className="mt-1 truncate text-xs font-semibold text-fg">
+                         {trip.vehicles?.vehicle_number || "UNASSIGNED"}
+                       </p>
+                     </div>
+
+                     <div className="min-w-0">
+                       <p className="text-[9px] font-semibold uppercase tracking-wider text-fg-muted">
+                         Driver
+                       </p>
+                       <p className="mt-1 truncate text-xs font-semibold text-fg">
+                         {trip.drivers?.full_name || "Unassigned"}
+                       </p>
+                     </div>
+
+                     <div>
+                       <p className="text-[9px] font-semibold uppercase tracking-wider text-fg-muted">
+                         Loaded
+                       </p>
+                       <p className="mt-1 text-xs font-semibold text-accent">
+                         {trip.loaded_weight_mt || 0} MT
+                       </p>
+                     </div>
+
+                     <div>
+                       <p className="text-[9px] font-semibold uppercase tracking-wider text-fg-muted">
+                         Dispatched
+                       </p>
+                       <p className="mt-1 text-xs font-semibold text-fg">
+                         {formatDate(trip.trip_start_date)}
+                       </p>
+                     </div>
+                   </div>
+                 </button>
+               ))}
+             </div>
            )}
-         </tbody>
-       </table>
-     </div>
-   </div>
+         </div>
+       </DialogBody>
+     </DialogContent>
+   </Dialog>
  </div>
  );
 }

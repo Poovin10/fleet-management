@@ -4,12 +4,18 @@ import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/ui/FormField";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function TripForm() {
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showTripWorkspace, setShowTripWorkspace] = useState(true);
 
   // Core Data States
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -592,6 +598,7 @@ export function TripForm() {
     if (!error) {
       setSuccess(true);
       setShowConfirm(false);
+      setShowTripWorkspace(false);
       handleClear();
     } else {
       alert("Error dispatching trip: " + error.message);
@@ -600,371 +607,449 @@ export function TripForm() {
   };
 
   return (
-    <div className="w-full max-w-none space-y-4 relative">
-
-      {showConfirm && (
+    <div className="relative w-full min-w-0 space-y-8">
+      {showConfirm ? (
         <div className="kss-glass-overlay">
-          <div className="liquid-glass p-6 sm:p-8 w-full max-w-md scale-in-center">
-            <h3 className="text-lg font-bold text-fg mb-2">Confirm Trip Dispatch</h3>
-            <p className="text-xs text-fg-secondary mb-6">Verify the calculated operational financials before locking this trip.</p>
+          <div
+            className="liquid-glass w-full max-w-xl overflow-y-auto p-5 sm:p-7"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dispatch-review-title"
+            aria-describedby="dispatch-review-description"
+          >
+            <header className="mb-5">
+              <p className="kss-eyebrow">Final review</p>
+              <h2 id="dispatch-review-title" className="mt-2 text-lg font-semibold text-fg">
+                Confirm trip dispatch
+              </h2>
+              <p id="dispatch-review-description" className="mt-1 text-sm leading-5 text-fg-muted">
+                Verify the current trip and financial summary before dispatch.
+              </p>
+            </header>
 
-            <div className="kss-surface-raised space-y-3 mb-8 p-4">
-              <div className="flex justify-between text-xs">
-                <span className="text-fg-muted uppercase tracking-wider font-semibold">LR Number:</span>
-                <span className="text-fg font-bold">{lrNumber.toUpperCase()}</span>
+            <dl className="divide-y divide-border-subtle rounded-md border border-border-subtle px-4">
+              <div className="flex justify-between gap-4 py-3 text-sm">
+                <dt className="text-fg-muted">LR number</dt>
+                <dd className="font-medium text-fg">{lrNumber.toUpperCase()}</dd>
               </div>
-              <div className="flex justify-between text-xs pt-2 border-t border-border-subtle">
-                <span className="text-fg-muted uppercase tracking-wider font-semibold">Total Revenue (Freight):</span>
-                <span className="text-success font-bold">₹{totalRevenue.toLocaleString('en-IN')}</span>
+              <div className="flex justify-between gap-4 py-3 text-sm">
+                <dt className="text-fg-muted">Total revenue (freight)</dt>
+                <dd className="font-medium text-success">₹{totalRevenue.toLocaleString("en-IN")}</dd>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-fg-muted uppercase tracking-wider font-semibold">Total Expenses:</span>
-                <span className="text-danger font-bold">₹{totalExpense.toLocaleString('en-IN')}</span>
+              <div className="flex justify-between gap-4 py-3 text-sm">
+                <dt className="text-fg-muted">Total expenses</dt>
+                <dd className="font-medium text-danger">₹{totalExpense.toLocaleString("en-IN")}</dd>
               </div>
-              <div className="flex justify-between text-[10px] text-fg-muted pl-2">
-                <span>(Advance + Bata + Fuel Cost)</span>
+              <div className="flex justify-between gap-4 py-3 text-sm">
+                <dt className="text-fg-secondary">Expected margin</dt>
+                <dd className="font-semibold text-fg">₹{netMargin.toLocaleString("en-IN")}</dd>
               </div>
-              <div className="flex justify-between text-sm pt-2 border-t border-border-subtle">
-                <span className="text-fg-secondary uppercase tracking-wider font-bold">Expected Margin:</span>
-                <span className="text-fg font-bold">₹{netMargin.toLocaleString('en-IN')}</span>
-              </div>
-              {reviewWarnings.length > 0 && (
-                <div className="mt-3 p-3 rounded-xl bg-warning-soft border border-warning/30">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-bold text-warning uppercase tracking-wider">
-                      Review Required
-                    </p>
-                    <span className="text-[9px] font-bold text-warning">
-                      {reviewWarnings.length} item{reviewWarnings.length === 1 ? "" : "s"}
-                    </span>
-                  </div>
+            </dl>
+            <p className="mt-2 text-xs text-fg-muted">Expenses include advance, bata and fuel cost.</p>
 
-                  <div className="mt-2 space-y-1.5">
-                    {reviewWarnings.map((warning, index) => (
-                      <div key={`${warning}-${index}`} className="flex gap-2 text-[10px] text-fg-secondary">
-                        <span className="text-warning font-bold shrink-0">🟠</span>
-                        <span>{warning}</span>
-                      </div>
+            {reviewWarnings.length > 0 ? (
+              <div className="mt-4 rounded-md border border-warning/30 bg-warning-soft p-4" role="status">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-warning">Review required</p>
+                  <StatusBadge variant="warning">
+                    {reviewWarnings.length} item{reviewWarnings.length === 1 ? "" : "s"}
+                  </StatusBadge>
+                </div>
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-fg-secondary">
+                  {reviewWarnings.map((warning, index) => (
+                    <li key={`${warning}-${index}`}>{warning}</li>
+                  ))}
+                </ul>
+                <p className="mt-3 border-t border-warning/20 pt-3 text-xs text-fg-muted">
+                  Confirm these anomalies before dispatch. Normal values require no additional action.
+                </p>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+              <Button type="button" variant="outline" onClick={() => setShowConfirm(false)} className="min-h-11">
+                Cancel
+              </Button>
+              <Button type="button" variant="default" onClick={confirmDispatch} disabled={loading} className="min-h-11">
+                {loading ? "Dispatching..." : "Dispatch Trip"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <Dialog open={showTripWorkspace} onOpenChange={setShowTripWorkspace}>
+        <DialogContent
+          layout="modal"
+          size="full"
+          className="flex h-[99dvh] max-h-[99dvh] flex-col overflow-hidden p-0"
+        >
+          <DialogHeader className="px-5 py-3 sm:px-6">
+            <DialogTitle className="text-lg">Trip Dispatch</DialogTitle>
+            
+          </DialogHeader>
+
+          <DialogBody className="min-h-0 flex-1 overflow-y-auto px-1">
+            <div className="mx-auto w-full max-w-[1250px] px-2 pb-1 lg:px-4">
+              <form onSubmit={handleReview} className="min-w-0 space-y-2 pb-1">
+        <section aria-labelledby="trip-basics-title" className="space-y-1.5 border-b border-border-subtle pb-2">
+          <div>
+            <p className="kss-eyebrow text-accent">01 · Trip reference</p>
+            
+          </div>
+          <div className="grid min-w-0 grid-cols-1 items-start gap-x-5 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
+            <FormField id="trip-date" label="Trip date" required>
+              <Input type="date" value={tripDate} onChange={(e) => setTripDate(e.target.value)} required />
+            </FormField>
+            <FormField id="lr-number" label="LR number" required>
+              <Input
+                type="text"
+                value={lrNumber}
+                onChange={(e) => setLrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
+                placeholder="KSS..."
+                className="font-mono uppercase"
+                required
+                pattern="[A-Za-z0-9]+"
+              />
+            </FormField>
+            <FormField id="cargo-type" label="Cargo type" required>
+              <div className="flex min-h-10 gap-2" role="group" aria-label="Cargo type">
+                <Button
+                  type="button"
+                  variant={cargoType === "BULK" ? "default" : "outline"}
+                  aria-pressed={cargoType === "BULK"}
+                  onClick={() => { setCargoType("BULK"); setTruckId(""); setPreviousKm(null); setStartKm(""); }}
+                  className="min-h-10 flex-1"
+                >
+                  Bulk
+                </Button>
+                <Button
+                  type="button"
+                  variant={cargoType === "BAG" ? "default" : "outline"}
+                  aria-pressed={cargoType === "BAG"}
+                  onClick={() => { setCargoType("BAG"); setTruckId(""); setPreviousKm(null); setStartKm(""); }}
+                  className="min-h-10 flex-1"
+                >
+                  Bag
+                </Button>
+              </div>
+            </FormField>
+          </div>
+        </section>
+
+        <section aria-labelledby="vehicle-driver-title" className="space-y-1.5 border-b border-border-subtle pb-2">
+          <div>
+            <p className="kss-eyebrow text-accent">02 · Assignment</p>
+            
+          </div>
+          <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-4">
+            <FormField
+              id="dispatch-vehicle"
+              label="Vehicle"
+              required
+              description={selectedVehicle ? (
+                <span>
+                  Selected: {selectedVehicle.vehicle_number}
+                  {selectedCapacity > 0 ? ` · Capacity ${selectedCapacity} MT` : ""}
+                </span>
+              ) : undefined}
+            >
+              <Select value={truckId} onChange={(e) => setTruckId(e.target.value)} required>
+                <option value="">Select vehicle...</option>
+                {filteredVehicles.map((vehicle) => (
+                  <option key={vehicle.vehicle_id} value={vehicle.vehicle_id}>{vehicle.vehicle_number}</option>
+                ))}
+              </Select>
+            </FormField>
+
+            <div className="grid max-w-[620px] gap-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 rounded-lg border border-accent-border bg-accent-soft px-3 py-2"><span className="kss-status-dot bg-accent" /><h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">Driver</h3></div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDriverMode((previous) => previous === "select" ? "manual" : "select")}
+                  className="min-h-10"
+                >
+                  {driverMode === "select" ? "Add driver" : "Choose existing"}
+                </Button>
+              </div>
+              {driverMode === "select" ? (
+                <FormField
+                  id="dispatch-driver"
+                  label="Primary driver"
+                  required
+                  description={lastDriverId ? "The vehicle's previous driver was selected. You can change it." : undefined}
+                >
+                  <Select value={driverId} onChange={(e) => setDriverId(e.target.value)} required>
+                    <option value="">Select driver...</option>
+                    {drivers.map((driver) => (
+                      <option key={driver.driver_id} value={driver.driver_id}>
+                        {driver.driver_code ? `${driver.driver_code} — ` : ""}{driver.full_name}
+                      </option>
                     ))}
-                  </div>
-
-                  <p className="text-[9px] text-fg-muted mt-3 pt-2 border-t border-warning/20">
-                    Confirm these anomalies before dispatch. Normal values require no additional action.
-                  </p>
+                  </Select>
+                </FormField>
+              ) : (
+                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+                  <FormField id="new-driver-name" label="Driver name" required>
+                    <Input type="text" value={newDriverName} onChange={(e) => setNewDriverName(e.target.value)} required />
+                  </FormField>
+                  <FormField id="new-driver-phone" label="Phone number" required>
+                    <Input type="tel" value={newDriverPhone} onChange={(e) => setNewDriverPhone(e.target.value)} required />
+                  </FormField>
                 </div>
               )}
             </div>
-
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="glass" onClick={() => setShowConfirm(false)} className="px-6 py-3 rounded-full font-bold text-xs">Cancel</Button>
-              <Button type="button" variant="default" onClick={confirmDispatch} disabled={loading} className="px-7 py-3 rounded-full text-xs">
-                {loading ? "Dispatching..." : "Confirm & Dispatch"}
-              </Button>
-            </div>
           </div>
-        </div>
-      )}
+        </section>
 
-      <div className="flex justify-between items-end mb-4">
-        <div>
-          <h2 className="text-sm font-semibold text-white tracking-wide">Dispatch New Trip</h2>
-          <p className="text-[11px] text-fg-muted mt-0.5">Unified strict-validation logistics console</p>
-        </div>
-      </div>
-
-      <form onSubmit={handleReview} className="space-y-4">
-
-        {/* ROW 1: Core Identifiers */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-          <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Trip Date</label>
-            <input type="date" value={tripDate} onChange={(e) => setTripDate(e.target.value)} className="input-glass" required />
+        <section aria-labelledby="route-cargo-title" className="space-y-1.5 border-b border-border-subtle pb-2">
+          <div>
+            <p className="kss-eyebrow text-accent">03 · Route &amp; load</p>
+            
           </div>
-          <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">LR Number</label>
-            <input type="text" value={lrNumber} onChange={(e) => setLrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))} placeholder="KSS..." className="input-glass uppercase font-mono" required pattern="[A-Za-z0-9]+" />
-          </div>
-          <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Cargo Type</label>
-            <div className="flex gap-1.5">
-              <Button type="button" variant={cargoType === "BULK" ? "default" : "glass"} onClick={() => { setCargoType("BULK"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className="flex-1 py-2 rounded-full text-[10px] font-bold">BULK</Button>
-              <Button type="button" variant={cargoType === "BAG" ? "default" : "glass"} onClick={() => { setCargoType("BAG"); setTruckId(""); setPreviousKm(null); setStartKm(""); }} className="flex-1 py-2 rounded-full text-[10px] font-bold">BAG</Button>
-            </div>
-          </div>
-          <div className="md:col-span-3">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Assign Truck</label>
-            <Select value={truckId} onChange={(e) => setTruckId(e.target.value)} required>
-              <option value="" className="text-fg-muted">Select...</option>
-              {filteredVehicles.map(v => (
-                <option key={v.vehicle_id} value={v.vehicle_id}>{v.vehicle_number}</option>
-              ))}
-            </Select>
-          </div>
-        </div>
-
-        {/* ROW 2: Routing & Driver */}
-        <div className="kss-surface-raised grid grid-cols-1 md:grid-cols-12 gap-4 p-4">
-          <div className="md:col-span-4">
-            <div className="flex justify-between items-end mb-1.5">
-              <label className="block text-[10px] font-semibold text-accent uppercase tracking-wider">Origin</label>
-              <Button type="button" variant="ghost" size="xs" onClick={() => setSourceMode(prev => prev === "select" ? "manual" : "select")} className="h-7 px-2.5 rounded-md bg-accent-soft text-accent border border-accent-border hover:bg-accent/15 uppercase tracking-wider text-[9px] font-bold">
-                {sourceMode === "select" ? "+ New" : "≡ List"}
-              </Button>
-            </div>
-            {sourceMode === "select" ? (
-              <Select value={source} onChange={(e) => setSource(e.target.value)} required>
-                <option value="">Select...</option>
-                {historicalSources.map(s => <option key={s} value={s}>{s}</option>)}
-              </Select>
-            ) : (
-              <input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Type new origin..." className="input-glass" required />
-            )}
-          </div>
-
-          <div className="md:col-span-4">
-            <div className="flex justify-between items-end mb-1.5">
-              <label className="block text-[10px] font-semibold text-accent uppercase tracking-wider">Destination</label>
-              <Button type="button" variant="ghost" size="xs" onClick={() => setDestMode(prev => prev === "select" ? "manual" : "select")} className="h-7 px-2.5 rounded-md bg-accent-soft text-accent border border-accent-border hover:bg-accent/15 uppercase tracking-wider text-[9px] font-bold">
-                {destMode === "select" ? "+ New" : "≡ List"}
-              </Button>
-            </div>
-            {destMode === "select" ? (
-              <Select value={destination} onChange={(e) => setDestination(e.target.value)} required>
-                <option value="">Select...</option>
-                {historicalDestinations.map(d => <option key={d} value={d}>{d}</option>)}
-              </Select>
-            ) : (
-              <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Type new destination..." className="input-glass" required />
-            )}
-          </div>
-
-          <div className="md:col-span-4">
-            <div className="flex justify-between items-end mb-1.5">
-              <label className="block text-[10px] font-semibold text-accent uppercase tracking-wider">Driver</label>
-              <Button type="button" variant="ghost" size="xs" onClick={() => setDriverMode(prev => prev === "select" ? "manual" : "select")} className="h-7 px-2.5 rounded-md bg-accent-soft text-accent border border-accent-border hover:bg-accent/15 uppercase tracking-wider text-[9px] font-bold">
-                {driverMode === "select" ? "+ New" : "≡ List"}
-              </Button>
-            </div>
-            {driverMode === "select" ? (
-              <>
-                <Select value={driverId} onChange={(e) => setDriverId(e.target.value)} required>
-                  <option value="">Select driver...</option>
-                  {drivers.map(d => (
-                    <option key={d.driver_id} value={d.driver_id}>
-                      {d.driver_code ? `${d.driver_code} — ` : ""}{d.full_name}
-                    </option>
-                  ))}
-                </Select>
-                {lastDriverId && (
-                  <p className="text-[9px] text-success font-semibold mt-1">
-                    Previous driver selected by default — you can change it.
-                  </p>
-                )}
-              </>
-            ) : (
-              <div className="flex gap-2">
-                <input type="text" placeholder="Name" value={newDriverName} onChange={e => setNewDriverName(e.target.value)} className="input-glass" required />
-                <input type="tel" placeholder="Phone" value={newDriverPhone} onChange={e => setNewDriverPhone(e.target.value)} className="input-glass" required />
+          <div className="grid min-w-0 grid-cols-1 items-start gap-x-5 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid content-start gap-1">
+              <div className="flex justify-end">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setSourceMode((previous) => previous === "select" ? "manual" : "select")} className="min-h-9 px-2">
+                  {sourceMode === "select" ? "Enter new origin" : "Choose from list"}
+                </Button>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* ROW 3: Financials & Telemetry */}
-        <div className="grid grid-cols-2 md:grid-cols-12 gap-3">
-          <div className="md:col-span-2">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Tonnage (MT)</label>
-            <input
-              type="number"
-              {...strictNumberProps}
-              step="0.01"
-              value={tonnage}
-              onChange={(e) => setTonnage(e.target.value)}
-              className={`input-glass ${tonnageError ? "border-danger focus:border-danger" : tonnageAnomaly ? "border-warning focus:border-warning" : ""}`}
-              placeholder={selectedCapacity > 0 ? `2–${selectedCapacity}` : "0.00"}
-              required
-            />
-            {selectedCapacity > 0 && (
-              <p className="text-[9px] text-fg-muted mt-1">
-                Truck capacity: <span className="font-bold text-fg">{selectedCapacity} MT</span>
-              </p>
-            )}
-            {tonnageError && (
-              <p className="text-[9px] text-danger font-semibold mt-1">{tonnageError}</p>
-            )}
-            {tonnageAnomaly && !tonnageError && (
-              <p className="text-[9px] text-warning font-semibold mt-1">{tonnageAnomaly}</p>
-            )}
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">
-              Freight (₹)
-            </label>
-            <input
-              type="number"
-              {...strictNumberProps}
-              step="0.01"
-              value={freightRevenue}
-              onChange={(e) => {
-                setFreightRevenue(e.target.value);
-                setFreightManualOverride(
-                  freightMasterRate !== null &&
-                  Number(e.target.value || 0) !== Number((Number(tonnage || 0) * freightMasterRate).toFixed(2))
-                );
-              }}
-              className={`input-glass ${freightManualOverride ? "border-warning focus:border-warning" : ""}`}
-              placeholder="0.00"
-              required
-            />
-            {freightMasterRate !== null && (
-              <p className="text-[9px] text-fg-muted mt-1">
-                Master: <span className="font-bold text-fg">₹{freightMasterRate.toLocaleString("en-IN")}/MT</span>
-                {tonnage && (
-                  <> · Calculated: <span className="font-bold text-fg">₹{(Number(tonnage) * freightMasterRate).toLocaleString("en-IN")}</span></>
+              <FormField
+                id="dispatch-origin"
+                label="Origin"
+                required
+                description={undefined}
+              >
+                {sourceMode === "select" ? (
+                  <Select value={source} onChange={(e) => setSource(e.target.value)} required>
+                    <option value="">Select origin...</option>
+                    {historicalSources.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </Select>
+                ) : (
+                  <Input type="text" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Type new origin..." required />
                 )}
-              </p>
-            )}
-            {freightMasterStatus && (
-              <p className={`text-[9px] font-semibold mt-1 ${freightManualOverride ? "text-warning" : freightMasterRate !== null ? "text-success" : "text-warning"}`}>
-                {freightManualOverride ? "Manual freight override." : freightMasterStatus}
-              </p>
-            )}
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">
-              Bata (₹)
-            </label>
-            <input
-              type="number"
-              {...strictNumberProps}
-              step="0.01"
-              value={driverBata}
-              onChange={(e) => {
-                setDriverBata(e.target.value);
-                setBataManualOverride(
-                  bataMasterAmount !== null &&
-                  Number(e.target.value || 0) !== bataMasterAmount
-                );
-              }}
-              className={`input-glass ${bataManualOverride ? "border-warning focus:border-warning" : ""}`}
-              placeholder="0.00"
+              </FormField>
+            </div>
+            <div className="grid content-start gap-1">
+              <div className="flex justify-end">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setDestMode((previous) => previous === "select" ? "manual" : "select")} className="min-h-9 px-2">
+                  {destMode === "select" ? "Enter new destination" : "Choose from list"}
+                </Button>
+              </div>
+              <FormField
+                id="dispatch-destination"
+                label="Destination"
+                required
+                description={undefined}
+              >
+                {destMode === "select" ? (
+                  <Select value={destination} onChange={(e) => setDestination(e.target.value)} required>
+                    <option value="">Select destination...</option>
+                    {historicalDestinations.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </Select>
+                ) : (
+                  <Input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Type new destination..." required />
+                )}
+              </FormField>
+            </div>
+            <FormField
+              id="dispatch-tonnage"
+              label="Tonnage (MT)"
               required
-            />
-            {bataMasterAmount !== null && (
-              <p className="text-[9px] text-fg-muted mt-1">
-                Master Bata: <span className="font-bold text-fg">₹{bataMasterAmount.toLocaleString("en-IN")}</span>
-              </p>
-            )}
-            {bataMasterStatus && (
-              <p className={`text-[9px] font-semibold mt-1 ${bataManualOverride ? "text-warning" : bataMasterAmount !== null ? "text-success" : "text-warning"}`}>
-                {bataManualOverride ? "Manual Bata override." : bataMasterStatus}
-              </p>
-            )}
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Advance (₹)</label>
-            <input type="number" {...strictNumberProps} value={advance} onChange={(e) => setAdvance(e.target.value)} className="input-glass" placeholder="0.00" required />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider" title={`Previous: ${previousKm ?? 'N/A'}`}>Start KM</label>
-            <input
-              type="number"
-              {...strictNumberProps}
-              step="0.1"
-              value={startKm}
-              onChange={(e) => {
-                const value = e.target.value;
-                setStartKm(value);
-
-                if (value === "") {
-                  setStartKmError("");
-                } else if (!Number.isFinite(Number(value)) || Number(value) <= 0) {
-                  setStartKmError("Starting KM must be greater than 0.");
-                } else if (previousKm !== null && Number(value) <= previousKm) {
-                  setStartKmError(`Starting KM must be greater than the current authoritative odometer (${previousKm} km).`);
-                } else {
-                  setStartKmError("");
-                }
-              }}
-              className={`input-glass font-mono border-accent-border ${startKmError ? "border-danger focus:border-danger" : ""}`}
-              placeholder={previousKm !== null ? `> ${previousKm}` : "> 0"}
+              error={tonnageError || undefined}
+              description={(
+                <span className="grid gap-1">
+                  {selectedCapacity > 0 ? <span className="text-xs text-fg-muted">Capacity {selectedCapacity} MT</span> : null}
+                  {tonnageAnomaly && !tonnageError ? <span className="text-warning">{tonnageAnomaly}</span> : null}
+                </span>
+              )}
+            >
+              <Input
+                type="number"
+                {...strictNumberProps}
+                step="0.01"
+                value={tonnage}
+                onChange={(e) => setTonnage(e.target.value)}
+                className={tonnageAnomaly && !tonnageError ? "border-warning" : ""}
+                placeholder={selectedCapacity > 0 ? `2–${selectedCapacity}` : "0.00"}
+                required
+              />
+            </FormField>
+            <FormField
+              id="dispatch-freight"
+              label="Freight (₹)"
               required
-            />
-            {previousKm !== null && (
-              <p className="text-[9px] text-fg-muted mt-1">
-                Current authoritative odometer: <span className="font-bold text-fg">{previousKm} km</span>
-              </p>
-            )}
-            {startKmError && (
-              <p className="text-[9px] text-danger font-semibold mt-1">{startKmError}</p>
-            )}
+              description={freightMasterRate !== null ? (
+                <span className="grid gap-1">
+                  <span>Master rate: ₹{freightMasterRate.toLocaleString("en-IN")}/MT</span>
+                  {tonnage ? <span>Calculated: ₹{(Number(tonnage) * freightMasterRate).toLocaleString("en-IN")}</span> : null}
+                  {freightMasterStatus ? <span className={freightManualOverride ? "text-warning" : "text-success"}>{freightManualOverride ? "Manual freight override." : freightMasterStatus}</span> : null}
+                </span>
+              ) : freightMasterStatus ? <span className="text-warning">{freightManualOverride ? "Manual freight override." : freightMasterStatus}</span> : undefined}
+            >
+              <Input
+                type="number"
+                {...strictNumberProps}
+                step="0.01"
+                value={freightRevenue}
+                onChange={(e) => {
+                  setFreightRevenue(e.target.value);
+                  setFreightManualOverride(
+                    freightMasterRate !== null &&
+                    Number(e.target.value || 0) !== Number((Number(tonnage || 0) * freightMasterRate).toFixed(2))
+                  );
+                }}
+                className={freightManualOverride ? "border-warning" : ""}
+                placeholder="0.00"
+                required
+              />
+            </FormField>
           </div>
-          <div className="md:col-span-2">
-            <label className="block text-[10px] font-semibold text-fg-secondary mb-1.5 uppercase tracking-wider">Diesel</label>
-            <div className="flex gap-1.5">
-              <input type="number" {...strictNumberProps} step="0.01" value={dieselIssued} onChange={(e) => setDieselIssued(e.target.value)} className="input-glass font-mono border-accent-border w-1/2" placeholder="L" required title="Diesel Issued (Litres)" />
-              <input
+        </section>
+
+        <section aria-labelledby="trip-controls-title" className="space-y-1.5 border-b border-border-subtle pb-2">
+          <p className="kss-eyebrow text-accent">04 · Odometer &amp; fuel</p>
+          <div>
+            
+          </div>
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <FormField
+              id="dispatch-start-km"
+              label="Start KM"
+              required
+              error={startKmError || undefined}
+              description={previousKm !== null ? `Current odometer: ${previousKm} km` : undefined}
+             className="w-full max-w-[210px]">
+              <Input
+                type="number"
+                {...strictNumberProps}
+                step="0.1"
+                value={startKm}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setStartKm(value);
+
+                  if (value === "") {
+                    setStartKmError("");
+                  } else if (!Number.isFinite(Number(value)) || Number(value) <= 0) {
+                    setStartKmError("Starting KM must be greater than 0.");
+                  } else if (previousKm !== null && Number(value) <= previousKm) {
+                    setStartKmError(`Starting KM must be greater than the current authoritative odometer (${previousKm} km).`);
+                  } else {
+                    setStartKmError("");
+                  }
+                }}
+                className="font-mono"
+                placeholder={previousKm !== null ? `> ${previousKm}` : "> 0"}
+                required
+              />
+            </FormField>
+            <FormField id="diesel-litres" label="Diesel issued (litres)" required className="w-full max-w-[210px]">
+              <Input
+                type="number"
+                {...strictNumberProps}
+                step="0.01"
+                value={dieselIssued}
+                onChange={(e) => setDieselIssued(e.target.value)}
+                className="font-mono"
+                placeholder="Litres"
+                required
+              />
+            </FormField>
+            <FormField id="diesel-rate" label="Diesel rate (₹/litre)" required description={dieselRateSource ? `${dieselRateSource}. ₹${dieselRate || "0"}/L` : undefined} className="w-full max-w-[210px]">
+              <Input
                 type="number"
                 {...strictNumberProps}
                 step="0.01"
                 value={dieselRate}
                 onChange={(e) => handleRateChange(e.target.value)}
-                className="input-glass font-mono border-accent-border w-1/2"
+                className="font-mono"
                 placeholder="₹/L"
                 required
-                title="Diesel Rate (₹/Litre)"
               />
+            </FormField>
+          </div>
+          <FormField id="tank-full" label="Tank full">
+            <Input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="size-4 accent-accent" />
+          </FormField>
+        </section>
+
+        <section aria-labelledby="driver-pay-title" className="space-y-4 pb-2">
+            <p className="kss-eyebrow text-accent">05 · Driver payments</p>
+          <div>
+            
+          </div>
+          <div className="grid min-w-0 grid-cols-1 items-start gap-x-5 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
+            <FormField
+              id="driver-bata"
+              label="Driver bata (₹)"
+              required
+              description={bataMasterStatus ? (
+                <span className={bataManualOverride ? "text-warning" : bataMasterAmount !== null ? "text-success" : "text-warning"}>
+                  {bataManualOverride ? "Manual Bata override." : bataMasterStatus}
+                  {bataMasterAmount !== null ? ` · Master Bata: ₹${bataMasterAmount.toLocaleString("en-IN")}` : ""}
+                </span>
+              ) : undefined}
+            >
+              <Input
+                type="number"
+                {...strictNumberProps}
+                step="0.01"
+                value={driverBata}
+                onChange={(e) => {
+                  setDriverBata(e.target.value);
+                  setBataManualOverride(bataMasterAmount !== null && Number(e.target.value || 0) !== bataMasterAmount);
+                }}
+                className={bataManualOverride ? "border-warning" : ""}
+                placeholder="0.00"
+                required
+              />
+            </FormField>
+            <FormField id="trip-advance" label="Trip cash advance (₹)" required className="w-full max-w-[210px]">
+              <Input type="number" {...strictNumberProps} value={advance} onChange={(e) => setAdvance(e.target.value)} placeholder="0.00" required />
+            </FormField>
+          </div>
+
+          <div className="kss-surface grid grid-cols-1 divide-y divide-border-subtle rounded-md border border-border-subtle sm:grid-cols-3 sm:divide-x sm:divide-y-0" aria-label="Live trip financial summary">
+            <div className="px-4 py-3">
+              <p className="text-xs text-fg-muted">Total revenue</p>
+              <p className="mt-1 text-base font-semibold tabular-nums text-success">₹{totalRevenue.toLocaleString("en-IN")}</p>
             </div>
-            {dieselRateSource && (
-              <p className="text-[9px] text-fg-muted mt-1">
-                {dieselRateSource}. <span className="font-bold text-fg">₹{dieselRate || "0"}/L</span>
+            <div className="px-4 py-3">
+              <p className="text-xs text-fg-muted">Total expenses</p>
+              <p className="mt-1 text-base font-semibold tabular-nums text-danger" title={`Bata (₹${driverBata || 0}) + Advance (₹${advance || 0}) + Fuel (₹${fuelExpense || 0})`}>
+                ₹{totalExpense.toLocaleString("en-IN")}
               </p>
-            )}
-            <div className="flex items-center mt-2 gap-2">
-              <input type="checkbox" checked={tankFull} onChange={(e) => setTankFull(e.target.checked)} className="w-4 h-4 rounded-full input-glass border border-accent-border text-accent focus:ring-0 cursor-pointer appearance-none checked:bg-accent flex items-center justify-center relative after:content-[''] after:w-1 after:h-2 after:border-r-2 after:border-b-2 after:border-black after:rotate-45 after:absolute after:hidden checked:after:block after:-mt-0.5" />
-              <span className="text-[9px] text-accent uppercase tracking-wider font-bold">Tank Full</span>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-xs text-fg-muted">Expected margin</p>
+              <p className="mt-1 text-base font-semibold tabular-nums text-fg">₹{netMargin.toLocaleString("en-IN")}</p>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Live Calculation & Controls Bar */}
-        <div className="kss-surface-raised p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
-          <div className="flex items-center gap-6 overflow-x-auto pb-2 md:pb-0">
-            <div>
-              <p className="text-[10px] font-semibold text-fg-muted uppercase tracking-wider mb-0.5">Total Revenue</p>
-              <p className="text-sm font-bold text-success">₹{totalRevenue.toLocaleString('en-IN')}</p>
-            </div>
-            <div className="w-px h-8 bg-border"></div>
-            <div>
-              <p className="text-[10px] font-semibold text-fg-muted uppercase tracking-wider mb-0.5">Total Expenses</p>
-              <p className="text-sm font-bold text-danger" title={`Bata (₹${driverBata || 0}) + Advance (₹${advance || 0}) + Fuel (₹${fuelExpense || 0})`}>
-                ₹{totalExpense.toLocaleString('en-IN')}
-              </p>
-            </div>
-            <div className="w-px h-8 bg-border"></div>
-            <div>
-              <p className="text-[10px] font-semibold text-fg-muted uppercase tracking-wider mb-0.5">Expected Margin</p>
-              <p className="text-sm font-bold text-fg">₹{netMargin.toLocaleString('en-IN')}</p>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 w-full md:w-auto">
-            <Button type="button" variant="glass" onClick={handleClear} className="px-6 py-3 rounded-full font-bold text-xs hover:bg-danger/10 hover:text-danger hover:border-danger/30">
-              Clear
-            </Button>
-            <Button type="submit" variant="default" disabled={loading} className="px-7 py-3 rounded-full text-xs">
-              Review & Dispatch
-            </Button>
-          </div>
-        </div>
-
-        {success && (
-          <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-success text-xs text-center font-bold">
+        {success ? (
+          <div className="rounded-md border border-success/20 bg-success-soft p-3 text-sm font-medium text-success" role="status">
             Trip successfully registered and dispatched to live telemetry!
           </div>
-        )}
-      </form>
+        ) : null}
+
+        <footer className="sticky bottom-0 z-20 -mx-2 flex flex-col-reverse gap-2 border-t border-border-subtle bg-app/95 px-2 py-2 backdrop-blur-md sm:-mx-3 sm:flex-row sm:justify-end sm:px-3">
+          <Button type="button" variant="outline" onClick={handleClear} disabled={loading} className="min-h-11 sm:min-w-28">
+            Clear
+          </Button>
+          <Button type="submit" variant="default" disabled={loading} className="min-h-11 sm:min-w-44">
+            {loading ? "Preparing dispatch..." : "Review & Dispatch"}
+          </Button>
+        </footer>
+              </form>
+            </div>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

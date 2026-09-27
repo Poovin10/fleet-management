@@ -6,10 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/components/ui/usePagination";
 
 export function FinancialsModule() {
  const supabase = createClient();
  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
+ const [showFleetDetails, setShowFleetDetails] = useState(false);
+ const [showDriverDetails, setShowDriverDetails] = useState(false);
+ const [fleetSearch, setFleetSearch] = useState("");
+ const [driverSearch, setDriverSearch] = useState("");
 
  const [analysisWindow, setAnalysisWindow] = useState("Current Fiscal Month");
  const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; });
@@ -161,6 +167,16 @@ export function FinancialsModule() {
  };
 
  const sortedFleetData = getSortedFleetData();
+ const filteredFleetData = sortedFleetData.filter(row => {
+   const query = fleetSearch.trim().toLowerCase();
+   return !query || [row.vehicle_number, row.truck_type].some(value => String(value || "").toLowerCase().includes(query));
+ });
+ const fleetPagination = usePagination(filteredFleetData, { pageSize: 10 });
+ const filteredDriverScorecard = driverScorecard.filter(row => {
+   const query = driverSearch.trim().toLowerCase();
+   return !query || [row.driver_code, row.full_name].some(value => String(value || "").toLowerCase().includes(query));
+ });
+ const driverPagination = usePagination(filteredDriverScorecard, { pageSize: 10 });
  const aggFreight = sortedFleetData.reduce((acc, c) => acc + c.total_freight, 0) + unassignedHistorical.freight;
  const aggDiesel = sortedFleetData.reduce((acc, c) => acc + c.total_diesel_cost, 0) + unassignedHistorical.dieselCost;
  const aggRetention = sortedFleetData.reduce((acc, c) => acc + c.net_retention, 0) + unassignedHistorical.retention;
@@ -229,7 +245,7 @@ export function FinancialsModule() {
  type="button"
  variant="ghost"
  size="sm"
- onClick={() => setAnalyticsSubTab(tab)}
+ onClick={() => { setAnalyticsSubTab(tab); setShowFleetDetails(false); setShowDriverDetails(false); }}
  className={`rounded-none border-b-2 px-0 pb-2 text-sm font-bold tracking-wider ${
    analyticsSubTab === tab
      ? "border-accent text-accent"
@@ -267,100 +283,76 @@ export function FinancialsModule() {
  {isAnalyticsLoading && (<div className="absolute inset-0 liquid-glass z-10 flex items-center justify-center"><span className="font-bold text-accent animate-pulse">Aggregating Metrics...</span></div>)}
 
  {(analyticsSubTab === "Fleet Retention" || analyticsSubTab === "Variant Benchmarks") && (
- <Table className="text-xs text-right whitespace-nowrap">
-<TableHeader className="sticky top-0 z-10">
-<TableRow className="font-bold text-fg-secondary tracking-wider text-[10px]">
-<TableHead className="px-4 py-4 text-left">Truck No</TableHead>
-<TableHead className="px-4 py-4 text-left">Type</TableHead>
-<TableHead className="px-4 py-4 text-right">Trips</TableHead>
-<TableHead className="px-4 py-4 text-right">Tons (MT)</TableHead>
-<TableHead className="px-4 py-4 text-right">Inc. Trips</TableHead>
-<TableHead className="px-4 py-4 text-right">Freight (INR)</TableHead>
-<TableHead className="px-4 py-4 text-right">Diesel (L)</TableHead>
-<TableHead className="px-4 py-4 text-right">Diesel Cost (INR)</TableHead>
-<TableHead className="px-4 py-4 text-right">Net Ret (INR)</TableHead>
-<TableHead className="px-4 py-4 text-right">Ret %</TableHead>
-<TableHead className="px-4 py-4 text-right">Diesel %</TableHead>
-<TableHead className="px-4 py-4 text-right">KMPL</TableHead>
-</TableRow>
-</TableHeader>
-<TableBody>
-{sortedFleetData.map((row: any) => (
-<TableRow key={row.vehicle_number} className="hover:bg-surface-raised/50">
-<TableCell className="px-4 py-3 text-left font-semibold text-fg">{row.vehicle_number}</TableCell>
-<TableCell className="px-4 py-3 text-left font-bold text-fg-secondary">{row.truck_type}</TableCell>
-<TableCell className="px-4 py-3 text-right font-semibold text-fg">{row.total_trips}</TableCell>
-<TableCell className="px-4 py-3 text-right font-semibold text-fg-secondary">{formatDec(row.total_tons)}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-danger">{row.incomplete_trips}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-fg-secondary">{formatAmt(row.total_freight)}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-fg-secondary">{formatDec(row.total_diesel_litres)}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-danger">{formatAmt(row.total_diesel_cost)}</TableCell>
-<TableCell className="px-4 py-3 text-right font-semibold text-accent">{formatAmt(row.net_retention)}</TableCell>
-<TableCell className="px-4 py-3 text-right font-semibold text-success">{formatDec(row.retention_pct)}%</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-fg-secondary">{formatDec(row.diesel_pct)}%</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(row.kmpl)}</TableCell>
-</TableRow>
-))}
-{unassignedHistorical.tripCount > 0 && (
-<TableRow className="bg-warning/5 border-t-2 border-warning/30">
-<TableCell className="px-4 py-3 text-left font-bold text-warning">UNASSIGNED</TableCell>
-<TableCell className="px-4 py-3 text-left font-bold text-warning">HISTORICAL</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">{unassignedHistorical.tripCount}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.tons)}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">{unassignedHistorical.trips.filter((t: any) => t.trip_status !== 'COMPLETED').length}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatAmt(unassignedHistorical.freight)}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.dieselLitres)}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatAmt(unassignedHistorical.dieselCost)}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatAmt(unassignedHistorical.retention)}</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.retentionPct)}%</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.dieselPct)}%</TableCell>
-<TableCell className="px-4 py-3 text-right font-bold text-warning">—</TableCell>
-</TableRow>
-)}
-{sortedFleetData.length === 0 && !isAnalyticsLoading && (
-<TableRow>
-<TableCell colSpan={12} className="px-4 py-8 text-center text-fg-muted font-medium">
-No fleet data found for this period.
-</TableCell>
-</TableRow>
-)}
-</TableBody>
-</Table>
+ <>
+   <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-raised/40 p-4">
+     <div><h3 className="text-sm font-semibold text-fg">Vehicle performance details</h3><p className="mt-1 text-xs text-fg-muted">{filteredFleetData.length} vehicles match the analysis window and variant; results are sorted by the selected metric.</p></div>
+     <Button type="button" variant="glass" onClick={() => setShowFleetDetails(true)}>View Fleet Details</Button>
+   </div>
+   {showFleetDetails && (
+     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md" onClick={() => setShowFleetDetails(false)}>
+       <section role="dialog" aria-modal="true" aria-labelledby="fleet-details-title" className="liquid-glass w-full max-w-7xl max-h-[90vh] overflow-auto p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+         <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
+           <div><h3 id="fleet-details-title" className="text-sm font-semibold text-fg">Fleet Performance Details</h3><p className="mt-1 text-xs text-fg-muted">Vehicle-level performance for the selected analysis window.</p></div>
+           <Button type="button" variant="glass" onClick={() => setShowFleetDetails(false)}>Close</Button>
+         </div>
+         <Input value={fleetSearch} onChange={e => { setFleetSearch(e.target.value); fleetPagination.reset(); }} placeholder="Search vehicle or type" className="my-4 max-w-md" />
+         <div className="max-h-[62vh] overflow-auto rounded-xl border border-border">
+           <Table className="min-w-full text-xs text-right whitespace-nowrap">
+             <TableHeader className="sticky top-0 z-10"><TableRow className="font-bold text-fg-secondary tracking-wider text-[10px]">
+               <TableHead className="px-4 py-4 text-left">Truck No</TableHead><TableHead className="px-4 py-4 text-left">Type</TableHead><TableHead className="px-4 py-4 text-right">Trips</TableHead><TableHead className="px-4 py-4 text-right">Tons (MT)</TableHead><TableHead className="px-4 py-4 text-right">Inc. Trips</TableHead><TableHead className="px-4 py-4 text-right">Freight (INR)</TableHead><TableHead className="px-4 py-4 text-right">Diesel (L)</TableHead><TableHead className="px-4 py-4 text-right">Diesel Cost (INR)</TableHead><TableHead className="px-4 py-4 text-right">Net Ret (INR)</TableHead><TableHead className="px-4 py-4 text-right">Ret %</TableHead><TableHead className="px-4 py-4 text-right">Diesel %</TableHead><TableHead className="px-4 py-4 text-right">KMPL</TableHead>
+             </TableRow></TableHeader>
+             <TableBody>
+               {fleetPagination.paginatedItems.map((row: any) => (
+                 <TableRow key={row.vehicle_number} className="hover:bg-surface-raised/50">
+                   <TableCell className="px-4 py-3 text-left font-semibold text-fg">{row.vehicle_number}</TableCell><TableCell className="px-4 py-3 text-left font-bold text-fg-secondary">{row.truck_type}</TableCell><TableCell className="px-4 py-3 text-right font-semibold text-fg">{row.total_trips}</TableCell><TableCell className="px-4 py-3 text-right font-semibold text-fg-secondary">{formatDec(row.total_tons)}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-danger">{row.incomplete_trips}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-fg-secondary">{formatAmt(row.total_freight)}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-fg-secondary">{formatDec(row.total_diesel_litres)}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-danger">{formatAmt(row.total_diesel_cost)}</TableCell><TableCell className="px-4 py-3 text-right font-semibold text-accent">{formatAmt(row.net_retention)}</TableCell><TableCell className="px-4 py-3 text-right font-semibold text-success">{formatDec(row.retention_pct)}%</TableCell><TableCell className="px-4 py-3 text-right font-bold text-fg-secondary">{formatDec(row.diesel_pct)}%</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(row.kmpl)}</TableCell>
+                 </TableRow>
+               ))}
+               {unassignedHistorical.tripCount > 0 && (!fleetSearch.trim() || ["unassigned", "historical"].some(value => value.includes(fleetSearch.trim().toLowerCase()))) && (
+                 <TableRow className="bg-warning/5 border-t-2 border-warning/30">
+                   <TableCell className="px-4 py-3 text-left font-bold text-warning">UNASSIGNED</TableCell><TableCell className="px-4 py-3 text-left font-bold text-warning">HISTORICAL</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">{unassignedHistorical.tripCount}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.tons)}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">{unassignedHistorical.trips.filter((t: any) => t.trip_status !== 'COMPLETED').length}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">{formatAmt(unassignedHistorical.freight)}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.dieselLitres)}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">{formatAmt(unassignedHistorical.dieselCost)}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">{formatAmt(unassignedHistorical.retention)}</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.retentionPct)}%</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">{formatDec(unassignedHistorical.dieselPct)}%</TableCell><TableCell className="px-4 py-3 text-right font-bold text-warning">—</TableCell>
+                 </TableRow>
+               )}
+               {filteredFleetData.length === 0 && !(unassignedHistorical.tripCount > 0 && (!fleetSearch.trim() || ["unassigned", "historical"].some(value => value.includes(fleetSearch.trim().toLowerCase())))) && <TableRow><TableCell colSpan={12} className="px-4 py-8 text-center text-fg-muted font-medium">No fleet data found for this period.</TableCell></TableRow>}
+             </TableBody>
+           </Table>
+         </div>
+         <Pagination page={fleetPagination.page} totalPages={fleetPagination.totalPages} onPageChange={fleetPagination.setPage} />
+       </section>
+     </div>
+   )}
+ </>
  )}
 
  {analyticsSubTab === "Driver Scorecard" && (
- <Table className="min-w-full text-xs text-right whitespace-nowrap">
-<TableHeader className="sticky top-0 z-10">
-<TableRow className="font-bold text-fg-secondary tracking-wider text-[10px]">
-<TableHead className="px-6 py-4 text-left">Driver Code</TableHead>
-<TableHead className="px-6 py-4 text-left">Full Name</TableHead>
-<TableHead className="px-6 py-4 text-right">Total Trips</TableHead>
-<TableHead className="px-6 py-4 text-right">Total KM</TableHead>
-<TableHead className="px-6 py-4 text-right">Est KMPL</TableHead>
-<TableHead className="px-6 py-4 text-right">Generated Revenue (INR)</TableHead>
-</TableRow>
-</TableHeader>
-<TableBody>
-{driverScorecard.map((row: any) => (
-<TableRow key={row.driver_code} className="hover:bg-surface-raised/50">
-<TableCell className="px-6 py-4 text-left font-semibold text-fg">{row.driver_code}</TableCell>
-<TableCell className="px-6 py-4 text-left font-bold text-fg-secondary">{row.full_name}</TableCell>
-<TableCell className="px-6 py-4 text-right font-semibold text-accent">{row.trips}</TableCell>
-<TableCell className="px-6 py-4 text-right font-semibold text-fg-secondary">{formatDec(row.total_km)}</TableCell>
-<TableCell className="px-6 py-4 text-right font-semibold text-warning">{formatDec(row.kmpl)}</TableCell>
-<TableCell className="px-6 py-4 text-right font-semibold text-success">{formatAmt(row.revenue)}</TableCell>
-</TableRow>
-))}
-{driverScorecard.length === 0 && !isAnalyticsLoading && (
-<TableRow>
-<TableCell colSpan={6} className="px-6 py-8 text-center text-fg-muted font-medium">
-No driver activity logged in this period.
-</TableCell>
-</TableRow>
-)}
-</TableBody>
-</Table>
+ <div className="rounded-xl border border-border bg-surface-raised/40 p-4">
+   <div className="flex items-center justify-between gap-3">
+     <div><h3 className="text-sm font-semibold text-fg">Driver Performance Scorecard</h3><p className="mt-1 text-xs text-fg-muted">{driverScorecard.length} drivers with activity in this analysis window.</p></div>
+     <Button type="button" variant="glass" onClick={() => setShowDriverDetails(true)}>View Driver Scorecard</Button>
+   </div>
+   {showDriverDetails && (
+     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md" onClick={() => setShowDriverDetails(false)}>
+       <section role="dialog" aria-modal="true" aria-labelledby="driver-scorecard-title" className="liquid-glass w-full max-w-5xl max-h-[90vh] overflow-auto p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+         <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
+           <div><h3 id="driver-scorecard-title" className="text-sm font-semibold text-fg">Driver Performance Scorecard</h3><p className="mt-1 text-xs text-fg-muted">Trips, distance, estimated mileage, and generated revenue.</p></div>
+           <Button type="button" variant="glass" onClick={() => setShowDriverDetails(false)}>Close</Button>
+         </div>
+         <Input value={driverSearch} onChange={e => { setDriverSearch(e.target.value); driverPagination.reset(); }} placeholder="Search driver code or name" className="my-4 max-w-md" />
+         <div className="max-h-[62vh] overflow-auto rounded-xl border border-border">
+           <Table className="min-w-full text-xs text-right whitespace-nowrap">
+             <TableHeader className="sticky top-0 z-10"><TableRow className="font-bold text-fg-secondary tracking-wider text-[10px]"><TableHead className="px-6 py-4 text-left">Driver Code</TableHead><TableHead className="px-6 py-4 text-left">Full Name</TableHead><TableHead className="px-6 py-4 text-right">Total Trips</TableHead><TableHead className="px-6 py-4 text-right">Total KM</TableHead><TableHead className="px-6 py-4 text-right">Est KMPL</TableHead><TableHead className="px-6 py-4 text-right">Generated Revenue (INR)</TableHead></TableRow></TableHeader>
+             <TableBody>
+               {driverPagination.paginatedItems.map((row: any) => <TableRow key={row.driver_code} className="hover:bg-surface-raised/50"><TableCell className="px-6 py-4 text-left font-semibold text-fg">{row.driver_code}</TableCell><TableCell className="px-6 py-4 text-left font-bold text-fg-secondary">{row.full_name}</TableCell><TableCell className="px-6 py-4 text-right font-semibold text-accent">{row.trips}</TableCell><TableCell className="px-6 py-4 text-right font-semibold text-fg-secondary">{formatDec(row.total_km)}</TableCell><TableCell className="px-6 py-4 text-right font-semibold text-warning">{formatDec(row.kmpl)}</TableCell><TableCell className="px-6 py-4 text-right font-semibold text-success">{formatAmt(row.revenue)}</TableCell></TableRow>)}
+               {filteredDriverScorecard.length === 0 && !isAnalyticsLoading && <TableRow><TableCell colSpan={6} className="px-6 py-8 text-center text-fg-muted font-medium">No driver activity logged in this period.</TableCell></TableRow>}
+             </TableBody>
+           </Table>
+         </div>
+         <Pagination page={driverPagination.page} totalPages={driverPagination.totalPages} onPageChange={driverPagination.setPage} />
+       </section>
+     </div>
+   )}
+ </div>
  )}
+
  </div>
  </div>
  </div>

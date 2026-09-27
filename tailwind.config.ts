@@ -71,6 +71,11 @@ const config: Config = {
           soft: 'var(--info-soft)',
         },
 
+        pending: {
+          DEFAULT: 'var(--pending)',
+          soft: 'var(--pending-soft)',
+        },
+
         /* =====================================================
            SHADCN COMPATIBILITY
            ===================================================== */
