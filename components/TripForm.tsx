@@ -565,15 +565,34 @@ export function TripForm() {
     setLoading(true);
     let finalDriverId = driverId;
     if (driverMode === "manual") {
-      const { data: newDriver, error: driverErr } = await supabase.from("drivers").insert([{
-        full_name: newDriverName,
-        phone_number: newDriverPhone,
-        license_number: newDriverLicense,
-        license_expiry_date: newDriverExpiry,
-        is_active: true
-      }]).select().single();
+      const { data: newDriver, error: driverErr } = await supabase.rpc(
+        "create_dispatch_driver_atomic",
+        {
+          p_full_name: newDriverName,
+          p_phone_number: newDriverPhone,
+          p_license_number: newDriverLicense,
+          p_license_expiry_date: newDriverExpiry,
+          p_branch_id: 1,
+          p_pin: null
+        }
+      );
 
-      if (driverErr) { alert("Failed to register new driver. Error: " + driverErr.message); setLoading(false); setShowConfirm(false); return; }
+      if (driverErr) {
+        alert(
+          "Failed to register new driver. Error: " + driverErr.message
+        );
+        setLoading(false);
+        setShowConfirm(false);
+        return;
+      }
+
+      if (!newDriver) {
+        alert("Failed to register new driver. No driver record was returned.");
+        setLoading(false);
+        setShowConfirm(false);
+        return;
+      }
+
       finalDriverId = newDriver.driver_id;
     }
 

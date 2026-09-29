@@ -40,6 +40,7 @@ export function FleetTable() {
       const { data, error } = await supabase
         .from('vehicles')
         .select('*')
+        .eq('is_active', true)
         .order('vehicle_number', { ascending: true });
 
       if (!error && data) {

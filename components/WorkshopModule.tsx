@@ -114,7 +114,7 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
  };
 
  const fetchData = async () => {
- const { data: vData } = await supabase.from('vehicles').select('*').order('vehicle_number');
+ const { data: vData } = await supabase.from('vehicles').select('*').eq('is_active', true).order('vehicle_number');
  if (vData) setVehicles(vData);
 
  const { data: vendorData } = await supabase

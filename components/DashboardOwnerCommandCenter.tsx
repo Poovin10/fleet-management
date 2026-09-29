@@ -155,7 +155,7 @@ export function DashboardOwnerCommandCenter({
       setFinancial({ revenue: null, diesel: null, expenses: null, retention: null, dieselPercent: null, warning: null });
       const today = localDateKey(new Date());
       const [fleetRes, driversRes, podsRes, pendingRes, tripRowsRes, completedRes, todayTripsRes, fuelRowsRes, workshopRowsRes] = await Promise.all([
-        supabase.from("vehicles").select("vehicle_id, vehicle_number, carrying_capacity_tons, truck_type, current_status, status_remarks, status_updated_at, is_active, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date", { count: "exact" }).order("vehicle_number"),
+        supabase.from("vehicles").select("vehicle_id, vehicle_number, carrying_capacity_tons, truck_type, current_status, status_remarks, status_updated_at, is_active, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date", { count: "exact" }).eq("is_active", true).order("vehicle_number"),
         supabase.from("drivers").select("driver_id, driver_code, full_name, license_expiry_date", { count: "exact" }).eq("is_active", true),
         supabase.from("trips").select("trip_id", { count: "exact", head: true }).eq("pod_status", "PENDING_SUBMISSION"),
         supabase.from("driver_pending_entries").select("entry_id", { count: "exact", head: true }).eq("status", "PENDING"),

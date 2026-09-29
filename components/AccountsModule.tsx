@@ -38,7 +38,7 @@ export function AccountsModule() {
 
    const [driversRes, trucksRes] = await Promise.all([
      supabase.from("drivers").select("*").eq("is_active", true).order("full_name"),
-     supabase.from("vehicles").select("*").order("vehicle_number"),
+     supabase.from("vehicles").select("*").eq("is_active", true).order("vehicle_number"),
    ]);
 
    if (driversRes.data) setDrivers(driversRes.data);

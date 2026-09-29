@@ -37,6 +37,7 @@ export function SetupModule() {
   const [capacity, setCapacity] = useState("35");
   const [grossWeight, setGrossWeight] = useState("0");
   const [odometerWorking, setOdometerWorking] = useState(true);
+  const [truckActive, setTruckActive] = useState(true);
   const [fcExpiry, setFcExpiry] = useState("");
   const [insuranceExpiry, setInsuranceExpiry] = useState("");
   const [qtaxExpiry, setQtaxExpiry] = useState("");
@@ -45,6 +46,8 @@ export function SetupModule() {
   const [statePermitExpiry, setStatePermitExpiry] = useState("");
   const [tankCertExpiry, setTankCertExpiry] = useState("");
   const [editTruckId, setEditTruckId] = useState<string | null>(null);
+  const [truckSearch, setTruckSearch] = useState("");
+  const [truckPage, setTruckPage] = useState(1);
 
   // Form states for Drivers
   const [driverName, setDriverName] = useState("");
@@ -84,7 +87,7 @@ export function SetupModule() {
       supabase.from('drivers').select('*').order('full_name'),
       supabase.from('destinations_freight_master').select('*').order('destination_name'),
       supabase.from('driver_bata_master').select('*').order('destination_name'),
-      supabase.from('app_users').select('*').order('username'),
+      supabase.rpc('get_manageable_app_users'),
       supabase.from('vendors').select('*').order('vendor_name')
     ]);
 
@@ -107,6 +110,7 @@ export function SetupModule() {
     setCapacity("35");
     setGrossWeight("0");
     setOdometerWorking(true);
+    setTruckActive(true);
     setFcExpiry("");
     setInsuranceExpiry("");
     setQtaxExpiry("");
@@ -150,7 +154,7 @@ export function SetupModule() {
       const { error } = await supabase.rpc("update_master_vehicle", {
         p_vehicle_id: Number(editTruckId),
         ...commonPayload,
-        p_is_active: true,
+        p_is_active: truckActive,
         p_odometer_working: odometerWorking,
       });
 
@@ -441,6 +445,29 @@ export function SetupModule() {
     (v.phone_number || "").toLowerCase().includes(vendorSearch.toLowerCase())
   );
 
+  const filteredTrucks = trucks.filter((t) => {
+    const query = truckSearch.trim().toLowerCase();
+    if (!query) return true;
+
+    return (
+      (t.vehicle_number || "").toLowerCase().includes(query) ||
+      (t.truck_type || "").toLowerCase().includes(query) ||
+      (t.current_status || "").toLowerCase().includes(query) ||
+      (t.is_active ? "active" : "inactive").includes(query)
+    );
+  });
+
+  useEffect(() => {
+    setTruckPage(1);
+  }, [truckSearch]);
+
+  const truckPageSize = 10;
+  const truckTotalPages = Math.max(1, Math.ceil(filteredTrucks.length / truckPageSize));
+  const paginatedTrucks = filteredTrucks.slice(
+    (truckPage - 1) * truckPageSize,
+    truckPage * truckPageSize
+  );
+
   return (
     <div className="animate-tab-focus space-y-6">
       <div className="border-b border-border pb-4">
@@ -605,14 +632,25 @@ export function SetupModule() {
                     <Input type="date" value={tankCertExpiry} onChange={e => setTankCertExpiry(e.target.value)} className="input-glass" />
                   </div>
 
-                  <label className="flex items-center gap-2 text-xs text-fg-secondary">
-                    <input
-                      type="checkbox"
-                      checked={odometerWorking}
-                      onChange={e => setOdometerWorking(e.target.checked)}
-                    />
-                    Odometer working
-                  </label>
+                  <div className="flex flex-wrap items-center gap-5">
+                    <label className="flex items-center gap-2 text-xs text-fg-secondary">
+                      <input
+                        type="checkbox"
+                        checked={truckActive}
+                        onChange={e => setTruckActive(e.target.checked)}
+                      />
+                      Active
+                    </label>
+
+                    <label className="flex items-center gap-2 text-xs text-fg-secondary">
+                      <input
+                        type="checkbox"
+                        checked={odometerWorking}
+                        onChange={e => setOdometerWorking(e.target.checked)}
+                      />
+                      Odometer working
+                    </label>
+                  </div>
 
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="glass" onClick={() => {
@@ -629,26 +667,47 @@ export function SetupModule() {
               )}
 
               {activeSubTab === "Trucks" && masterOverlay === "list" && (
-                <div className="overflow-x-auto">
-                  <Table className="min-w-full text-xs">
+                <div className="space-y-3">
+                  <Input
+                    type="search"
+                    value={truckSearch}
+                    onChange={e => setTruckSearch(e.target.value)}
+                    placeholder="Search vehicle, type, status..."
+                    className="input-glass"
+                  />
+
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-full text-xs">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Vehicle</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Capacity</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Active</TableHead>
                         <TableHead>FC</TableHead>
                         <TableHead>Insurance</TableHead>
                         <TableHead className="text-right">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {trucks.map(t => (
+                      {paginatedTrucks.map(t => (
                         <TableRow key={t.vehicle_id}>
                           <TableCell className="font-bold">{t.vehicle_number}</TableCell>
                           <TableCell>{t.truck_type}</TableCell>
                           <TableCell>{t.carrying_capacity_tons} MT</TableCell>
                           <TableCell>{t.current_status || "-"}</TableCell>
+                          <TableCell>
+                            <span
+                              className={
+                                t.is_active
+                                  ? "inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-400/20"
+                                  : "inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold text-red-300 bg-red-500/10 border border-red-400/20"
+                              }
+                            >
+                              {t.is_active ? "Active" : "Inactive"}
+                            </span>
+                          </TableCell>
                           <TableCell>{t.fc_expiry_date || "-"}</TableCell>
                           <TableCell>{t.insurance_expiry_date || "-"}</TableCell>
                           <TableCell className="text-right">
@@ -662,6 +721,7 @@ export function SetupModule() {
                                 setCapacity(String(t.carrying_capacity_tons ?? ""));
                                 setGrossWeight(String(t.gross_vehicle_weight_tons ?? "0"));
                                 setOdometerWorking(t.odometer_working !== false);
+                                setTruckActive(t.is_active !== false);
                                 setFcExpiry(t.fc_expiry_date || "");
                                 setInsuranceExpiry(t.insurance_expiry_date || "");
                                 setQtaxExpiry(t.qtax_expiry_date || "");
@@ -680,6 +740,43 @@ export function SetupModule() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
+
+                  {filteredTrucks.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-fg-secondary">
+                      <span>
+                        Showing {((truckPage - 1) * truckPageSize) + 1}–{Math.min(truckPage * truckPageSize, filteredTrucks.length)} of {filteredTrucks.length}
+                      </span>
+
+                      {truckTotalPages > 1 && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="glass"
+                            disabled={truckPage === 1}
+                            onClick={() => setTruckPage(page => Math.max(1, page - 1))}
+                          >
+                            Previous
+                          </Button>
+
+                          <span className="min-w-[90px] text-center">
+                            Page {truckPage} of {truckTotalPages}
+                          </span>
+
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="glass"
+                            disabled={truckPage === truckTotalPages}
+                            onClick={() => setTruckPage(page => Math.min(truckTotalPages, page + 1))}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

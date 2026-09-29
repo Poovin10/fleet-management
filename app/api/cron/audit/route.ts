@@ -22,20 +22,17 @@ async function hasAuthorizedStaffSession() {
 
   if (userError || !user?.email) return false;
 
-  const username = user.email.split('@')[0];
-  const { data: appUser, error: roleError } = await supabase
-    .from('app_users')
-    .select('role')
-    .eq('username', username)
-    .maybeSingle();
+  const { data: role, error: roleError } =
+    await supabase.rpc('get_current_user_role');
 
   if (roleError) {
     console.error('Cron audit staff authorization lookup failed.');
     return false;
   }
 
-  const role = String(appUser?.role || '').toUpperCase();
-  return role === 'ADMIN' || role === 'SUPERADMIN';
+  const normalizedRole = String(role || '').toUpperCase();
+
+  return normalizedRole === 'ADMIN' || normalizedRole === 'SUPERADMIN';
 }
 
 export async function GET(req: Request) {

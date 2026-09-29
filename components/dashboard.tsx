@@ -85,10 +85,12 @@ export default function Dashboard() {
       if (user && !error) {
         setIsAuthenticated(true);
         setUserEmail(user.email || "");
-        const sessionUsername = user.email?.split('@')[0];
-        if (sessionUsername) {
-          const { data: userData } = await supabase.from('app_users').select('role').eq('username', sessionUsername).maybeSingle();
-          if (userData && userData.role) { setUserRole(userData.role.toUpperCase()); } else { setUserRole("VIEWER"); }
+        const { data: userRoleData, error: userRoleError } = await supabase.rpc("get_current_user_role");
+
+        if (!userRoleError && userRoleData) {
+          setUserRole(String(userRoleData).toUpperCase());
+        } else {
+          setUserRole("VIEWER");
         }
         setIsAuthLoading(false);
       } else {
@@ -107,6 +109,7 @@ export default function Dashboard() {
     if (!supabase) return;
     const { data: vehiclesData } = await supabase.from('vehicles')
       .select('vehicle_id, vehicle_number, carrying_capacity_tons, current_status')
+      .eq('is_active', true)
       .order('vehicle_number');
     if (vehiclesData) setLiveVehicles(vehiclesData);
   };
