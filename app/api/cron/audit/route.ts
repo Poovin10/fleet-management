@@ -79,7 +79,7 @@ export async function GET(req: Request) {
     const [vehiclesRes, tripsRes, pendingPodsRes, fuelRes, repairsRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('is_active', true),
       supabase.from('trips').select('*, vehicles(vehicle_number), drivers(full_name)').order('trip_id', { ascending: false }).limit(60),
-      supabase.from('trips').select('trip_id, trip_number, trip_start_date, freight_revenue').eq('pod_status', 'PENDING_SUBMISSION').order('trip_start_date', { ascending: true }),
+      supabase.from('trips').select('trip_id, trip_number, trip_start_date, freight_revenue').eq('pod_status', 'PENDING_SUBMISSION').eq('trip_status', 'WAITING_FOR_LOAD').order('trip_start_date', { ascending: true }),
       supabase.from('diesel_fuel_logs').select('*, vehicles(vehicle_number)').order('fuel_date', { ascending: false }).limit(60),
       supabase.from('workshop_repairs').select('*, vehicles(vehicle_number)').order('repair_date', { ascending: false }).limit(30)
     ]);

@@ -157,7 +157,7 @@ export function DashboardOwnerCommandCenter({
       const [fleetRes, driversRes, podsRes, pendingRes, tripRowsRes, completedRes, todayTripsRes, fuelRowsRes, workshopRowsRes] = await Promise.all([
         supabase.from("vehicles").select("vehicle_id, vehicle_number, carrying_capacity_tons, truck_type, current_status, status_remarks, status_updated_at, is_active, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date", { count: "exact" }).eq("is_active", true).order("vehicle_number"),
         supabase.from("drivers").select("driver_id, driver_code, full_name, license_expiry_date", { count: "exact" }).eq("is_active", true),
-        supabase.from("trips").select("trip_id", { count: "exact", head: true }).eq("pod_status", "PENDING_SUBMISSION"),
+        supabase.from("trips").select("trip_id", { count: "exact", head: true }).eq("pod_status", "PENDING_SUBMISSION").eq("trip_status", "WAITING_FOR_LOAD"),
         supabase.from("driver_pending_entries").select("entry_id", { count: "exact", head: true }).eq("status", "PENDING"),
         supabase.from("trips").select("freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance", { count: "exact" }).gte("trip_start_date", range.from).lte("trip_start_date", range.to),
         supabase.from("trips").select("trip_id", { count: "exact", head: true }).gte("trip_start_date", range.from).lte("trip_start_date", range.to).eq("trip_status", "COMPLETED"),

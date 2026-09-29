@@ -99,6 +99,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
      `)
      .eq("trip_number", searchLr)
      .eq("pod_status", "PENDING_SUBMISSION")
+     .eq("trip_status", "WAITING_FOR_LOAD")
      .maybeSingle();
 
    if (error) throw error;
@@ -150,7 +151,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  trip_status, pod_status, pod_number, pod_received_date,
  vehicles ( vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date ),
  drivers ( full_name, phone_number, driver_code, license_expiry_date )
- `).eq("pod_status", "PENDING_SUBMISSION").order("trip_start_date", { ascending: true }),
+ `).eq("pod_status", "PENDING_SUBMISSION").eq("trip_status", "WAITING_FOR_LOAD").order("trip_start_date", { ascending: true }),
  supabase.from("diesel_fuel_logs").select("diesel_rate_per_litre").order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false }).limit(1),
  supabase.from("pending_scans").select("*").eq("document_type", "POD_CLOSURE").eq("status", "PENDING").order("created_at", { ascending: false })
  ]);
