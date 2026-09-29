@@ -277,15 +277,32 @@ setLastOdometer("");
  await fetchDriverCurrentMonthReports();
  };
 
- const handleResetDriver = () => {
- if (confirm("Sign out and switch driver?")) {
+ const handleResetDriver = async () => {
+ if (!confirm("Sign out and switch driver?")) return;
+
+ const sessionToken = driverSessionToken;
+
+ if (supabase && sessionToken) {
+ const { error } = await supabase.rpc("revoke_driver_session", {
+   p_session_token: sessionToken
+ });
+
+ if (error) {
+   console.error("Failed to revoke driver session:", error);
+ }
+ }
+
+ setDriverSessionToken("");
  setIsDriverLocked(false);
  setSavedDriverCode("");
  setDrivers([]);
+ setActiveTrips([]);
+ setPendingRequests([]);
+ setCurrentMonthTrips([]);
+ setCurrentMonthAdvances([]);
  setSelectedTruckId("");
  setDriverCode("");
  setDriverPin("");
- }
  };
 
  const handleDriverSubmit = async (e: React.FormEvent) => {
