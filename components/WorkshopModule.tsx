@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { AlertModal } from "@/components/AlertModal";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { TableToolbar } from "@/components/ui/TableToolbar";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,43 @@ import { usePagination } from "@/components/ui/usePagination";
 
 export function WorkshopModule() {
  const supabase = createClient();
+ const [showWorkshopWorkspace, setShowWorkshopWorkspace] = useState(false);
  const [wTab, setWTab] = useState("Tyre Management");
  const [vehicles, setVehicles] = useState<any[]>([]);
  const [vendors, setVendors] = useState<any[]>([]);
  const [isProcessing, setIsProcessing] = useState(false);
+
+ const [alertConfig, setAlertConfig] = useState<{
+  isOpen: boolean;
+  title: string;
+  message: string;
+  type: "success" | "error" | "info";
+ }>({
+  isOpen: false,
+  title: "",
+  message: "",
+  type: "info",
+ });
+
+ const showAlert = (
+  title: string,
+  message: string,
+  type: "success" | "error" | "info" = "info",
+ ) => {
+  setAlertConfig({
+   isOpen: true,
+   title,
+   message,
+   type,
+  });
+ };
+
+ const closeAlert = () => {
+  setAlertConfig((current) => ({
+   ...current,
+   isOpen: false,
+  }));
+ };
 
  // Modals
  const [modalConfig, setModalConfig] = useState({ isOpen: false, title: "", message: "", isDanger: false, confirmText: "Confirm", action: async () => {} });
@@ -259,13 +293,20 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
  const handleRegisterTyre = (e: React.FormEvent) => {
  e.preventDefault();
 
- if (!serialNo.trim()) return alert("Serial Number is required.");
- if (!purchaseVendorId) return alert("Tyre purchase vendor is required.");
+ if (!serialNo.trim()) {
+  showAlert("Missing Serial Number", "Serial Number is required.", "error");
+  return;
+ }
+ if (!purchaseVendorId) {
+  showAlert("Missing Purchase Vendor", "Tyre purchase vendor is required.", "error");
+  return;
+ }
 
  const unitAmount = Number(purchaseUnitAmount) || 0;
 
  if (unitAmount < 0) {
-   return alert("Purchase amount cannot be negative.");
+   showAlert("Invalid Purchase Amount", "Purchase amount cannot be negative.", "error");
+   return;
  }
 
  const selectedVehicle =
@@ -275,11 +316,21 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
 
  if (regMode === "MOUNTED") {
    if (!selectedVehicle || !mountOdo) {
-     return alert("Truck and mounting odometer are required.");
+     showAlert(
+      "Missing Mounting Details",
+      "Truck and mounting odometer are required.",
+      "error",
+     );
+     return;
    }
 
    if (!getWheelPositions(selectedVehicle).includes(position)) {
-     return alert("Selected wheel position is not valid for this truck.");
+     showAlert(
+      "Invalid Wheel Position",
+      "Selected wheel position is not valid for this truck.",
+      "error",
+     );
+     return;
    }
  }
 
@@ -320,11 +371,20 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
        });
 
        if (error) {
-         alert("Failed to register tyre: " + error.message);
+         closeModal();
+         showAlert(
+          "Tyre Registration Failed",
+          error.message,
+          "error",
+         );
          return;
        }
 
-       alert("Tyre registered successfully.");
+       showAlert(
+        "Tyre Registered",
+        "Tyre registered successfully.",
+        "success",
+       );
 
        setSerialNo("");
        setBrand("");
@@ -333,7 +393,12 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
        fetchData();
        closeModal();
      } catch (err: any) {
-       alert("Database Error: " + err.message);
+       closeModal();
+       showAlert(
+        "Tyre Registration Error",
+        err?.message || "An unexpected database error occurred.",
+        "error",
+       );
      } finally {
        setIsProcessing(false);
      }
@@ -547,7 +612,11 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
        throw new Error(error.message);
      }
 
-     alert("Tyre lifecycle action completed successfully.");
+     showAlert(
+     "Tyre Lifecycle Updated",
+     "Tyre lifecycle action completed successfully.",
+     "success",
+    );
 
      setActionModal({ isOpen: false, tyre: null, mode: "" });
      setActionOdo("");
@@ -559,7 +628,11 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
      setActionBuyerVendorId("");
      fetchData();
    } catch (err: any) {
-     alert("Database Error: " + err.message);
+     showAlert(
+      "Tyre Lifecycle Error",
+      err?.message || "An unexpected database error occurred.",
+      "error",
+     );
    } finally {
      setIsProcessing(false);
    }
@@ -567,21 +640,69 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
 
  const handleSaveBill = (e: React.FormEvent) => {
  e.preventDefault();
- if (!wsTruckId || !vendor.trim() || Number(amount) <= 0) return alert("Invalid inputs.");
- triggerModal("Record Service Bill", `Log ${amount} expense from ${vendor}?`, false, "Save Bill", async () => {
- setIsProcessing(true);
-   const { error: billError } = await supabase.rpc("create_workshop_bill_atomic", {
-   p_bill_date: billDate,
-   p_vehicle_id: Number(wsTruckId),
-   p_vendor_name: vendor.trim(),
-   p_invoice_number: null,
-   p_spare_parts_details: description.trim() || "Workshop Service",
-   p_total_bill_amount: Number(amount),
- });
- if (billError) alert("Failed to save bill: " + billError.message);
- else { alert("Service bill recorded successfully!"); setVendor(""); setDescription(""); setAmount(""); fetchData(); }
- setIsProcessing(false); closeModal();
- });
+
+ if (!wsTruckId || !vendor.trim() || Number(amount) <= 0) {
+  showAlert(
+   "Invalid Service Bill",
+   "Please select a truck, enter a vendor, and provide a valid amount.",
+   "error",
+  );
+  return;
+ }
+
+ triggerModal(
+  "Record Service Bill",
+  `Log ₹${Number(amount).toFixed(2)} expense from ${vendor.trim()}?`,
+  false,
+  "Save Bill",
+  async () => {
+   setIsProcessing(true);
+
+   try {
+    const { error: billError } = await supabase.rpc("create_workshop_bill_atomic", {
+     p_bill_date: billDate,
+     p_vehicle_id: Number(wsTruckId),
+     p_vendor_name: vendor.trim(),
+     p_invoice_number: null,
+     p_spare_parts_details: description.trim() || "Workshop Service",
+     p_total_bill_amount: Number(amount),
+    });
+
+    if (billError) {
+     closeModal();
+     showAlert(
+      "Service Bill Failed",
+      billError.message,
+      "error",
+     );
+     return;
+    }
+
+    setVendor("");
+    setDescription("");
+    setAmount("");
+    closeModal();
+
+    showAlert(
+     "Service Bill Recorded",
+     "Service bill recorded successfully.",
+     "success",
+    );
+
+    await fetchData();
+   } catch (err: any) {
+    closeModal();
+    showAlert(
+     "Service Bill Error",
+     err?.message ||
+      "An unexpected error occurred while recording the service bill.",
+     "error",
+    );
+   } finally {
+    setIsProcessing(false);
+   }
+  },
+ );
  };
 
  // --- FILTER & EXPORT LOGIC ---
@@ -697,8 +818,50 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
  );
 
  return (
+ <div className="w-full">
+ {!showWorkshopWorkspace ? (
+   <div className="liquid-glass w-full rounded-2xl p-5 sm:p-6">
+     <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+       <div>
+         <p className="kss-eyebrow text-accent">Fleet · Workshop</p>
+         <h2 className="mt-1 text-xl font-semibold text-fg">
+           Workshop & Tyre Management
+         </h2>
+         <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
+           Manage tyre lifecycles, retreading, spare parts, workshop service
+           bills, stock movements, and maintenance records.
+         </p>
+       </div>
+
+       <Button
+         type="button"
+         size="lg"
+         className="min-h-11 shrink-0 sm:min-w-48"
+         onClick={() => setShowWorkshopWorkspace(true)}
+       >
+         Open Workshop
+       </Button>
+     </div>
+   </div>
+ ) : (
  <div className="animate-tab-focus space-y-6 animate-in fade-in duration-300 text-fg">
- <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
+ <AlertModal
+  isOpen={alertConfig.isOpen}
+  title={alertConfig.title}
+  message={alertConfig.message}
+  type={alertConfig.type}
+  onClose={closeAlert}
+ />
+ <ConfirmModal
+  isOpen={modalConfig.isOpen}
+  title={modalConfig.title}
+  message={modalConfig.message}
+  isDanger={modalConfig.isDanger}
+  confirmText={modalConfig.confirmText}
+  onConfirm={modalConfig.action}
+  onCancel={closeModal}
+  isProcessing={isProcessing}
+ />
 
  {historyOpen && (
   <Dialog
@@ -1292,57 +1455,94 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
        const reason = inventoryIssueReason.trim();
 
        if (!Number.isInteger(itemId) || itemId <= 0) {
-        alert("Please select a valid spare part.");
+        showAlert(
+         "Invalid Spare Part",
+         "Please select a valid spare part.",
+         "error",
+        );
         return;
        }
 
        if (!Number.isFinite(quantity) || quantity <= 0) {
-        alert("Issue quantity must be greater than zero.");
+        showAlert(
+         "Invalid Issue Quantity",
+         "Issue quantity must be greater than zero.",
+         "error",
+        );
         return;
        }
 
        if (vehicleId !== null && (!Number.isInteger(vehicleId) || vehicleId <= 0)) {
-        alert("Please select a valid vehicle.");
+        showAlert(
+         "Invalid Vehicle",
+         "Please select a valid vehicle.",
+         "error",
+        );
         return;
        }
 
        if (!reason) {
-        alert("Issue reason is required.");
+        showAlert(
+         "Missing Issue Reason",
+         "Issue reason is required.",
+         "error",
+        );
         return;
        }
 
-       if (
-        !window.confirm(
-         `Issue ${quantity} unit(s) of the selected spare part from stock?`
-        )
-       ) {
-        return;
-       }
+       triggerModal(
+        "Issue Spare Part",
+        `Issue ${quantity} unit(s) of the selected spare part from stock?`,
+        false,
+        "Issue Stock",
+        async () => {
+         setIsProcessing(true);
 
-       setIsProcessing(true);
+         try {
+          const { error } = await supabase.rpc("issue_inventory_stock", {
+           p_item_id: itemId,
+           p_quantity: quantity,
+           p_vehicle_id: vehicleId,
+           p_reason: reason,
+          });
 
-       const { error } = await supabase.rpc("issue_inventory_stock", {
-        p_item_id: itemId,
-        p_quantity: quantity,
-        p_vehicle_id: vehicleId,
-        p_reason: reason,
-       });
+          if (error) {
+           closeModal();
+           showAlert(
+            "Stock Issue Failed",
+            error.message,
+            "error",
+           );
+           return;
+          }
 
-       if (error) {
-        alert("Failed to issue stock: " + error.message);
-       } else {
-        alert("Stock issued successfully.");
+          setInventoryIssueItemId("");
+          setInventoryIssueQuantity("");
+          setInventoryIssueVehicleId("");
+          setInventoryIssueReason("");
+          setShowInventoryIssue(false);
 
-        setInventoryIssueItemId("");
-        setInventoryIssueQuantity("");
-        setInventoryIssueVehicleId("");
-        setInventoryIssueReason("");
-        setShowInventoryIssue(false);
+          closeModal();
+          showAlert(
+           "Stock Issued",
+           "Stock issued successfully.",
+           "success",
+          );
 
-        await fetchData();
-       }
-
-       setIsProcessing(false);
+          await fetchData();
+         } catch (err: any) {
+          closeModal();
+          showAlert(
+           "Stock Issue Error",
+           err?.message ||
+            "An unexpected error occurred while issuing stock.",
+           "error",
+          );
+         } finally {
+          setIsProcessing(false);
+         }
+        },
+       );
       }}
      >
       <div className="space-y-1.5">
@@ -1730,29 +1930,49 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
        e.preventDefault();
 
        if (!inventoryPurchaseDate) {
-        alert("Purchase date is required.");
+        showAlert(
+         "Missing Purchase Date",
+         "Purchase date is required.",
+         "error",
+        );
         return;
        }
 
        const vendorId = Number(inventoryPurchaseVendorId);
 
        if (!Number.isInteger(vendorId) || vendorId <= 0) {
-        alert("Please select a valid vendor.");
+        showAlert(
+         "Invalid Vendor",
+         "Please select a valid vendor.",
+         "error",
+        );
         return;
        }
 
        if (!["PAID", "CREDIT"].includes(inventoryPurchasePaymentStatus)) {
-        alert("Invalid payment status.");
+        showAlert(
+         "Invalid Payment Status",
+         "Invalid payment status.",
+         "error",
+        );
         return;
        }
 
        if (inventoryPurchaseLines.length === 0) {
-        alert("Add at least one purchase item.");
+        showAlert(
+         "No Purchase Items",
+         "Add at least one purchase item.",
+         "error",
+        );
         return;
        }
 
        const seenItems = new Set<number>();
-       const purchaseItems = [];
+       const purchaseItems: Array<{
+        item_id: number;
+        quantity: number;
+        unit_amount: number;
+       }> = [];
 
        for (const line of inventoryPurchaseLines) {
         const itemId = Number(line.itemId);
@@ -1760,22 +1980,38 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
         const unitAmount = Number(line.unitAmount);
 
         if (!Number.isInteger(itemId) || itemId <= 0) {
-         alert("Every purchase line must have a valid item.");
+         showAlert(
+          "Invalid Purchase Item",
+          "Every purchase line must have a valid item.",
+          "error",
+         );
          return;
         }
 
         if (seenItems.has(itemId)) {
-         alert("The same item cannot be entered more than once in the same purchase.");
+         showAlert(
+          "Duplicate Purchase Item",
+          "The same item cannot be entered more than once in the same purchase.",
+          "error",
+         );
          return;
         }
 
         if (!Number.isFinite(quantity) || quantity <= 0) {
-         alert("Every purchase line must have a quantity greater than zero.");
+         showAlert(
+          "Invalid Purchase Quantity",
+          "Every purchase line must have a quantity greater than zero.",
+          "error",
+         );
          return;
         }
 
         if (!Number.isFinite(unitAmount) || unitAmount < 0) {
-         alert("Unit amount cannot be negative.");
+         showAlert(
+          "Invalid Unit Amount",
+          "Unit amount cannot be negative.",
+          "error",
+         );
          return;
         }
 
@@ -1791,12 +2027,20 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
        const taxAmount = Number(inventoryPurchaseTax) || 0;
 
        if (!Number.isFinite(taxAmount) || taxAmount < 0) {
-        alert("Tax amount cannot be negative.");
+        showAlert(
+         "Invalid Tax Amount",
+         "Tax amount cannot be negative.",
+         "error",
+        );
         return;
        }
 
        if (inventoryPurchaseSubtotal <= 0) {
-        alert("Purchase subtotal must be greater than zero.");
+        showAlert(
+         "Invalid Purchase Subtotal",
+         "Purchase subtotal must be greater than zero.",
+         "error",
+        );
         return;
        }
 
@@ -1805,53 +2049,78 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
        );
 
        if (calculatedTotal <= 0) {
-        alert("Purchase total must be greater than zero.");
+        showAlert(
+         "Invalid Purchase Total",
+         "Purchase total must be greater than zero.",
+         "error",
+        );
         return;
        }
 
-       if (
-        !window.confirm(
-         `Save purchase of ₹${calculatedTotal.toFixed(2)} and receive the stock into inventory?`
-        )
-       ) {
-        return;
-       }
+       triggerModal(
+        "Receive Spare Parts",
+        `Save purchase of ₹${calculatedTotal.toFixed(2)} and receive the stock into inventory?`,
+        false,
+        "Save Purchase",
+        async () => {
+         setIsProcessing(true);
 
-       setIsProcessing(true);
+         try {
+          const { error } = await supabase.rpc("create_inventory_purchase_atomic", {
+           p_bill_date: inventoryPurchaseDate,
+           p_invoice_date: inventoryPurchaseInvoiceDate || undefined,
+           p_invoice_number: inventoryPurchaseInvoiceNumber.trim() || undefined,
+           p_vendor_id: vendorId,
+           p_payment_status: inventoryPurchasePaymentStatus,
+           p_remarks: inventoryPurchaseRemarks.trim() || undefined,
+           p_subtotal_amount: Number(inventoryPurchaseSubtotal.toFixed(2)),
+           p_tax_amount: Number(taxAmount.toFixed(2)),
+           p_total_bill_amount: calculatedTotal,
+           p_items: purchaseItems,
+          });
 
-       const { error } = await supabase.rpc("create_inventory_purchase_atomic", {
-        p_bill_date: inventoryPurchaseDate,
-        p_invoice_date: inventoryPurchaseInvoiceDate || undefined,
-        p_invoice_number: inventoryPurchaseInvoiceNumber.trim() || undefined,
-        p_vendor_id: vendorId,
-        p_payment_status: inventoryPurchasePaymentStatus,
-        p_remarks: inventoryPurchaseRemarks.trim() || undefined,
-        p_subtotal_amount: Number(inventoryPurchaseSubtotal.toFixed(2)),
-        p_tax_amount: Number(taxAmount.toFixed(2)),
-        p_total_bill_amount: calculatedTotal,
-        p_items: purchaseItems,
-       });
+          if (error) {
+           closeModal();
+           showAlert(
+            "Purchase Failed",
+            error.message,
+            "error",
+           );
+           return;
+          }
 
-       if (error) {
-        alert("Failed to save purchase: " + error.message);
-       } else {
-        alert("Purchase recorded and stock received successfully.");
+          setInventoryPurchaseInvoiceDate("");
+          setInventoryPurchaseInvoiceNumber("");
+          setInventoryPurchaseVendorId("");
+          setInventoryPurchasePaymentStatus("PAID");
+          setInventoryPurchaseTax(0);
+          setInventoryPurchaseRemarks("");
+          setInventoryPurchaseLines([
+           { itemId: "", quantity: "", unitAmount: "" },
+          ]);
 
-        setInventoryPurchaseInvoiceDate("");
-        setInventoryPurchaseInvoiceNumber("");
-        setInventoryPurchaseVendorId("");
-        setInventoryPurchasePaymentStatus("PAID");
-        setInventoryPurchaseTax(0);
-        setInventoryPurchaseRemarks("");
-        setInventoryPurchaseLines([
-         { itemId: "", quantity: "", unitAmount: "" },
-        ]);
+          setShowInventoryPurchase(false);
+          closeModal();
+          showAlert(
+           "Purchase Recorded",
+           "Purchase recorded and stock received successfully.",
+           "success",
+          );
 
-        setShowInventoryPurchase(false);
-        await fetchData();
-       }
-
-       setIsProcessing(false);
+          await fetchData();
+         } catch (err: any) {
+          closeModal();
+          showAlert(
+           "Purchase Error",
+           err?.message ||
+            "An unexpected error occurred while saving the purchase.",
+           "error",
+          );
+         } finally {
+          setIsProcessing(false);
+         }
+        },
+       );
       }}
      >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -2153,17 +2422,29 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
        const minimumStock = Number(inventoryMinimumStock);
 
        if (!code || !name) {
-        alert("Item code and item name are required.");
+        showAlert(
+         "Missing Item Details",
+         "Item code and item name are required.",
+         "error",
+        );
         return;
        }
 
        if (!inventoryUnit) {
-        alert("Unit is required.");
+        showAlert(
+         "Missing Unit",
+         "Unit is required.",
+         "error",
+        );
         return;
        }
 
        if (!Number.isFinite(minimumStock) || minimumStock < 0) {
-        alert("Minimum stock must be zero or greater.");
+        showAlert(
+         "Invalid Minimum Stock",
+         "Minimum stock must be zero or greater.",
+         "error",
+        );
         return;
        }
 
@@ -2178,9 +2459,19 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
        });
 
        if (error) {
-        alert("Failed to create item: " + error.message);
+        closeModal();
+        showAlert(
+         "Spare Part Creation Failed",
+         error.message,
+         "error",
+        );
        } else {
-        alert("Spare part added successfully.");
+        closeModal();
+        showAlert(
+         "Spare Part Added",
+         "Spare part added successfully.",
+         "success",
+        );
         setInventoryItemCode("");
         setInventoryItemName("");
         setInventoryCategory("");
@@ -2607,6 +2898,8 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
    </DialogBody>
   </DialogContent>
  </Dialog>
+ </div>
+ )}
  </div>
  );
 }

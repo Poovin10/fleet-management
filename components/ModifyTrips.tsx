@@ -19,7 +19,7 @@ export function ModifyTrips() {
  const [tripsTotalItems, setTripsTotalItems] = useState(0);
  const [isSearchingTrips, setIsSearchingTrips] = useState(false);
  const [showTripPicker, setShowTripPicker] = useState(false);
- const [showModifyModal, setShowModifyModal] = useState(true);
+ const [showModifyModal, setShowModifyModal] = useState(false);
  const [editTripId, setEditTripId] = useState<number | null>(null);
  const [currentTrip, setCurrentTrip] = useState<any>(null);
  const [isLrEditing, setIsLrEditing] = useState(false);
@@ -511,6 +511,30 @@ export function ModifyTrips() {
 
  return (
    <div className="min-h-full animate-in fade-in duration-300">
+     {!showModifyModal ? (
+       <div className="liquid-glass w-full rounded-2xl p-5 sm:p-6">
+         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+           <div>
+             <p className="kss-eyebrow text-accent">Operations · Trip Control</p>
+             <h2 className="mt-1 text-xl font-semibold text-fg">Modify Trip</h2>
+             <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
+               Search an existing LR and make authorised operational corrections
+               without exposing the edit workspace until requested.
+             </p>
+           </div>
+
+           <Button
+             type="button"
+             size="lg"
+             className="min-h-11 shrink-0 sm:min-w-48"
+             onClick={() => setShowModifyModal(true)}
+           >
+             Open Modify Trip
+           </Button>
+         </div>
+       </div>
+     ) : null}
+
      <ConfirmModal
        isOpen={modalConfig.isOpen}
        title={modalConfig.title}

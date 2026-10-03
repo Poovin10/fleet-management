@@ -9,9 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
-export function FuelAdvanceModule() {
+type FuelAdvanceModuleProps = {
+  initialSection?: "Issue Diesel" | "AdBlue";
+};
+
+export function FuelAdvanceModule({
+  initialSection = "Issue Diesel",
+}: FuelAdvanceModuleProps) {
  const supabase = createClient();
- const [faNav, setFaNav] = useState(" Issue Diesel");
+ const [showFuelWorkspace, setShowFuelWorkspace] = useState(false);
+ const [faNav, setFaNav] = useState(
+   initialSection === "AdBlue" ? " AdBlue" : " Issue Diesel"
+ );
  const [isLoading, setIsLoading] = useState(true);
  const [isProcessing, setIsProcessing] = useState(false);
 
@@ -569,6 +578,32 @@ export function FuelAdvanceModule() {
  );
 
  return (
+ <div className="w-full">
+ {!showFuelWorkspace ? (
+   <div className="liquid-glass w-full rounded-2xl p-5 sm:p-6">
+     <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+       <div>
+         <p className="kss-eyebrow text-accent">Fleet · Fuel & Fluids</p>
+         <h2 className="mt-1 text-xl font-semibold text-fg">
+           {initialSection === "AdBlue" ? "AdBlue Management" : "Fuel Management"}
+         </h2>
+         <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
+           Record diesel and AdBlue entries, review existing records, and manage
+           validated vehicle fluid transactions.
+         </p>
+       </div>
+
+       <Button
+         type="button"
+         size="lg"
+         className="min-h-11 shrink-0 sm:min-w-48"
+         onClick={() => setShowFuelWorkspace(true)}
+       >
+         Open {initialSection === "AdBlue" ? "AdBlue" : "Fuel"}
+       </Button>
+     </div>
+   </div>
+ ) : (
  <div className="space-y-6 animate-in fade-in duration-300">
  <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} isDanger={modalConfig.isDanger} confirmText={modalConfig.confirmText} onConfirm={modalConfig.action} onCancel={closeModal} isProcessing={isProcessing} />
 
@@ -1376,6 +1411,8 @@ export function FuelAdvanceModule() {
    </DialogContent>
  </Dialog>
 
+ </div>
+ )}
  </div>
  );
 }

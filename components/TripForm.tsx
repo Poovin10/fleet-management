@@ -9,13 +9,46 @@ import { FormField } from "@/components/ui/FormField";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertModal } from "@/components/AlertModal";
 
 export function TripForm() {
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "success" | "error" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: "success" | "error" | "info" = "info",
+  ) => {
+    setAlertConfig({
+      isOpen: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const closeAlert = () => {
+    setAlertConfig((current) => ({
+      ...current,
+      isOpen: false,
+    }));
+  };
+
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showTripWorkspace, setShowTripWorkspace] = useState(true);
+  const [showTripWorkspace, setShowTripWorkspace] = useState(false);
 
   // Core Data States
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -490,9 +523,12 @@ export function TripForm() {
 
     if (hardErrors.length > 0) {
       setLoading(false);
-      alert(
-        "DISPATCH BLOCKED:\n\n" +
-        hardErrors.map((error, index) => `${index + 1}. ${error}`).join("\n")
+      showAlert(
+        "Dispatch Blocked",
+        hardErrors
+          .map((error, index) => `${index + 1}. ${error}`)
+          .join("\n"),
+        "error",
       );
       return;
     }
@@ -508,13 +544,21 @@ export function TripForm() {
 
     if (lrCheckError) {
       setLoading(false);
-      alert("Unable to verify LR uniqueness. Please try again.");
+      showAlert(
+        "LR Verification Failed",
+        "Unable to verify LR uniqueness. Please try again.",
+        "error",
+      );
       return;
     }
 
     if (existingLR) {
       setLoading(false);
-      alert(`SECURITY BLOCK: The LR Number "${normalizedLr}" already exists.`);
+      showAlert(
+        "Duplicate LR Number",
+        `The LR Number "${normalizedLr}" already exists. Dispatch has been blocked.`,
+        "error",
+      );
       return;
     }
 
@@ -578,8 +622,10 @@ export function TripForm() {
       );
 
       if (driverErr) {
-        alert(
-          "Failed to register new driver. Error: " + driverErr.message
+        showAlert(
+          "Driver Registration Failed",
+          "Failed to register new driver. Error: " + driverErr.message,
+          "error",
         );
         setLoading(false);
         setShowConfirm(false);
@@ -587,7 +633,11 @@ export function TripForm() {
       }
 
       if (!newDriver) {
-        alert("Failed to register new driver. No driver record was returned.");
+        showAlert(
+        "Driver Registration Failed",
+        "No driver record was returned. The dispatch has been stopped.",
+        "error",
+      );
         setLoading(false);
         setShowConfirm(false);
         return;
@@ -620,82 +670,154 @@ export function TripForm() {
       setShowTripWorkspace(false);
       handleClear();
     } else {
-      alert("Error dispatching trip: " + error.message);
+      showAlert(
+        "Trip Dispatch Failed",
+        "Error dispatching trip: " + error.message,
+        "error",
+      );
     }
     setLoading(false);
   };
 
   return (
-    <div className="relative w-full min-w-0 space-y-8">
-      {showConfirm ? (
-        <div className="kss-glass-overlay">
-          <div
-            className="liquid-glass w-full max-w-xl overflow-y-auto p-5 sm:p-7"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="dispatch-review-title"
-            aria-describedby="dispatch-review-description"
-          >
-            <header className="mb-5">
-              <p className="kss-eyebrow">Final review</p>
-              <h2 id="dispatch-review-title" className="mt-2 text-lg font-semibold text-fg">
-                Confirm trip dispatch
-              </h2>
-              <p id="dispatch-review-description" className="mt-1 text-sm leading-5 text-fg-muted">
-                Verify the current trip and financial summary before dispatch.
+    <>
+      {!showTripWorkspace ? (
+        <div className="liquid-glass w-full rounded-2xl p-5 sm:p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="kss-eyebrow text-accent">Operations · Dispatch</p>
+              <h2 className="mt-1 text-xl font-semibold text-fg">Trip Dispatch</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
+                Create and dispatch a new trip with vehicle, driver, route, freight,
+                fuel, odometer, bata, and advance details.
               </p>
-            </header>
+            </div>
 
-            <dl className="divide-y divide-border-subtle rounded-md border border-border-subtle px-4">
+            <Button
+              type="button"
+              size="lg"
+              className="min-h-11 shrink-0 sm:min-w-48"
+              onClick={() => setShowTripWorkspace(true)}
+            >
+              Open Trip Dispatch
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={closeAlert}
+      />
+
+      <div className="relative w-full min-w-0 space-y-8">
+      <Dialog
+        open={showConfirm}
+        onOpenChange={(open) => {
+          if (!open && !loading) {
+            setShowConfirm(false);
+          }
+        }}
+      >
+        <DialogContent
+          layout="modal"
+          size="lg"
+          showClose={!loading}
+          className="overflow-hidden p-0"
+        >
+          <DialogHeader className="border-b border-border-subtle px-5 py-4 sm:px-6">
+            <p className="kss-eyebrow">Final review</p>
+            <DialogTitle className="mt-1 text-lg">
+              Confirm trip dispatch
+            </DialogTitle>
+            <p className="mt-1 text-sm leading-5 text-fg-muted">
+              Verify the current trip and financial summary before dispatch.
+            </p>
+          </DialogHeader>
+
+          <DialogBody className="max-h-[70dvh] overflow-y-auto px-5 py-5 sm:px-6">
+            <dl className="divide-y divide-border-subtle rounded-xl border border-border-subtle px-4">
               <div className="flex justify-between gap-4 py-3 text-sm">
                 <dt className="text-fg-muted">LR number</dt>
                 <dd className="font-medium text-fg">{lrNumber.toUpperCase()}</dd>
               </div>
               <div className="flex justify-between gap-4 py-3 text-sm">
                 <dt className="text-fg-muted">Total revenue (freight)</dt>
-                <dd className="font-medium text-success">₹{totalRevenue.toLocaleString("en-IN")}</dd>
+                <dd className="font-medium text-success">
+                  ₹{totalRevenue.toLocaleString("en-IN")}
+                </dd>
               </div>
               <div className="flex justify-between gap-4 py-3 text-sm">
                 <dt className="text-fg-muted">Total expenses</dt>
-                <dd className="font-medium text-danger">₹{totalExpense.toLocaleString("en-IN")}</dd>
+                <dd className="font-medium text-danger">
+                  ₹{totalExpense.toLocaleString("en-IN")}
+                </dd>
               </div>
               <div className="flex justify-between gap-4 py-3 text-sm">
                 <dt className="text-fg-secondary">Expected margin</dt>
-                <dd className="font-semibold text-fg">₹{netMargin.toLocaleString("en-IN")}</dd>
+                <dd className="font-semibold text-fg">
+                  ₹{netMargin.toLocaleString("en-IN")}
+                </dd>
               </div>
             </dl>
-            <p className="mt-2 text-xs text-fg-muted">Expenses include advance, bata and fuel cost.</p>
+
+            <p className="mt-2 text-xs text-fg-muted">
+              Expenses include advance, bata and fuel cost.
+            </p>
 
             {reviewWarnings.length > 0 ? (
-              <div className="mt-4 rounded-md border border-warning/30 bg-warning-soft p-4" role="status">
+              <div
+                className="mt-4 rounded-xl border border-warning/30 bg-warning-soft p-4"
+                role="status"
+              >
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-warning">Review required</p>
+                  <p className="text-sm font-semibold text-warning">
+                    Review required
+                  </p>
                   <StatusBadge variant="warning">
-                    {reviewWarnings.length} item{reviewWarnings.length === 1 ? "" : "s"}
+                    {reviewWarnings.length} item
+                    {reviewWarnings.length === 1 ? "" : "s"}
                   </StatusBadge>
                 </div>
+
                 <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-fg-secondary">
                   {reviewWarnings.map((warning, index) => (
                     <li key={`${warning}-${index}`}>{warning}</li>
                   ))}
                 </ul>
+
                 <p className="mt-3 border-t border-warning/20 pt-3 text-xs text-fg-muted">
                   Confirm these anomalies before dispatch. Normal values require no additional action.
                 </p>
               </div>
             ) : null}
+          </DialogBody>
 
-            <div className="mt-6 flex flex-col-reverse justify-end gap-2 sm:flex-row">
-              <Button type="button" variant="outline" onClick={() => setShowConfirm(false)} className="min-h-11">
-                Cancel
-              </Button>
-              <Button type="button" variant="default" onClick={confirmDispatch} disabled={loading} className="min-h-11">
-                {loading ? "Dispatching..." : "Dispatch Trip"}
-              </Button>
-            </div>
+          <div className="flex flex-col-reverse justify-end gap-2 border-t border-border-subtle bg-surface/40 px-5 py-4 sm:flex-row sm:px-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowConfirm(false)}
+              disabled={loading}
+              className="min-h-11"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              variant="default"
+              onClick={confirmDispatch}
+              disabled={loading}
+              className="min-h-11"
+            >
+              {loading ? "Dispatching..." : "Dispatch Trip"}
+            </Button>
           </div>
-        </div>
-      ) : null}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showTripWorkspace} onOpenChange={setShowTripWorkspace}>
         <DialogContent
@@ -1069,6 +1191,7 @@ export function TripForm() {
           </DialogBody>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }

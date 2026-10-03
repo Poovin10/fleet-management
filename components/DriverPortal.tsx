@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AlertModal } from "@/components/AlertModal";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { Button } from "@/components/ui/button";
 import { BackgroundGeolocation } from "@capgo/background-geolocation";
 import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
@@ -44,6 +45,10 @@ export function DriverPortal() {
  const [drivers, setDrivers] = useState<any[]>([]);
  const [activeTrips, setActiveTrips] = useState<any[]>([]);
  const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info" });
+ const [cancelRequestId, setCancelRequestId] = useState<number | null>(null);
+ const [isCancellingRequest, setIsCancellingRequest] = useState(false);
+ const [isSwitchDriverConfirmOpen, setIsSwitchDriverConfirmOpen] = useState(false);
+ const [isSwitchingDriver, setIsSwitchingDriver] = useState(false);
  const [savedDriverCode, setSavedDriverCode] = useState("");
  const [driverSessionToken, setDriverSessionToken] = useState("");
  const [enrolledBiometricDriver, setEnrolledBiometricDriver] = useState("");
@@ -277,8 +282,13 @@ setLastOdometer("");
  await fetchDriverCurrentMonthReports();
  };
 
- const handleResetDriver = async () => {
- if (!confirm("Sign out and switch driver?")) return;
+ const handleResetDriver = () => {
+   if (!driverSessionToken) return;
+   setIsSwitchDriverConfirmOpen(true);
+ };
+
+ const executeResetDriver = async () => {
+ setIsSwitchingDriver(true);
 
  const sessionToken = driverSessionToken;
 
@@ -303,6 +313,8 @@ setLastOdometer("");
  setSelectedTruckId("");
  setDriverCode("");
  setDriverPin("");
+ setIsSwitchingDriver(false);
+ setIsSwitchDriverConfirmOpen(false);
  };
 
  const handleDriverSubmit = async (e: React.FormEvent) => {
@@ -523,21 +535,43 @@ setLastOdometer("");
  setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData();
  };
 
- const handleCancelRequest = async (id: number) => {
- if (!supabase || !driverSessionToken || !confirm("Cancel this request?")) return;
+ const handleCancelRequest = (id: number) => {
+   if (!supabase || !driverSessionToken) return;
+   setCancelRequestId(id);
+ };
 
- const { error } = await supabase.rpc("cancel_driver_pending_entry_atomic", {
-   p_session_token: driverSessionToken,
-   p_entry_id: id
- });
+ const executeCancelRequest = async () => {
+   if (!supabase || !driverSessionToken || cancelRequestId === null) return;
 
- if (error) {
-   setAlertConfig({ isOpen: true, title: "Cancellation Failed", message: error.message, type: "error" });
-   return;
- }
+   setIsCancellingRequest(true);
 
- await fetchDriverCurrentMonthReports();
- setAlertConfig({ isOpen: true, title: "Cancelled", message: "Request cancelled.", type: "success" });
+   const { error } = await supabase.rpc("cancel_driver_pending_entry_atomic", {
+     p_session_token: driverSessionToken,
+     p_entry_id: cancelRequestId
+   });
+
+   if (error) {
+     setIsCancellingRequest(false);
+     setCancelRequestId(null);
+     setAlertConfig({
+       isOpen: true,
+       title: "Cancellation Failed",
+       message: error.message,
+       type: "error"
+     });
+     return;
+   }
+
+   await fetchDriverCurrentMonthReports();
+
+   setIsCancellingRequest(false);
+   setCancelRequestId(null);
+   setAlertConfig({
+     isOpen: true,
+     title: "Cancelled",
+     message: "Request cancelled.",
+     type: "success"
+   });
  };
 
  const inputStyle = "flex h-10 w-full rounded-md border border-border bg-app/50 px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:border-accent";
@@ -555,6 +589,31 @@ setLastOdometer("");
  </div>
 
  <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
+
+ <ConfirmModal
+   isOpen={cancelRequestId !== null}
+   title="Cancel Request"
+   message="Are you sure you want to cancel this request? This action cannot be undone."
+   isDanger={true}
+   confirmText="Yes, Cancel"
+   onConfirm={executeCancelRequest}
+   onCancel={() => {
+     if (!isCancellingRequest) setCancelRequestId(null);
+   }}
+   isProcessing={isCancellingRequest}
+ />
+
+ <ConfirmModal
+   isOpen={isSwitchDriverConfirmOpen}
+   title="Switch Driver"
+   message="Are you sure you want to sign out and switch to another driver?"
+   confirmText="Yes, Switch Driver"
+   onConfirm={executeResetDriver}
+   onCancel={() => {
+     if (!isSwitchingDriver) setIsSwitchDriverConfirmOpen(false);
+   }}
+   isProcessing={isSwitchingDriver}
+ />
 
  {!isDriverLocked ? (
  <form onSubmit={handleLockDriver} className="flex flex-col">

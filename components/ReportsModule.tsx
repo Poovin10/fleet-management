@@ -9,6 +9,16 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Pagination } from "@/components/ui/Pagination";
 import { exportToCSV, exportToExcel } from "@/lib/utils/exportManager";
 import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
+import { AlertModal } from "@/components/AlertModal";
+
+type AlertType = "success" | "error" | "info";
+
+type AlertConfig = {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  type: AlertType;
+};
 
 type ReportType =
   | "Trips"
@@ -28,6 +38,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
   const supabase = useMemo(() => createClient(), []);
 
   const [reportType, setReportType] = useState<ReportType>(initialReportType);
+  const [showReportsWorkspace, setShowReportsWorkspace] = useState(false);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [search, setSearch] = useState("");
@@ -36,12 +47,38 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<AlertConfig>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
   const [page, setPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const requestSequence = useRef(0);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageSize = 10;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: AlertType = "info",
+  ) => {
+    setAlertConfig({
+      isOpen: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const closeAlert = () => {
+    setAlertConfig((current) => ({
+      ...current,
+      isOpen: false,
+    }));
+  };
 
   const reportTypes: ReportType[] = [
     "Trips",
@@ -209,8 +246,18 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
     return query;
   };
 
+  const formatDisplayDate = (value: unknown) => {
+    if (!value) return "";
+    const text = String(value);
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (!match) return text;
+
+    return `${match[3]}/${match[2]}/${match[1]}`;
+  };
+
   const mapSettlementTrips = (data: any[]) => data.map((row: any) => ({
-    record_type: "TRIP", date: row.trip_start_date, reference: row.trip_number,
+    record_type: "TRIP", date: formatDisplayDate(row.trip_start_date), reference: row.trip_number,
     driver: row.drivers?.full_name || "Unassigned", driver_code: row.drivers?.driver_code || "",
     vehicle: row.vehicles?.vehicle_number || "Unassigned", description: `${row.origin || ""} → ${row.destination || ""}`,
     freight: Number(row.freight_revenue || 0), driver_bata: Number(row.driver_bata || 0),
@@ -219,7 +266,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
   }));
 
   const mapSettlementAdvances = (data: any[]) => data.map((row: any) => ({
-    record_type: "DIRECT ADVANCE", date: row.advance_date, reference: row.advance_type || "Advance",
+    record_type: "DIRECT ADVANCE", date: formatDisplayDate(row.advance_date), reference: row.advance_type || "Advance",
     driver: row.drivers?.full_name || "Unassigned", driver_code: row.drivers?.driver_code || "",
     vehicle: "", description: row.reference_remarks || "", freight: 0, driver_bata: 0,
     halt_bata: 0, cash_advance: 0, direct_advance: Number(row.amount_inr || 0), settlement_status: "",
@@ -290,6 +337,19 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
   };
 
   const loadReport = async (requestedPage: number, filters: ReportFilters) => {
+    if (filters.fromDate && filters.toDate && filters.fromDate > filters.toDate) {
+      showAlert(
+        "Invalid Date Range",
+        "From Date cannot be later than To Date.",
+        "error",
+      );
+      setRows([]);
+      setTotalItems(0);
+      setIsLoading(false);
+      setHasSearched(true);
+      return;
+    }
+
     const requestId = ++requestSequence.current;
     setIsLoading(true);
     setHasSearched(true);
@@ -309,7 +369,11 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
     } catch (error: any) {
       if (requestId !== requestSequence.current) return;
       console.error("Report error:", error);
-      alert(error?.message || "Unable to generate report.");
+      showAlert(
+        "Report Generation Failed",
+        error?.message || "Unable to generate the requested report.",
+        "error",
+      );
       setRows([]);
       setTotalItems(0);
     } finally {
@@ -376,8 +440,8 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
     if (reportType === "Trips") {
       return rows.map((row) => ({
         "LR No": row.trip_number ?? "",
-        Date: row.trip_start_date ?? "",
-        "End Date": row.trip_end_date ?? "",
+        Date: formatDisplayDate(row.trip_start_date),
+        "End Date": formatDisplayDate(row.trip_end_date),
         Vehicle: row.vehicles?.vehicle_number ?? "Unassigned",
         Driver: row.drivers?.full_name ?? "Unassigned",
         Origin: row.origin ?? "",
@@ -399,7 +463,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
     if (reportType === "POD") {
       return rows.map((row) => ({
         "LR No": row.trip_number ?? "",
-        Date: row.trip_start_date ?? "",
+        Date: formatDisplayDate(row.trip_start_date),
         Vehicle: row.vehicles?.vehicle_number ?? "Unassigned",
         Driver: row.drivers?.full_name ?? "Unassigned",
         Route: `${row.origin ?? ""} → ${row.destination ?? ""}`,
@@ -407,7 +471,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
         "Unloaded MT": Number(row.unloaded_weight_mt ?? 0),
         "Shortage MT": Number(row.shortage_mt ?? 0),
         "POD No": row.pod_number ?? "",
-        "POD Date": row.pod_received_date ?? "",
+        "POD Date": formatDisplayDate(row.pod_received_date),
         "POD Status": row.pod_status ?? "",
         "Halt Bata": Number(row.halt_bata ?? 0),
         "Claims / Repairs": Number(row.enroute_repairs_maintenance ?? 0),
@@ -416,7 +480,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
 
     if (reportType === "Diesel/Fuel") {
       return rows.map((row) => ({
-        Date: row.fuel_date ?? "",
+        Date: formatDisplayDate(row.fuel_date),
         Vehicle: row.vehicles?.vehicle_number ?? "Unassigned",
         Category: row.diesel_category ?? "",
         "Litres": Number(row.litres_filled ?? 0),
@@ -429,7 +493,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
 
     if (reportType === "Driver Bata") {
       return rows.map((row) => ({
-        Date: row.trip_start_date ?? "",
+        Date: formatDisplayDate(row.trip_start_date),
         "LR No": row.trip_number ?? "",
         Driver: row.drivers?.full_name ?? "Unassigned",
         "Driver Code": row.drivers?.driver_code ?? "",
@@ -445,7 +509,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
     if (reportType === "Driver Settlement") {
       return rows.map((row) => ({
         Type: row.record_type ?? "",
-        Date: row.date ?? "",
+        Date: formatDisplayDate(row.date),
         Reference: row.reference ?? "",
         Driver: row.driver ?? "",
         "Driver Code": row.driver_code ?? "",
@@ -462,7 +526,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
 
     if (reportType === "Workshop") {
       return rows.map((row) => ({
-        Date: row.bill_date ?? "",
+        Date: formatDisplayDate(row.bill_date),
         Vehicle: row.vehicles?.vehicle_number ?? "GENERAL",
         Vendor: row.vendor_name ?? "",
         Description: row.spare_parts_details ?? "",
@@ -479,15 +543,15 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
         Status: row.current_status ?? "",
         Active: row.is_active ? "YES" : "NO",
         "Odometer Working": row.odometer_working ? "YES" : "NO",
-        "FC Expiry": row.fc_expiry_date ?? "",
-        "Insurance Expiry": row.insurance_expiry_date ?? "",
+        "FC Expiry": formatDisplayDate(row.fc_expiry_date),
+        "Insurance Expiry": formatDisplayDate(row.insurance_expiry_date),
       }));
     }
 
     if (reportType === "Financial/P&L") {
       return rows.map((row) => ({
         "LR No": row.trip_number ?? "",
-        Date: row.trip_start_date ?? "",
+        Date: formatDisplayDate(row.trip_start_date),
         Vehicle: row.vehicles?.vehicle_number ?? "Unassigned",
         Revenue: Number(row.freight_revenue ?? 0),
         "Driver Bata": Number(row.driver_bata ?? 0),
@@ -539,7 +603,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
       if (reportType === "Trips") {
         return [
           row.trip_number,
-          row.trip_start_date,
+          formatDisplayDate(row.trip_start_date),
           row.vehicles?.vehicle_number ?? "Unassigned",
           row.drivers?.full_name ?? "Unassigned",
           `${row.origin ?? ""} → ${row.destination ?? ""}`,
@@ -554,7 +618,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
       if (reportType === "POD") {
         return [
           row.trip_number,
-          row.trip_start_date,
+          formatDisplayDate(row.trip_start_date),
           row.vehicles?.vehicle_number ?? "Unassigned",
           `${row.origin ?? ""} → ${row.destination ?? ""}`,
           row.loaded_weight_mt ?? 0,
@@ -567,7 +631,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
 
       if (reportType === "Diesel/Fuel") {
         return [
-          row.fuel_date,
+          formatDisplayDate(row.fuel_date),
           row.vehicles?.vehicle_number ?? "Unassigned",
           row.diesel_category ?? "",
           row.litres_filled ?? 0,
@@ -580,7 +644,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
 
       if (reportType === "Driver Bata") {
         return [
-          row.trip_start_date,
+          formatDisplayDate(row.trip_start_date),
           row.trip_number,
           row.drivers?.full_name ?? "Unassigned",
           row.vehicles?.vehicle_number ?? "Unassigned",
@@ -595,7 +659,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
       if (reportType === "Driver Settlement") {
         return [
           row.record_type,
-          row.date,
+          formatDisplayDate(row.date),
           row.reference,
           row.driver,
           row.vehicle,
@@ -609,12 +673,10 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
 
       if (reportType === "Workshop") {
         return [
-          row.bill_date,
+          formatDisplayDate(row.bill_date),
           row.vehicles?.vehicle_number ?? "GENERAL",
           row.vendor_name ?? "",
           row.spare_parts_details ?? "",
-          row.subtotal_amount ?? 0,
-          row.tax_amount ?? 0,
           row.total_bill_amount ?? 0,
         ];
       }
@@ -628,14 +690,14 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
           row.current_status ?? "",
           row.is_active ? "YES" : "NO",
           row.odometer_working ? "YES" : "NO",
-          row.fc_expiry_date ?? "",
-          row.insurance_expiry_date ?? "",
+          formatDisplayDate(row.fc_expiry_date),
+          formatDisplayDate(row.insurance_expiry_date),
         ];
       }
 
       return [
         row.trip_number,
-        row.trip_start_date,
+        formatDisplayDate(row.trip_start_date),
         row.vehicles?.vehicle_number ?? "Unassigned",
         row.freight_revenue ?? 0,
         row.driver_bata ?? 0,
@@ -655,7 +717,11 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
       return normalizeRows(completeRows, reportType);
     } catch (error: any) {
       console.error("Report export error:", error);
-      alert(error?.message || "Unable to export report.");
+      showAlert(
+        "Report Export Failed",
+        error?.message || "Unable to export the requested report.",
+        "error",
+      );
       return null;
     } finally {
       setIsExporting(false);
@@ -666,7 +732,11 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
     const exportRows = await getFullExportRows();
     if (!exportRows) return;
     if (!exportRows.length) {
-      alert("No data available to export.");
+      showAlert(
+        "Nothing to Export",
+        "No data is available for the selected report filters.",
+        "info",
+      );
       return;
     }
     exportToCSV(exportRows, `KSS_${reportType.replace(/[^A-Za-z0-9]+/g, "_")}_Report`);
@@ -676,7 +746,11 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
     const exportRows = await getFullExportRows();
     if (!exportRows) return;
     if (!exportRows.length) {
-      alert("No data available to export.");
+      showAlert(
+        "Nothing to Export",
+        "No data is available for the selected report filters.",
+        "info",
+      );
       return;
     }
     exportToExcel(exportRows, `KSS_${reportType.replace(/[^A-Za-z0-9]+/g, "_")}_Report`);
@@ -686,7 +760,11 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
     const exportRows = await getFullExportRows();
     if (!exportRows) return;
     if (!exportRows.length) {
-      alert("No data available to export.");
+      showAlert(
+        "Nothing to Export",
+        "No data is available for the selected report filters.",
+        "info",
+      );
       return;
     }
 
@@ -698,7 +776,7 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
 
     generateUniversalPdf(
       `${reportType} Report`,
-      `${fromDate || "All dates"} to ${toDate || "All dates"} • ${exportRows.length} records`,
+      `${formatDisplayDate(fromDate) || "All dates"} to ${formatDisplayDate(toDate) || "All dates"} • ${exportRows.length} records`,
       headers,
       pdfRows,
       `KSS_${reportType.replace(/[^A-Za-z0-9]+/g, "_")}_Report`
@@ -728,18 +806,53 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
   const statusOptions = getStatusOptions();
 
   return (
-    <div className="w-full space-y-5 kss-page-enter">
-      <div className="kss-module-header">
-        <div>
-          <div className="kss-eyebrow">REPORTING</div>
-          <h2 className="kss-module-title">Reports & Analysis</h2>
-          <p className="kss-module-subtitle">
-            Search, filter and export operational and financial records.
-          </p>
-        </div>
-      </div>
+    <div className="w-full">
+      {!showReportsWorkspace ? (
+        <div className="liquid-glass w-full rounded-2xl p-5 sm:p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="kss-eyebrow text-accent">Reports · Analytics</p>
+              <h2 className="mt-1 text-xl font-semibold text-fg">
+                {reportType} Report
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
+                Search, filter, review, and export operational and financial
+                records for the selected report.
+              </p>
+            </div>
 
-      <div className="liquid-glass p-4 sm:p-5">
+            <Button
+              type="button"
+              size="lg"
+              className="min-h-11 shrink-0 sm:min-w-48"
+              onClick={() => setShowReportsWorkspace(true)}
+            >
+              Open Report
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="w-full space-y-5 kss-page-enter">
+          <div className="kss-module-header">
+            <div>
+              <div className="kss-eyebrow">REPORTING</div>
+              <h2 className="kss-module-title">Reports & Analysis</h2>
+              <p className="kss-module-subtitle">
+                Search, filter and export operational and financial records.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowReportsWorkspace(false)}
+              className="rounded-xl"
+            >
+              Close Report
+            </Button>
+          </div>
+
+          <div className="liquid-glass p-4 sm:p-5">
         <div className="flex flex-wrap gap-2">
           {reportTypes.map((type) => (
             <Button
@@ -900,6 +1013,16 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
               clearSearchTimer();
               void loadReport(nextPage, currentFilters());
             }}
+          />
+        </div>
+      )}
+
+          <AlertModal
+            isOpen={alertConfig.isOpen}
+            title={alertConfig.title}
+            message={alertConfig.message}
+            type={alertConfig.type}
+            onClose={closeAlert}
           />
         </div>
       )}

@@ -2,12 +2,44 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { AlertModal } from "@/components/AlertModal";
 
 export function AiInsightsDashboard() {
   const supabase = createClient();
   const [latestAudit, setLatestAudit] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTriggering, setIsTriggering] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "success" | "error" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: "success" | "error" | "info" = "info",
+  ) => {
+    setAlertConfig({
+      isOpen: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const closeAlert = () => {
+    setAlertConfig((current) => ({
+      ...current,
+      isOpen: false,
+    }));
+  };
 
   const fetchLatestAudit = async () => {
     setIsLoading(true);
@@ -28,17 +60,32 @@ export function AiInsightsDashboard() {
 
   const handleManualAuditTrigger = async () => {
     setIsTriggering(true);
+
     try {
       const res = await fetch("/api/cron/audit");
       const json = await res.json();
+
       if (json.success) {
-        alert("Fleet Operations Audit completed successfully.");
-        fetchLatestAudit();
+        await fetchLatestAudit();
+
+        showAlert(
+          "Fleet Audit Completed",
+          "The fleet operations audit completed successfully and the latest report has been refreshed.",
+          "success",
+        );
       } else {
-        alert("Audit failed: " + (json.error || "Unknown error"));
+        showAlert(
+          "Fleet Audit Failed",
+          json.error || "The fleet audit could not be completed.",
+          "error",
+        );
       }
     } catch (err: any) {
-      alert("Network error: " + err.message);
+      showAlert(
+        "Audit Network Error",
+        err?.message || "A network error occurred while running the fleet audit.",
+        "error",
+      );
     } finally {
       setIsTriggering(false);
     }
@@ -54,7 +101,16 @@ export function AiInsightsDashboard() {
   if (isLoading) return <div className="p-12 text-center text-fg-secondary font-bold animate-pulse">Loading Operations Hub...</div>;
 
   return (
-    <div className="animate-tab-focus space-y-6 animate-in fade-in  max-w-6xl mx-auto px-2">
+    <>
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={closeAlert}
+      />
+
+      <div className="animate-tab-focus space-y-6 animate-in fade-in max-w-6xl mx-auto px-2">
       <div className="liquid-glass p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
         <div>
           <div className="flex items-center gap-2">
@@ -139,6 +195,7 @@ export function AiInsightsDashboard() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

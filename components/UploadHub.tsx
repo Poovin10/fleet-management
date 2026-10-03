@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { AlertModal } from "@/components/AlertModal";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 
@@ -13,9 +14,45 @@ export function UploadHub() {
  const [isProcessing, setIsProcessing] = useState(false);
  const [isSaving, setIsSaving] = useState(false);
 
+ const [alertConfig, setAlertConfig] = useState<{
+  isOpen: boolean;
+  title: string;
+  message: string;
+  type: "success" | "error" | "info";
+ }>({
+  isOpen: false,
+  title: "",
+  message: "",
+  type: "info",
+ });
+
+ const showAlert = (
+  title: string,
+  message: string,
+  type: "success" | "error" | "info" = "info",
+ ) => {
+  setAlertConfig({
+   isOpen: true,
+   title,
+   message,
+   type,
+  });
+ };
+
+ const closeAlert = () => {
+  setAlertConfig((current) => ({
+   ...current,
+   isOpen: false,
+  }));
+ };
+
  const handleParseText = async () => {
  if (!rawText.trim()) {
- alert("Please enter invoice or slip details.");
+ showAlert(
+ "Missing Document Details",
+ "Please enter invoice or slip details.",
+ "error",
+);
  return;
  }
 
@@ -34,10 +71,18 @@ export function UploadHub() {
  if (json.success) {
  setParsedResult(json.data);
  } else {
- alert("Parsing error: " + json.error);
+ showAlert(
+ "Document Parsing Failed",
+ json.error || "The document could not be parsed.",
+ "error",
+);
  }
  } catch (err: any) {
- alert("Network error: " + err.message);
+ showAlert(
+ "Parsing Error",
+ err?.message || "A network error occurred while processing the document.",
+ "error",
+);
  } finally {
  setIsProcessing(false);
  }
@@ -54,18 +99,35 @@ export function UploadHub() {
  }]);
 
  if (error) throw error;
- alert("Document saved to verification queue successfully!");
+ showAlert(
+ "Document Queued",
+ "Document saved to verification queue successfully.",
+ "success",
+);
  setParsedResult(null);
  setRawText("");
  } catch (err: any) {
- alert("Database error: " + err.message);
+ showAlert(
+ "Queue Save Failed",
+ err?.message || "A database error occurred while saving the document.",
+ "error",
+);
  } finally {
  setIsSaving(false);
  }
  };
 
  return (
- <div className="animate-tab-focus space-y-6 max-w-4xl mx-auto">
+ <>
+  <AlertModal
+   isOpen={alertConfig.isOpen}
+   title={alertConfig.title}
+   message={alertConfig.message}
+   type={alertConfig.type}
+   onClose={closeAlert}
+  />
+
+  <div className="animate-tab-focus space-y-6 max-w-4xl mx-auto">
  <div className="liquid-glass border border-border rounded-2xl p-6 shadow-xl">
  <h3 className="text-sm font-semibold text-fg  tracking-wider mb-4">Manual Document Entry Hub</h3>
  
@@ -128,5 +190,6 @@ export function UploadHub() {
  </div>
  )}
  </div>
+ </>
  );
 }

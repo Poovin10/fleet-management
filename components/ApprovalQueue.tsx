@@ -14,7 +14,7 @@ import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/
 export function ApprovalQueue() {
  const supabase = createClient();
  const [queue, setQueue] = useState<any[]>([]);
- const showApprovalQueue = true;
+ const [showApprovalQueue, setShowApprovalQueue] = useState(false);
  const [queueSearch, setQueueSearch] = useState("");
  const [isLoading, setIsLoading] = useState(true);
  const [isProcessing, setIsProcessing] = useState(false);
@@ -187,6 +187,30 @@ export function ApprovalQueue() {
  return (
  <div className="animate-tab-focus liquid-glass w-full max-w-none p-6 sm:p-8 shadow-xl animate-in fade-in duration-300">
  
+ {!showApprovalQueue ? (
+   <div className="liquid-glass w-full rounded-2xl p-5 sm:p-6">
+     <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+       <div>
+         <p className="kss-eyebrow text-accent">Operations · Driver Workflow</p>
+         <h2 className="mt-1 text-xl font-semibold text-fg">Driver Approvals</h2>
+         <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
+           Review pending driver submissions and approve or reject eligible
+           operational entries.
+         </p>
+       </div>
+
+       <Button
+         type="button"
+         size="lg"
+         className="min-h-11 shrink-0 sm:min-w-48"
+         onClick={() => setShowApprovalQueue(true)}
+       >
+         Open Approval Queue
+       </Button>
+     </div>
+   </div>
+ ) : null}
+
  <AlertModal isOpen={alertConfig.isOpen} title={alertConfig.title} message={alertConfig.message} type={alertConfig.type} onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} />
 
  <ConfirmModal isOpen={rejectId !== null} title="Reject Request" message="Are you sure you want to REJECT this driver request? This cannot be undone." isDanger={true} confirmText="Yes, Reject" onConfirm={executeReject} onCancel={() => setRejectId(null)} isProcessing={isProcessing} />
@@ -257,7 +281,14 @@ export function ApprovalQueue() {
    </DialogContent>
  </Dialog>
 
- <Dialog open={showApprovalQueue}>
+ <Dialog
+   open={showApprovalQueue}
+   onOpenChange={(open) => {
+     if (!open && !isProcessing) {
+       setShowApprovalQueue(false);
+     }
+   }}
+ >
    <DialogContent
      layout="modal"
      size="full"

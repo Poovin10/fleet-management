@@ -3,6 +3,14 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogBody,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -288,13 +296,37 @@ export function FinancialsModule() {
      <div><h3 className="text-sm font-semibold text-fg">Vehicle performance details</h3><p className="mt-1 text-xs text-fg-muted">{filteredFleetData.length} vehicles match the analysis window and variant; results are sorted by the selected metric.</p></div>
      <Button type="button" variant="glass" onClick={() => setShowFleetDetails(true)}>View Fleet Details</Button>
    </div>
-   {showFleetDetails && (
-     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md" onClick={() => setShowFleetDetails(false)}>
-       <section role="dialog" aria-modal="true" aria-labelledby="fleet-details-title" className="liquid-glass w-full max-w-7xl max-h-[90vh] overflow-auto p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-         <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
-           <div><h3 id="fleet-details-title" className="text-sm font-semibold text-fg">Fleet Performance Details</h3><p className="mt-1 text-xs text-fg-muted">Vehicle-level performance for the selected analysis window.</p></div>
-           <Button type="button" variant="glass" onClick={() => setShowFleetDetails(false)}>Close</Button>
+   <Dialog
+     open={showFleetDetails}
+     onOpenChange={setShowFleetDetails}
+   >
+     <DialogContent
+       layout="modal"
+       size="full"
+       showClose={false}
+       className="max-h-[92dvh] overflow-hidden p-0"
+     >
+       <DialogHeader className="flex items-start justify-between gap-4">
+         <div>
+           <DialogTitle className="text-sm font-semibold">
+             Fleet Performance Details
+           </DialogTitle>
+           <DialogDescription>
+             Vehicle-level performance for the selected analysis window.
+           </DialogDescription>
          </div>
+
+         <Button
+           type="button"
+           variant="glass"
+           onClick={() => setShowFleetDetails(false)}
+         >
+           Close
+         </Button>
+       </DialogHeader>
+
+       <DialogBody className="max-h-[calc(92dvh-110px)] overflow-y-auto">
+
          <Input value={fleetSearch} onChange={e => { setFleetSearch(e.target.value); fleetPagination.reset(); }} placeholder="Search vehicle or type" className="my-4 max-w-md" />
          <div className="max-h-[62vh] overflow-auto rounded-xl border border-border">
            <Table className="min-w-full text-xs text-right whitespace-nowrap">
@@ -317,9 +349,10 @@ export function FinancialsModule() {
            </Table>
          </div>
          <Pagination page={fleetPagination.page} totalPages={fleetPagination.totalPages} onPageChange={fleetPagination.setPage} />
-       </section>
-     </div>
-   )}
+
+       </DialogBody>
+     </DialogContent>
+   </Dialog>
  </>
  )}
 
@@ -329,13 +362,37 @@ export function FinancialsModule() {
      <div><h3 className="text-sm font-semibold text-fg">Driver Performance Scorecard</h3><p className="mt-1 text-xs text-fg-muted">{driverScorecard.length} drivers with activity in this analysis window.</p></div>
      <Button type="button" variant="glass" onClick={() => setShowDriverDetails(true)}>View Driver Scorecard</Button>
    </div>
-   {showDriverDetails && (
-     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md" onClick={() => setShowDriverDetails(false)}>
-       <section role="dialog" aria-modal="true" aria-labelledby="driver-scorecard-title" className="liquid-glass w-full max-w-5xl max-h-[90vh] overflow-auto p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-         <div className="flex items-start justify-between gap-4 border-b border-border pb-4">
-           <div><h3 id="driver-scorecard-title" className="text-sm font-semibold text-fg">Driver Performance Scorecard</h3><p className="mt-1 text-xs text-fg-muted">Trips, distance, estimated mileage, and generated revenue.</p></div>
-           <Button type="button" variant="glass" onClick={() => setShowDriverDetails(false)}>Close</Button>
+   <Dialog
+     open={showDriverDetails}
+     onOpenChange={setShowDriverDetails}
+   >
+     <DialogContent
+       layout="modal"
+       size="lg"
+       showClose={false}
+       className="max-h-[92dvh] overflow-hidden p-0"
+     >
+       <DialogHeader className="flex items-start justify-between gap-4">
+         <div>
+           <DialogTitle className="text-sm font-semibold">
+             Driver Performance Scorecard
+           </DialogTitle>
+           <DialogDescription>
+             Trips, distance, estimated mileage, and generated revenue.
+           </DialogDescription>
          </div>
+
+         <Button
+           type="button"
+           variant="glass"
+           onClick={() => setShowDriverDetails(false)}
+         >
+           Close
+         </Button>
+       </DialogHeader>
+
+       <DialogBody className="max-h-[calc(92dvh-110px)] overflow-y-auto">
+
          <Input value={driverSearch} onChange={e => { setDriverSearch(e.target.value); driverPagination.reset(); }} placeholder="Search driver code or name" className="my-4 max-w-md" />
          <div className="max-h-[62vh] overflow-auto rounded-xl border border-border">
            <Table className="min-w-full text-xs text-right whitespace-nowrap">
@@ -347,9 +404,10 @@ export function FinancialsModule() {
            </Table>
          </div>
          <Pagination page={driverPagination.page} totalPages={driverPagination.totalPages} onPageChange={driverPagination.setPage} />
-       </section>
-     </div>
-   )}
+
+       </DialogBody>
+     </DialogContent>
+   </Dialog>
  </div>
  )}
 

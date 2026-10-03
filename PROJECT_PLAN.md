@@ -1,445 +1,535 @@
-# KSS Roadways ERP — Project Plan
+CURRENT ARCHITECTURE REVIEW — PROJECT HEAD ASSESSMENT
 
-## Project Goal
+Date: 2026-09-29
+Source: module-router-audit.txt + current PROJECT_PLAN.md
 
-Build a production-ready, world-class fleet ERP for a small fleet operator.
+Executive Assessment
 
-Simple on the surface, sophisticated underneath.
+Architecture direction: GOOD and worth continuing.
 
----
+The current architecture is fundamentally sound for the KSS Roadways ERP. The project has correctly moved away from a collection of independent screens toward a module → functional menu → action → focused workspace model.
 
-# Architecture
+However, the implementation is not yet architecturally complete. Several areas need correction before we call the shell/router architecture production-grade.
+
+Project Head Decision
+
+Do not rewrite the architecture. Refine and harden it.
+
+The current shell is a good foundation. Rebuilding it now would create unnecessary risk and consume time that should be spent completing the unfinished modules and strengthening boundaries.
+
+1. What Is Correct
+
+1.1 Main ERP Shell
+
+Current structure:
 
 Dashboard → Main Module → Functional Menu → Action → Workspace
 
----
-
-# Master Navigation
-
-## Dashboard
-Landing page / fleet command center.
-Keep existing dashboard intact except remove Quick Links.
-
-## Operations
-- Trip Dispatch
-- POD Closure
-- Modify Trip
-- Quick Status
-
-## Accounts
-- Advance
-- Expense
-- Reconcile
-
-## Fleet
-- Tyre Management
-- Workshop Work Details
-- Fuel Issue / Modify
-- AdBlue Issue / Modify
-- Inventory
-
-## Master
-- Truck
-- Driver
-- Freight Rate
-- Driver Bata
-- Vendors
-- Customers
-- Users
-- Users/Admin management restricted to Superadmin
-
-## Reports
-- Fleet Analytics & Margin
-- Driver Settlement
-- P&L Report
-- Outstanding Expense / Revenue
-- Diesel Mileage
-- Trip Audit
-
-## AI — Future Phase
-- Uploads / OCR
-- Driver Logs
-- Insights
-- GPS / Live Location
-
----
-
-# PROJECT STATUS
-
-Legend:
-
-[ ] Not Started
-[~] In Progress / Partially Complete
-[✓] Complete
-[!] Blocked
-
----
-
-# P0 — Baseline & Project Control
-Target: 0.5 day
-
-[✓] P0.1 Create project plan
-[✓] P0.2 Audit current repository
-[✓] P0.3 Audit current database/schema
-[✓] P0.4 Map existing modules to target architecture
-[✓] P0.5 Identify obsolete/duplicate UI
-[✓] P0.6 Establish safe historical-data cleanup plan
-
-Status: COMPLETE
-
-Notes:
-- Project architecture and module boundaries established.
-- Database/schema audited against the application.
-- Safe historical-data cleanup deferred to P7.
-- Dangerous Git operations prohibited.
-- .before-* backups must remain untouched.
-
----
-
-# P1 — Core Navigation Architecture
-Target: 1 day
-
-[✓] P1.1 Refactor main navigation
-[✓] P1.2 Implement module landing workspaces
-[✓] P1.3 Implement functional module menus
-[✓] P1.4 Implement action → workspace flow
-[✓] P1.5 Remove obsolete top-level tabs
-[✓] P1.6 Remove Dashboard Quick Links
-[✓] P1.7 Verify role-based navigation
-[✓] P1.8 Desktop/mobile navigation QA
-
-Status: COMPLETE
-
-Notes:
-- Navigation is module-based.
-- Module landing → functional menu → action workspace architecture implemented.
-- Dashboard remains the command center.
-- Further permission-matrix hardening remains part of P8.
-
----
-
-# P2 — Operations
-Target: 2 days
-
-[✓] P2.1 Trip Dispatch
-[✓] P2.2 POD Closure
-[✓] P2.3 Modify Trip
-[✓] P2.4 Quick Status
-[✓] P2.5 Operations validation
-[✓] P2.6 Operations workflow QA
-
-Status: COMPLETE
-
-Notes:
-- Existing business logic preserved.
-- Shared Liquid Glass dialog architecture applied to major workflows.
-- Dispatch, POD and trip modification workflows retained.
-
----
-
-# P3 — Accounts
-Target: 1.5 days
-
-[✓] P3.1 Driver Advance
-[✓] P3.2 Expense
-[✓] P3.3 Reconcile
-[✓] P3.4 Accounts validation
-[✓] P3.5 Accounts workflow QA
-
-Status: COMPLETE
-
-Notes:
-- Existing Accounts workflows preserved.
-- Further visual consistency cleanup remains for P9.
-
----
-
-# P4 — Fleet
-Target: 2 days
-
-[✓] P4.1 Tyre Management
-[✓] P4.2 Workshop Work Details
-[✓] P4.3 Fuel Issue / Modify
-[✓] P4.4 AdBlue Issue / Modify
-[✓] P4.5 Inventory
-[✓] P4.6 Fleet validation
-[✓] P4.7 Fleet workflow QA
-
-Status: COMPLETE
-
-Validated:
-- Tyre lifecycle workflows
-- Workshop work details
-- Fuel issue/modify
-- AdBlue issue/modify
-- Spare-parts inventory
-- Inventory purchase and issue RPCs
-- Inventory immutable stock ledger
-- Fleet orphan/data validation
-- TypeScript
-- Production build
-
-Known fleet data baseline:
-- vehicles: 21
-- drivers: 26
-- trips: 418
-- diesel_fuel_logs: 220
-- workshop_spares_bills: 93
-- inventory_items: 4
-- inventory_purchase_bills: 4
-- inventory_purchase_items: 3
-- inventory_stock_movements: 4
-
----
-
-# P5 — Masters
-Target: 2 days
-
-[ ] P5.1 Truck Master
-[ ] P5.2 Driver Master
-[ ] P5.3 Freight Rate Master
-[ ] P5.4 Driver Bata Master
-[ ] P5.5 Vendor Master
-[ ] P5.6 Customer Master
-[ ] P5.7 User/Admin Master
-[ ] P5.8 Master validation
-[ ] P5.9 Master workflow QA
-
-Status: NOT STARTED
-
-Next functional phase.
-
-Rules:
-- Inspect existing master implementation before modifying.
-- Preserve existing business logic.
-- Use protected RPCs for privileged mutations.
-- User/Admin management must remain Superadmin-only.
-- No direct unsafe client writes to protected master data.
-- Search-first and paginated large master lists.
-- Use centered Liquid Glass workspaces where appropriate.
-
----
-
-# P6 — Reports
-Target: 2 days
-
-[ ] P6.1 Fleet Analytics & Margin
-[ ] P6.2 Driver Settlement
-[ ] P6.3 P&L Report
-[ ] P6.4 Outstanding Expense / Revenue
-[ ] P6.5 Diesel Mileage
-[ ] P6.6 Trip Audit
-[ ] P6.7 Search/filter/pagination
-[ ] P6.8 Excel exports
-[ ] P6.9 PDF exports
-[ ] P6.10 Reports QA
-
-Status: NOT STARTED
-
-Important:
-Reports must own historical and analytical presentation.
-Do not duplicate operational workflows merely to produce reports.
-
----
-
-# P7 — Data Integrity & Historical Cleanup
-Target: 2 days
-
-[ ] P7.1 Audit orphan records
-[ ] P7.2 Audit trip relationships
-[ ] P7.3 Audit vehicle relationships
-[ ] P7.4 Audit driver relationships
-[ ] P7.5 Odometer integrity
-[ ] P7.6 Fuel integrity
-[ ] P7.7 Trip distance validation
-[ ] P7.8 Historical-data cleanup plan
-[ ] P7.9 Safe cleanup execution
-[ ] P7.10 Clean starting dataset verification
-
-Status: NOT STARTED
-
-Critical requirements:
-
-Odometer:
-- Starting KM required before trip.
-- Closing KM required before next trip.
-- New KM must never be equal to or lower than previous valid KM.
-- Every vehicle odometer entry must be timestamped.
-- Backward/negative odometer movement must be detected.
-- Route distance must be validated against configured route KM.
-- Abnormal trip distance must be flagged using configured tolerance/min-max rules.
-
-Fuel:
-- Validate fuel quantity and cost.
-- Validate vehicle relationship.
-- Cross-check fuel entries against odometer/trip history.
-- Detect suspicious mileage.
-
-Historical cleanup:
-- Never blindly delete records.
-- Perform dependency/orphan audit first.
-- Preserve business history unless a safe correction is proven.
-
----
-
-# P8 — Security & Production Hardening
-Target: 1.5 days
-
-[~] P8.1 RLS audit
-[~] P8.2 Role authorization audit
-[~] P8.3 Server/API security audit
-[ ] P8.4 Input validation
-[ ] P8.5 Error handling
-[✓] P8.6 Secrets/environment audit
-[~] P8.7 Cron/security audit
-[✓] P8.8 Production build verification
-
-Status: IN PROGRESS
-
-Completed security work includes:
-- SECURITY DEFINER function privilege audit.
-- Removal of unintended PUBLIC EXECUTE access.
-- Authenticated/service-role execution hardening.
-- Driver-session anonymous entrypoints intentionally preserved.
-- Inventory immutable trigger reviewed.
-- SECURITY DEFINER search_path audit completed.
-- PostgreSQL default function privileges hardened for application-owned functions.
-- Anonymous application access to protected master data reduced.
-- app_users access hardened through protected RPCs.
-- Server-side service-role usage reviewed.
-- Production build successfully verified.
-
-Intentional exceptions:
-- Driver authentication/session RPCs require anonymous access because they are driver portal entrypoints.
-- Inventory stock immutability trigger function is trigger-only.
-- Certain internal/service-role-only SECURITY DEFINER functions remain restricted intentionally.
-
-Remaining P8 work:
-- Complete RLS audit.
-- Complete role/authorization matrix.
-- Complete API/server authorization review.
-- Input validation review.
-- Error handling review.
-- Cron configuration verification.
-- Final production security regression.
-
----
-
-# P9 — Final UX / QA / Release
-Target: 2 days
-
-[ ] P9.1 Liquid Glass consistency
-[ ] P9.2 Desktop viewport QA
-[ ] P9.3 Mobile/tablet QA
-[ ] P9.4 Modal/drawer QA
-[ ] P9.5 Empty-state QA
-[ ] P9.6 Pagination QA
-[ ] P9.7 Search/filter QA
-[ ] P9.8 Export QA
-[ ] P9.9 Performance QA
-[ ] P9.10 Final regression test
-[ ] P9.11 Production release checklist
-
-Status: NOT STARTED
-
----
-
-# UI RULES
-
-- Dashboard remains the landing page.
-- Remove Quick Links from Dashboard.
-- Main navigation is module-based.
-- Module entry should show a clean themed workspace.
-- Functional menus appear within the selected module.
-- Actions open focused workspaces.
-- Large historical lists should not permanently occupy operational screens.
-- Default list pagination: 10 rows.
-- Use controlled internal scrolling where necessary.
-- Desktop should maximize one-page fit without overlap or visual squeezing.
-- Mobile/tablet may naturally scroll.
-- Primary workflows use centered wide Liquid Glass modals when modal workflow is appropriate.
-- Modal background must blur/dim.
-- Avoid unnecessary nested glass containers.
-- No naked notification/history blocks.
-- Search-first for large datasets.
-- Reports own historical/analytical data.
-
----
-
-# ENGINEERING RULES
-
-- Preserve existing business logic unless explicitly changing it.
-- Inspect before modifying.
-- One focused task at a time.
-- Run TypeScript/build/tests after meaningful changes.
-- Never use `git add .`.
-- Never use `git reset --hard`.
-- Never use `git clean -fd`.
-- Never modify or delete `.before-*` backups.
-- Never commit/push unless explicitly requested.
-- Do not blindly delete historical data.
-- Database cleanup must follow dependency/orphan audit.
-- Server-side authorization must be enforced.
-- Secrets must never be exposed client-side.
-- Local migrations must match the remote database before a phase is considered complete.
-- Do not create corrective migrations unless an actual database issue is identified.
-- Do not modify migration history that has already been applied remotely.
-
----
-
-# CURRENT CHECKPOINT
-
-Current branch:
-design/premium-ui-v2
-
-Latest known stable pushed checkpoint:
-193f0e0 — Complete fleet module and P4 validation
-
-Remote:
-origin/design/premium-ui-v2
-
-Current functional phase:
-P5 — Masters
-
-Next task:
-P5.1 — Truck Master audit
-
-Security:
-P8 security hardening is partially complete and must be finalized later.
-
----
-
-# PHASE COMPLETION RULE
-
-A phase is only marked [✓] when:
-
-1. Implementation is complete.
-2. Existing business logic is preserved or intentionally changed.
-3. Database/schema/RPC dependencies are verified.
-4. TypeScript passes.
-5. Relevant workflow QA passes.
-6. Data-integrity checks pass where applicable.
-7. Security implications are reviewed.
-8. Local migrations match remote.
-9. Production build passes where applicable.
-10. Git checkpoint is verified.
-
-Never mark a phase complete merely because the UI appears functional.
-
----
-
-# PROJECT CONTROL PRINCIPLE
-
-The project plan is the single source of truth for project status.
-
-When the plan, code, database, Git state, or previous conversation appears inconsistent:
-
-1. Stop.
-2. Inspect the authoritative source.
-3. Reconcile the difference.
-4. Update the project plan.
-5. Continue only after the state is understood.
-
-Do not guess.
-Do not silently skip incomplete work.
-Do not declare completion without verification.
+This is the correct direction for a fleet ERP because users primarily think in business domains:
+
+Operations
+
+Fleet
+
+Accounts
+
+Reports
+
+Master
+
+AI
+
+rather than individual React components.
+
+1.2 Dashboard as Command Center
+
+The dashboard remains the primary landing page.
+
+This is correct and should remain unchanged conceptually.
+
+The dashboard should provide command/monitoring information, while transactional work belongs inside modules.
+
+1.3 Module-Level Navigation
+
+The current AppNavigationGroup[] structure is clean and understandable:
+
+Command
+
+Operations
+
+Fleet
+
+Accounts
+
+Reports
+
+Master
+
+AI
+
+The navigation component is also reusable through AppNavigation, AppNavigationItem, and AppNavigationGroup.
+
+This is a strong architectural choice.
+
+1.4 Action-Based Workspaces
+
+The current dashboard routing already demonstrates the intended model.
+
+Examples:
+
+Operations → Trips → TripForm
+
+Operations → POD Closure → PodClosure
+
+Operations → Modify Trips → ModifyTrips
+
+Operations → Driver Approvals → ApprovalQueue
+
+Fleet → Fuel → FuelAdvanceModule
+
+Fleet → Workshop → WorkshopModule
+
+Accounts → Driver Advance / Expense → AccountsModule
+
+Accounts → Driver Settlement → DriverSettlementModule
+
+Master → Vehicles / Drivers / Freight & Routes / Driver Bata / Vendors → SetupModule
+
+This is substantially better than exposing every component as a permanent top-level screen.
+
+2. Important Architectural Problems Found
+
+2.1 dashboard.tsx Is Becoming the Application Router
+
+The largest architectural concern is that components/dashboard.tsx currently owns too many responsibilities:
+
+
+Role detection
+
+Driver-route detection
+
+Workspace action state
+
+Fleet data loading
+Workspace rendering
+
+Logout handling
+
+The file is therefore becoming a god component / application shell + router + controller.
+
+This is acceptable temporarily while the project is being completed, but it should not remain the final architecture.
+
+Decision
+
+Do not refactor this immediately.
+
+Finish the unfinished business modules first.
+
+After the functional phases stabilize, extract the routing/workspace configuration into dedicated structures.
+
+Target direction:
+
+DashboardShell
+→ NavigationConfig
+→ ModuleWorkspace
+→ Feature Workspace
+
+The extraction should be incremental and should not change business logic.
+
+3. Workspace State Is Too String-Driven
+
+Current routing relies heavily on strings such as:
+
+"Dashboard"
+
+"Operations"
+
+"Fleet"
+
+"Accounts"
+
+"Reports"
+
+"Master"
+
+"AI"
+
+"Trips"
+
+"POD Closure"
+
+"Modify Trips"
+
+"Fuel"
+
+"Workshop"
+
+"Tyres"
+
+This works, but it creates a risk of typo-based routing bugs and makes future expansion harder.
+
+Decision
+
+Do not replace this now with a large routing framework.
+
+After module completion, centralize module/action definitions into typed configuration.
+
+Preferred conceptual model:
+
+Module
+  id
+  label
+  permissions
+  actions[]
+
+Each action should have:
+
+id
+label
+permission
+workspace
+
+This would make navigation and authorization easier to maintain.
+
+4. Authorization and Navigation Are Not the Same Thing
+
+The current role filtering:
+
+ADMIN / SUPERADMIN → all navigation
+
+and non-admin:
+
+Dashboard / Reports / Fleet / AI
+
+is useful as a UI restriction, but navigation filtering must never be considered security enforcement.
+
+The database/RPC/server layer must remain authoritative.
+
+Project Head Rule
+
+A hidden navigation item does not equal permission denial.
+
+Every privileged mutation must still be protected by:
+
+Supabase RLS where appropriate
+
+protected RPCs
+
+server-side authorization
+
+role checks
+
+This belongs in P8 and must remain a release blocker until verified.
+
+5. SetupModule Is Currently Doing Too Much
+
+SetupModule currently contains:
+
+Trucks
+
+Drivers
+
+Vendors
+
+Freight Slabs
+
+Bata
+
+User Control
+
+and a large amount of form/list state.
+
+This is functionally valid but will become difficult to maintain as Master functionality expands.
+
+Decision
+
+Keep SetupModule as the Master workspace during the current phase.
+
+Do not split it prematurely.
+
+Once P5 is complete, consider internal feature components such as:
+
+MasterWorkspace
+├── TruckMaster
+├── DriverMaster
+├── FreightMaster
+├── DriverBataMaster
+├── VendorMaster
+└── UserControl
+
+The parent workspace should own navigation; each feature should own its own business state.
+
+6. Some Module Boundaries Are Still Incomplete
+
+The audit shows FinancialsModule contains its own analytics sub-navigation:
+
+Fleet Retention
+
+Variant Benchmarks
+
+Driver Scorecard
+
+This is acceptable because these are analytical views inside one functional domain.
+
+However, the project plan must clearly distinguish:
+
+Module navigation
+from
+internal feature/sub-view navigation.
+
+Not every sub-view needs to become a top-level ERP module.
+
+7. Reports Architecture Is Heading in the Correct Direction
+
+ReportsModule already has:
+
+report type selection
+
+date filtering
+
+search
+
+status filtering
+
+pagination
+
+export
+
+asynchronous loading
+
+request sequencing
+
+This supports the project rule:
+
+Reports own historical and analytical presentation.
+
+That rule should remain firm.
+
+Operational screens should not become overloaded with historical reporting tables simply because the data already exists.
+
+8. Modal / Workspace Architecture Is Correct
+
+The current major workflows already use the shared Dialog architecture:
+
+Trip Dispatch
+
+POD Closure
+
+Approval Queue
+
+Modify Trip
+
+Fuel / AdBlue workflows
+
+Workshop workflows
+
+Master forms/lists
+
+This aligns with the project's Liquid Glass workspace direction.
+
+The requirement remains:
+
+centered focused workspace
+
+blurred/dimmed background
+
+controlled internal scrolling
+
+no permanent naked operational lists
+
+no unnecessary nested glass containers
+
+This should be standardized rather than individually reinvented.
+
+9. The Current Architecture Should NOT Be Rewritten
+
+Explicit Project Head Decision
+
+No architecture rewrite.
+
+The following should remain:
+
+Next.js application shell
+
+Supabase backend
+
+module-based navigation
+
+dashboard command center
+
+action-driven workspaces
+
+shared UI primitives
+
+focused Dialog workspaces
+
+role-aware navigation
+
+Reports as analytical owner
+
+The following should be improved later:
+
+dashboard god-component size
+
+string-based routing
+
+typed module/action registry
+
+separation of navigation configuration from rendering
+
+Master internal feature boundaries
+
+centralized authorization mapping
+
+CURRENT PROJECT CONTROL UPDATE
+
+Functional Architecture Status
+
+The current implementation should not be described as fully complete merely because P1–P4 are marked complete in the older plan.
+
+The audit shows the architecture is functioning, but the project still has unfinished implementation and hardening work.
+
+Current reality
+
+Architecture foundation: GOOD
+Module shell: GOOD
+Workspace pattern: GOOD
+Business-module completion: INCOMPLETE
+Master phase: IN PROGRESS
+Reports phase: INCOMPLETE
+Data-integrity phase: INCOMPLETE
+Security hardening: INCOMPLETE
+Final UX/QA: INCOMPLETE
+
+Therefore:
+
+Do not mark the ERP production-ready yet.
+
+REVISED EXECUTION PRINCIPLE
+
+As project head, the priority is:
+
+Complete unfinished business functionality.
+
+Do not destabilize working architecture unnecessarily.
+
+Verify database/schema/RPC dependencies before declaring completion.
+
+Finish Master.
+
+Finish Reports.
+
+Finish Data Integrity.
+
+Finish Security.
+
+Perform final UX and regression QA.
+
+Only then perform the final architecture refactor/extraction if the codebase still needs it.
+
+Important
+
+Architecture cleanup should not become an excuse to delay business functionality.
+
+At the same time, visible architectural problems must not be ignored simply because the current UI works.
+
+The correct approach is:
+
+Finish → Verify → Harden → Refactor → Release
+
+not:
+
+Rewrite → Rewrite → Rewrite → Never finish
+
+NEXT PROJECT-HEAD TASK
+
+P5.1 — Truck Master Audit
+
+Before changing Truck Master:
+
+Inspect current SetupModule Truck Master implementation.
+
+Inspect actual database table/type definitions.
+
+Inspect existing RPCs and permissions.
+
+Inspect truck-related foreign keys.
+
+Verify active/inactive behavior.
+
+Verify capacity/type fields.
+
+Verify compliance-expiry fields.
+
+Verify odometer configuration fields.
+
+Verify search and pagination.
+
+Verify create/edit/list workflow.
+
+Identify any schema/application mismatch.
+
+Only then modify the implementation.
+
+No blind rewrite.
+
+The existing business logic must be preserved unless an actual defect is identified.
+
+ARCHITECTURE QUALITY GATE
+
+The ERP architecture will be considered release-grade only when:
+
+Application shell is stable.
+
+Module navigation is stable.
+
+Workspace routing is stable.
+
+Role authorization is enforced server-side.
+
+Business modules are complete.
+
+Master data is complete.
+
+Reports are complete.
+
+Odometer integrity is enforced.
+
+Fuel integrity is enforced.
+
+Historical data is verified.
+
+RLS is verified.
+
+RPC permissions are verified.
+
+Input validation is complete.
+
+Error handling is complete.
+
+Production build passes.
+
+Desktop/mobile QA passes.
+
+Final regression passes.
+
+Git checkpoint is verified.
+
+PROJECT HEAD PRINCIPLE
+
+A good project head does not approve architecture simply because it currently works.
+
+The standard is:
+
+If something is structurally wrong, identify it early. If it is merely imperfect but safe, document it and schedule it. If it threatens data, security, maintainability, or business correctness, stop and fix it before proceeding.
+
+The objective is not to protect the existing code at all costs.
+
+The objective is to deliver the best production system possible while protecting working business logic and historical data.
+Module routing
+
+Navigation authorization filtering
+
+Active module state
+
+Main navigation definition

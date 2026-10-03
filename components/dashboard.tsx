@@ -19,7 +19,11 @@ import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { DriverPortal } from "@/components/DriverPortal";
 import { LiveAlertsWidget } from "@/components/LiveAlertsWidget";
 import { AiInsightsDashboard } from "@/components/AiInsightsDashboard";
+import { UploadHub } from "@/components/UploadHub";
+import { DriverLogsWorkspace } from "@/components/DriverLogsWorkspace";
 import { DriverSettlementModule } from "@/components/DriverSettlementModule";
+import { ReconciliationModule } from "@/components/ReconciliationModule";
+import { FleetTable } from "@/components/FleetTable";
 import {
   Activity,
   BookOpen,
@@ -499,27 +503,9 @@ export default function Dashboard() {
                       {workspaceAction === "Fuel" && <FuelAdvanceModule />}
                       {workspaceAction === "Workshop" && <WorkshopModule />}
                       {workspaceAction === "Tyres" && <WorkshopModule />}
-                      {workspaceAction === "Live Fleet" && (
-                        <div className="kss-panel p-6">
-                          <p className="text-sm font-semibold text-fg">Live Fleet</p>
-                          <p className="mt-2 text-xs text-fg-muted">
-                            Live fleet monitoring will use the existing fleet snapshot.
-                          </p>
-                          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-                            <div className="rounded-xl border border-border p-4">
-                              <p className="text-xs text-fg-muted">Units</p>
-                              <p className="mt-1 text-xl font-semibold text-fg">{liveVehicles.length}</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {workspaceAction === "Live Fleet" && <FleetTable />}
                       {workspaceAction === "AdBlue" && (
-                        <div className="kss-panel p-6">
-                          <p className="text-sm font-semibold text-fg">AdBlue</p>
-                          <p className="mt-2 text-xs text-fg-muted">
-                            AdBlue workflow will be connected here without changing its existing business logic.
-                          </p>
-                        </div>
+                        <FuelAdvanceModule initialSection="AdBlue" />
                       )}
                     </div>
                   )}
@@ -573,14 +559,7 @@ export default function Dashboard() {
                       </div>
                       {(workspaceAction === "Driver Advance" || workspaceAction === "Expense") && <AccountsModule />}
                       {workspaceAction === "Driver Settlement" && <DriverSettlementModule />}
-                      {workspaceAction === "Reconcile" && (
-                        <div className="kss-panel p-6">
-                          <p className="text-sm font-semibold text-fg">Reconcile</p>
-                          <p className="mt-2 text-xs text-fg-muted">
-                            Reconciliation workspace will be connected after the core Accounts workflow is stabilised.
-                          </p>
-                        </div>
-                      )}
+                      {workspaceAction === "Reconcile" && <ReconciliationModule />}
                     </div>
                   )}
                 </div>
@@ -700,8 +679,35 @@ export default function Dashboard() {
                           Back to Master
                         </Button>
                       </div>
-                      {["Vehicles", "Drivers", "Freight & Routes", "Driver Bata", "Vendors"].includes(workspaceAction) && <SetupModule />}
-                      {!["Vehicles", "Drivers", "Freight & Routes", "Driver Bata", "Vendors"].includes(workspaceAction) && (
+                      {workspaceAction === "Vehicles" && (
+                        <SetupModule initialSubTab="Trucks" />
+                      )}
+
+                      {workspaceAction === "Drivers" && (
+                        <SetupModule initialSubTab="Drivers" />
+                      )}
+
+                      {workspaceAction === "Freight & Routes" && (
+                        <SetupModule initialSubTab="Freight Slabs" />
+                      )}
+
+                      {workspaceAction === "Driver Bata" && (
+                        <SetupModule initialSubTab="Bata" />
+                      )}
+
+                      {workspaceAction === "Vendors" && (
+                        <SetupModule initialSubTab="Vendors" />
+                      )}
+
+                      {workspaceAction === "Customers" && (
+                        <SetupModule initialSubTab="Customers" />
+                      )}
+
+                      {workspaceAction === "Users" && (
+                        <SetupModule initialSubTab="User Control" />
+                      )}
+
+                      {!["Vehicles", "Drivers", "Freight & Routes", "Driver Bata", "Vendors", "Customers", "Users"].includes(workspaceAction) && (
                         <div className="kss-panel p-6">
                           <p className="text-sm font-semibold text-fg">{workspaceAction}</p>
                           <p className="mt-2 text-xs text-fg-muted">
@@ -747,6 +753,48 @@ export default function Dashboard() {
                         ))}
                       </div>
                     </div>
+                  ) : workspaceAction === "Uploads / OCR" ? (
+                    <Dialog open={true} onOpenChange={(open) => !open && setWorkspaceAction(null)}>
+                      <DialogContent size="xl" showClose>
+                        <DialogHeader>
+                          <DialogTitle>Uploads / OCR</DialogTitle>
+                          <p className="mt-1 text-sm leading-5 text-fg-secondary">
+                            Capture documents, extract structured data, and send verified results to the ERP queue.
+                          </p>
+                        </DialogHeader>
+                        <DialogBody className="max-h-[calc(100dvh-10rem)] overflow-y-auto">
+                          <UploadHub />
+                        </DialogBody>
+                      </DialogContent>
+                    </Dialog>
+                  ) : workspaceAction === "Driver Logs" ? (
+                    <Dialog open={true} onOpenChange={(open) => !open && setWorkspaceAction(null)}>
+                      <DialogContent size="xl" showClose>
+                        <DialogHeader>
+                          <DialogTitle>Driver Logs</DialogTitle>
+                          <p className="mt-1 text-sm leading-5 text-fg-secondary">
+                            Review driver activity, vehicle linkage, submissions, and workflow status.
+                          </p>
+                        </DialogHeader>
+                        <DialogBody className="max-h-[calc(100dvh-10rem)] overflow-y-auto">
+                          <DriverLogsWorkspace />
+                        </DialogBody>
+                      </DialogContent>
+                    </Dialog>
+                  ) : workspaceAction === "Insights" ? (
+                    <Dialog open={true} onOpenChange={(open) => !open && setWorkspaceAction(null)}>
+                      <DialogContent size="xl" showClose>
+                        <DialogHeader>
+                          <DialogTitle>Operational Insights</DialogTitle>
+                          <p className="mt-1 text-sm leading-5 text-fg-secondary">
+                            Review the latest fleet audit, operational exceptions, efficiency leaks, and recommended actions.
+                          </p>
+                        </DialogHeader>
+                        <DialogBody className="max-h-[calc(100dvh-10rem)] overflow-y-auto">
+                          <AiInsightsDashboard />
+                        </DialogBody>
+                      </DialogContent>
+                    </Dialog>
                   ) : (
                     <div className="space-y-5">
                       <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
@@ -758,15 +806,6 @@ export default function Dashboard() {
                           Back to AI
                         </Button>
                       </div>
-                      {workspaceAction === "Insights" && <AiInsightsDashboard />}
-                      {workspaceAction !== "Insights" && (
-                        <div className="kss-panel p-6">
-                          <p className="text-sm font-semibold text-fg">{workspaceAction}</p>
-                          <p className="mt-2 text-xs text-fg-muted">
-                            This AI workspace will be connected after the core operational modules are stabilised.
-                          </p>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

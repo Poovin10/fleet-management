@@ -23,7 +23,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  const [currentTrip, setCurrentTrip] = useState<any>(null);
  const [lrSearch, setLrSearch] = useState("");
  const [isSearchingLr, setIsSearchingLr] = useState(false);
- const [showPodWorkspace, setShowPodWorkspace] = useState(true);
+ const [showPodWorkspace, setShowPodWorkspace] = useState(false);
  const [showPendingPodList, setShowPendingPodList] = useState(false);
 
  // INBOX STATES
@@ -392,6 +392,30 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  const numProps = { step: "any", onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur() };
 
  return (
+   <>
+     {!showPodWorkspace ? (
+       <div className="liquid-glass w-full rounded-2xl p-5 sm:p-6">
+         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+           <div>
+             <p className="kss-eyebrow text-accent">Operations · POD</p>
+             <h2 className="mt-1 text-xl font-semibold text-fg">POD Closure</h2>
+             <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
+               Search completed trips, review scanned POD information, and settle
+               delivery closure details.
+             </p>
+           </div>
+
+           <Button
+             type="button"
+             size="lg"
+             className="min-h-11 shrink-0 sm:min-w-48"
+             onClick={() => setShowPodWorkspace(true)}
+           >
+             Open POD Closure
+           </Button>
+         </div>
+       </div>
+     ) : (
  <div className="w-full kss-page-enter">
    <AlertModal
      isOpen={alertConfig.isOpen}
@@ -792,5 +816,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
      </DialogContent>
    </Dialog>
  </div>
+     )}
+   </>
  );
 }

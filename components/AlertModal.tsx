@@ -1,6 +1,14 @@
 "use client";
 
-import React from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogBody,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 interface AlertModalProps {
@@ -18,12 +26,10 @@ export function AlertModal({
   type = "info",
   onClose,
 }: AlertModalProps) {
-  if (!isOpen) return null;
-
   const styles = {
     success: {
       icon: "border-success/20 bg-success-soft text-success",
-      button: "success",
+      button: "default",
     },
     error: {
       icon: "border-danger/20 bg-danger-soft text-danger",
@@ -36,16 +42,16 @@ export function AlertModal({
   }[type];
 
   return (
-    <div
-      className="kss-glass-overlay z-[100] p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="alert-modal-title"
-    >
-      <div className="liquid-glass w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="p-6 text-center sm:p-8">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        layout="modal"
+        size="sm"
+        showClose={false}
+        className="overflow-hidden p-0"
+      >
+        <DialogHeader className="text-center">
           <div
-            className={`mx-auto mb-5 flex size-16 items-center justify-center rounded-2xl border ${styles.icon}`}
+            className={`mx-auto mb-2 flex size-16 items-center justify-center rounded-2xl border ${styles.icon}`}
           >
             {type === "success" && (
               <svg
@@ -96,19 +102,18 @@ export function AlertModal({
             )}
           </div>
 
-          <h3
-            id="alert-modal-title"
-            className="mb-2 text-xl font-semibold tracking-tight text-fg"
-          >
+          <DialogTitle className="text-xl font-semibold tracking-tight">
             {title}
-          </h3>
+          </DialogTitle>
 
-          <p className="text-sm leading-relaxed text-fg-secondary">
+          <DialogDescription className="text-sm leading-relaxed">
             {message}
-          </p>
-        </div>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="border-t border-border bg-surface/60 p-4">
+        <DialogBody className="hidden" />
+
+        <DialogFooter className="border-t border-border bg-surface/60">
           <Button
             type="button"
             variant={styles.button as "default" | "destructive"}
@@ -117,8 +122,8 @@ export function AlertModal({
           >
             {type === "success" ? "Awesome, thanks!" : "OK, Got it"}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
