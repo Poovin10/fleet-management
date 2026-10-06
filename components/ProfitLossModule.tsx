@@ -42,6 +42,13 @@ interface SparesRow {
   total_bill_amount: number | null;
 }
 
+interface GeneralExpenseRow {
+  expense_id: number;
+  expense_date: string;
+  category: string;
+  amount: number;
+}
+
 type AlertType = "success" | "error" | "info";
 
 interface AlertConfig {
@@ -78,6 +85,7 @@ export function ProfitLossModule() {
   const [trips, setTrips] = useState<TripRow[]>([]);
   const [fuelLogs, setFuelLogs] = useState<FuelRow[]>([]);
   const [sparesBills, setSparesBills] = useState<SparesRow[]>([]);
+  const [generalExpenses, setGeneralExpenses] = useState<GeneralExpenseRow[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -147,40 +155,57 @@ export function ProfitLossModule() {
         "bill_id" | "bill_date" | "total_bill_amount"
       >;
 
-      const [tripsRes, fuelRes, workshopRes] = await Promise.all([
-        supabase
+      type GeneralExpenseQueryRow = Pick<
+        Tables<"expenses">,
+        "expense_id" | "expense_date" | "category" | "amount"
+      >;
+
+      const [tripsRes, fuelRes, workshopRes, generalExpensesRes] =
+        await Promise.all([
+          supabase
           .from("trips")
           .select(
             "trip_id, trip_number, trip_start_date, freight_revenue, driver_bata, halt_bata, toll_fastag_expense, loading_unloading_expense, enroute_repairs_maintenance, misc_trip_expense, shortage_penalty_deduction",
           )
           .gte("trip_start_date", fromDate)
           .lte("trip_start_date", toDate)
-          .overrideTypes<TripQueryRow[], { merge: false }>(),
+            .overrideTypes<TripQueryRow[], { merge: false }>(),
 
-        supabase
+          supabase
           .from("diesel_fuel_logs")
           .select(
             "fuel_log_id, fuel_date, litres_filled, total_fuel_cost",
           )
           .gte("fuel_date", fromDate)
           .lte("fuel_date", toDate)
-          .overrideTypes<FuelQueryRow[], { merge: false }>(),
+            .overrideTypes<FuelQueryRow[], { merge: false }>(),
 
-        supabase
+          supabase
           .from("workshop_spares_bills")
           .select("bill_id, bill_date, total_bill_amount")
           .gte("bill_date", fromDate)
           .lte("bill_date", toDate)
-          .overrideTypes<SparesQueryRow[], { merge: false }>(),
-      ]);
+            .overrideTypes<SparesQueryRow[], { merge: false }>(),
+
+          supabase
+          .from("expenses")
+          .select("expense_id, expense_date, category, amount")
+          .gte("expense_date", fromDate)
+          .lte("expense_date", toDate)
+            .overrideTypes<GeneralExpenseQueryRow[], { merge: false }>(),
+        ]);
 
       const firstError =
-        tripsRes.error || fuelRes.error || workshopRes.error;
+        tripsRes.error ||
+        fuelRes.error ||
+        workshopRes.error ||
+        generalExpensesRes.error;
 
       if (firstError) {
         setTrips([]);
         setFuelLogs([]);
         setSparesBills([]);
+        setGeneralExpenses([]);
 
         if (initialLoad) {
           setLoading(false);
@@ -223,9 +248,18 @@ export function ProfitLossModule() {
         total_bill_amount: row.total_bill_amount,
       }));
 
+      const generalExpenseRows: GeneralExpenseRow[] =
+        (generalExpensesRes.data || []).map((row) => ({
+          expense_id: Number(row.expense_id),
+          expense_date: String(row.expense_date),
+          category: String(row.category),
+          amount: Number(row.amount || 0),
+        }));
+
       setTrips(tripRows);
       setFuelLogs(fuelRows);
       setSparesBills(sparesRows);
+      setGeneralExpenses(generalExpenseRows);
 
       if (initialLoad) {
         setLoading(false);
@@ -296,6 +330,11 @@ export function ProfitLossModule() {
       0,
     );
 
+    const generalCompanyExpenses = generalExpenses.reduce(
+      (sum, expense) => sum + Number(expense.amount || 0),
+      0,
+    );
+
     const totalOperatingExpenses =
       diesel +
       driverBata +
@@ -308,6 +347,9 @@ export function ProfitLossModule() {
 
     const netOperatingResult =
       adjustedRevenue - totalOperatingExpenses;
+
+    const companyOperatingResult =
+      netOperatingResult - generalCompanyExpenses;
 
     const grossMarginPct =
       adjustedRevenue > 0
@@ -328,9 +370,11 @@ export function ProfitLossModule() {
       workshopSpares,
       totalOperatingExpenses,
       netOperatingResult,
+      generalCompanyExpenses,
+      companyOperatingResult,
       grossMarginPct,
     };
-  }, [fuelLogs, sparesBills, trips]);
+  }, [fuelLogs, generalExpenses, sparesBills, trips]);
 
   const expenseRows = [
     ["Diesel", financials.diesel],
@@ -346,7 +390,8 @@ export function ProfitLossModule() {
   const hasData =
     trips.length > 0 ||
     fuelLogs.length > 0 ||
-    sparesBills.length > 0;
+    sparesBills.length > 0 ||
+    generalExpenses.length > 0;
 
   return (
     <div className="space-y-6">
@@ -406,32 +451,19 @@ export function ProfitLossModule() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="liquid-glass p-5">
               <div className="text-xs font-medium uppercase tracking-wider text-fg-secondary">
-                Freight Revenue
+                Adjusted Revenue
               </div>
               <div className="mt-2 font-mono text-2xl font-semibold text-success">
-                {formatCurrency(financials.revenue)}
+                {formatCurrency(financials.adjustedRevenue)}
               </div>
               <div className="mt-1 text-xs text-fg-secondary">
-                {trips.length.toLocaleString("en-IN")} trip
-                {trips.length === 1 ? "" : "s"}
+                Freight less shortage deductions
               </div>
             </div>
 
             <div className="liquid-glass p-5">
               <div className="text-xs font-medium uppercase tracking-wider text-fg-secondary">
-                Operating Expenses
-              </div>
-              <div className="mt-2 font-mono text-2xl font-semibold text-danger">
-                {formatCurrency(financials.totalOperatingExpenses)}
-              </div>
-              <div className="mt-1 text-xs text-fg-secondary">
-                Diesel + trip costs + workshop
-              </div>
-            </div>
-
-            <div className="liquid-glass p-5">
-              <div className="text-xs font-medium uppercase tracking-wider text-fg-secondary">
-                Net Operating Result
+                Fleet Operating Result
               </div>
               <div
                 className={`mt-2 font-mono text-2xl font-semibold ${
@@ -443,7 +475,25 @@ export function ProfitLossModule() {
                 {formatCurrency(financials.netOperatingResult)}
               </div>
               <div className="mt-1 text-xs text-fg-secondary">
-                {financials.grossMarginPct.toFixed(1)}% operating margin
+                After diesel, trip costs and workshop
+              </div>
+            </div>
+
+            <div className="liquid-glass p-5">
+              <div className="text-xs font-medium uppercase tracking-wider text-fg-secondary">
+                Company Operating Result
+              </div>
+              <div
+                className={`mt-2 font-mono text-2xl font-semibold ${
+                  financials.companyOperatingResult >= 0
+                    ? "text-success"
+                    : "text-warning"
+                }`}
+              >
+                {formatCurrency(financials.companyOperatingResult)}
+              </div>
+              <div className="mt-1 text-xs text-fg-secondary">
+                After {formatCurrency(financials.generalCompanyExpenses)} company expenses
               </div>
             </div>
           </div>
@@ -499,25 +549,49 @@ export function ProfitLossModule() {
 
               <div className="flex items-center justify-between px-5 py-3">
                 <span className="text-sm font-medium text-fg">
-                  Total Operating Expenses
+                  Fleet Operating Expenses
                 </span>
                 <span className="font-mono text-sm font-semibold text-danger">
                   -{formatCurrency(financials.totalOperatingExpenses)}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between bg-surface/60 px-5 py-4">
+              <div className="flex items-center justify-between bg-surface/40 px-5 py-3">
                 <span className="text-sm font-semibold text-fg">
-                  Net Operating Result
+                  Fleet Operating Result
                 </span>
                 <span
-                  className={`font-mono text-base font-bold ${
+                  className={`font-mono text-sm font-bold ${
                     financials.netOperatingResult >= 0
                       ? "text-info"
                       : "text-warning"
                   }`}
                 >
                   {formatCurrency(financials.netOperatingResult)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between px-5 py-3">
+                <span className="text-sm text-fg-secondary">
+                  General Company Expenses
+                </span>
+                <span className="font-mono text-sm font-medium text-danger">
+                  -{formatCurrency(financials.generalCompanyExpenses)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between bg-surface/60 px-5 py-4">
+                <span className="text-sm font-semibold text-fg">
+                  Company Operating Result
+                </span>
+                <span
+                  className={`font-mono text-base font-bold ${
+                    financials.companyOperatingResult >= 0
+                      ? "text-success"
+                      : "text-warning"
+                  }`}
+                >
+                  {formatCurrency(financials.companyOperatingResult)}
                 </span>
               </div>
             </div>

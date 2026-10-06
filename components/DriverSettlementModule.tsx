@@ -29,6 +29,7 @@ interface DriverTrip {
   driver_bata: number | null;
   halt_bata: number | null;
   cash_advance_issued: number | null;
+  trip_status: string | null;
   settlement_status: string | null;
 }
 
@@ -38,10 +39,27 @@ interface DriverAdvance {
   is_settled: boolean | null;
 }
 
-export function DriverSettlementModule() {
+interface SettlementResult {
+  trips_settled: number;
+  advances_settled: number;
+  driver_bata: number;
+  halt_bata: number;
+  trip_cash_advance: number;
+  direct_advance: number;
+  net_balance: number;
+  settled_at: string | null;
+}
+
+type DriverSettlementModuleProps = {
+  initialOpen?: boolean;
+};
+
+export function DriverSettlementModule({
+  initialOpen = false,
+}: DriverSettlementModuleProps) {
   const supabase = createClient();
 
-  const [showSettlementWorkspace, setShowSettlementWorkspace] = useState(false);
+  const [showSettlementWorkspace, setShowSettlementWorkspace] = useState(initialOpen);
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -70,6 +88,8 @@ export function DriverSettlementModule() {
 
   const [driverTrips, setDriverTrips] = useState<DriverTrip[]>([]);
   const [driverAdvances, setDriverAdvances] = useState<DriverAdvance[]>([]);
+  const [lastSettlementResult, setLastSettlementResult] =
+    useState<SettlementResult | null>(null);
 
   const formatAmt = (amt: number) =>
     (Number(amt) || 0).toLocaleString("en-IN", {
@@ -167,6 +187,7 @@ export function DriverSettlementModule() {
     setHasSearched(false);
     setDriverTrips([]);
     setDriverAdvances([]);
+    setLastSettlementResult(null);
 
     try {
       const [
@@ -176,11 +197,13 @@ export function DriverSettlementModule() {
         supabase
           .from("trips")
           .select(
-            "trip_id, driver_bata, halt_bata, cash_advance_issued, settlement_status"
+            "trip_id, driver_bata, halt_bata, cash_advance_issued, trip_status, settlement_status"
           )
           .eq("primary_driver_id", selectedDriverId)
           .gte("trip_start_date", fromDate)
           .lte("trip_start_date", toDate)
+          .eq("trip_status", "COMPLETED")
+          .or("settlement_status.is.null,settlement_status.neq.SETTLED")
           .order("trip_start_date", { ascending: true }),
 
         supabase
@@ -189,6 +212,7 @@ export function DriverSettlementModule() {
           .eq("driver_id", selectedDriverId)
           .gte("advance_date", fromDate)
           .lte("advance_date", toDate)
+          .eq("is_settled", false)
           .order("advance_date", { ascending: true }),
       ]);
 
@@ -272,17 +296,32 @@ export function DriverSettlementModule() {
 
       setIsSettlementConfirmOpen(false);
 
+      const result = data as SettlementResult | null;
+
+      if (!result) {
+        throw new Error(
+          "Settlement completed but the server returned no settlement totals."
+        );
+      }
+
       showAlert(
         "Settlement Completed",
         `Settlement completed. Trips settled: ${
-          data?.trips_settled ?? 0
+          result.trips_settled ?? 0
         }. Advances settled: ${
-          data?.advances_settled ?? 0
-        }.`,
+          result.advances_settled ?? 0
+        }. Server net balance: ₹${formatAmt(
+          Number(result.net_balance) || 0
+        )}.`,
         "success"
       );
 
       await generateSettlement();
+
+      // generateSettlement clears stale result state while reloading
+      // the now-unsettled period. Restore the authoritative result
+      // returned by the settlement transaction for the confirmation view.
+      setLastSettlementResult(result);
     } catch (error) {
       setIsSettlementConfirmOpen(false);
 
@@ -326,20 +365,6 @@ export function DriverSettlementModule() {
     grandTotalBata -
     grandTotalTripAdv -
     directAdvTotal;
-
-  const settledTripCount = driverTrips.filter(
-    (trip) => trip.settlement_status === "SETTLED"
-  ).length;
-
-  const pendingTripCount =
-    driverTrips.length - settledTripCount;
-
-  const settledAdvanceCount = driverAdvances.filter(
-    (advance) => advance.is_settled === true
-  ).length;
-
-  const pendingAdvanceCount =
-    driverAdvances.length - settledAdvanceCount;
 
   const totalRecords =
     driverTrips.length + driverAdvances.length;
@@ -500,6 +525,7 @@ export function DriverSettlementModule() {
                   setHasSearched(false);
                   setDriverTrips([]);
                   setDriverAdvances([]);
+                  setLastSettlementResult(null);
                 }}
                 className="h-auto py-3.5 text-xs font-bold"
               >
@@ -527,6 +553,7 @@ export function DriverSettlementModule() {
                 onChange={(e) => {
                   setFromDate(e.target.value);
                   setHasSearched(false);
+                  setLastSettlementResult(null);
                 }}
                 className="h-auto py-3.5 text-xs font-semibold"
               />
@@ -545,6 +572,7 @@ export function DriverSettlementModule() {
                     onChange={(e) => {
                       setToDate(e.target.value);
                       setHasSearched(false);
+                      setLastSettlementResult(null);
                     }}
                     className="h-auto py-3.5 text-xs font-semibold"
                   />
@@ -650,58 +678,101 @@ export function DriverSettlementModule() {
                 </div>
               </div>
 
-              <div className="kss-surface p-6">
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h4 className="text-sm font-semibold text-fg">
-                      Settlement Status
-                    </h4>
+              {lastSettlementResult && (
+                <div className="kss-surface border border-success/20 p-6">
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase tracking-wide text-success">
+                        Server-confirmed settlement
+                      </p>
 
-                    <p className="mt-1 text-xs text-fg-muted">
-                      Current status of the records loaded for this
-                      period.
-                    </p>
+                      <h4 className="mt-1 text-sm font-semibold text-fg">
+                        Settlement completed
+                      </h4>
+
+                      <p className="mt-1 text-xs leading-5 text-fg-muted">
+                        These figures came directly from the settlement RPC,
+                        not from the browser calculation.
+                      </p>
+                    </div>
+
+                    <div className="text-left sm:text-right">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        Authoritative Net Balance
+                      </p>
+
+                      <p className="mt-1 font-mono text-xl font-semibold text-accent">
+                        ₹{formatAmt(lastSettlementResult.net_balance)}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div className="rounded-xl border border-success/20 bg-success-soft px-4 py-3">
-                      <p className="text-[9px] font-semibold text-success">
-                        Settled Trips
+                  <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-6">
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        Trips
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-success">
-                        {settledTripCount}
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl border border-warning/20 bg-warning-soft px-4 py-3">
-                      <p className="text-[9px] font-semibold text-warning">
-                        Pending Trips
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-warning">
-                        {pendingTripCount}
+                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
+                        {lastSettlementResult.trips_settled}
                       </p>
                     </div>
 
-                    <div className="rounded-xl border border-success/20 bg-success-soft px-4 py-3">
-                      <p className="text-[9px] font-semibold text-success">
-                        Settled Advances
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        Bata
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-success">
-                        {settledAdvanceCount}
+                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
+                        ₹{formatAmt(lastSettlementResult.driver_bata)}
                       </p>
                     </div>
 
-                    <div className="rounded-xl border border-warning/20 bg-warning-soft px-4 py-3">
-                      <p className="text-[9px] font-semibold text-warning">
-                        Pending Advances
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        Halt Bata
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-warning">
-                        {pendingAdvanceCount}
+                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
+                        ₹{formatAmt(lastSettlementResult.halt_bata)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        Trip Cash Advance
+                      </p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
+                        ₹{formatAmt(lastSettlementResult.trip_cash_advance)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        Direct Advance
+                      </p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
+                        ₹{formatAmt(lastSettlementResult.direct_advance)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        Advances
+                      </p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
+                        {lastSettlementResult.advances_settled}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        Direct Advance
+                      </p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
+                        ₹{formatAmt(lastSettlementResult.direct_advance)}
                       </p>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="kss-surface p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

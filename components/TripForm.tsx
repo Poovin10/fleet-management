@@ -11,7 +11,11 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertModal } from "@/components/AlertModal";
 
-export function TripForm() {
+type TripFormProps = {
+  initialOpen?: boolean;
+};
+
+export function TripForm({ initialOpen = false }: TripFormProps) {
   const [alertConfig, setAlertConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -48,7 +52,7 @@ export function TripForm() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showTripWorkspace, setShowTripWorkspace] = useState(false);
+  const [showTripWorkspace, setShowTripWorkspace] = useState(initialOpen);
 
   // Core Data States
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -82,6 +86,7 @@ export function TripForm() {
   const [tonnage, setTonnage] = useState("");
   const [freightRevenue, setFreightRevenue] = useState("");
   const [freightMasterRate, setFreightMasterRate] = useState<number | null>(null);
+  const [freightMasterId, setFreightMasterId] = useState<number | null>(null);
   const [freightMasterStatus, setFreightMasterStatus] = useState("");
   const [freightManualOverride, setFreightManualOverride] = useState(false);
   const [driverBata, setDriverBata] = useState("");
@@ -277,6 +282,7 @@ export function TripForm() {
   useEffect(() => {
     if (!source || !destination || !cargoType || selectedCapacity <= 0) {
       setFreightMasterRate(null);
+      setFreightMasterId(null);
       setFreightMasterStatus("");
       setFreightManualOverride(false);
       return;
@@ -291,7 +297,8 @@ export function TripForm() {
 
     if (!matches.length) {
       setFreightMasterRate(null);
-      setFreightMasterStatus("No matching freight master found — manual freight required.");
+      setFreightMasterId(null);
+      setFreightMasterStatus("No matching freight master found — dispatch requires a valid route master.");
       setFreightManualOverride(false);
       return;
     }
@@ -303,13 +310,26 @@ export function TripForm() {
     const selectedRule = exactVehicleCapacity || matches[0];
     const rate = Number(selectedRule.freight_rate_per_ton);
 
+    const selectedMasterId = Number(selectedRule.destination_id);
+
+    if (!Number.isInteger(selectedMasterId) || selectedMasterId <= 0) {
+      setFreightMasterRate(null);
+      setFreightMasterId(null);
+      setFreightMasterStatus("Freight master record is invalid — dispatch blocked.");
+      setFreightManualOverride(false);
+      return;
+    }
+
     if (!Number.isFinite(rate) || rate <= 0) {
       setFreightMasterRate(null);
-      setFreightMasterStatus("Freight master rate is invalid — manual freight required.");
+      setFreightMasterId(selectedMasterId);
+      setFreightMasterStatus("Freight master rate is invalid — dispatch blocked.");
+      setFreightManualOverride(false);
       return;
     }
 
     setFreightMasterRate(rate);
+    setFreightMasterId(selectedMasterId);
     setFreightMasterStatus("Master freight rate matched.");
     setFreightManualOverride(false);
   }, [
@@ -563,7 +583,20 @@ export function TripForm() {
     }
 
     // ------------------------------------------------------------
-    // STAGE 5 — ANOMALY / EXPLICIT CONFIRMATION GATE
+    // STAGE 5 — ROUTE MASTER CONTROL
+    // ------------------------------------------------------------
+    if (freightMasterId === null) {
+      setLoading(false);
+      showAlert(
+        "Route Master Required",
+        "No valid Freight Master route is selected for this dispatch. Dispatch has been blocked.",
+        "error",
+      );
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // STAGE 6 — ANOMALY / EXPLICIT CONFIRMATION GATE
     // ------------------------------------------------------------
     const warnings: string[] = [];
 
@@ -585,7 +618,7 @@ export function TripForm() {
         warnings.push("Freight has been manually overridden because no matching master rate is active.");
       }
     } else if (freightMasterRate === null) {
-      warnings.push("No matching freight master found. Freight is being entered manually.");
+      warnings.push("Freight master route is valid, but no usable master rate is available. Review freight before dispatch.");
     }
 
     if (bataManualOverride) {
@@ -661,7 +694,7 @@ export function TripForm() {
       p_cash_advance_issued: Number(advance),
       p_start_km: Number(startKm),
       p_is_tank_full: tankFull,
-      p_entered_by: "TripForm"
+      p_freight_master_id: freightMasterId
     });
 
     if (!error) {

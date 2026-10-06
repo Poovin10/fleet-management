@@ -56,7 +56,7 @@ type PendingEntry = {
 
 type Driver = {
   driver_id: number;
-  driver_name: string;
+  full_name: string;
   driver_code: string | null;
 };
 
@@ -72,7 +72,13 @@ const dateDisplay = (value: string | null) => {
   return `${day}/${month}/${year}`;
 };
 
-export function ReconciliationModule() {
+type ReconciliationModuleProps = {
+  initialOpen?: boolean;
+};
+
+export function ReconciliationModule({
+  initialOpen = false,
+}: ReconciliationModuleProps) {
   const supabase = createClient();
 
   const [trips, setTrips] = useState<TripRecord[]>([]);
@@ -80,7 +86,7 @@ export function ReconciliationModule() {
   const [pendingEntries, setPendingEntries] = useState<PendingEntry[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
 
-  const [showReconciliationWorkspace, setShowReconciliationWorkspace] = useState(false);
+  const [showReconciliationWorkspace, setShowReconciliationWorkspace] = useState(initialOpen);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [activeView, setActiveView] = useState<ReconcileView>(null);
@@ -116,12 +122,13 @@ export function ReconciliationModule() {
           .select(
             "entry_id, entry_type, amount_inr, litres, odometer_km, driver_code, vehicle_id, status, rejection_reason, receipt_remarks, submitted_at"
           )
+          .eq("status", "PENDING")
           .order("submitted_at", { ascending: false }),
 
         supabase
           .from("drivers")
-          .select("driver_id, driver_name, driver_code")
-          .order("driver_name", { ascending: true }),
+          .select("driver_id, full_name, driver_code")
+          .order("full_name", { ascending: true }),
       ]);
 
       if (tripError) throw new Error(`Trips: ${tripError.message}`);
@@ -151,7 +158,7 @@ export function ReconciliationModule() {
   const driverName = (driverId: number | null) => {
     if (!driverId) return "Unassigned";
     const driver = drivers.find((item) => item.driver_id === driverId);
-    return driver?.driver_name || `Driver #${driverId}`;
+    return driver?.full_name || `Driver #${driverId}`;
   };
 
   const outstandingTripValue = useMemo(

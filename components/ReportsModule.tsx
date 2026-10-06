@@ -32,13 +32,17 @@ type ReportType =
 
 type ReportsModuleProps = {
   initialReportType?: ReportType;
+  initialOpen?: boolean;
 };
 
-export default function ReportsModule({ initialReportType = "Trips" }: ReportsModuleProps) {
+export default function ReportsModule({
+  initialReportType = "Trips",
+  initialOpen = false,
+}: ReportsModuleProps) {
   const supabase = useMemo(() => createClient(), []);
 
   const [reportType, setReportType] = useState<ReportType>(initialReportType);
-  const [showReportsWorkspace, setShowReportsWorkspace] = useState(false);
+  const [showReportsWorkspace, setShowReportsWorkspace] = useState(initialOpen);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [search, setSearch] = useState("");
@@ -109,141 +113,29 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
     status,
   });
 
-  const escapeFilterText = (value: string) =>
-    value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/%/g, "\\%").replace(/_/g, "\\_");
-
-  const ilikeClause = (column: string, value: string) =>
-    `${column}.ilike."%${escapeFilterText(value)}%"`;
-
-  const resolveSearchIds = async (filters: ReportFilters): Promise<SearchIds> => {
-    const result: SearchIds = { vehicleIds: [], driverIds: [] };
-    const term = filters.search.trim();
-    if (!term) return result;
-
-    const lookupIds = async (table: "vehicles" | "drivers", idColumn: string, fields: string[]) => {
-      const { data, error } = await (supabase.from(table) as any)
-        .select(idColumn)
-        .or(fields.map((field) => ilikeClause(field, term)).join(","));
-      if (error) throw error;
-      return (data || []).map((row: any) => Number(row[idColumn])).filter(Number.isFinite);
-    };
-
-    if (["Diesel/Fuel", "Driver Bata", "Driver Settlement", "Workshop", "Financial/P&L"].includes(filters.reportType)) {
-      result.vehicleIds = await lookupIds("vehicles", "vehicle_id", ["vehicle_number"]);
-    }
-    if (["Driver Bata", "Driver Settlement"].includes(filters.reportType)) {
-      result.driverIds = await lookupIds("drivers", "driver_id", ["full_name", "driver_code"]);
-    }
-    return result;
-  };
-
-  const addOrSearch = (query: any, term: string, fields: string[], ids: Array<{ column: string; values: number[] }> = []) => {
-    const normalizedTerm = term.trim();
-    const clauses = normalizedTerm ? fields.map((field) => ilikeClause(field, normalizedTerm)) : [];
-    ids.forEach(({ column, values }) => {
-      if (values.length) clauses.push(`${column}.in.(${values.join(",")})`);
+  const fetchReportRpc = async (
+    filters: ReportFilters,
+    offset: number,
+    limit: number,
+  ) => {
+    const { data, error } = await supabase.rpc("get_admin_report_atomic", {
+      p_report_type: filters.reportType,
+      p_from_date: filters.fromDate || null,
+      p_to_date: filters.toDate || null,
+      p_search: filters.search.trim(),
+      p_status: filters.status,
+      p_offset: offset,
+      p_limit: limit,
     });
-    return clauses.length ? query.or(clauses.join(",")) : query;
-  };
 
-  const buildReportQuery = (filters: ReportFilters, ids: SearchIds, withCount: boolean) => {
-    const options = withCount ? { count: "exact" as const } : undefined;
-    const term = filters.search.trim();
-    let query: any;
+    if (error) throw error;
 
-    if (filters.reportType === "Trips") {
-      query = supabase.from("trips").select(`
-        trip_id, trip_number, trip_start_date, trip_end_date, origin, destination,
-        loaded_weight_mt, tonnage_loaded, total_km_run, start_km, end_km,
-        freight_revenue, driver_bata, halt_bata, cash_advance_issued, fuel_litres,
-        trip_status, settlement_status, vehicles(vehicle_number), drivers(full_name)
-      `, options).order("trip_start_date", { ascending: false }).order("trip_id", { ascending: false });
-      if (filters.fromDate) query = query.gte("trip_start_date", filters.fromDate);
-      if (filters.toDate) query = query.lte("trip_start_date", filters.toDate);
-      if (filters.status !== "All") query = query.eq("trip_status", filters.status);
-      if (term) query = query.ilike("trip_number", `%${term}%`);
-    } else if (filters.reportType === "POD") {
-      query = supabase.from("trips").select(`
-        trip_id, trip_number, trip_start_date, trip_end_date, origin, destination,
-        loaded_weight_mt, unloaded_weight_mt, shortage_mt, pod_status, pod_number,
-        pod_received_date, halt_bata, enroute_repairs_maintenance,
-        vehicles(vehicle_number), drivers(full_name)
-      `, options).order("trip_start_date", { ascending: false }).order("trip_id", { ascending: false });
-      if (filters.fromDate) query = query.gte("trip_start_date", filters.fromDate);
-      if (filters.toDate) query = query.lte("trip_start_date", filters.toDate);
-      if (filters.status !== "All") query = query.eq("pod_status", filters.status);
-      if (term) query = addOrSearch(query, term, ["trip_number", "pod_number"]);
-    } else if (filters.reportType === "Diesel/Fuel") {
-      query = supabase.from("diesel_fuel_logs").select(`*, vehicles(vehicle_number)`, options)
-        .order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false });
-      if (filters.fromDate) query = query.gte("fuel_date", filters.fromDate);
-      if (filters.toDate) query = query.lte("fuel_date", filters.toDate);
-      if (filters.status !== "All") query = query.eq("diesel_category", filters.status);
-      if (term) query = addOrSearch(query, term, ["diesel_category"], [{ column: "vehicle_id", values: ids.vehicleIds }]);
-    } else if (filters.reportType === "Driver Bata" || filters.reportType === "Driver Settlement" || filters.reportType === "Financial/P&L") {
-      const selection = filters.reportType === "Driver Bata" ? `
-        trip_id, trip_number, trip_start_date, origin, destination, driver_bata, halt_bata,
-        cash_advance_issued, settlement_status, primary_driver_id,
-        vehicles(vehicle_number), drivers(full_name, driver_code)
-      ` : filters.reportType === "Driver Settlement" ? `
-        trip_id, trip_number, trip_start_date, origin, destination, freight_revenue,
-        driver_bata, halt_bata, cash_advance_issued, settlement_status, primary_driver_id,
-        vehicles(vehicle_number), drivers(full_name, driver_code)
-      ` : `
-        trip_id, trip_number, trip_start_date, freight_revenue, driver_bata, halt_bata,
-        enroute_repairs_maintenance, fuel_litres, total_km_run, trip_status, vehicles(vehicle_number)
-      `;
-      query = (supabase.from("trips") as any).select(selection, options)
-        .order("trip_start_date", { ascending: false }).order("trip_id", { ascending: false });
-      if (filters.fromDate) query = query.gte("trip_start_date", filters.fromDate);
-      if (filters.toDate) query = query.lte("trip_start_date", filters.toDate);
-      if (filters.status !== "All") {
-        query = query.eq(filters.reportType === "Financial/P&L" ? "trip_status" : "settlement_status", filters.status);
-      }
-      if (term) {
-        const matchIds: Array<{ column: string; values: number[] }> = [{ column: "vehicle_id", values: ids.vehicleIds }];
-        if (filters.reportType !== "Financial/P&L") matchIds.push({ column: "primary_driver_id", values: ids.driverIds });
-        query = addOrSearch(query, term, ["trip_number"], matchIds);
-      }
-    } else if (filters.reportType === "Workshop") {
-      query = supabase.from("workshop_spares_bills").select(`*, vehicles(vehicle_number)`, options)
-        .order("bill_date", { ascending: false }).order("bill_id", { ascending: false });
-      if (filters.fromDate) query = query.gte("bill_date", filters.fromDate);
-      if (filters.toDate) query = query.lte("bill_date", filters.toDate);
-      if (term) query = addOrSearch(query, term, ["vendor_name", "spare_parts_details"], [{ column: "vehicle_id", values: ids.vehicleIds }]);
-    } else {
-      query = supabase.from("vehicles").select("*", options).order("vehicle_number", { ascending: true }).order("vehicle_id", { ascending: true });
-      if (filters.status !== "All") query = query.eq("current_status", filters.status);
-      if (term) query = addOrSearch(query, term, ["vehicle_number", "truck_type", "current_status"]);
-    }
-    return query;
-  };
+    const result = Array.isArray(data) ? data[0] : data;
 
-  const buildSettlementTripsQuery = (filters: ReportFilters, ids: SearchIds, withCount: boolean, countOnly = false) => {
-    const options = countOnly ? { count: "exact" as const, head: true } : withCount ? { count: "exact" as const } : undefined;
-    let query: any = supabase.from("trips").select(countOnly ? "trip_id" : `
-      trip_id, trip_number, trip_start_date, origin, destination, freight_revenue,
-      driver_bata, halt_bata, cash_advance_issued, settlement_status, primary_driver_id,
-      vehicles(vehicle_number), drivers(full_name, driver_code)
-    `, options).order("trip_start_date", { ascending: false }).order("trip_id", { ascending: false });
-    if (filters.fromDate) query = query.gte("trip_start_date", filters.fromDate);
-    if (filters.toDate) query = query.lte("trip_start_date", filters.toDate);
-    if (filters.status !== "All") query = query.eq("settlement_status", filters.status);
-    if (filters.search.trim()) query = addOrSearch(query, filters.search, ["trip_number"], [
-      { column: "vehicle_id", values: ids.vehicleIds },
-      { column: "primary_driver_id", values: ids.driverIds },
-    ]);
-    return query;
-  };
-
-  const buildSettlementAdvancesQuery = (filters: ReportFilters, ids: SearchIds, withCount: boolean, countOnly = false) => {
-    const options = countOnly ? { count: "exact" as const, head: true } : withCount ? { count: "exact" as const } : undefined;
-    let query: any = supabase.from("driver_direct_advances").select(countOnly ? "advance_id" : `
-      advance_id, driver_id, advance_date, advance_type, reference_remarks, amount_inr,
-      drivers(full_name, driver_code)
-    `, options).order("advance_date", { ascending: false }).order("advance_id", { ascending: false });
-    if (filters.search.trim()) query = addOrSearch(query, filters.search, ["advance_type", "reference_remarks"], [{ column: "driver_id", values: ids.driverIds }]);
-    return query;
+    return {
+      data: Array.isArray(result?.rows) ? result.rows : [],
+      count: Number(result?.total_count || 0),
+    };
   };
 
   const formatDisplayDate = (value: unknown) => {
@@ -272,68 +164,30 @@ export default function ReportsModule({ initialReportType = "Trips" }: ReportsMo
     halt_bata: 0, cash_advance: 0, direct_advance: Number(row.amount_inr || 0), settlement_status: "",
   }));
 
-  const fetchReportPage = async (filters: ReportFilters, requestedPage: number) => {
-    const ids = await resolveSearchIds(filters);
+  const fetchReportPage = async (
+    filters: ReportFilters,
+    requestedPage: number,
+  ) => {
     const offset = (requestedPage - 1) * pageSize;
-    if (filters.reportType !== "Driver Settlement") {
-      const { data, error, count } = await buildReportQuery(filters, ids, true).range(offset, offset + pageSize - 1);
-      if (error) throw error;
-      return { data: data || [], count: count ?? data?.length ?? 0 };
-    }
-
-    const [tripCountResult, advanceCountResult] = await Promise.all([
-      buildSettlementTripsQuery(filters, ids, true, true),
-      buildSettlementAdvancesQuery(filters, ids, true, true),
-    ]);
-    if (tripCountResult.error) throw tripCountResult.error;
-    if (advanceCountResult.error) throw advanceCountResult.error;
-    const tripCount = tripCountResult.count || 0;
-    const advanceCount = advanceCountResult.count || 0;
-    const tripFrom = Math.min(offset, tripCount);
-    const tripTo = Math.min(offset + pageSize - 1, tripCount - 1);
-    const advanceFrom = Math.max(0, offset - tripCount);
-    const advanceTo = Math.min(advanceCount - 1, offset + pageSize - 1 - tripCount);
-    const pageQueries: Promise<any>[] = [];
-    if (tripCount && tripFrom <= tripTo) {
-      pageQueries.push(buildSettlementTripsQuery(filters, ids, false).range(tripFrom, tripTo));
-    }
-    if (advanceCount && advanceFrom <= advanceTo) {
-      pageQueries.push(buildSettlementAdvancesQuery(filters, ids, false).range(advanceFrom, advanceTo));
-    }
-    const pageResults = await Promise.all(pageQueries);
-    pageResults.forEach((result) => { if (result.error) throw result.error; });
-    let pageIndex = 0;
-    const tripPage = tripCount && tripFrom <= tripTo ? pageResults[pageIndex++]?.data || [] : [];
-    const advancePage = advanceCount && advanceFrom <= advanceTo ? pageResults[pageIndex]?.data || [] : [];
-    return {
-      data: [...mapSettlementTrips(tripPage), ...mapSettlementAdvances(advancePage)],
-      count: tripCount + advanceCount,
-    };
-  };
-
-  const fetchAllFromQuery = async (queryFactory: () => any) => {
-    const allRows: any[] = [];
-    const batchSize = 1000;
-    for (let offset = 0; ; offset += batchSize) {
-      const { data, error } = await queryFactory().range(offset, offset + batchSize - 1);
-      if (error) throw error;
-      const batch = data || [];
-      allRows.push(...batch);
-      if (batch.length < batchSize) break;
-    }
-    return allRows;
+    return fetchReportRpc(filters, offset, pageSize);
   };
 
   const fetchFullReport = async (filters: ReportFilters) => {
-    const ids = await resolveSearchIds(filters);
-    if (filters.reportType !== "Driver Settlement") {
-      return fetchAllFromQuery(() => buildReportQuery(filters, ids, false));
+    const firstPage = await fetchReportRpc(filters, 0, 1000);
+    const allRows = [...firstPage.data];
+
+    if (firstPage.count <= allRows.length) {
+      return allRows;
     }
-    const [tripRows, advanceRows] = await Promise.all([
-      fetchAllFromQuery(() => buildSettlementTripsQuery(filters, ids, false)),
-      fetchAllFromQuery(() => buildSettlementAdvancesQuery(filters, ids, false)),
-    ]);
-    return [...mapSettlementTrips(tripRows), ...mapSettlementAdvances(advanceRows)];
+
+    for (let offset = allRows.length; offset < firstPage.count; offset += 1000) {
+      const page = await fetchReportRpc(filters, offset, 1000);
+      allRows.push(...page.data);
+
+      if (!page.data.length) break;
+    }
+
+    return allRows;
   };
 
   const loadReport = async (requestedPage: number, filters: ReportFilters) => {

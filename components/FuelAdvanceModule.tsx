@@ -11,13 +11,15 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 
 type FuelAdvanceModuleProps = {
   initialSection?: "Issue Diesel" | "AdBlue";
+  initialOpen?: boolean;
 };
 
 export function FuelAdvanceModule({
   initialSection = "Issue Diesel",
+  initialOpen = false,
 }: FuelAdvanceModuleProps) {
  const supabase = createClient();
- const [showFuelWorkspace, setShowFuelWorkspace] = useState(false);
+ const [showFuelWorkspace, setShowFuelWorkspace] = useState(initialOpen);
  const [faNav, setFaNav] = useState(
    initialSection === "AdBlue" ? " AdBlue" : " Issue Diesel"
  );

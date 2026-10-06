@@ -8,7 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const supabase = createClient();
-export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
+type PodClosureProps = {
+  onSuccess?: () => void;
+  initialOpen?: boolean;
+};
+
+export function PodClosure({
+  onSuccess,
+  initialOpen = false,
+}: PodClosureProps) {
  const [isLoading, setIsLoading] = useState(true);
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [dieselRate, setDieselRate] = useState<number>(95.0);
@@ -23,7 +31,7 @@ export function PodClosure({ onSuccess }: { onSuccess?: () => void }) {
  const [currentTrip, setCurrentTrip] = useState<any>(null);
  const [lrSearch, setLrSearch] = useState("");
  const [isSearchingLr, setIsSearchingLr] = useState(false);
- const [showPodWorkspace, setShowPodWorkspace] = useState(false);
+ const [showPodWorkspace, setShowPodWorkspace] = useState(initialOpen);
  const [showPendingPodList, setShowPendingPodList] = useState(false);
 
  // INBOX STATES

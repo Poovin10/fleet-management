@@ -9,9 +9,8 @@ import { PodClosure } from "@/components/PodClosure";
 import { ModifyTrips } from "@/components/ModifyTrips";
 import { AccountsModule } from "@/components/AccountsModule";
 import { FuelAdvanceModule } from "@/components/FuelAdvanceModule";
-import { FinancialsModule } from "@/components/FinancialsModule";
-import { ProfitLossModule } from "@/components/ProfitLossModule";
 import ReportsModule from "./ReportsModule";
+import { ProfitLossModule } from "@/components/ProfitLossModule";
 import { WorkshopModule } from "@/components/WorkshopModule";
 import { SetupModule } from "@/components/SetupModule";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -190,7 +189,7 @@ export default function Dashboard() {
         .map((group) => ({
           ...group,
           items: group.items.filter((item) =>
-            ["Dashboard", "Reports", "Fleet", "AI"].includes(item.tab)
+            ["Dashboard", "Fleet", "AI"].includes(item.tab)
           ),
         }))
         .filter((group) => group.items.length > 0);
@@ -267,10 +266,47 @@ export default function Dashboard() {
                       if (operationActions.includes(destination)) {
                         setActiveTab("Operations");
                         setWorkspaceAction(destination);
-                      } else {
-                        setActiveTab(destination);
-                        setWorkspaceAction(null);
+                        return;
                       }
+
+                      if (destination === "Fuel") {
+                        setActiveTab("Fleet");
+                        setWorkspaceAction("Fuel");
+                        return;
+                      }
+
+                      if (destination === "Workshop & Tyres") {
+                        setActiveTab("Fleet");
+                        setWorkspaceAction("Workshop");
+                        return;
+                      }
+
+                      if (destination === "Driver Settlement") {
+                        setActiveTab("Accounts");
+                        setWorkspaceAction("Driver Settlement");
+                        return;
+                      }
+
+                      if (destination === "Reports") {
+                        setActiveTab("Reports");
+                        setWorkspaceAction(null);
+                        return;
+                      }
+
+                      if (destination === "Master") {
+                        setActiveTab("Master");
+                        setWorkspaceAction(null);
+                        return;
+                      }
+
+                      if (destination === "Fleet Analytics") {
+                        setActiveTab("Reports");
+                        setWorkspaceAction(null);
+                        return;
+                      }
+
+                      setActiveTab("Dashboard");
+                      setWorkspaceAction(null);
                     }}
                   />
                 </div>
@@ -343,8 +379,8 @@ export default function Dashboard() {
                         </Button>
                       </div>
 
-                      {workspaceAction === "Trips" && <TripForm />}
-                      {workspaceAction === "POD Closure" && <PodClosure />}
+                      {workspaceAction === "Trips" && <TripForm initialOpen />}
+                      {workspaceAction === "POD Closure" && <PodClosure initialOpen />}
                       {workspaceAction === "Modify Trips" && <ModifyTrips />}
                       {workspaceAction === "Driver Approvals" && <ApprovalQueue />}
 
@@ -500,12 +536,27 @@ export default function Dashboard() {
                         </Button>
                       </div>
 
-                      {workspaceAction === "Fuel" && <FuelAdvanceModule />}
-                      {workspaceAction === "Workshop" && <WorkshopModule />}
-                      {workspaceAction === "Tyres" && <WorkshopModule />}
+                      {workspaceAction === "Fuel" && (
+                        <FuelAdvanceModule initialOpen />
+                      )}
+                      {workspaceAction === "Workshop" && (
+                        <WorkshopModule
+                          initialTab="Spares & Service Bills"
+                          initialOpen
+                        />
+                      )}
+                      {workspaceAction === "Tyres" && (
+                        <WorkshopModule
+                          initialTab="Tyre Management"
+                          initialOpen
+                        />
+                      )}
                       {workspaceAction === "Live Fleet" && <FleetTable />}
                       {workspaceAction === "AdBlue" && (
-                        <FuelAdvanceModule initialSection="AdBlue" />
+                        <FuelAdvanceModule
+                          initialSection="AdBlue"
+                          initialOpen
+                        />
                       )}
                     </div>
                   )}
@@ -520,22 +571,22 @@ export default function Dashboard() {
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fg-muted">Accounts</p>
                         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-fg">Financial control</h1>
                         <p className="mt-2 max-w-2xl text-sm text-fg-secondary">
-                          Manage driver advances, expenses, settlements, and reconciliation.
+                          Manage account transactions, driver settlements, and financial reconciliation through separate controlled workspaces.
                         </p>
                       </div>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         {[
-                          ["Driver Advance", "Driver Advance", "Issue and track driver advances"],
-                          ["Expense", "Expense", "Record and manage operating expenses"],
+                          ["Accounts", "Accounts", "Driver advances and general company expenses"],
                           ["Driver Settlement", "Driver Settlement", "Review and settle driver balances"],
-                          ["Reconcile", "Reconcile", "Reconcile outstanding financial entries"],
+                          ["Reconcile", "Reconcile", "Control outstanding and exceptional financial entries"],
                         ].map(([action, title, description]) => (
                           <Button
                             key={action}
                             type="button"
                             variant="ghost"
                             onClick={() => setWorkspaceAction(action)}
-                            className="group h-auto min-h-[132px] items-start justify-start rounded-2xl border border-border bg-surface/40 p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-surface-raised"
+                            className="group h-auto min-h-[150px] items-start justify-start rounded-2xl border border-border bg-surface/40 p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-surface-raised"
                           >
                             <span className="block">
                               <span className="block text-sm font-semibold text-fg">{title}</span>
@@ -553,19 +604,25 @@ export default function Dashboard() {
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fg-muted">Accounts</p>
                           <h1 className="mt-1 text-lg font-semibold text-fg">{workspaceAction}</h1>
                         </div>
-                        <Button type="button" variant="ghost" onClick={() => setWorkspaceAction(null)} className="rounded-xl px-4 text-xs">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setWorkspaceAction(null)}
+                          className="rounded-xl px-4 text-xs"
+                        >
                           Back to Accounts
                         </Button>
                       </div>
-                      {(workspaceAction === "Driver Advance" || workspaceAction === "Expense") && <AccountsModule />}
-                      {workspaceAction === "Driver Settlement" && <DriverSettlementModule />}
-                      {workspaceAction === "Reconcile" && <ReconciliationModule />}
+
+                      {workspaceAction === "Accounts" && <AccountsModule />}
+                      {workspaceAction === "Driver Settlement" && <DriverSettlementModule initialOpen />}
+                      {workspaceAction === "Reconcile" && <ReconciliationModule initialOpen />}
                     </div>
                   )}
                 </div>
               )}
 
-              {activeTab === "Reports" && (
+              {activeTab === "Reports" && isAdminRole && (
                 <div className="kss-workspace-content">
                   {!workspaceAction ? (
                     <div className="space-y-8">
@@ -581,8 +638,8 @@ export default function Dashboard() {
                         {[
                           ["Fleet Analytics & Margin", "Fleet/Vehicle", "Fleet utilisation, vehicle status, and margin analysis"],
                           ["Driver Settlement Report", "Driver Settlement", "Driver trip balances, advances, and settlement status"],
-                          ["P&L Report", "Financial/P&L", "Trip-level revenue, operating costs, and financial performance"],
-                          ["Outstanding Expense/Revenue", "Financial/P&L", "Review outstanding financial entries and follow-up items"],
+                          ["P&L Statement", "Management/P&L", "Company operating result after fleet and company expenses"],
+                          ["Trip Financial Report", "Financial/P&L", "Search, filter, and export trip-level financial records"],
                           ["Diesel Mileage", "Diesel/Fuel", "Fuel consumption, cost, odometer, and mileage analysis"],
                           ["Trip Audit", "Trips", "Trip history, route, kilometre, status, and settlement audit"],
                         ].map(([action, reportType, description]) => (
@@ -621,11 +678,16 @@ export default function Dashboard() {
                         </Button>
                       </div>
 
-                      <ReportsModule
-                        key={workspaceAction}
-                        initialReportType={workspaceAction.split("::")[1] as
-                          "Trips" | "POD" | "Diesel/Fuel" | "Driver Bata" | "Driver Settlement" | "Workshop" | "Fleet/Vehicle" | "Financial/P&L"}
-                      />
+                      {workspaceAction.startsWith("P&L Statement::") ? (
+                        <ProfitLossModule />
+                      ) : (
+                        <ReportsModule
+                          key={workspaceAction}
+                          initialReportType={workspaceAction.split("::")[1] as
+                            "Trips" | "POD" | "Diesel/Fuel" | "Driver Bata" | "Driver Settlement" | "Workshop" | "Fleet/Vehicle" | "Financial/P&L"}
+                          initialOpen
+                        />
+                      )}
                     </div>
                   )}
                 </div>
@@ -680,31 +742,31 @@ export default function Dashboard() {
                         </Button>
                       </div>
                       {workspaceAction === "Vehicles" && (
-                        <SetupModule initialSubTab="Trucks" />
+                        <SetupModule initialSubTab="Trucks" initialOpen />
                       )}
 
                       {workspaceAction === "Drivers" && (
-                        <SetupModule initialSubTab="Drivers" />
+                        <SetupModule initialSubTab="Drivers" initialOpen />
                       )}
 
                       {workspaceAction === "Freight & Routes" && (
-                        <SetupModule initialSubTab="Freight Slabs" />
+                        <SetupModule initialSubTab="Freight Slabs" initialOpen />
                       )}
 
                       {workspaceAction === "Driver Bata" && (
-                        <SetupModule initialSubTab="Bata" />
+                        <SetupModule initialSubTab="Bata" initialOpen />
                       )}
 
                       {workspaceAction === "Vendors" && (
-                        <SetupModule initialSubTab="Vendors" />
+                        <SetupModule initialSubTab="Vendors" initialOpen />
                       )}
 
                       {workspaceAction === "Customers" && (
-                        <SetupModule initialSubTab="Customers" />
+                        <SetupModule initialSubTab="Customers" initialOpen />
                       )}
 
                       {workspaceAction === "Users" && (
-                        <SetupModule initialSubTab="User Control" />
+                        <SetupModule initialSubTab="User Control" initialOpen />
                       )}
 
                       {!["Vehicles", "Drivers", "Freight & Routes", "Driver Bata", "Vendors", "Customers", "Users"].includes(workspaceAction) && (
@@ -753,48 +815,6 @@ export default function Dashboard() {
                         ))}
                       </div>
                     </div>
-                  ) : workspaceAction === "Uploads / OCR" ? (
-                    <Dialog open={true} onOpenChange={(open) => !open && setWorkspaceAction(null)}>
-                      <DialogContent size="xl" showClose>
-                        <DialogHeader>
-                          <DialogTitle>Uploads / OCR</DialogTitle>
-                          <p className="mt-1 text-sm leading-5 text-fg-secondary">
-                            Capture documents, extract structured data, and send verified results to the ERP queue.
-                          </p>
-                        </DialogHeader>
-                        <DialogBody className="max-h-[calc(100dvh-10rem)] overflow-y-auto">
-                          <UploadHub />
-                        </DialogBody>
-                      </DialogContent>
-                    </Dialog>
-                  ) : workspaceAction === "Driver Logs" ? (
-                    <Dialog open={true} onOpenChange={(open) => !open && setWorkspaceAction(null)}>
-                      <DialogContent size="xl" showClose>
-                        <DialogHeader>
-                          <DialogTitle>Driver Logs</DialogTitle>
-                          <p className="mt-1 text-sm leading-5 text-fg-secondary">
-                            Review driver activity, vehicle linkage, submissions, and workflow status.
-                          </p>
-                        </DialogHeader>
-                        <DialogBody className="max-h-[calc(100dvh-10rem)] overflow-y-auto">
-                          <DriverLogsWorkspace />
-                        </DialogBody>
-                      </DialogContent>
-                    </Dialog>
-                  ) : workspaceAction === "Insights" ? (
-                    <Dialog open={true} onOpenChange={(open) => !open && setWorkspaceAction(null)}>
-                      <DialogContent size="xl" showClose>
-                        <DialogHeader>
-                          <DialogTitle>Operational Insights</DialogTitle>
-                          <p className="mt-1 text-sm leading-5 text-fg-secondary">
-                            Review the latest fleet audit, operational exceptions, efficiency leaks, and recommended actions.
-                          </p>
-                        </DialogHeader>
-                        <DialogBody className="max-h-[calc(100dvh-10rem)] overflow-y-auto">
-                          <AiInsightsDashboard />
-                        </DialogBody>
-                      </DialogContent>
-                    </Dialog>
                   ) : (
                     <div className="space-y-5">
                       <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
@@ -802,10 +822,19 @@ export default function Dashboard() {
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fg-muted">AI</p>
                           <h1 className="mt-1 text-lg font-semibold text-fg">{workspaceAction}</h1>
                         </div>
-                        <Button type="button" variant="ghost" onClick={() => setWorkspaceAction(null)} className="rounded-xl px-4 text-xs">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setWorkspaceAction(null)}
+                          className="rounded-xl px-4 text-xs"
+                        >
                           Back to AI
                         </Button>
                       </div>
+
+                      {workspaceAction === "Uploads / OCR" && <UploadHub />}
+                      {workspaceAction === "Driver Logs" && <DriverLogsWorkspace />}
+                      {workspaceAction === "Insights" && <AiInsightsDashboard />}
                     </div>
                   )}
                 </div>

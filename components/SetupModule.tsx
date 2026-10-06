@@ -36,12 +36,16 @@ type SetupMaster =
 
 type SetupModuleProps = {
   initialSubTab?: SetupMaster;
+  initialOpen?: boolean;
 };
 
-export function SetupModule({ initialSubTab = "Trucks" }: SetupModuleProps) {
+export function SetupModule({
+  initialSubTab = "Trucks",
+  initialOpen = false,
+}: SetupModuleProps) {
   const supabase = createClient();
   const [activeSubTab, setActiveSubTab] = useState<SetupMaster>(initialSubTab);
-  const [showMasterWorkspace, setShowMasterWorkspace] = useState(false);
+  const [showMasterWorkspace, setShowMasterWorkspace] = useState(initialOpen);
   const [masterOverlay, setMasterOverlay] = useState<"form" | "list" | null>(null);
 
   const [alertState, setAlertState] = useState<{

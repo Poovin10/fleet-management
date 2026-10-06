@@ -72,7 +72,7 @@ export function ModifyTrips() {
 
  const loadInitialData = async () => {
  setIsProcessing(true);
- const { data: vData } = await supabase.from('vehicles').select('vehicle_id:id, vehicle_number').order('vehicle_number');
+ const { data: vData } = await supabase.from('vehicles').select('vehicle_id, vehicle_number').order('vehicle_number');
  if (vData) setVehicles(vData);
  const { data: dData } = await supabase.from('drivers').select('driver_id, full_name, driver_code').order('full_name');
  if (dData) setDrivers(dData);

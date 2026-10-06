@@ -2,11 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 export function Insights() {
   const [loading, setLoading] = useState(true);
   const [trips, setTrips] = useState<any[]>([]);
   const [fuelLogs, setFuelLogs] = useState<any[]>([]);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
 
   const supabase = createClient();
 
@@ -39,28 +47,66 @@ export function Insights() {
   const totalTonnage = trips.reduce((acc, t) => acc + Number(t.tonnage_loaded || 0), 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-fg tracking-tight">Fleet Intelligence & Insights</h2>
-          <p className="text-xs text-fg-secondary mt-0.5">Performance analytics and operational metrics since September 1, 2026</p>
-        </div>
-      </div>
+    <>
+      {!isWorkspaceOpen && (
+        <div className="liquid-glass p-6 sm:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+            <div>
+              <h2 className="text-lg font-semibold text-fg tracking-tight">
+                Fleet Intelligence & Insights
+              </h2>
+              <p className="text-xs text-fg-secondary mt-1">
+                Performance analytics and operational metrics since September 1, 2026
+              </p>
+            </div>
 
-      {loading ? (
-        <div className="p-8 text-center text-sm text-fg-secondary">Analyzing fleet telemetry...</div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="liquid-glass p-5">
-            <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">Total Fleet Distance Run</span>
-            <p className="text-2xl font-semibold text-blue-400 mt-2 font-mono">{totalKm.toLocaleString("en-IN")} KM</p>
-          </div>
-          <div className="liquid-glass p-5">
-            <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">Total Tonnage Transported</span>
-            <p className="text-2xl font-semibold text-emerald-400 mt-2 font-mono">{totalTonnage.toLocaleString("en-IN")} Tons</p>
+            <button
+              type="button"
+              onClick={() => setIsWorkspaceOpen(true)}
+              className="shrink-0 rounded-xl px-5 py-2.5 text-xs font-semibold text-fg liquid-glass hover:bg-white/10 transition-colors"
+            >
+              Open Fleet Insights
+            </button>
           </div>
         </div>
       )}
-    </div>
+
+      <Dialog open={isWorkspaceOpen} onOpenChange={setIsWorkspaceOpen}>
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>Fleet Intelligence & Insights</DialogTitle>
+            <DialogDescription>
+              Performance analytics and operational metrics since September 1, 2026.
+            </DialogDescription>
+          </DialogHeader>
+
+          {loading ? (
+            <div className="p-8 text-center text-sm text-fg-secondary">
+              Analyzing fleet telemetry...
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="liquid-glass p-5">
+                <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">
+                  Total Fleet Distance Run
+                </span>
+                <p className="text-2xl font-semibold text-blue-400 mt-2 font-mono">
+                  {totalKm.toLocaleString("en-IN")} KM
+                </p>
+              </div>
+
+              <div className="liquid-glass p-5">
+                <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">
+                  Total Tonnage Transported
+                </span>
+                <p className="text-2xl font-semibold text-emerald-400 mt-2 font-mono">
+                  {totalTonnage.toLocaleString("en-IN")} Tons
+                </p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

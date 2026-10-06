@@ -34,7 +34,7 @@ export function useFleetTelemetry() {
         supabase.from('driver_pending_entries').select('*', { count: 'exact', head: true }).eq('status', 'PENDING'),
         supabase.from('trips').select('freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance').gte('trip_start_date', firstDay).lte('trip_start_date', lastDay),
         supabase.from('diesel_fuel_logs').select('total_fuel_cost').gte('fuel_date', firstDay).lte('fuel_date', lastDay),
-        supabase.from('workshop_spares_bills').select('bill_amount').gte('bill_date', firstDay).lte('bill_date', lastDay)
+        supabase.from('workshop_spares_bills').select('total_bill_amount').gte('bill_date', firstDay).lte('bill_date', lastDay)
       ]);
 
       const vehicles = vehiclesRes.data || [];
@@ -72,7 +72,7 @@ export function useFleetTelemetry() {
 
       let totalWorkshop = 0;
       if (workshopRes.data) {
-        workshopRes.data.forEach((w: any) => { totalWorkshop += Number(w.bill_amount) || 0; });
+        workshopRes.data.forEach((w: any) => { totalWorkshop += Number(w.total_bill_amount) || 0; });
       }
 
       const netRetention = totalFreight - totalDiesel - nonFuelOpex - totalWorkshop;

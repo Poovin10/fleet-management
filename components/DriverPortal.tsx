@@ -510,12 +510,16 @@ setLastOdometer("");
  const finalVehicleRemarks = (finalRemarks && (actionType === "UNLOADED" || actionType === "BREAKDOWN")) ? finalRemarks : statusRemarksText;
 
  if (actionType !== "WAITING_FOR_LOAD") {
-   const { error: statusError } = await supabase.rpc("update_trip_status_atomic", {
+   const { error: statusError } = await supabase.rpc("update_driver_trip_status_session_atomic", {
+     p_session_token: driverSessionToken,
      p_trip_id: Number(currentTrip.trip_id),
-     p_vehicle_id: Number(selectedTruckId),
-     p_payload: updatePayload,
-     p_vehicle_status: vehicleStatusUpdate,
-     p_vehicle_remarks: finalVehicleRemarks
+     p_action: actionType,
+     p_unloaded_weight_mt:
+       actionType === "UNLOADED" && isBulk && !noWeighment
+         ? Number(unloadedMt)
+         : null,
+     p_remarks: finalVehicleRemarks,
+     p_reading_at: timestamp
    });
 
    if (statusError) {

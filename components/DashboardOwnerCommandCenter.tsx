@@ -159,13 +159,13 @@ export function DashboardOwnerCommandCenter({
         supabase.from("drivers").select("driver_id, driver_code, full_name, license_expiry_date", { count: "exact" }).eq("is_active", true),
         supabase.from("trips").select("trip_id", { count: "exact", head: true }).eq("pod_status", "PENDING_SUBMISSION").eq("trip_status", "WAITING_FOR_LOAD"),
         supabase.from("driver_pending_entries").select("entry_id", { count: "exact", head: true }).eq("status", "PENDING"),
-        supabase.from("trips").select("freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance", { count: "exact" }).gte("trip_start_date", range.from).lte("trip_start_date", range.to),
+        supabase.from("trips").select("freight_revenue, driver_bata, halt_bata, toll_fastag_expense, loading_unloading_expense, enroute_repairs_maintenance, misc_trip_expense, shortage_penalty_deduction", { count: "exact" }).gte("trip_start_date", range.from).lte("trip_start_date", range.to),
         supabase.from("trips").select("trip_id", { count: "exact", head: true }).gte("trip_start_date", range.from).lte("trip_start_date", range.to).eq("trip_status", "COMPLETED"),
         range.from === today && range.to === today
           ? Promise.resolve(null)
           : supabase.from("trips").select("trip_id", { count: "exact", head: true }).eq("trip_start_date", today),
         supabase.from("diesel_fuel_logs").select("total_fuel_cost", { count: "exact" }).gte("fuel_date", range.from).lte("fuel_date", range.to),
-        supabase.from("workshop_spares_bills").select("bill_amount", { count: "exact" }).gte("bill_date", range.from).lte("bill_date", range.to),
+        supabase.from("workshop_spares_bills").select("total_bill_amount", { count: "exact" }).gte("bill_date", range.from).lte("bill_date", range.to),
       ]);
       if (cancelled) return;
 
@@ -187,14 +187,26 @@ export function DashboardOwnerCommandCenter({
       const tripsComplete = !tripRowsRes.error && (tripRowsRes.count ?? tripRowsRes.data?.length ?? 0) <= (tripRowsRes.data?.length ?? 0);
       const fuelsComplete = !fuelRowsRes.error && (fuelRowsRes.count ?? fuelRowsRes.data?.length ?? 0) <= (fuelRowsRes.data?.length ?? 0);
       const workshopComplete = !workshopRowsRes.error && (workshopRowsRes.count ?? workshopRowsRes.data?.length ?? 0) <= (workshopRowsRes.data?.length ?? 0);
-      const revenue = tripsComplete ? (tripRowsRes.data || []).reduce((sum, row: any) => sum + (Number(row.freight_revenue) || 0), 0) : null;
+      const revenue = tripsComplete
+        ? (tripRowsRes.data || []).reduce((sum, row: any) => sum + (Number(row.freight_revenue) || 0) - (Number(row.shortage_penalty_deduction) || 0), 0)
+        : null;
       const diesel = fuelsComplete ? (fuelRowsRes.data || []).reduce((sum, row: any) => sum + (Number(row.total_fuel_cost) || 0), 0) : null;
       let expenses: number | null = null;
       let retention: number | null = null;
       let warning: string | null = null;
       if (tripsComplete && fuelsComplete && workshopComplete) {
-        const tripCosts = (tripRowsRes.data || []).reduce((sum, row: any) => sum + (Number(row.driver_bata) || 0) + (Number(row.halt_bata) || 0) + (Number(row.enroute_repairs_maintenance) || 0), 0);
-        const workshop = (workshopRowsRes.data || []).reduce((sum, row: any) => sum + (Number(row.bill_amount) || 0), 0);
+        const tripCosts = (tripRowsRes.data || []).reduce(
+          (sum, row: any) =>
+            sum +
+            (Number(row.driver_bata) || 0) +
+            (Number(row.halt_bata) || 0) +
+            (Number(row.toll_fastag_expense) || 0) +
+            (Number(row.loading_unloading_expense) || 0) +
+            (Number(row.enroute_repairs_maintenance) || 0) +
+            (Number(row.misc_trip_expense) || 0),
+          0,
+        );
+        const workshop = (workshopRowsRes.data || []).reduce((sum, row: any) => sum + (Number(row.total_bill_amount) || 0), 0);
         expenses = (diesel || 0) + tripCosts + workshop;
         retention = (revenue || 0) - expenses;
       } else {

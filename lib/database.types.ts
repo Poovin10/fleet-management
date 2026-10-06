@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       adblue_logs: {
@@ -206,6 +231,57 @@ export type Database = {
           created_at?: string | null
           is_active?: boolean | null
           location?: string | null
+        }
+        Relationships: []
+      }
+      customers: {
+        Row: {
+          billing_address: string | null
+          contact_person: string | null
+          created_at: string
+          credit_limit: number
+          customer_code: string
+          customer_id: number
+          customer_name: string
+          customer_type: string
+          email: string | null
+          is_active: boolean
+          payment_terms: string | null
+          phone_number: string | null
+          remarks: string | null
+          tax_number: string | null
+        }
+        Insert: {
+          billing_address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          credit_limit?: number
+          customer_code: string
+          customer_id?: number
+          customer_name: string
+          customer_type?: string
+          email?: string | null
+          is_active?: boolean
+          payment_terms?: string | null
+          phone_number?: string | null
+          remarks?: string | null
+          tax_number?: string | null
+        }
+        Update: {
+          billing_address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          credit_limit?: number
+          customer_code?: string
+          customer_id?: number
+          customer_name?: string
+          customer_type?: string
+          email?: string | null
+          is_active?: boolean
+          payment_terms?: string | null
+          phone_number?: string | null
+          remarks?: string | null
+          tax_number?: string | null
         }
         Relationships: []
       }
@@ -415,6 +491,30 @@ export type Database = {
             referencedColumns: ["trip_id"]
           },
         ]
+      }
+      driver_auth_attempts: {
+        Row: {
+          driver_code: string
+          failed_attempts: number
+          last_failed_at: string | null
+          locked_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          driver_code: string
+          failed_attempts?: number
+          last_failed_at?: string | null
+          locked_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          driver_code?: string
+          failed_attempts?: number
+          last_failed_at?: string | null
+          locked_until?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       driver_bata_master: {
         Row: {
@@ -1386,6 +1486,7 @@ export type Database = {
           driver_bata: number | null
           end_km: number | null
           enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
           freight_revenue: number
           fuel_expense: number | null
           fuel_litres: number | null
@@ -1405,6 +1506,9 @@ export type Database = {
           reached_at: string | null
           received_weight_mt: number | null
           returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
           settled_at: string | null
           settlement_remarks: string | null
           settlement_status: string | null
@@ -1439,6 +1543,7 @@ export type Database = {
           driver_bata?: number | null
           end_km?: number | null
           enroute_repairs_maintenance?: number | null
+          freight_master_id?: number | null
           freight_revenue: number
           fuel_expense?: number | null
           fuel_litres?: number | null
@@ -1458,6 +1563,9 @@ export type Database = {
           reached_at?: string | null
           received_weight_mt?: number | null
           returning_at?: string | null
+          route_max_km_tolerance_pct?: number | null
+          route_min_km_tolerance_pct?: number | null
+          route_standard_km?: number | null
           settled_at?: string | null
           settlement_remarks?: string | null
           settlement_status?: string | null
@@ -1492,6 +1600,7 @@ export type Database = {
           driver_bata?: number | null
           end_km?: number | null
           enroute_repairs_maintenance?: number | null
+          freight_master_id?: number | null
           freight_revenue?: number
           fuel_expense?: number | null
           fuel_litres?: number | null
@@ -1511,6 +1620,9 @@ export type Database = {
           reached_at?: string | null
           received_weight_mt?: number | null
           returning_at?: string | null
+          route_max_km_tolerance_pct?: number | null
+          route_min_km_tolerance_pct?: number | null
+          route_standard_km?: number | null
           settled_at?: string | null
           settlement_remarks?: string | null
           settlement_status?: string | null
@@ -1539,6 +1651,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "branches"
             referencedColumns: ["branch_id"]
+          },
+          {
+            foreignKeyName: "trips_freight_master_id_fkey"
+            columns: ["freight_master_id"]
+            isOneToOne: false
+            referencedRelation: "destinations_freight_master"
+            referencedColumns: ["destination_id"]
           },
           {
             foreignKeyName: "trips_primary_driver_id_fkey"
@@ -2147,6 +2266,7 @@ export type Database = {
           driver_bata: number | null
           end_km: number | null
           enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
           freight_revenue: number
           fuel_expense: number | null
           fuel_litres: number | null
@@ -2166,6 +2286,9 @@ export type Database = {
           reached_at: string | null
           received_weight_mt: number | null
           returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
           settled_at: string | null
           settlement_remarks: string | null
           settlement_status: string | null
@@ -2214,6 +2337,7 @@ export type Database = {
           driver_bata: number | null
           end_km: number | null
           enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
           freight_revenue: number
           fuel_expense: number | null
           fuel_litres: number | null
@@ -2233,6 +2357,9 @@ export type Database = {
           reached_at: string | null
           received_weight_mt: number | null
           returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
           settled_at: string | null
           settlement_remarks: string | null
           settlement_status: string | null
@@ -2289,6 +2416,7 @@ export type Database = {
           driver_bata: number | null
           end_km: number | null
           enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
           freight_revenue: number
           fuel_expense: number | null
           fuel_litres: number | null
@@ -2308,6 +2436,9 @@ export type Database = {
           reached_at: string | null
           received_weight_mt: number | null
           returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
           settled_at: string | null
           settlement_remarks: string | null
           settlement_status: string | null
@@ -2354,85 +2485,203 @@ export type Database = {
         }
         Returns: Json
       }
-      create_dispatch_trip_atomic: {
+      create_dispatch_driver_atomic: {
         Args: {
-          p_cash_advance_issued: number
-          p_destination: string
-          p_driver_bata: number
-          p_entered_by?: string
-          p_freight_revenue: number
-          p_fuel_expense: number
-          p_fuel_litres: number
-          p_is_tank_full: boolean
-          p_origin: string
-          p_primary_driver_id: number
-          p_reading_at?: string
-          p_start_km: number
-          p_tonnage_loaded: number
-          p_trip_number: string
-          p_trip_start_date: string
-          p_vehicle_id: number
+          p_branch_id?: number
+          p_full_name: string
+          p_license_expiry_date?: string
+          p_license_number: string
+          p_phone_number: string
+          p_pin?: string
         }
         Returns: {
           branch_id: number | null
-          breakdown_remarks: string | null
-          cash_advance_issued: number | null
           created_at: string | null
-          destination: string
-          destination_lat: number | null
-          destination_lng: number | null
-          diesel_filling_km: number | null
-          distance_basis: string
-          driver_bata: number | null
-          end_km: number | null
-          enroute_repairs_maintenance: number | null
-          freight_revenue: number
-          fuel_expense: number | null
-          fuel_litres: number | null
-          halt_bata: number | null
-          is_tank_full: boolean | null
-          loaded_weight_mt: number
-          loading_unloading_expense: number | null
-          misc_trip_expense: number | null
-          origin: string
-          origin_lat: number | null
-          origin_lng: number | null
-          pod_number: string | null
-          pod_received_date: string | null
-          pod_settlement_remarks: string | null
-          pod_status: string | null
-          primary_driver_id: number
-          reached_at: string | null
-          received_weight_mt: number | null
-          returning_at: string | null
-          settled_at: string | null
-          settlement_remarks: string | null
-          settlement_status: string | null
-          shortage_bearer: string | null
-          shortage_mt: number | null
-          shortage_penalty_deduction: number | null
-          shortage_weight_mt: number | null
-          start_km: number | null
-          toll_fastag_expense: number | null
-          tonnage_loaded: number
-          total_km_run: number | null
-          trip_closed_at: string | null
-          trip_end_date: string
-          trip_id: number
-          trip_number: string
-          trip_start_date: string
-          trip_status: string | null
-          unloaded_at: string | null
-          unloaded_weight_mt: number | null
-          vehicle_id: number | null
+          driver_code: string
+          driver_id: number
+          full_name: string
+          is_active: boolean | null
+          license_expiry_date: string | null
+          license_number: string
+          phone_number: string
+          pin: string | null
+          pin_hash: string | null
         }
         SetofOptions: {
           from: "*"
-          to: "trips"
+          to: "drivers"
           isOneToOne: true
           isSetofReturn: false
         }
       }
+      create_dispatch_trip_atomic:
+        | {
+            Args: {
+              p_cash_advance_issued: number
+              p_destination: string
+              p_driver_bata: number
+              p_entered_by?: string
+              p_freight_revenue: number
+              p_fuel_expense: number
+              p_fuel_litres: number
+              p_is_tank_full: boolean
+              p_origin: string
+              p_primary_driver_id: number
+              p_reading_at?: string
+              p_start_km: number
+              p_tonnage_loaded: number
+              p_trip_number: string
+              p_trip_start_date: string
+              p_vehicle_id: number
+            }
+            Returns: {
+              branch_id: number | null
+              breakdown_remarks: string | null
+              cash_advance_issued: number | null
+              created_at: string | null
+              destination: string
+              destination_lat: number | null
+              destination_lng: number | null
+              diesel_filling_km: number | null
+              distance_basis: string
+              driver_bata: number | null
+              end_km: number | null
+              enroute_repairs_maintenance: number | null
+              freight_master_id: number | null
+              freight_revenue: number
+              fuel_expense: number | null
+              fuel_litres: number | null
+              halt_bata: number | null
+              is_tank_full: boolean | null
+              loaded_weight_mt: number
+              loading_unloading_expense: number | null
+              misc_trip_expense: number | null
+              origin: string
+              origin_lat: number | null
+              origin_lng: number | null
+              pod_number: string | null
+              pod_received_date: string | null
+              pod_settlement_remarks: string | null
+              pod_status: string | null
+              primary_driver_id: number
+              reached_at: string | null
+              received_weight_mt: number | null
+              returning_at: string | null
+              route_max_km_tolerance_pct: number | null
+              route_min_km_tolerance_pct: number | null
+              route_standard_km: number | null
+              settled_at: string | null
+              settlement_remarks: string | null
+              settlement_status: string | null
+              shortage_bearer: string | null
+              shortage_mt: number | null
+              shortage_penalty_deduction: number | null
+              shortage_weight_mt: number | null
+              start_km: number | null
+              toll_fastag_expense: number | null
+              tonnage_loaded: number
+              total_km_run: number | null
+              trip_closed_at: string | null
+              trip_end_date: string
+              trip_id: number
+              trip_number: string
+              trip_start_date: string
+              trip_status: string | null
+              unloaded_at: string | null
+              unloaded_weight_mt: number | null
+              vehicle_id: number | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "trips"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_cash_advance_issued: number
+              p_destination: string
+              p_driver_bata: number
+              p_entered_by?: string
+              p_freight_master_id: number
+              p_freight_revenue: number
+              p_fuel_expense: number
+              p_fuel_litres: number
+              p_is_tank_full: boolean
+              p_origin: string
+              p_primary_driver_id: number
+              p_reading_at?: string
+              p_start_km: number
+              p_tonnage_loaded: number
+              p_trip_number: string
+              p_trip_start_date: string
+              p_vehicle_id: number
+            }
+            Returns: {
+              branch_id: number | null
+              breakdown_remarks: string | null
+              cash_advance_issued: number | null
+              created_at: string | null
+              destination: string
+              destination_lat: number | null
+              destination_lng: number | null
+              diesel_filling_km: number | null
+              distance_basis: string
+              driver_bata: number | null
+              end_km: number | null
+              enroute_repairs_maintenance: number | null
+              freight_master_id: number | null
+              freight_revenue: number
+              fuel_expense: number | null
+              fuel_litres: number | null
+              halt_bata: number | null
+              is_tank_full: boolean | null
+              loaded_weight_mt: number
+              loading_unloading_expense: number | null
+              misc_trip_expense: number | null
+              origin: string
+              origin_lat: number | null
+              origin_lng: number | null
+              pod_number: string | null
+              pod_received_date: string | null
+              pod_settlement_remarks: string | null
+              pod_status: string | null
+              primary_driver_id: number
+              reached_at: string | null
+              received_weight_mt: number | null
+              returning_at: string | null
+              route_max_km_tolerance_pct: number | null
+              route_min_km_tolerance_pct: number | null
+              route_standard_km: number | null
+              settled_at: string | null
+              settlement_remarks: string | null
+              settlement_status: string | null
+              shortage_bearer: string | null
+              shortage_mt: number | null
+              shortage_penalty_deduction: number | null
+              shortage_weight_mt: number | null
+              start_km: number | null
+              toll_fastag_expense: number | null
+              tonnage_loaded: number
+              total_km_run: number | null
+              trip_closed_at: string | null
+              trip_end_date: string
+              trip_id: number
+              trip_number: string
+              trip_start_date: string
+              trip_status: string | null
+              unloaded_at: string | null
+              unloaded_weight_mt: number | null
+              vehicle_id: number | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "trips"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       create_inventory_item: {
         Args: {
           p_category?: string
@@ -2497,6 +2746,43 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "driver_bata_master"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_master_customer: {
+        Args: {
+          p_billing_address?: string
+          p_contact_person?: string
+          p_credit_limit?: number
+          p_customer_code: string
+          p_customer_name: string
+          p_customer_type?: string
+          p_email?: string
+          p_payment_terms?: string
+          p_phone_number?: string
+          p_remarks?: string
+          p_tax_number?: string
+        }
+        Returns: {
+          billing_address: string | null
+          contact_person: string | null
+          created_at: string
+          credit_limit: number
+          customer_code: string
+          customer_id: number
+          customer_name: string
+          customer_type: string
+          email: string | null
+          is_active: boolean
+          payment_terms: string | null
+          phone_number: string | null
+          remarks: string | null
+          tax_number: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customers"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -2748,6 +3034,22 @@ export type Database = {
               standard_km: number
             }[]
           }
+      get_admin_report_atomic: {
+        Args: {
+          p_from_date?: string
+          p_limit?: number
+          p_offset?: number
+          p_report_type: string
+          p_search?: string
+          p_status?: string
+          p_to_date?: string
+        }
+        Returns: {
+          rows: Json
+          total_count: number
+        }[]
+      }
+      get_current_user_role: { Args: never; Returns: string }
       get_driver_monthly_reports: {
         Args: { p_month_start: string; p_session_token: string }
         Returns: Json
@@ -2755,6 +3057,15 @@ export type Database = {
       get_driver_portal_data: {
         Args: { p_session_token: string }
         Returns: Json
+      }
+      get_manageable_app_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          role: string
+          user_id: number
+          username: string
+        }[]
       }
       get_monthly_pl_summary: {
         Args: { p_end_date: string; p_start_date: string }
@@ -2807,6 +3118,7 @@ export type Database = {
           driver_bata: number | null
           end_km: number | null
           enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
           freight_revenue: number
           fuel_expense: number | null
           fuel_litres: number | null
@@ -2826,6 +3138,75 @@ export type Database = {
           reached_at: string | null
           received_weight_mt: number | null
           returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
+          settled_at: string | null
+          settlement_remarks: string | null
+          settlement_status: string | null
+          shortage_bearer: string | null
+          shortage_mt: number | null
+          shortage_penalty_deduction: number | null
+          shortage_weight_mt: number | null
+          start_km: number | null
+          toll_fastag_expense: number | null
+          tonnage_loaded: number
+          total_km_run: number | null
+          trip_closed_at: string | null
+          trip_end_date: string
+          trip_id: number
+          trip_number: string
+          trip_start_date: string
+          trip_status: string | null
+          unloaded_at: string | null
+          unloaded_weight_mt: number | null
+          vehicle_id: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "trips"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      modify_trip_atomic_core: {
+        Args: { p_payload: Json; p_trip_id: number }
+        Returns: {
+          branch_id: number | null
+          breakdown_remarks: string | null
+          cash_advance_issued: number | null
+          created_at: string | null
+          destination: string
+          destination_lat: number | null
+          destination_lng: number | null
+          diesel_filling_km: number | null
+          distance_basis: string
+          driver_bata: number | null
+          end_km: number | null
+          enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
+          freight_revenue: number
+          fuel_expense: number | null
+          fuel_litres: number | null
+          halt_bata: number | null
+          is_tank_full: boolean | null
+          loaded_weight_mt: number
+          loading_unloading_expense: number | null
+          misc_trip_expense: number | null
+          origin: string
+          origin_lat: number | null
+          origin_lng: number | null
+          pod_number: string | null
+          pod_received_date: string | null
+          pod_settlement_remarks: string | null
+          pod_status: string | null
+          primary_driver_id: number
+          reached_at: string | null
+          received_weight_mt: number | null
+          returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
           settled_at: string | null
           settlement_remarks: string | null
           settlement_status: string | null
@@ -3157,34 +3538,78 @@ export type Database = {
         Args: { p_session_token: string }
         Returns: number
       }
-      save_driver_advance_atomic: {
+      revoke_driver_session: {
+        Args: { p_session_token: string }
+        Returns: boolean
+      }
+      save_driver_advance_atomic:
+        | {
+            Args: {
+              p_advance_date?: string
+              p_advance_id?: number
+              p_advance_type?: string
+              p_amount_inr?: number
+              p_driver_id?: number
+              p_payment_mode?: string
+              p_reference_remarks?: string
+            }
+            Returns: {
+              advance_date: string
+              advance_id: number
+              advance_type: string | null
+              amount_inr: number
+              created_at: string | null
+              driver_id: number
+              is_settled: boolean | null
+              payment_mode: string | null
+              reference_remarks: string | null
+              settled_at: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "driver_direct_advances"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_advance_date?: string
+              p_advance_id?: number
+              p_advance_type?: string
+              p_amount_inr?: number
+              p_driver_id?: number
+              p_payment_mode?: string
+              p_reference_remarks?: string
+            }
+            Returns: {
+              advance_date: string
+              advance_id: number
+              advance_type: string | null
+              amount_inr: number
+              created_at: string | null
+              driver_id: number
+              is_settled: boolean | null
+              payment_mode: string | null
+              reference_remarks: string | null
+              settled_at: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "driver_direct_advances"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      save_general_expense_atomic: {
         Args: {
-          p_advance_date?: string
-          p_advance_id?: number
-          p_advance_type?: string
-          p_amount_inr?: number
-          p_driver_id?: number
-          p_payment_mode?: string
-          p_reference_remarks?: string
+          p_amount: number
+          p_category: string
+          p_description?: string
+          p_expense_date: string
+          p_vehicle_id?: number
         }
-        Returns: {
-          advance_date: string
-          advance_id: number
-          advance_type: string | null
-          amount_inr: number
-          created_at: string | null
-          driver_id: number
-          is_settled: boolean | null
-          payment_mode: string | null
-          reference_remarks: string | null
-          settled_at: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "driver_direct_advances"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Returns: number
       }
       send_tyre_for_retread_atomic: {
         Args: {
@@ -3261,6 +3686,7 @@ export type Database = {
           driver_bata: number | null
           end_km: number | null
           enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
           freight_revenue: number
           fuel_expense: number | null
           fuel_litres: number | null
@@ -3280,6 +3706,9 @@ export type Database = {
           reached_at: string | null
           received_weight_mt: number | null
           returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
           settled_at: string | null
           settlement_remarks: string | null
           settlement_status: string | null
@@ -3330,6 +3759,7 @@ export type Database = {
           driver_bata: number | null
           end_km: number | null
           enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
           freight_revenue: number
           fuel_expense: number | null
           fuel_litres: number | null
@@ -3349,6 +3779,9 @@ export type Database = {
           reached_at: string | null
           received_weight_mt: number | null
           returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
           settled_at: string | null
           settlement_remarks: string | null
           settlement_status: string | null
@@ -3397,6 +3830,7 @@ export type Database = {
           driver_bata: number | null
           end_km: number | null
           enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
           freight_revenue: number
           fuel_expense: number | null
           fuel_litres: number | null
@@ -3416,6 +3850,9 @@ export type Database = {
           reached_at: string | null
           received_weight_mt: number | null
           returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
           settled_at: string | null
           settlement_remarks: string | null
           settlement_status: string | null
@@ -3464,6 +3901,7 @@ export type Database = {
           driver_bata: number | null
           end_km: number | null
           enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
           freight_revenue: number
           fuel_expense: number | null
           fuel_litres: number | null
@@ -3483,6 +3921,9 @@ export type Database = {
           reached_at: string | null
           received_weight_mt: number | null
           returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
           settled_at: string | null
           settlement_remarks: string | null
           settlement_status: string | null
@@ -3612,6 +4053,79 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_driver_trip_status_session_atomic: {
+        Args: {
+          p_action: string
+          p_reading_at?: string
+          p_remarks?: string
+          p_session_token: string
+          p_trip_id: number
+          p_unloaded_weight_mt?: number
+        }
+        Returns: {
+          branch_id: number | null
+          breakdown_remarks: string | null
+          cash_advance_issued: number | null
+          created_at: string | null
+          destination: string
+          destination_lat: number | null
+          destination_lng: number | null
+          diesel_filling_km: number | null
+          distance_basis: string
+          driver_bata: number | null
+          end_km: number | null
+          enroute_repairs_maintenance: number | null
+          freight_master_id: number | null
+          freight_revenue: number
+          fuel_expense: number | null
+          fuel_litres: number | null
+          halt_bata: number | null
+          is_tank_full: boolean | null
+          loaded_weight_mt: number
+          loading_unloading_expense: number | null
+          misc_trip_expense: number | null
+          origin: string
+          origin_lat: number | null
+          origin_lng: number | null
+          pod_number: string | null
+          pod_received_date: string | null
+          pod_settlement_remarks: string | null
+          pod_status: string | null
+          primary_driver_id: number
+          reached_at: string | null
+          received_weight_mt: number | null
+          returning_at: string | null
+          route_max_km_tolerance_pct: number | null
+          route_min_km_tolerance_pct: number | null
+          route_standard_km: number | null
+          settled_at: string | null
+          settlement_remarks: string | null
+          settlement_status: string | null
+          shortage_bearer: string | null
+          shortage_mt: number | null
+          shortage_penalty_deduction: number | null
+          shortage_weight_mt: number | null
+          start_km: number | null
+          toll_fastag_expense: number | null
+          tonnage_loaded: number
+          total_km_run: number | null
+          trip_closed_at: string | null
+          trip_end_date: string
+          trip_id: number
+          trip_number: string
+          trip_start_date: string
+          trip_status: string | null
+          unloaded_at: string | null
+          unloaded_weight_mt: number | null
+          vehicle_id: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "trips"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       update_fuel_atomic: {
         Args: {
           p_diesel_category: string
@@ -3671,6 +4185,45 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "driver_bata_master"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_master_customer: {
+        Args: {
+          p_billing_address?: string
+          p_contact_person?: string
+          p_credit_limit?: number
+          p_customer_code: string
+          p_customer_id: number
+          p_customer_name: string
+          p_customer_type?: string
+          p_email?: string
+          p_is_active?: boolean
+          p_payment_terms?: string
+          p_phone_number?: string
+          p_remarks?: string
+          p_tax_number?: string
+        }
+        Returns: {
+          billing_address: string | null
+          contact_person: string | null
+          created_at: string
+          credit_limit: number
+          customer_code: string
+          customer_id: number
+          customer_name: string
+          customer_type: string
+          email: string | null
+          is_active: boolean
+          payment_terms: string | null
+          phone_number: string | null
+          remarks: string | null
+          tax_number: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customers"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3986,6 +4539,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

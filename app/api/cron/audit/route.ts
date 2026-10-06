@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { connection } from 'next/server';
 import { createClient as createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const maxDuration = 60;
@@ -36,6 +37,8 @@ async function hasAuthorizedStaffSession() {
 }
 
 export async function GET(req: Request) {
+  await connection();
+
   try {
     const cronSecret = process.env.CRON_SECRET;
 

@@ -66,9 +66,9 @@ export function FinancialsModule() {
  const { data: activeVehicles } = await supabase.from('vehicles').select('vehicle_id, vehicle_number, truck_type').eq('is_active', true);
  const { data: activeDrivers } = await supabase.from('drivers').select('driver_id, driver_code, full_name').eq('is_active', true);
 
- let tQuery = supabase.from('trips').select('vehicle_id, primary_driver_id, trip_status, total_km_run, loaded_weight_mt, tonnage_loaded, freight_revenue, driver_bata, halt_bata, enroute_repairs_maintenance, fuel_litres');
+ let tQuery = supabase.from('trips').select('vehicle_id, primary_driver_id, trip_status, total_km_run, loaded_weight_mt, tonnage_loaded, freight_revenue, driver_bata, halt_bata, toll_fastag_expense, loading_unloading_expense, enroute_repairs_maintenance, misc_trip_expense, shortage_penalty_deduction, fuel_litres');
  let fQuery = supabase.from('diesel_fuel_logs').select('vehicle_id, litres_filled, total_fuel_cost');
- let wQuery = supabase.from('workshop_spares_bills').select('vehicle_id, bill_amount');
+ let wQuery = supabase.from('workshop_spares_bills').select('vehicle_id, total_bill_amount');
 
  if (sDate && eDate) {
  tQuery = tQuery.gte('trip_start_date', sDate).lte('trip_start_date', eDate);
@@ -87,10 +87,26 @@ export function FinancialsModule() {
  const unassignedFuels = (fuels || []).filter(f => f.vehicle_id == null);
  const unassignedTripCount = unassignedTrips.length;
  const unassignedTons = unassignedTrips.reduce((sum, t) => sum + (Number(t.loaded_weight_mt) || Number(t.tonnage_loaded) || 0), 0);
- const unassignedFreight = unassignedTrips.reduce((sum, t) => sum + (Number(t.freight_revenue) || 0), 0);
+ const unassignedFreight = unassignedTrips.reduce(
+   (sum, t) =>
+     sum +
+     (Number(t.freight_revenue) || 0) -
+     (Number(t.shortage_penalty_deduction) || 0),
+   0,
+ );
  const unassignedDieselLitres = unassignedFuels.reduce((sum, f) => sum + (Number(f.litres_filled) || 0), 0);
  const unassignedDieselCost = unassignedFuels.reduce((sum, f) => sum + (Number(f.total_fuel_cost) || 0), 0);
- const unassignedTripCosts = unassignedTrips.reduce((sum, t) => sum + (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0) + (Number(t.enroute_repairs_maintenance) || 0), 0);
+ const unassignedTripCosts = unassignedTrips.reduce(
+   (sum, t) =>
+     sum +
+     (Number(t.driver_bata) || 0) +
+     (Number(t.halt_bata) || 0) +
+     (Number(t.toll_fastag_expense) || 0) +
+     (Number(t.loading_unloading_expense) || 0) +
+     (Number(t.enroute_repairs_maintenance) || 0) +
+     (Number(t.misc_trip_expense) || 0),
+   0,
+ );
  const unassignedRetention = unassignedFreight - unassignedDieselCost - unassignedTripCosts;
  const unassignedRetentionPct = unassignedFreight > 0 ? (unassignedRetention / unassignedFreight) * 100 : 0;
  const unassignedDieselPct = unassignedFreight > 0 ? (unassignedDieselCost / unassignedFreight) * 100 : 0;
@@ -115,35 +131,102 @@ export function FinancialsModule() {
 
  let trips_count = vTrips.length;
  let incomplete_trips = vTrips.filter(t => t.trip_status !== 'COMPLETED').length;
- let total_km = 0; let total_tons = 0; let total_freight = 0; let non_fuel_costs = 0;
+
+ let total_km = 0;
+ let total_tons = 0;
+ let total_freight = 0;
+ let shortage_deductions = 0;
+ let driver_bata = 0;
+ let halt_bata = 0;
+ let toll = 0;
+ let loading_unloading = 0;
+ let enroute_maintenance = 0;
+ let misc = 0;
 
  vTrips.forEach(t => {
- total_km += Number(t.total_km_run) || 0;
- total_tons += Number(t.loaded_weight_mt) || Number(t.tonnage_loaded) || 0;
- total_freight += Number(t.freight_revenue) || 0;
- non_fuel_costs += (Number(t.driver_bata) || 0) + (Number(t.halt_bata) || 0) + (Number(t.enroute_repairs_maintenance) || 0);
+   total_km += Number(t.total_km_run) || 0;
+   total_tons += Number(t.loaded_weight_mt) || Number(t.tonnage_loaded) || 0;
+   total_freight += Number(t.freight_revenue) || 0;
+   shortage_deductions += Number(t.shortage_penalty_deduction) || 0;
+   driver_bata += Number(t.driver_bata) || 0;
+   halt_bata += Number(t.halt_bata) || 0;
+   toll += Number(t.toll_fastag_expense) || 0;
+   loading_unloading += Number(t.loading_unloading_expense) || 0;
+   enroute_maintenance += Number(t.enroute_repairs_maintenance) || 0;
+   misc += Number(t.misc_trip_expense) || 0;
  });
 
- let total_diesel_litres = 0; let total_diesel_cost = 0;
+ let total_diesel_litres = 0;
+ let total_diesel_cost = 0;
+
  vFuels.forEach(f => {
- total_diesel_litres += Number(f.litres_filled) || 0;
- total_diesel_cost += Number(f.total_fuel_cost) || 0;
+   total_diesel_litres += Number(f.litres_filled) || 0;
+   total_diesel_cost += Number(f.total_fuel_cost) || 0;
  });
 
  let total_workshop = 0;
- vBills.forEach(b => { total_workshop += Number(b.bill_amount) || 0; });
 
- // SYNCHRONIZED MATH: Now deducts workshop bills per truck to match global P&L exactly
- const net_retention = total_freight - total_diesel_cost - non_fuel_costs - total_workshop;
- const retention_pct = total_freight > 0 ? (net_retention / total_freight) * 100 : 0;
- const diesel_pct = total_freight > 0 ? (total_diesel_cost / total_freight) * 100 : 0;
- const kmpl = total_diesel_litres > 0 ? total_km / total_diesel_litres : 0;
+ vBills.forEach(b => {
+   total_workshop += Number(b.total_bill_amount) || 0;
+ });
+
+ // FINANCIAL RECONCILIATION:
+ // Freight Revenue
+ // - Shortage Penalty
+ // = Adjusted Revenue
+ const adjusted_revenue = total_freight - shortage_deductions;
+
+ // All operating costs must match ProfitLossModule.
+ const total_operating_expenses =
+   total_diesel_cost +
+   driver_bata +
+   halt_bata +
+   toll +
+   loading_unloading +
+   enroute_maintenance +
+   misc +
+   total_workshop;
+
+ const net_retention = adjusted_revenue - total_operating_expenses;
+
+ const retention_pct =
+   adjusted_revenue > 0
+     ? (net_retention / adjusted_revenue) * 100
+     : 0;
+
+ const diesel_pct =
+   adjusted_revenue > 0
+     ? (total_diesel_cost / adjusted_revenue) * 100
+     : 0;
+
+ const kmpl =
+   total_diesel_litres > 0
+     ? total_km / total_diesel_litres
+     : 0;
 
  fleetMetrics.push({
  vehicle_number: v.vehicle_number, truck_type: v.truck_type || "Unknown",
- total_trips: trips_count, incomplete_trips, total_tons, total_freight,
- total_diesel_litres, total_diesel_cost, net_retention,
- retention_pct, diesel_pct, kmpl
+ total_trips: trips_count,
+ total_incomplete_trips: incomplete_trips,
+ incomplete_trips,
+ total_tons,
+ total_freight,
+ total_diesel_litres,
+ total_diesel_cost,
+ shortage_deductions,
+ driver_bata,
+ halt_bata,
+ toll,
+ loading_unloading,
+ enroute_maintenance,
+ misc,
+ total_workshop,
+ adjusted_revenue,
+ total_operating_expenses,
+ net_retention,
+ retention_pct,
+ diesel_pct,
+ kmpl
  });
  });
 

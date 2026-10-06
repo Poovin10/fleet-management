@@ -13,10 +13,23 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Pagination } from "@/components/ui/Pagination";
 import { usePagination } from "@/components/ui/usePagination";
 
-export function WorkshopModule() {
+type WorkshopTab =
+ "Tyre Management" |
+ "Spares & Service Bills" |
+ "Spare Parts Inventory";
+
+type WorkshopModuleProps = {
+ initialTab?: WorkshopTab;
+ initialOpen?: boolean;
+};
+
+export function WorkshopModule({
+ initialTab = "Tyre Management",
+ initialOpen = false,
+}: WorkshopModuleProps) {
  const supabase = createClient();
- const [showWorkshopWorkspace, setShowWorkshopWorkspace] = useState(false);
- const [wTab, setWTab] = useState("Tyre Management");
+ const [showWorkshopWorkspace, setShowWorkshopWorkspace] = useState(initialOpen);
+ const [wTab, setWTab] = useState<WorkshopTab>(initialTab);
  const [vehicles, setVehicles] = useState<any[]>([]);
  const [vendors, setVendors] = useState<any[]>([]);
  const [isProcessing, setIsProcessing] = useState(false);
@@ -1270,7 +1283,7 @@ const [inventoryPurchaseLines, setInventoryPurchaseLines] = useState<
  <p className="text-xs text-fg-secondary mt-0.5">Manage tyre lifecycles, retreading, spares, and service billing.</p>
  </div>
  <div className="flex flex-wrap gap-2">
- {["Tyre Management", "Spares & Service Bills", "Spare Parts Inventory"].map((tab) => (
+ {(["Tyre Management", "Spares & Service Bills", "Spare Parts Inventory"] as WorkshopTab[]).map((tab) => (
  <Button type="button" variant="ghost" key={tab} onClick={() => setWTab(tab)} className={`px-4 py-2.5 rounded-xl text-xs font-bold ${wTab === tab ? "bg-accent text-accent-fg shadow-orange" : "bg-surface-raised text-fg-secondary hover:text-fg hover:bg-surface-elevated border border-border-strong"}`}>{tab}</Button>
  ))}
  </div>
