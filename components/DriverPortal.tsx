@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 import { BackgroundGeolocation } from "@capgo/background-geolocation";
 import { generateUniversalPdf } from "@/lib/exportUniversalPdf";
 
-const TRIP_ACTIONS = [ 
- { id: "START_TRIP", label: "Start Trip" }, 
- { id: "REACHED", label: "Reached Dest." }, 
- { id: "UNLOADED", label: "Unloaded" }, 
- { id: "RETURNING", label: "Returning" }, 
- { id: "WAITING_FOR_LOAD", label: "Reached Plant" }, 
- { id: "BREAKDOWN", label: "Breakdown" }, 
- { id: "FUEL", label: "Fuel Log" } 
+const TRIP_ACTIONS = [
+ { id: "START_TRIP", label: "Start Trip" },
+ { id: "REACHED", label: "Reached Dest." },
+ { id: "UNLOADED", label: "Unloaded" },
+ { id: "RETURNING", label: "Returning" },
+ { id: "WAITING_FOR_LOAD", label: "Complete Trip" },
+ { id: "BREAKDOWN", label: "Breakdown" },
+ { id: "FUEL", label: "Fuel Log" }
 ];
 
 const KssLogo = ({ className }: { className?: string }) => (
@@ -194,7 +194,7 @@ setLastOdometer("");
 
  const handleDownloadPortalLedger = () => {
  const headers = ["LR Number", "Date", "Route", "Bata ()", "Halt ()", "Trip Adv ()"];
- 
+
  const rows = currentMonthTrips.map(t => [
  t.trip_number || '-',
  formatDate(t.trip_start_date),
@@ -442,7 +442,7 @@ setLastOdometer("");
    return setAlertConfig({
      isOpen: true,
      title: "Closing KM Required",
-     message: "Enter a valid closing odometer reading before reaching the plant.",
+     message: "Enter a valid closing odometer reading to complete the trip.",
      type: "error"
    });
  }
@@ -533,7 +533,21 @@ setLastOdometer("");
    }
  }
 
- setAlertConfig({ isOpen: true, title: "Status Updated", message: `Trip status successfully updated!`, type: "success" });
+ if (actionType === "WAITING_FOR_LOAD") {
+  setAlertConfig({
+    isOpen: true,
+    title: "Trip Completed",
+    message: `Trip completed successfully. Vehicle is now available for the next load.`,
+    type: "success"
+  });
+} else {
+  setAlertConfig({
+    isOpen: true,
+    title: "Status Updated",
+    message: `Trip status successfully updated!`,
+    type: "success"
+  });
+}
  }
 
  setOdometer(""); setFuelLitres(""); setRemarks(""); setUnloadedMt(""); setDamagedBags(""); setIsSubmitting(false); await fetchPortalData();
@@ -737,7 +751,11 @@ setLastOdometer("");
  )}
  {(actionType === "BREAKDOWN" || actionType === "UNLOADED") && <div className="grid gap-1.5"><label className={labelStyle}>Remarks</label><input type="text" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Optional details..." className={inputStyle} required={actionType === "BREAKDOWN"} /></div>}
  <Button type="submit" variant="default" disabled={isSubmitting} className="w-full mt-2 h-12 rounded-lg text-sm font-bold bg-[var(--portal-accent)] text-[var(--portal-text-on-dark)] shadow-md hover:bg-[var(--portal-accent-hover)] disabled:opacity-50">
- {isSubmitting ? "Updating..." : `Confirm Status Update`}
+ {isSubmitting
+  ? "Processing..."
+  : actionType === "WAITING_FOR_LOAD"
+    ? "Complete Trip"
+    : "Confirm Status Update"}
  </Button>
  </div>
  </form>
