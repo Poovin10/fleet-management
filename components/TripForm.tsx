@@ -88,11 +88,9 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
   const [freightMasterRate, setFreightMasterRate] = useState<number | null>(null);
   const [freightMasterId, setFreightMasterId] = useState<number | null>(null);
   const [freightMasterStatus, setFreightMasterStatus] = useState("");
-  const [freightManualOverride, setFreightManualOverride] = useState(false);
   const [driverBata, setDriverBata] = useState("");
   const [bataMasterAmount, setBataMasterAmount] = useState<number | null>(null);
   const [bataMasterStatus, setBataMasterStatus] = useState("");
-  const [bataManualOverride, setBataManualOverride] = useState(false);
   const [advance, setAdvance] = useState("");
   const [dieselIssued, setDieselIssued] = useState("");
   const [dieselRate, setDieselRate] = useState("");
@@ -284,7 +282,6 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
       setFreightMasterRate(null);
       setFreightMasterId(null);
       setFreightMasterStatus("");
-      setFreightManualOverride(false);
       return;
     }
 
@@ -298,40 +295,41 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
     if (!matches.length) {
       setFreightMasterRate(null);
       setFreightMasterId(null);
-      setFreightMasterStatus("No matching freight master found — dispatch requires a valid route master.");
-      setFreightManualOverride(false);
+      setFreightMasterStatus(
+        "No matching Freight Master found — dispatch blocked."
+      );
       return;
     }
 
-    const exactVehicleCapacity = matches.find(rule =>
+    const exactCapacity = matches.find(rule =>
       Number(rule.capacity_tons) === selectedCapacity
     );
 
-    const selectedRule = exactVehicleCapacity || matches[0];
+    const selectedRule = exactCapacity || matches[0];
     const rate = Number(selectedRule.freight_rate_per_ton);
-
     const selectedMasterId = Number(selectedRule.destination_id);
 
     if (!Number.isInteger(selectedMasterId) || selectedMasterId <= 0) {
       setFreightMasterRate(null);
       setFreightMasterId(null);
-      setFreightMasterStatus("Freight master record is invalid — dispatch blocked.");
-      setFreightManualOverride(false);
+      setFreightMasterStatus(
+        "Freight Master record is invalid — dispatch blocked."
+      );
       return;
     }
 
     if (!Number.isFinite(rate) || rate <= 0) {
       setFreightMasterRate(null);
       setFreightMasterId(selectedMasterId);
-      setFreightMasterStatus("Freight master rate is invalid — dispatch blocked.");
-      setFreightManualOverride(false);
+      setFreightMasterStatus(
+        "Freight Master rate is invalid — dispatch blocked."
+      );
       return;
     }
 
     setFreightMasterRate(rate);
     setFreightMasterId(selectedMasterId);
-    setFreightMasterStatus("Master freight rate matched.");
-    setFreightManualOverride(false);
+    setFreightMasterStatus("Master Freight rate matched.");
   }, [
     source,
     destination,
@@ -341,54 +339,148 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
   ]);
 
   useEffect(() => {
-    if (freightMasterRate === null || !tonnage || freightManualOverride) return;
+    if (freightMasterRate === null || !tonnage) {
+      setFreightRevenue("");
+      return;
+    }
 
     const load = Number(tonnage);
 
-    if (!Number.isFinite(load) || load <= 0) return;
+    if (!Number.isFinite(load) || load <= 0) {
+      setFreightRevenue("");
+      return;
+    }
 
-    setFreightRevenue(String(Number((load * freightMasterRate).toFixed(2))));
-  }, [tonnage, freightMasterRate, freightManualOverride]);
+    setFreightRevenue(
+      String(Number((load * freightMasterRate).toFixed(2)))
+    );
+  }, [tonnage, freightMasterRate]);
 
   useEffect(() => {
     if (!source || !destination || !cargoType || selectedCapacity <= 0) {
       setBataMasterAmount(null);
       setBataMasterStatus("");
-      setBataManualOverride(false);
+      setDriverBata("");
       return;
     }
 
-    const matches = bataMasters.filter(rule =>
-      normalize(rule.cargo_type) === normalize(cargoType) &&
-      normalize(rule.origin) === normalize(source) &&
-      normalize(rule.destination_name) === normalize(destination) &&
-      capacityMatches(rule.capacity_tons, selectedCapacity)
-    );
+    const destinationValue = normalize(destination);
+    const cargoValue = normalize(cargoType);
+    const originValue = normalize(source);
+    const vehicleValue = Number(truckId);
+
+    const matches = bataMasters
+      .map(rule => {
+        const cargo = normalize(rule.cargo_type);
+        const origin = normalize(rule.origin);
+        const capacityRaw = normalize(rule.capacity_tons);
+
+        const cargoMatches =
+          cargo === cargoValue ||
+          cargo === "" ||
+          cargo === "ALL";
+
+        const originMatches =
+          origin === originValue ||
+          origin === "" ||
+          origin === "ALL";
+
+        const capacityMatchesRule =
+          !capacityRaw ||
+          capacityMatches(rule.capacity_tons, selectedCapacity);
+
+        const destinationMatches =
+          normalize(rule.destination_name) === destinationValue;
+
+        if (
+          !cargoMatches ||
+          !originMatches ||
+          !capacityMatchesRule ||
+          !destinationMatches
+        ) {
+          return null;
+        }
+
+        const vehicleExact =
+          Number.isFinite(vehicleValue) &&
+          vehicleValue > 0 &&
+          Number(rule.vehicle_id) === vehicleValue;
+
+        const capacityExact =
+          capacityRaw !== "" &&
+          capacityMatches(rule.capacity_tons, selectedCapacity);
+
+        const cargoExact =
+          cargo !== "" &&
+          cargo !== "ALL" &&
+          cargo === cargoValue;
+
+        const originExact =
+          origin !== "" &&
+          origin !== "ALL" &&
+          origin === originValue;
+
+        const specificity =
+          (vehicleExact ? 1000 : 0) +
+          (capacityExact ? 100 : 0) +
+          (cargoExact ? 10 : 0) +
+          (originExact ? 1 : 0);
+
+        return {
+          rule,
+          specificity,
+        };
+      })
+      .filter(
+        (
+          value
+        ): value is {
+          rule: any;
+          specificity: number;
+        } => value !== null
+      )
+      .sort((a, b) => b.specificity - a.specificity);
 
     if (!matches.length) {
       setBataMasterAmount(null);
-      setBataMasterStatus("No Bata master found — manual Bata required.");
-      setBataManualOverride(false);
+      setBataMasterStatus(
+        "No matching Bata Master — dispatch blocked."
+      );
+      setDriverBata("");
       return;
     }
 
-    const vehicleSpecific = matches.find(rule =>
-      Number(rule.vehicle_id) === Number(truckId)
+    const best = matches[0];
+
+    const tied = matches.filter(
+      item => item.specificity === best.specificity
     );
 
-    const selectedRule = vehicleSpecific || matches[0];
-    const amount = Number(selectedRule.standard_bata_inr);
+    if (tied.length > 1) {
+      setBataMasterAmount(null);
+      setBataMasterStatus(
+        "Multiple equally specific Bata Masters found — dispatch blocked."
+      );
+      setDriverBata("");
+      return;
+    }
+
+    const amount = Number(best.rule.standard_bata_inr);
 
     if (!Number.isFinite(amount) || amount < 0) {
       setBataMasterAmount(null);
-      setBataMasterStatus("Bata master amount is invalid — manual Bata required.");
+      setBataMasterStatus(
+        "Bata Master amount is invalid — dispatch blocked."
+      );
+      setDriverBata("");
       return;
     }
 
     setBataMasterAmount(amount);
     setDriverBata(String(amount));
-    setBataMasterStatus("Master Bata matched.");
-    setBataManualOverride(false);
+    setBataMasterStatus(
+      "Master Bata matched — server authoritative."
+    );
   }, [
     source,
     destination,
@@ -437,7 +529,7 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
 
   const totalRevenue = Number(freightRevenue || 0);
   const fuelExpense = Number(dieselIssued || 0) * Number(dieselRate || 0);
-  const totalExpense = Number(driverBata || 0) + Number(advance || 0) + fuelExpense;
+  const totalExpense = Number(driverBata || 0) + fuelExpense;
   const netMargin = totalRevenue - totalExpense;
 
   const handleRateChange = (val: string) => {
@@ -447,8 +539,8 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
 
   const handleClear = () => {
     setLrNumber(""); setTruckId(""); setDriverId(""); setSource(""); setDestination("");
-    setTonnage(""); setFreightRevenue(""); setFreightManualOverride(false);
-    setDriverBata(""); setBataManualOverride(false); setAdvance("");
+    setTonnage(""); setFreightRevenue("");
+    setDriverBata(""); setAdvance("");
     setDieselIssued(""); setStartKm(""); setTankFull(false); setSuccess(false);
     if (driverMode === "manual") {
       setNewDriverName(""); setNewDriverPhone(""); setNewDriverLicense(""); setNewDriverExpiry(""); setDriverMode("select");
@@ -583,13 +675,23 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
     }
 
     // ------------------------------------------------------------
-    // STAGE 5 — ROUTE MASTER CONTROL
+    // STAGE 5 — AUTHORITATIVE MASTER CONTROLS
     // ------------------------------------------------------------
-    if (freightMasterId === null) {
+    if (freightMasterId === null || freightMasterRate === null) {
       setLoading(false);
       showAlert(
-        "Route Master Required",
-        "No valid Freight Master route is selected for this dispatch. Dispatch has been blocked.",
+        "Freight Master Required",
+        "A valid active Freight Master rate is required. Dispatch has been blocked.",
+        "error",
+      );
+      return;
+    }
+
+    if (bataMasterAmount === null || !Number.isFinite(bataMasterAmount)) {
+      setLoading(false);
+      showAlert(
+        "Bata Master Required",
+        "No valid Bata Master rule matches this dispatch. Manual Bata entry is not permitted. Dispatch has been blocked.",
         "error",
       );
       return;
@@ -602,35 +704,6 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
 
     if (tonnageAnomaly) {
       warnings.push(tonnageAnomaly);
-    }
-
-    if (freightManualOverride) {
-      const masterCalculated =
-        freightMasterRate !== null
-          ? Number((Number(tonnage) * freightMasterRate).toFixed(2))
-          : null;
-
-      if (masterCalculated !== null) {
-        warnings.push(
-          `Freight override: entered ₹${Number(freightRevenue).toLocaleString("en-IN")} differs from master-calculated ₹${masterCalculated.toLocaleString("en-IN")}.`
-        );
-      } else {
-        warnings.push("Freight has been manually overridden because no matching master rate is active.");
-      }
-    } else if (freightMasterRate === null) {
-      warnings.push("Freight master route is valid, but no usable master rate is available. Review freight before dispatch.");
-    }
-
-    if (bataManualOverride) {
-      if (bataMasterAmount !== null) {
-        warnings.push(
-          `Bata override: entered ₹${Number(driverBata).toLocaleString("en-IN")} differs from master Bata ₹${bataMasterAmount.toLocaleString("en-IN")}.`
-        );
-      } else {
-        warnings.push("Bata has been manually overridden because no matching master amount is active.");
-      }
-    } else if (bataMasterAmount === null) {
-      warnings.push("No matching Bata master found. Bata is being entered manually.");
     }
 
     setReviewWarnings(warnings);
@@ -797,7 +870,7 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
             </dl>
 
             <p className="mt-2 text-xs text-fg-muted">
-              Expenses include advance, bata and fuel cost.
+              Operating expenses include master Bata and fuel cost. Cash advance is tracked separately for settlement.
             </p>
 
             {reviewWarnings.length > 0 ? (
@@ -1056,28 +1129,34 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
               id="dispatch-freight"
               label="Freight (₹)"
               required
-              description={freightMasterRate !== null ? (
+              description={
                 <span className="grid gap-1">
-                  <span>Master rate: ₹{freightMasterRate.toLocaleString("en-IN")}/MT</span>
-                  {tonnage ? <span>Calculated: ₹{(Number(tonnage) * freightMasterRate).toLocaleString("en-IN")}</span> : null}
-                  {freightMasterStatus ? <span className={freightManualOverride ? "text-warning" : "text-success"}>{freightManualOverride ? "Manual freight override." : freightMasterStatus}</span> : null}
+                  {freightMasterRate !== null ? (
+                    <>
+                      <span>
+                        Master rate: ₹{freightMasterRate.toLocaleString("en-IN")}/MT
+                      </span>
+                      {tonnage ? (
+                        <span>
+                          Master calculated: ₹{Number(freightRevenue || 0).toLocaleString("en-IN")}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : null}
+                  <span className={freightMasterRate !== null ? "text-success" : "text-warning"}>
+                    {freightMasterStatus || "Select a valid Freight Master route."}
+                  </span>
                 </span>
-              ) : freightMasterStatus ? <span className="text-warning">{freightManualOverride ? "Manual freight override." : freightMasterStatus}</span> : undefined}
+              }
             >
               <Input
                 type="number"
                 {...strictNumberProps}
                 step="0.01"
                 value={freightRevenue}
-                onChange={(e) => {
-                  setFreightRevenue(e.target.value);
-                  setFreightManualOverride(
-                    freightMasterRate !== null &&
-                    Number(e.target.value || 0) !== Number((Number(tonnage || 0) * freightMasterRate).toFixed(2))
-                  );
-                }}
-                className={freightManualOverride ? "border-warning" : ""}
-                placeholder="0.00"
+                placeholder="Master calculated"
+                readOnly
+                aria-readonly="true"
                 required
               />
             </FormField>
@@ -1159,26 +1238,25 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
           <div className="grid min-w-0 grid-cols-1 items-start gap-x-5 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
             <FormField
               id="driver-bata"
-              label="Driver bata (₹)"
+              label="Driver Bata (₹)"
               required
-              description={bataMasterStatus ? (
-                <span className={bataManualOverride ? "text-warning" : bataMasterAmount !== null ? "text-success" : "text-warning"}>
-                  {bataManualOverride ? "Manual Bata override." : bataMasterStatus}
-                  {bataMasterAmount !== null ? ` · Master Bata: ₹${bataMasterAmount.toLocaleString("en-IN")}` : ""}
+              description={
+                <span className={bataMasterAmount !== null ? "text-success" : "text-warning"}>
+                  {bataMasterStatus || "Select a valid Bata Master rule."}
+                  {bataMasterAmount !== null
+                    ? ` · Master Bata: ₹${bataMasterAmount.toLocaleString("en-IN")}`
+                    : ""}
                 </span>
-              ) : undefined}
+              }
             >
               <Input
                 type="number"
                 {...strictNumberProps}
                 step="0.01"
                 value={driverBata}
-                onChange={(e) => {
-                  setDriverBata(e.target.value);
-                  setBataManualOverride(bataMasterAmount !== null && Number(e.target.value || 0) !== bataMasterAmount);
-                }}
-                className={bataManualOverride ? "border-warning" : ""}
-                placeholder="0.00"
+                placeholder="Master resolved"
+                readOnly
+                aria-readonly="true"
                 required
               />
             </FormField>
@@ -1194,12 +1272,12 @@ export function TripForm({ initialOpen = false }: TripFormProps) {
             </div>
             <div className="px-4 py-3">
               <p className="text-xs text-fg-muted">Total expenses</p>
-              <p className="mt-1 text-base font-semibold tabular-nums text-danger" title={`Bata (₹${driverBata || 0}) + Advance (₹${advance || 0}) + Fuel (₹${fuelExpense || 0})`}>
+              <p className="mt-1 text-base font-semibold tabular-nums text-danger" title={`Bata (₹${driverBata || 0}) + Fuel (₹${fuelExpense || 0})`}>
                 ₹{totalExpense.toLocaleString("en-IN")}
               </p>
             </div>
             <div className="px-4 py-3">
-              <p className="text-xs text-fg-muted">Expected margin</p>
+              <p className="text-xs text-fg-muted">Dispatch contribution</p>
               <p className="mt-1 text-base font-semibold tabular-nums text-fg">₹{netMargin.toLocaleString("en-IN")}</p>
             </div>
           </div>
