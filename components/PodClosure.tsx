@@ -19,7 +19,6 @@ export function PodClosure({
 }: PodClosureProps) {
  const [isLoading, setIsLoading] = useState(true);
  const [isSubmitting, setIsSubmitting] = useState(false);
- const [dieselRate, setDieselRate] = useState<number>(95.0);
 
  const [alertConfig, setAlertConfig] = useState({
  isOpen: false, title: "", message: "", type: "info" as "success" | "error" | "info"
@@ -42,11 +41,6 @@ export function PodClosure({
  const [podNo, setPodNo] = useState("");
  const [closingDate, setClosingDate] = useState(new Date().toISOString().split("T")[0]);
  const [unloadedMt, setUnloadedMt] = useState<number | "">("");
- const [closingKm, setClosingKm] = useState<number | "">("");
- const [haltBata, setHaltBata] = useState<number | "">("");
- const [claims, setClaims] = useState<number | "">("");
- const [closingDiesel, setClosingDiesel] = useState<number | "">("");
- const [isTankFull, setIsTankFull] = useState(false);
  
  const [complianceWarnings, setComplianceWarnings] = useState<any[]>([]);
 
@@ -69,11 +63,6 @@ export function PodClosure({
        : new Date().toISOString().split("T")[0]
    );
    setUnloadedMt(trip.loaded_weight_mt || "");
-   setClosingKm("");
-   setHaltBata("");
-   setClaims("");
-   setClosingDiesel("");
-   setIsTankFull(false);
    setScannedShortageKg(null);
    setActiveScanId(null);
    setShowPendingPodList(false);
@@ -107,7 +96,7 @@ export function PodClosure({
      `)
      .eq("trip_number", searchLr)
      .eq("pod_status", "PENDING_SUBMISSION")
-     .eq("trip_status", "WAITING_FOR_LOAD")
+     .eq("trip_status", "COMPLETED")
      .maybeSingle();
 
    if (error) throw error;
@@ -131,11 +120,6 @@ export function PodClosure({
        : new Date().toISOString().split("T")[0]
    );
    setUnloadedMt(data.loaded_weight_mt || "");
-   setClosingKm("");
-   setHaltBata("");
-   setClaims("");
-   setClosingDiesel("");
-   setIsTankFull(false);
    setScannedShortageKg(null);
    setActiveScanId(null);
  } catch (error: any) {
@@ -153,19 +137,17 @@ export function PodClosure({
 
  const fetchActiveTrips = async () => {
  setIsLoading(true);
- const [tripsRes, dieselRes, scansRes] = await Promise.all([
+ const [tripsRes, scansRes] = await Promise.all([
  supabase.from("trips").select(`
- trip_id, trip_number, trip_start_date, origin, destination, loaded_weight_mt, start_km, fuel_litres, vehicle_id, primary_driver_id,
+ trip_id, trip_number, trip_start_date, origin, destination, loaded_weight_mt, start_km, vehicle_id, primary_driver_id,
  trip_status, pod_status, pod_number, pod_received_date,
  vehicles ( vehicle_number, truck_type, fc_expiry_date, insurance_expiry_date, qtax_expiry_date, puc_expiry_date, np_expiry_date, state_permit_expiry_date, tank_cert_expiry_date ),
  drivers ( full_name, phone_number, driver_code, license_expiry_date )
- `).eq("pod_status", "PENDING_SUBMISSION").eq("trip_status", "WAITING_FOR_LOAD").order("trip_start_date", { ascending: true }),
- supabase.from("diesel_fuel_logs").select("diesel_rate_per_litre").order("fuel_date", { ascending: false }).order("fuel_log_id", { ascending: false }).limit(1),
+ `).eq("pod_status", "PENDING_SUBMISSION").eq("trip_status", "COMPLETED").order("trip_start_date", { ascending: true }),
  supabase.from("pending_scans").select("*").eq("document_type", "POD_CLOSURE").eq("status", "PENDING").order("created_at", { ascending: false })
  ]);
 
  if (tripsRes.data) setActiveTrips(tripsRes.data);
- if (dieselRes.data && dieselRes.data.length > 0 && dieselRes.data[0].diesel_rate_per_litre) setDieselRate(Number(dieselRes.data[0].diesel_rate_per_litre));
  if (scansRes.data) setPendingScans(scansRes.data);
  setIsLoading(false);
  };
@@ -225,7 +207,6 @@ export function PodClosure({
  } else {
  setUnloadedMt(trip.loaded_weight_mt || 0);
  }
- setClosingKm(""); setHaltBata(""); setClaims(""); setClosingDiesel(""); setIsTankFull(false);
  }
  } else {
  setCurrentTrip(null);
@@ -282,70 +263,54 @@ export function PodClosure({
      });
    }
 
-   setIsSubmitting(true);
-
-   const loadedMt = Number(currentTrip.loaded_weight_mt) || 0;
-   const finalUnloadedMt = unloadedMt === "" ? null : Number(unloadedMt);
-   const scannedShortageMt =
-     scannedShortageKg !== null ? scannedShortageKg / 1000 : null;
-
-   const shortageMt =
-     finalUnloadedMt !== null
-       ? Math.max(0, loadedMt - finalUnloadedMt)
-       : Math.max(0, scannedShortageMt ?? 0);
-
-   const addDiesel = Number(closingDiesel) || 0;
-   const fillingOdometerKm = Number(closingKm) || 0;
-
-   if (addDiesel > 0 && fillingOdometerKm <= 0) {
-     setIsSubmitting(false);
-
+   if (!closingDate) {
      return setAlertConfig({
        isOpen: true,
-       title: "Odometer Required",
-       message:
-         "Please enter the filling odometer KM when recording a diesel top-up.",
+       title: "Missing Information",
+       message: "Please enter the POD received date.",
        type: "error"
      });
    }
+
+   if (unloadedMt === "" || Number(unloadedMt) < 0) {
+     return setAlertConfig({
+       isOpen: true,
+       title: "Invalid Unloaded Weight",
+       message: "Please enter a valid unloaded weight.",
+       type: "error"
+     });
+   }
+
+   setIsSubmitting(true);
 
    const { error } = await supabase.rpc("close_pod_atomic", {
      p_trip_id: Number(currentTrip.trip_id),
      p_pod_number: podNo.trim().toUpperCase(),
      p_closing_date: closingDate,
-     p_unloaded_weight_mt: finalUnloadedMt,
-     p_shortage_mt: shortageMt,
-     p_halt_bata: Number(haltBata) || 0,
-     p_claims: Number(claims) || 0,
-     p_add_diesel: addDiesel,
-     p_diesel_rate_per_litre: dieselRate,
-     p_filling_odometer_km:
-       addDiesel > 0 ? fillingOdometerKm : null,
-     p_is_tank_full: isTankFull,
+     p_unloaded_weight_mt: Number(unloadedMt),
+     p_shortage_mt: null,
+     p_halt_bata: 0,
+     p_claims: 0,
+     p_add_diesel: 0,
+     p_diesel_rate_per_litre: 0,
+     p_filling_odometer_km: null,
+     p_is_tank_full: false,
      p_scan_id: activeScanId || null
    });
 
    if (error) {
      setIsSubmitting(false);
 
-     const message = error.message || "Unable to settle POD.";
-     let title = "POD Settlement Failed";
+     const message = error.message || "Unable to close POD.";
+     let title = "POD Closure Failed";
 
-     if (message.includes("POD_ALREADY_PROCESSED")) {
-       title = "POD Already Processed";
-     } else if (message.includes("TRIP_VEHICLE_REQUIRED")) {
-       title = "Vehicle Required";
-     } else if (message.includes("FUEL_ODOMETER_REQUIRED")) {
-       title = "Odometer Required";
-     } else if (message.includes("ODOMETER_MUST_INCREASE_PREVIOUS")) {
-       title = "Invalid Odometer";
-     } else if (message.includes("FUEL_RATE_INVALID")) {
-       title = "Invalid Diesel Rate";
-     } else if (
-       message.includes("UNLOADED_WEIGHT_EXCEEDS_LOADED_WEIGHT")
-     ) {
-       title = "Invalid Unloaded Weight";
-     }
+     if (message.includes("POD_ALREADY_PROCESSED")) title = "POD Already Processed";
+     else if (message.includes("POD_NUMBER_REQUIRED")) title = "POD Number Required";
+     else if (message.includes("TRIP_NOT_COMPLETED")) title = "Trip Not Completed";
+     else if (message.includes("POD_NOT_PENDING")) title = "POD Already Processed";
+     else if (message.includes("POD_DATE_IN_FUTURE")) title = "Invalid POD Date";
+     else if (message.includes("POD_NUMBER_ALREADY_EXISTS")) title = "Duplicate POD Number";
+     else if (message.includes("UNLOADED_WEIGHT_EXCEEDS_LOADED_WEIGHT")) title = "Invalid Unloaded Weight";
 
      return setAlertConfig({
        isOpen: true,
@@ -356,24 +321,22 @@ export function PodClosure({
    }
 
    if (activeScanId) {
-     setPendingScans(prev =>
-       prev.filter(s => s.scan_id !== activeScanId)
-     );
+     setPendingScans(prev => prev.filter(s => s.scan_id !== activeScanId));
      setActiveScanId(null);
    }
 
    setAlertConfig({
      isOpen: true,
-     title: "POD Settled!",
-     message:
-       `POD for ${currentTrip.trip_number} successfully recorded and settled.`,
+     title: "POD Closed",
+     message: `POD for ${currentTrip.trip_number} successfully recorded.`,
      type: "success"
    });
 
    setIsSubmitting(false);
    setSelectedLr("");
    setPodNo("");
-   setCurrentTrip(null);
+   setUnloadedMt("");
+   setClosingDate(new Date().toISOString().split("T")[0]);
    setScannedShortageKg(null);
    fetchActiveTrips();
 
@@ -408,7 +371,7 @@ export function PodClosure({
              <p className="kss-eyebrow text-accent">Operations · POD</p>
              <h2 className="mt-1 text-xl font-semibold text-fg">POD Closure</h2>
              <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">
-               Search completed trips, review scanned POD information, and settle
+               Search completed trips awaiting POD, review scanned POD information, and settle
                delivery closure details.
              </p>
            </div>
@@ -628,49 +591,27 @@ export function PodClosure({
                </div>
              </section>
 
-             {/* Odometer & fuel */}
+             {/* Delivery verification */}
              <section>
                <div className="flex items-center gap-3 mb-3">
                  <span className="text-[9px] font-semibold text-accent">02</span>
-                 <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-secondary">Odometer & fuel</h4>
+                 <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-secondary">Delivery verification</h4>
                  <div className="h-px flex-1 bg-border" />
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                 <div>
-                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Filling odometer KM</label>
-                   <Input type="number" {...numProps} value={closingKm} onChange={(e) => setClosingKm(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="Only for diesel top-up" className={`text-info font-semibold ${noSpinClass}`} />
-                 </div>
-                 <div>
-                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Diesel top-up (L)</label>
-                   <Input type="number" {...numProps} value={closingDiesel} onChange={(e) => setClosingDiesel(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.0 Litres" className={`text-accent font-semibold ${noSpinClass}`} />
-                   <span className="text-[9px] text-fg-muted font-medium mt-1.5 block">Current rate ₹{dieselRate}/L</span>
-                 </div>
-                 <div className="flex items-end">
-                   <label className="flex items-center gap-3 cursor-pointer select-none input-glass rounded-xl px-3.5 py-2.5">
-                     <input type="checkbox" checked={isTankFull} onChange={(e) => setIsTankFull(e.target.checked)} className="w-4 h-4 rounded text-accent focus:ring-accent bg-transparent border-border" />
-                     <span className="text-xs font-semibold text-fg">Tank full</span>
-                   </label>
-                 </div>
-               </div>
-             </section>
+               <div className="rounded-xl border border-accent-border bg-accent-soft/40 p-4">
+                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                   <div>
+                     <p className="text-[9px] uppercase tracking-wider text-fg-muted font-semibold">Shortage</p>
+                     <p className="text-xs text-fg-secondary mt-1">
+                       Final shortage is calculated by the server from dispatched and unloaded weight.
+                     </p>
+                   </div>
 
-             {/* Expenses */}
-             <section>
-               <div className="flex items-center gap-3 mb-3">
-                 <span className="text-[9px] font-semibold text-accent">03</span>
-                 <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-secondary">Trip expenses</h4>
-                 <div className="h-px flex-1 bg-border" />
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                 <div>
-                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Halt bata (₹)</label>
-                   <Input type="number" {...numProps} value={haltBata} onChange={(e) => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`text-accent font-semibold ${noSpinClass}`} />
-                 </div>
-                 <div>
-                   <label className="block text-[9px] uppercase tracking-wider font-semibold text-fg-muted mb-1.5">Claims / repairs (₹)</label>
-                   <Input type="number" {...numProps} value={claims} onChange={(e) => setClaims(e.target.value === "" ? "" : parseFloat(e.target.value))} placeholder="0.00" className={`text-danger font-semibold ${noSpinClass}`} />
+                   <div className="text-left sm:text-right">
+                     <p className="text-[9px] uppercase tracking-wider text-fg-muted font-semibold">Dispatched</p>
+                     <p className="text-sm font-semibold text-fg">{currentTrip.loaded_weight_mt} MT</p>
+                   </div>
                  </div>
                </div>
              </section>
@@ -694,14 +635,14 @@ export function PodClosure({
              )}
 
              <div className="pt-2 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-               <p className="text-[10px] text-fg-muted">Review all values before closing this POD.</p>
+               <p className="text-[10px] text-fg-muted">Review the POD details before recording delivery closure.</p>
                <Button
                  type="submit"
                  disabled={isSubmitting}
                  variant="secondary"
                  className="w-full sm:w-auto px-7 py-3 rounded-xl text-sm font-semibold bg-accent hover:bg-accent-hover text-accent-fg border-accent-border shadow-orange"
                >
-                 {isSubmitting ? "Saving..." : "Settle POD"}
+                 {isSubmitting ? "Saving..." : "Close POD"}
                </Button>
              </div>
            </>
