@@ -40,23 +40,16 @@ export function ModifyTrips() {
 
  const [tripNumber, setTripNumber] = useState("");
  const [startDate, setStartDate] = useState("");
- const [status, setStatus] = useState("DISPATCHED");
  const [origin, setOrigin] = useState("");
  const [destination, setDestination] = useState("");
  const [driverId, setDriverId] = useState("");
  const [tonnage, setTonnage] = useState<number | "">("");
- const [spotRate, setSpotRate] = useState<number | "">("");
- const [dieselL, setDieselL] = useState<number | "">("");
- const [isTankFull, setIsTankFull] = useState(false);
- const [startKm, setStartKm] = useState<number | "">("");
- const [endKm, setEndKm] = useState<number | "">("");
- const [driverBata, setDriverBata] = useState<number | "">("");
- const [advanceIssued, setAdvanceIssued] = useState<number | "">("");
+ const [historicalFreight, setHistoricalFreight] = useState<number | "">("");
+ const [historicalFreightRate, setHistoricalFreightRate] = useState<number | "">("");
+ const [historicalDriverBata, setHistoricalDriverBata] = useState<number | "">("");
+ const [historicalCashAdvance, setHistoricalCashAdvance] = useState<number | "">("");
+ const [historicalHaltBata, setHistoricalHaltBata] = useState<number | "">("");
  const [endDate, setEndDate] = useState("");
- const [unloadedMt, setUnloadedMt] = useState<number | "">("");
- const [haltBata, setHaltBata] = useState<number | "">("");
-
- const grossFreight = Math.round((Number(tonnage) || 0) * (Number(spotRate) || 0) * 100) / 100;
 
  const [modalConfig, setModalConfig] = useState({ isOpen: false, title: "", message: "", isDanger: false, confirmText: "Confirm", action: async () => {} });
  const triggerModal = (title: string, message: string, isDanger: boolean, confirmText: string, action: () => Promise<void>) => setModalConfig({ isOpen: true, title, message, isDanger, confirmText, action });
@@ -181,21 +174,16 @@ export function ModifyTrips() {
    setIsLrEditing(false);
    setTripNumber("");
    setStartDate("");
-   setStatus("DISPATCHED");
    setOrigin("");
    setDestination("");
    setDriverId("");
    setTonnage("");
-   setSpotRate("");
-   setDieselL("");
-   setIsTankFull(false);
-   setStartKm("");
-   setEndKm("");
-   setDriverBata("");
-   setAdvanceIssued("");
+   setHistoricalFreight("");
+   setHistoricalFreightRate("");
+   setHistoricalDriverBata("");
+   setHistoricalCashAdvance("");
+   setHistoricalHaltBata("");
    setEndDate("");
-   setUnloadedMt("");
-   setHaltBata("");
  };
 
  const handleSearchByLr = async () => {
@@ -242,27 +230,49 @@ export function ModifyTrips() {
 
    setTripNumber(trip.trip_number || "");
    setStartDate(trip.trip_start_date ? trip.trip_start_date.split('T')[0] : "");
-   setStatus(trip.trip_status || "DISPATCHED");
-   setOrigin(trip.origin || "");
+    setOrigin(trip.origin || "");
    setDestination(trip.destination || "");
    setDriverId(trip.primary_driver_id ? String(trip.primary_driver_id) : "");
    setTonnage(trip.tonnage_loaded || "");
 
-   const rate = trip.spot_freight_rate ||
-     (trip.freight_revenue && trip.tonnage_loaded
-       ? (trip.freight_revenue / trip.tonnage_loaded).toFixed(2)
-       : "");
+   const historicalRate =
+     trip.freight_rate_used !== null &&
+     trip.freight_rate_used !== undefined
+       ? Number(trip.freight_rate_used)
+       : "";
 
-   setSpotRate(Number(rate));
-   setDieselL(trip.fuel_litres || "");
-   setIsTankFull(trip.is_tank_full || false);
-   setStartKm(trip.start_km || "");
-   setEndKm(trip.end_km || "");
-   setDriverBata(trip.driver_bata || "");
-   setAdvanceIssued(trip.cash_advance_issued || "");
+   setHistoricalFreightRate(
+     historicalRate === "" ? "" : Number(historicalRate)
+   );
+
+   setHistoricalFreight(
+     trip.freight_revenue !== null &&
+     trip.freight_revenue !== undefined
+       ? Number(trip.freight_revenue)
+       : ""
+   );
+
+
+   setHistoricalDriverBata(
+     trip.bata_amount_used !== null &&
+     trip.bata_amount_used !== undefined
+       ? Number(trip.bata_amount_used)
+       : Number(trip.driver_bata || 0)
+   );
+   setHistoricalCashAdvance(
+     trip.cash_advance_issued !== null &&
+     trip.cash_advance_issued !== undefined
+       ? Number(trip.cash_advance_issued)
+       : ""
+   );
    setEndDate(trip.trip_end_date ? trip.trip_end_date.split('T')[0] : "");
-   setUnloadedMt(trip.unloaded_weight_mt || "");
-   setHaltBata(trip.halt_bata || "");
+
+   setHistoricalHaltBata(
+     trip.halt_bata !== null &&
+     trip.halt_bata !== undefined
+       ? Number(trip.halt_bata)
+       : ""
+   );
  };
 
  const handleUpdateTrip = async (e: React.FormEvent) => {
@@ -311,10 +321,6 @@ export function ModifyTrips() {
 
        if (!currentDieselRate) currentDieselRate = 95;
 
-       const finalDieselLitres = Number(dieselL) || 0;
-       const newFuelCost =
-         Math.round(finalDieselLitres * currentDieselRate * 100) / 100;
-
        const payload = {
          trip_number: normalizedTripNumber,
          trip_start_date: startDate || null,
@@ -322,24 +328,7 @@ export function ModifyTrips() {
          origin: normalizedOrigin,
          destination: normalizedDestination,
          primary_driver_id: driverId ? Number(driverId) : null,
-         tonnage_loaded: tonnage !== "" ? Number(tonnage) : null,
-         freight_revenue: grossFreight,
-         driver_bata: driverBata !== "" ? Number(driverBata) : 0,
-         cash_advance_issued:
-           advanceIssued !== "" ? Number(advanceIssued) : 0,
-         trip_status: status,
-         unloaded_weight_mt:
-           unloadedMt !== "" ? Number(unloadedMt) : 0,
-         halt_bata: haltBata !== "" ? Number(haltBata) : 0,
-         fuel_litres: finalDieselLitres,
-         fuel_expense: newFuelCost,
-         diesel_rate_per_litre: currentDieselRate,
-         fuel_date: startDate || new Date().toISOString().split("T")[0],
-         diesel_category: "TRIP_DIESEL",
-         lr_number: normalizedTripNumber || "SUNDRY",
-         fuel_station_vendor: null,
-         fuel_remarks: null,
-         is_tank_full: isTankFull
+         tonnage_loaded: tonnage !== "" ? Number(tonnage) : null
        };
 
        const { error } = await supabase.rpc("modify_trip_atomic", {
@@ -411,15 +400,6 @@ export function ModifyTrips() {
          <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-fg font-bold" />
        </div>
 
-       <div>
-         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Trip Status</label>
-         <Select value={status} onChange={e => setStatus(e.target.value)} className="text-fg font-bold">
-           <option value="DISPATCHED">DISPATCHED</option>
-           <option value="IN_TRANSIT">IN_TRANSIT</option>
-           <option value="COMPLETED">COMPLETED</option>
-           <option value="CANCELLED">CANCELLED</option>
-         </Select>
-       </div>
      </div>
 
      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -446,59 +426,104 @@ export function ModifyTrips() {
          <Input type="number" step="0.01" value={tonnage} onChange={e => setTonnage(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-fg font-bold" />
        </div>
        <div>
-         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Freight Rate / MT ()</label>
-         <Input type="number" step="0.01" value={spotRate} onChange={e => setSpotRate(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-success font-bold" />
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Historical Freight Rate / MT</label>
+         <Input
+           type="text"
+           value={
+             historicalFreightRate === ""
+               ? "—"
+               : Number(historicalFreightRate).toLocaleString("en-IN", {
+                   minimumFractionDigits: 2,
+                 })
+           }
+           disabled
+           className="w-full cursor-not-allowed rounded-lg border border-success/20 bg-success-soft p-3 text-sm font-semibold text-success opacity-90"
+         />
        </div>
        <div>
-         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Auto-Calc Gross Freight ()</label>
-         <Input type="text" value={grossFreight.toLocaleString('en-IN', {minimumFractionDigits: 2})} disabled className="w-full cursor-not-allowed rounded-lg border border-success/20 bg-success-soft p-3 text-sm font-semibold text-success" />
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Historical Gross Freight</label>
+         <Input
+           type="text"
+           value={
+             historicalFreight === ""
+               ? "—"
+               : Number(historicalFreight).toLocaleString("en-IN", {
+                   minimumFractionDigits: 2,
+                 })
+           }
+           disabled
+           className="w-full cursor-not-allowed rounded-lg border border-success/20 bg-success-soft p-3 text-sm font-semibold text-success opacity-90"
+         />
        </div>
+     </div>
+
+     <div className="rounded-lg border border-info/20 bg-info-soft p-3">
+       <div className="text-[10px] font-bold uppercase tracking-wider text-info">
+         Fuel & Odometer Protected
+       </div>
+       <p className="mt-1 text-xs text-fg-secondary">
+         Diesel, tank status and odometer readings are controlled by their dedicated
+         workflows and cannot be changed from Modify Trip.
+       </p>
      </div>
 
      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
        <div>
-         <div className="mb-1 flex items-end justify-between">
-           <label className="block text-[10px] font-bold text-fg-secondary">Diesel Issued (L)</label>
-           <label className="flex cursor-pointer select-none items-center gap-1">
-             <input type="checkbox" checked={isTankFull} onChange={e => setIsTankFull(e.target.checked)} className="h-3 w-3 rounded border-border bg-surface-raised text-accent focus:ring-accent" />
-             <span className="text-[9px] font-semibold text-fg">Tank Full</span>
-           </label>
-         </div>
-         <Input type="number" step="0.1" value={dieselL} onChange={e => setDieselL(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" />
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Historical Driver Bata</label>
+         <Input
+           type="text"
+           value={
+             historicalDriverBata === ""
+               ? "—"
+               : Number(historicalDriverBata).toLocaleString("en-IN", {
+                   minimumFractionDigits: 2,
+                 })
+           }
+           disabled
+           className="cursor-not-allowed border border-accent/20 bg-accent-soft p-3 font-bold text-accent opacity-90"
+         />
        </div>
        <div>
-         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Start KM</label>
-         <Input type="number" value={startKm} disabled={!!currentTrip} onChange={e => setStartKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold disabled:cursor-not-allowed disabled:opacity-60" />
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Historical Halt Bata</label>
+         <Input
+           type="text"
+           value={
+             historicalHaltBata === ""
+               ? "—"
+               : Number(historicalHaltBata).toLocaleString("en-IN", {
+                   minimumFractionDigits: 2,
+                 })
+           }
+           disabled
+           className="cursor-not-allowed border border-accent/20 bg-accent-soft p-3 font-bold text-accent opacity-90"
+         />
        </div>
        <div>
-         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">End KM</label>
-         <Input type="number" value={endKm} disabled={!!currentTrip} onChange={e => setEndKm(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-info font-bold disabled:cursor-not-allowed disabled:opacity-60" />
-       </div>
-     </div>
-
-     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-       <div>
-         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Driver Bata ()</label>
-         <Input type="number" value={driverBata} onChange={e => setDriverBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" />
-       </div>
-       <div>
-         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Halt Bata ()</label>
-         <Input type="number" value={haltBata} onChange={e => setHaltBata(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-accent font-bold" />
-       </div>
-       <div>
-         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Cash Adv Issued ()</label>
-         <Input type="number" value={advanceIssued} onChange={e => setAdvanceIssued(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-warning font-bold" />
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Cash Advance Recorded</label>
+         <Input
+           type="text"
+           value={
+             historicalCashAdvance === ""
+               ? "—"
+               : Number(historicalCashAdvance).toLocaleString("en-IN", {
+                   minimumFractionDigits: 2,
+                 })
+           }
+           disabled
+           className="cursor-not-allowed border border-warning/20 bg-warning-soft p-3 font-bold text-warning opacity-90"
+         />
        </div>
      </div>
 
      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
        <div>
-         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">POD Closing Date</label>
-         <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-fg font-bold" />
-       </div>
-       <div>
-         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Unloaded MT</label>
-         <Input type="number" step="0.01" value={unloadedMt} onChange={e => setUnloadedMt(e.target.value === "" ? "" : parseFloat(e.target.value))} className="text-fg font-bold" />
+         <label className="mb-1 block text-[10px] font-bold text-fg-secondary">Trip End Date</label>
+         <Input
+           type="date"
+           value={endDate}
+           onChange={e => setEndDate(e.target.value)}
+           className="text-fg font-bold"
+         />
        </div>
      </div>
 
