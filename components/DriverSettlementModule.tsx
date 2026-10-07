@@ -40,6 +40,12 @@ interface DriverAdvance {
 }
 
 interface SettlementResult {
+  success?: boolean;
+  settlement_id: number;
+  settlement_number: string;
+  driver_id: number;
+  from_date: string;
+  to_date: string;
   trips_settled: number;
   advances_settled: number;
   driver_bata: number;
@@ -47,6 +53,7 @@ interface SettlementResult {
   trip_cash_advance: number;
   direct_advance: number;
   net_balance: number;
+  settlement_status: string;
   settled_at: string | null;
 }
 
@@ -204,6 +211,7 @@ export function DriverSettlementModule({
           .lte("trip_start_date", toDate)
           .eq("trip_status", "COMPLETED")
           .or("settlement_status.is.null,settlement_status.neq.SETTLED")
+          .is("settlement_id", null)
           .order("trip_start_date", { ascending: true }),
 
         supabase
@@ -213,6 +221,7 @@ export function DriverSettlementModule({
           .gte("advance_date", fromDate)
           .lte("advance_date", toDate)
           .eq("is_settled", false)
+          .is("settlement_id", null)
           .order("advance_date", { ascending: true }),
       ]);
 
@@ -306,7 +315,7 @@ export function DriverSettlementModule({
 
       showAlert(
         "Settlement Completed",
-        `Settlement completed. Trips settled: ${
+        `Settlement ${result.settlement_number} has been created. Trips settled: ${
           result.trips_settled ?? 0
         }. Advances settled: ${
           result.advances_settled ?? 0
@@ -683,26 +692,73 @@ export function DriverSettlementModule({
                   <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-[9px] font-semibold uppercase tracking-wide text-success">
-                        Server-confirmed settlement
+                        Permanent settlement document
                       </p>
 
-                      <h4 className="mt-1 text-sm font-semibold text-fg">
-                        Settlement completed
+                      <h4 className="mt-1 font-mono text-lg font-semibold text-fg">
+                        {lastSettlementResult.settlement_number}
                       </h4>
 
                       <p className="mt-1 text-xs leading-5 text-fg-muted">
-                        These figures came directly from the settlement RPC,
-                        not from the browser calculation.
+                        Server-created historical settlement document. The
+                        source trip and advance records are now permanently
+                        linked to this settlement.
                       </p>
                     </div>
 
                     <div className="text-left sm:text-right">
                       <p className="text-[9px] font-semibold text-fg-secondary">
+                        Settlement Status
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-success">
+                        {lastSettlementResult.settlement_status}
+                      </p>
+
+                      <p className="mt-2 text-[9px] font-semibold text-fg-secondary">
                         Authoritative Net Balance
                       </p>
 
                       <p className="mt-1 font-mono text-xl font-semibold text-accent">
                         ₹{formatAmt(lastSettlementResult.net_balance)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        Settlement ID
+                      </p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
+                        {lastSettlementResult.settlement_id}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        Driver
+                      </p>
+                      <p className="mt-1 truncate text-sm font-semibold text-fg">
+                        {selectedDriverLabel}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        From
+                      </p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
+                        {lastSettlementResult.from_date}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-surface/50 p-3">
+                      <p className="text-[9px] font-semibold text-fg-secondary">
+                        To
+                      </p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
+                        {lastSettlementResult.to_date}
                       </p>
                     </div>
                   </div>
@@ -762,14 +818,7 @@ export function DriverSettlementModule({
                       </p>
                     </div>
 
-                    <div className="rounded-xl border border-border bg-surface/50 p-3">
-                      <p className="text-[9px] font-semibold text-fg-secondary">
-                        Direct Advance
-                      </p>
-                      <p className="mt-1 font-mono text-sm font-semibold text-fg">
-                        ₹{formatAmt(lastSettlementResult.direct_advance)}
-                      </p>
-                    </div>
+
                   </div>
                 </div>
               )}
@@ -778,7 +827,7 @@ export function DriverSettlementModule({
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h4 className="text-sm font-semibold text-fg">
-                      Settlement period loaded
+                      Settlement period ready
                     </h4>
 
                     <p className="mt-1 text-xs text-fg-muted">
@@ -809,7 +858,7 @@ export function DriverSettlementModule({
                 <p className="text-xs text-fg-muted">
                   {totalRecords === 0
                     ? "No settlement records found for this period."
-                    : "Review the settlement figures before closing the period."}
+                    : "Review the settlement figures before creating the permanent settlement document."}
                 </p>
 
                 <Button
@@ -825,7 +874,7 @@ export function DriverSettlementModule({
                 >
                   {isSettling
                     ? "Settling..."
-                    : "Mark Period as Settled"}
+                    : "Create Settlement Document"}
                 </Button>
               </div>
             </div>
